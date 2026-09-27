@@ -21,8 +21,9 @@ struct Changed {
     structure: bool,
 }
 
-/// Starts watching `root`. Returns `None` if the OS refuses.
-pub fn watch(app: AppHandle, root: &Path) -> Option<notify::RecommendedWatcher> {
+/// Starts watching `root` (and its sub-folders when `recursive`). Returns
+/// `None` if the OS refuses.
+pub fn watch(app: AppHandle, root: &Path, recursive: bool) -> Option<notify::RecommendedWatcher> {
     let (tx, rx) = mpsc::channel::<notify::Event>();
     let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
         if let Ok(event) = res {
@@ -30,7 +31,12 @@ pub fn watch(app: AppHandle, root: &Path) -> Option<notify::RecommendedWatcher> 
         }
     })
     .ok()?;
-    watcher.watch(root, RecursiveMode::Recursive).ok()?;
+    let mode = if recursive {
+        RecursiveMode::Recursive
+    } else {
+        RecursiveMode::NonRecursive
+    };
+    watcher.watch(root, mode).ok()?;
     let root = root.to_path_buf();
     std::thread::spawn(move || {
         // Debounce: gather events for 150 ms after the first one.
@@ -83,9 +89,18 @@ fn handle(app: &AppHandle, root: &Path, events: Vec<notify::Event>) {
         if pr.ws.root_dir != root {
             return;
         }
+        // Light mode: only the files of the document matter, not its neighbours.
+        if pr.light.is_some() {
+            paths.retain(|p| pr.ws.document(p).is_some());
+            if paths.is_empty() {
+                return;
+            }
+            structure = false;
+        }
         for p in &paths {
-            if p.file_name()
-                .is_some_and(|n| n == labaguetex_core::settings::PROJECT_FILE)
+            if pr.light.is_none()
+                && p.file_name()
+                    .is_some_and(|n| n == labaguetex_core::settings::PROJECT_FILE)
             {
                 pr.ws.reload_config();
             } else if p.exists() {

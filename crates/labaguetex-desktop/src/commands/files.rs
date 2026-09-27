@@ -201,7 +201,7 @@ pub async fn rename_path(
 /// The system trash. On macOS, the file manager API is used directly: the
 /// default (asking Finder through AppleScript) needs an automation
 /// permission and can block while the permission prompt waits.
-fn trash_context() -> trash::TrashContext {
+pub(crate) fn trash_context() -> trash::TrashContext {
     #[allow(unused_mut)]
     let mut ctx = trash::TrashContext::default();
     #[cfg(target_os = "macos")]

@@ -53,6 +53,19 @@ pub fn abs(path: &str) -> PathBuf {
 pub fn writable_path(state: &AppState, path: &str) -> CmdResult<PathBuf> {
     let p = abs(path);
     let project = state.project();
+    // Light mode: only the files of the document itself may be written.
+    if let Some(pr) = project.as_ref()
+        && pr.light.is_some()
+    {
+        return if pr.ws.document(&p).is_some() {
+            Ok(p)
+        } else {
+            Err(format!(
+                "{} is not part of the file opened on its own",
+                p.display()
+            ))
+        };
+    }
     let inside_project = project
         .as_ref()
         .is_some_and(|pr| p.starts_with(&pr.ws.root_dir));

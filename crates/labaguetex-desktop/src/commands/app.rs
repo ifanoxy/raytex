@@ -90,9 +90,11 @@ pub async fn save_open_files(
     files: Vec<String>,
     active: Option<String>,
 ) -> CmdResult<()> {
+    // Light mode: tabs are not remembered (the folder may hold a project).
     let Some(root) = state
         .project()
         .as_ref()
+        .filter(|p| p.light.is_none())
         .map(|p| p.ws.root_dir.to_string_lossy().into_owned())
     else {
         return Ok(());

@@ -244,6 +244,69 @@ impl Workspace {
         ws
     }
 
+    /// A workspace for one file opened on its own (light mode): the file,
+    /// and the files it reads (`\input`, `\include`, bibliographies), found
+    /// from it — never the rest of its folder.
+    pub fn single_file(file: &Path) -> Self {
+        let file = absolute(file);
+        let dir = file
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| file.clone());
+        let mut ws = Workspace::empty(&dir);
+        if !ws.load_from_disk(&file) {
+            return ws;
+        }
+        let mut queue = vec![normalize(&file)];
+        while let Some(current) = queue.pop() {
+            let includes = ws
+                .docs
+                .get(&current)
+                .map(|d| d.index.includes.clone())
+                .unwrap_or_default();
+            for inc in includes {
+                if !(inc.kind.is_source()
+                    || matches!(
+                        inc.kind,
+                        IncludeKind::Bibliography | IncludeKind::BibResource
+                    ))
+                {
+                    continue;
+                }
+                if let Some(target) = ws.resolve_include(&file, &current, &inc)
+                    && !ws.docs.contains_key(&target)
+                    && ws.load_from_disk(&target)
+                    && queue.len() < 500
+                {
+                    queue.push(target);
+                }
+            }
+        }
+        ws
+    }
+
+    /// Every existing file the document of `root` uses (sources, packages
+    /// and classes of the project, bibliographies, images, listings), for
+    /// copying it into a project.
+    pub fn referenced_files(&self, root: &Path) -> Vec<PathBuf> {
+        let root = normalize(root);
+        let mut out: Vec<PathBuf> = Vec::new();
+        for doc in self.project_documents(&root) {
+            if !out.contains(&doc.path) {
+                out.push(doc.path.clone());
+            }
+            for inc in &doc.index.includes {
+                if let Some(p) = self.resolve_include(&root, &doc.path, inc)
+                    && p.is_file()
+                    && !out.contains(&p)
+                {
+                    out.push(p);
+                }
+            }
+        }
+        out
+    }
+
     /// An empty workspace for a single file outside any project.
     pub fn empty(root_dir: &Path) -> Self {
         Workspace {

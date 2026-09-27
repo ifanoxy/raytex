@@ -13,7 +13,9 @@ LaTeX turns your `.tex` files into PDF with a *TeX distribution* (TeX Live, MacT
 
 ## 2. Create a project
 
-Click **New project** (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>N</kbd>), give it a name and choose where to keep it. The project opens **empty**: an empty `main.tex`, nothing else.
+Click **New project** (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>N</kbd>) and give it a name: it goes to the **projects folder** (`Documents/labaguetex`), which the start screen shows with a preview of each project. The project opens **empty**: an empty `main.tex`, nothing else.
+
+Just a `.tex` file to edit? **Open a .tex file** opens it in **light mode**, without making a project or files next to it (see [Projects](08-projects.md)).
 
 To start:
 

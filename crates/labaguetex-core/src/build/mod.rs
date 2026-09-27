@@ -397,7 +397,13 @@ pub fn run(
     let start = Instant::now();
     let started_at = SystemTime::now();
     let _ = std::fs::create_dir_all(&plan.out_dir);
-    mirror_directories(&plan.root_dir, &plan.out_dir);
+    if plan.out_dir.starts_with(&plan.root_dir) {
+        mirror_directories(&plan.root_dir, &plan.out_dir);
+    } else if let Some(text) = (ctx.source)(&plan.root) {
+        // Output elsewhere (light mode, in the cache): only the folders of
+        // the `\include`d files, not the whole folder of the document.
+        mirror_include_dirs(&text, &plan.out_dir);
+    }
     // Auxiliary files written by another engine (pdfLaTeX → LuaLaTeX…) make
     // the first pass fail: they are removed when the engine changes.
     let engine_mark = plan
@@ -962,6 +968,22 @@ fn hash_file(path: &Path) -> Option<u64> {
     let mut h = DefaultHasher::new();
     bytes.hash(&mut h);
     Some(h.finish())
+}
+
+/// Creates in `out` the folders of the files `\include`d by `source`
+/// (`\include{chapters/one}` → `out/chapters`).
+fn mirror_include_dirs(source: &str, out: &Path) {
+    for part in source.split("\\include{").skip(1) {
+        let Some(arg) = part.split('}').next() else {
+            continue;
+        };
+        if let Some((dir, _)) = arg.rsplit_once('/')
+            && !dir.starts_with('/')
+            && !dir.contains("..")
+        {
+            let _ = std::fs::create_dir_all(out.join(dir));
+        }
+    }
 }
 
 /// Creates in `out` the sub-directories of `root` that contain `.tex` files

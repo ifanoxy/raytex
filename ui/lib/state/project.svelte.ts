@@ -4,12 +4,13 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { t } from "../i18n.svelte";
 import * as ipc from "../ipc";
-import type { Diagnostic, FileNode, ProjectConfig, ProjectInfo, Structure } from "../types";
+import type { Diagnostic, FileNode, ProjectConfig, ProjectInfo, RecentProject, Structure } from "../types";
 import { basename, debounce, dirname, extension, fileKind, join, relative, samePath } from "../utils";
 import { app } from "./app.svelte";
 import { build } from "./build.svelte";
 import { diagnostics, pathKey } from "./diagnostics.svelte";
 import { editor } from "./editor.svelte";
+import { media } from "./media.svelte";
 import { ui } from "./ui.svelte";
 import { viewer } from "./viewer.svelte";
 
@@ -18,6 +19,8 @@ class ProjectStore {
   tree = $state<FileNode[]>([]);
   structure = $state<Structure | null>(null);
   opening = $state(false);
+  /** A feature needing a folder waits for the light file to become a project. */
+  conversion = $state<{ reason: string; resolve: (ok: boolean) => void } | null>(null);
 
   lintSoon = debounce(() => void this.lintAll(), 700);
   private structureSoon = debounce(() => void this.refreshStructure(), 450);
@@ -27,7 +30,14 @@ class ProjectStore {
     return this.info?.root ?? null;
   }
 
+  /** A file opened on its own (light mode): no project folder. */
+  get light(): boolean {
+    return !!this.info?.light;
+  }
+
   async init() {
+    // Features that write files next to the document ask for a project first.
+    media.guard = (reason) => this.requireProject(reason);
     await ipc.on("fs:changed", ({ paths, structure }) => {
       void editor.externalChanges(paths);
       if (structure) this.treeSoon();
@@ -46,7 +56,7 @@ class ProjectStore {
 
   /** Opens a folder, or the folder of a file, as the project. */
   async open(path: string): Promise<boolean> {
-    if (this.info && samePath(this.info.root, path)) return true;
+    if (this.info && !this.info.light && samePath(this.info.root, path)) return true;
     if (this.info && !(await this.close())) return false;
     this.opening = true;
     try {
@@ -81,6 +91,71 @@ class ProjectStore {
     void app.refreshSession();
   }
 
+  /** Opens a `.tex` file on its own (light mode): nothing is created next to it. */
+  async openLight(file: string): Promise<boolean> {
+    if (this.info && samePath(this.info.main, file) && this.info.light) return true;
+    if (this.info && !(await this.close())) return false;
+    this.opening = true;
+    try {
+      await this.adopt(await ipc.openLightFile(file));
+      return true;
+    } catch (e) {
+      ui.toast("error", t("project.openFailed"), { detail: String(e) });
+      return false;
+    } finally {
+      this.opening = false;
+    }
+  }
+
+  /** Opens a recent project or file, as it was opened. */
+  openRecent(r: RecentProject): Promise<boolean> {
+    return r.light ? this.openLight(r.path) : this.open(r.path);
+  }
+
+  /**
+   * In light mode, asks to make a project (name and place) before a feature
+   * that needs a folder (images, font files…). Resolves with true when the
+   * feature can go on (already a project, or the project was made).
+   */
+  requireProject(reason: string): Promise<boolean> {
+    if (!this.info?.light) return Promise.resolve(true);
+    this.conversion?.resolve(false);
+    return new Promise((resolve) => {
+      this.conversion = { reason, resolve };
+      ui.openOverlay("convert");
+    });
+  }
+
+  /** Makes a project from the light file (in `parent`, the projects folder by default) and opens it. */
+  async convert(name: string, parent: string | null): Promise<boolean> {
+    if (!this.info?.light) return true;
+    // Unsaved changes go to the file first: it is copied into the project.
+    if (!(await editor.saveAll({ silent: true }))) return false;
+    const pending = this.conversion;
+    this.opening = true;
+    try {
+      const info = await ipc.convertToProject(name, parent);
+      editor.reset();
+      await this.adopt(info);
+      ui.toast("success", t("light.converted", { name: info.name }), { detail: info.root });
+      this.conversion = null;
+      pending?.resolve(true);
+      return true;
+    } catch (e) {
+      ui.toast("error", t("project.createFailed"), { detail: String(e) });
+      return false;
+    } finally {
+      this.opening = false;
+    }
+  }
+
+  /** The conversion dialog was closed without making a project. */
+  cancelConversion() {
+    const pending = this.conversion;
+    this.conversion = null;
+    pending?.resolve(false);
+  }
+
   async openFolderDialog() {
     const dir = await openDialog({ directory: true, title: t("project.openTitle") });
     if (typeof dir === "string") await this.open(dir);
@@ -92,8 +167,11 @@ class ProjectStore {
       filters: [{ name: "LaTeX", extensions: ["tex", "ltx", "bib", "sty", "cls"] }],
     });
     if (typeof file !== "string") return;
-    if (this.info && relative(this.info.root, file) !== file.replace(/\\/g, "/")) {
+    if (this.info && !this.info.light && relative(this.info.root, file) !== file.replace(/\\/g, "/")) {
       await editor.open(file);
+    } else if (/\.(tex|ltx)$/i.test(file)) {
+      // A LaTeX file alone: light mode, no project created.
+      await this.openLight(file);
     } else {
       await this.open(file);
     }
@@ -193,7 +271,7 @@ class ProjectStore {
   }
 
   async saveAsTemplate() {
-    if (!this.info) return;
+    if (!this.info || !(await this.requireProject(t("light.reasonTemplate")))) return;
     const name = await ui.prompt({ title: t("project.templateName"), value: this.info.name, okLabel: t("common.save") });
     if (!name) return;
     try {
@@ -211,6 +289,10 @@ class ProjectStore {
   }
 
   async newFile(dir = this.root) {
+    // In light mode the folder becomes that of the new project.
+    const wasLight = this.light;
+    if (!(await this.requireProject(t("light.reasonFiles")))) return;
+    if (wasLight) dir = this.root;
     if (!dir || !this.info) return;
     const name = await ui.prompt({ title: t("project.newFileTitle"), value: "chapter.tex", placeholder: "chapter.tex", okLabel: t("common.create") });
     if (!name) return;
@@ -235,6 +317,10 @@ class ProjectStore {
   }
 
   async newFolder(dir = this.root) {
+    // In light mode the folder becomes that of the new project.
+    const wasLight = this.light;
+    if (!(await this.requireProject(t("light.reasonFiles")))) return;
+    if (wasLight) dir = this.root;
     if (!dir) return;
     const name = await ui.prompt({ title: t("project.newFolderTitle"), value: "", placeholder: "figures", okLabel: t("common.create") });
     if (!name) return;
@@ -293,6 +379,10 @@ class ProjectStore {
   }
 
   async importDialog(dir = this.root) {
+    // In light mode the folder becomes that of the new project.
+    const wasLight = this.light;
+    if (!(await this.requireProject(t("light.reasonFiles")))) return;
+    if (wasLight) dir = this.root;
     if (!dir) return;
     const files = await openDialog({ multiple: true, title: t("project.importTitle") });
     if (!files) return;
@@ -300,6 +390,9 @@ class ProjectStore {
   }
 
   async importFiles(sources: string[], dir = this.root): Promise<string[]> {
+    const wasLight = this.light;
+    if (!(await this.requireProject(t("light.reasonFiles")))) return [];
+    if (wasLight) dir = this.root;
     if (!dir || !sources.length) return [];
     try {
       const created = await ipc.importFiles(sources, dir);

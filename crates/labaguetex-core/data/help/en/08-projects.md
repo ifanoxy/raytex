@@ -2,6 +2,23 @@
 
 A labaguetex project is simply a **folder**. It holds your `.tex` and `.bib` files, your images, and optionally a settings file, `labaguetex.toml`.
 
+## The projects folder and “My projects”
+
+Every new project goes to the same folder, labaguetex's own: `Documents/labaguetex` by default, changed in *Settings › General › Projects folder*.
+
+The start screen, and **My projects…** (project menu, top left) while a project is open, show:
+
+- **Recently opened**: the projects and files opened lately, wherever they are; a click opens them again as they were opened;
+- **All my projects**: each project of the folder, with a preview of the first page of its PDF, its name and its last change; a search and an order (latest changes, by name). Right-click: open, show in Finder or Explorer, rename, move to the trash (except the open project).
+
+A project located elsewhere opens with **Open folder…**; it then shows among the recent ones.
+
+## Light mode: a file on its own
+
+**Open a .tex file** (or drop a `.tex` on the window) opens it **without making a project**: you edit and build it as usual, but **nothing is created next to it**. Build files go to the application's cache, and **Export PDF** saves the PDF wherever you like (next to the `.tex` by default). The *Light mode* badge reminds you of it in the top bar.
+
+The files it includes (`\input`) and its bibliography are read and can be edited. What needs a folder — adding images, font files, files or folders, a template, a drawing in its own file — first offers to **make a project**: a name and a place (the projects folder by default). The project gets a copy of the file and of everything it uses (included files, bibliography, images); the original file is not changed. The requested action then goes on in the new project.
+
 ## Splitting a long document
 
 For a thesis, one file per chapter:

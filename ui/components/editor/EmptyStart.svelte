@@ -76,7 +76,8 @@
     }
     if (isMain) {
       return [
-        { icon: "template", title: t("start.template"), hint: t("start.templateHint"), run: showTemplates },
+        // Templates may add files (bibliography, chapters): projects only.
+        ...(project.info?.light ? [] : [{ icon: "template", title: t("start.template"), hint: t("start.templateHint"), run: showTemplates }]),
         { icon: "file-tex", title: t("start.minimal"), hint: t("start.minimalHint"), run: () => snippet(minimal) },
         { icon: "presentation", title: t("start.slides"), hint: t("start.slidesHint"), run: () => snippet(`\\documentclass{beamer}\n\\usepackage[T1]{fontenc}\n\\usepackage[${babel}]{babel}\n\n\\title{\${1}}\n\\author{\${2}}\n\n\\begin{document}\n\n\\begin{frame}\n\t\\titlepage\n\\end{frame}\n\n\\begin{frame}{\${3}}\n\t\${0}\n\\end{frame}\n\n\\end{document}\n`) },
       ];

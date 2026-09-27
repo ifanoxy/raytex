@@ -13,6 +13,19 @@
   import Icon from "../common/Icon.svelte";
   import Modal from "../common/Modal.svelte";
   import TexSetup from "./TexSetup.svelte";
+  import { open as openDialog } from "@tauri-apps/plugin-dialog";
+
+  /** The projects folder in use (the default one until another is chosen). */
+  let projectsDir = $state("");
+  $effect(() => {
+    void ipc.projectsDir().then((d) => (projectsDir = d)).catch(() => {});
+  });
+
+  async function chooseProjectsDir() {
+    const dir = await openDialog({ directory: true, defaultPath: app.settings?.general.projectsDir ?? projectsDir, title: t("settings.projectsDir") });
+    if (typeof dir === "string") await app.update((x) => (x.general.projectsDir = dir));
+    projectsDir = await ipc.projectsDir().catch(() => projectsDir);
+  }
 
   const SECTIONS: { id: string; label: MessageKey; icon: string; project?: boolean }[] = [
     { id: "general", label: "settings.general", icon: "settings" },
@@ -195,6 +208,15 @@
           </div>
         {/snippet}
         {@render field(t("settings.theme"), null, themeControl)}
+        {#snippet projectsDirControl()}
+          <input class="input wide mono" value={s.general.projectsDir ?? projectsDir} readonly title={s.general.projectsDir ?? projectsDir} />
+          <button class="btn" onclick={chooseProjectsDir}><Icon name="folder-open" size={13} />{t("newProject.change")}</button>
+          <button class="icon-btn" title={t("action.revealInOs")} onclick={() => ipc.revealInOs(s.general.projectsDir ?? projectsDir)}><Icon name="external" size={14} /></button>
+          {#if s.general.projectsDir}
+            <button class="icon-btn" title={t("settings.projectsDirReset")} onclick={() => set((x) => (x.general.projectsDir = null))}><Icon name="refresh" size={14} /></button>
+          {/if}
+        {/snippet}
+        {@render field(t("settings.projectsDir"), t("settings.projectsDirHint"), projectsDirControl)}
         {@render toggle(t("settings.restoreSession"), t("settings.restoreSessionHint"), s.general.restoreSession, (v) => set((x) => (x.general.restoreSession = v)))}
         {@render toggle(t("settings.beginnerTips"), t("settings.beginnerTipsHint"), s.general.beginnerTips, (v) => set((x) => (x.general.beginnerTips = v)))}
         {@render toggle(t("settings.hideAux"), t("settings.hideAuxHint"), s.general.hideAuxFiles, (v) => {

@@ -7,6 +7,8 @@ All notable changes to labaguetex are documented here. The format follows [Keep 
 First version.
 
 ### Writing and layout
+- Projects folder (`Documents/labaguetex` by default, set in the settings) where new projects go; the start screen and a **My projects** window list them with a preview of their PDF, search, order, rename and trash, plus recent projects and files.
+- Light mode: a `.tex` file opened on its own is edited and built without creating anything next to it (builds in the cache, PDF exported where you like); features that need a folder offer to make a project (name and place), copying the file and what it uses.
 - Fonts from the formatting bar: a font box showing the document's font and a **Document fonts** menu (main, sans-serif, code, maths — change or reset each), fonts for passages applied to the selection (`\newfontfamily\fontName`), a clearer role chooser in the font window.
 - Colours follow the document: with xcolor, its 19 colours, the 68 `dvipsnames` and the SVG colours (the option added without clashing with TikZ or Beamer), search, the document's `\definecolor` colours and a custom colour.
 - TikZ studio with a **whiteboard** by default: shapes drawn with the mouse (line, arrow, rectangle, circle, ellipse, polygon, text with maths) on a fine grid (0.25 cm, adjustable, snapping, can be hidden; axes optional), style and coordinates panel, undo/redo, the LaTeX rendering alongside; drawing and code kept in step both ways, unknown statements kept as code.

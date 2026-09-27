@@ -60,6 +60,8 @@ labaguetex (LaTeX + baguette) aide les débutants à apprendre et laisse les exp
 - Parcours des packages installés et de tout le catalogue CTAN ; documentation `texdoc`.
 
 **Projets**
+- Un dossier des projets (`Documents/labaguetex` par défaut) et un navigateur **Mes projets** avec l'aperçu de chaque PDF, une recherche, les projets et fichiers récents.
+- Mode léger : ouvrir un seul fichier `.tex`, le modifier et exporter son PDF sans créer aucun fichier à côté ; en faire un projet en une étape quand il faut des images ou d'autres fichiers.
 - Les nouveaux projets commencent vides ; le panneau **Modèles** montre chaque modèle par sa première page (compilée une fois, gardée en cache) et le place dans le document en un clic, annulable.
 - 16 modèles (article, rapport, thèse, article de recherche, diaporama, poster, notes de cours, examen, fiche d'exercices, devoir, compte rendu de TP, lettre, CV, figure TikZ…), qui compilent tous sans avertissement, en français et en anglais.
 - Réglages du projet dans `labaguetex.toml`, versionné avec le projet.

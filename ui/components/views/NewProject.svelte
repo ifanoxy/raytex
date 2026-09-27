@@ -1,7 +1,6 @@
 <script lang="ts">
   // New project: a name and a place. The project starts empty; templates
   // are offered in the sidebar next to the text.
-  import { documentDir } from "@tauri-apps/api/path";
   import { open } from "@tauri-apps/plugin-dialog";
   import { t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
@@ -11,7 +10,6 @@
   import Icon from "../common/Icon.svelte";
   import Modal from "../common/Modal.svelte";
 
-  const PARENT_KEY = "labaguetex.newProjectParent";
   const AUTHOR_KEY = "labaguetex.author";
 
   function remembered(key: string): string {
@@ -24,15 +22,16 @@
 
   let name = $state("");
   let author = $state(remembered(AUTHOR_KEY));
-  let parent = $state(remembered(PARENT_KEY));
+  // Projects go to the projects folder unless another place is chosen.
+  let parent = $state("");
   let creating = $state(false);
   let exists = $state(false);
 
   $effect(() => {
-    if (!parent)
-      void documentDir()
-        .then((d) => (parent ||= d ?? ""))
-        .catch(() => {});
+    void ipc
+      .projectsDir()
+      .then((d) => (parent ||= d))
+      .catch(() => {});
   });
 
   /** Folder name: the project name without characters that trouble LaTeX tools. */
@@ -76,7 +75,6 @@
     }
     creating = true;
     try {
-      localStorage.setItem(PARENT_KEY, parent);
       localStorage.setItem(AUTHOR_KEY, author.trim());
     } catch {
       /* not remembered */
@@ -129,10 +127,14 @@
 <style>
   .form {
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 14px;
     padding: 18px 20px 18px;
+  }
+  .form > :global(*) {
+    min-width: 0;
   }
   label {
     display: flex;
@@ -157,9 +159,10 @@
     min-width: 0;
   }
   .path {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     margin-top: -6px;
     font-size: 11px;
     color: var(--text-faint);
@@ -171,6 +174,11 @@
     margin: 0;
     font-size: 12px;
     line-height: 1.5;
+  }
+  .path :global(.icon) {
+    display: inline-block;
+    vertical-align: -2px;
+    margin-right: 4px;
   }
   .actions {
     display: flex;

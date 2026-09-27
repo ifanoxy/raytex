@@ -27,7 +27,7 @@
 
 <nav class="activity" aria-label={t("sidebar.label")}>
   {#if project.info}
-    {#each VIEWS as v (v.id)}
+    {#each VIEWS.filter((v) => !(project.info?.light && v.id === "templates")) as v (v.id)}
       <button
         class="item"
         class:active={ui.sidebarVisible && ui.sidebar === v.id}

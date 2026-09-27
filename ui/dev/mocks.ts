@@ -113,7 +113,7 @@ const tree: T.FileNode[] = [
 
 let settings: T.Settings = {
   version: 3,
-  general: { language: "system", theme: "system", restoreSession: true, beginnerTips: true, hideAuxFiles: true },
+  general: { language: "system", theme: "system", restoreSession: true, beginnerTips: true, hideAuxFiles: true, projectsDir: null },
   editor: {
     fontFamily: "",
     fontSize: 14,
@@ -163,11 +163,12 @@ let settings: T.Settings = {
 
 const session: T.Session = {
   recent: [
-    { path: ROOT, name: "memoire", openedAt: Date.now() / 1000 - 3600 * 5 },
-    { path: "/Users/demo/Documents/td-analyse", name: "td-analyse", openedAt: Date.now() / 1000 - 86400 * 3 },
-    { path: "/Users/demo/Documents/article-edp", name: "article-edp", openedAt: Date.now() / 1000 - 86400 * 12 },
+    { path: ROOT, name: "memoire", openedAt: Date.now() / 1000 - 3600 * 5, light: false },
+    { path: "/Users/demo/Downloads/devoir.tex", name: "devoir.tex", openedAt: Date.now() / 1000 - 86400 * 3, light: true },
+    { path: "/Users/demo/Documents/article-edp", name: "article-edp", openedAt: Date.now() / 1000 - 86400 * 12, light: false },
   ],
   lastProject: ROOT,
+  lastLight: false,
   openFiles: {},
   activeFile: {},
 };
@@ -198,6 +199,7 @@ function info(): T.ProjectInfo {
     config: { project: { name: "Mémoire", main: "main.tex" }, build: {}, lint: { disabled_rules: [] } },
     configError: null,
     initialFile: p("chapitres/introduction.tex"),
+    light: false,
     openFiles: [p("main.tex"), p("chapitres/introduction.tex")],
   };
 }
@@ -581,6 +583,25 @@ export function installMocks() {
             { id: "beamer", name: { fr: "Diaporama", en: "Slides" }, description: { fr: "Présentation beamer.", en: "Beamer slides." }, category: "student", order: 6, main: "main.tex", engine: null, tags: ["beamer"], user: false },
             { id: "exam", name: { fr: "Examen", en: "Exam" }, description: { fr: "Sujet avec barème et corrigé.", en: "Exam." }, category: "teacher", order: 9, main: "main.tex", engine: null, tags: ["exam"], user: false },
           ];
+        case "projects_dir":
+          return "/Users/demo/Documents/labaguetex";
+        case "list_projects":
+          return {
+            dir: "/Users/demo/Documents/labaguetex",
+            projects: [
+              { path: ROOT, name: "Mémoire", main: p("main.tex"), modified: Date.now() / 1000 - 3600, pdf: p("build/main.pdf") },
+              { path: "/Users/demo/Documents/labaguetex/td-analyse", name: "TD d'analyse", main: "/Users/demo/Documents/labaguetex/td-analyse/main.tex", modified: Date.now() / 1000 - 86400 * 2, pdf: null },
+              { path: "/Users/demo/Documents/labaguetex/cours-physique", name: "Cours de physique", main: "/Users/demo/Documents/labaguetex/cours-physique/main.tex", modified: Date.now() / 1000 - 86400 * 9, pdf: null },
+            ],
+            recent: session.recent,
+          };
+        case "open_light_file":
+        case "convert_to_project":
+          projectOpen = true;
+          return { ...info(), light: cmd === "open_light_file" };
+        case "rename_project":
+        case "trash_project":
+          return null;
         case "create_empty_project":
           return info();
         case "apply_template":

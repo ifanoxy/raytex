@@ -88,6 +88,7 @@ export async function runSelfTest() {
   log(ok ? "PASSED" : "FAILED");
   const [which, assets] = await invoke<[string | null, string | null]>("selftest_scenes");
   if (ok && which === "workflow" && assets) ok = await workflowScenes(log, assets);
+  else if (ok && which === "projects" && assets) ok = await projectsScenes(log, assets);
   else {
     if (ok && which && which !== "media") await scenes(log);
     if (ok && which && (which === "media" || which === "all") && assets) ok = await mediaScenes(log, assets);
@@ -644,5 +645,98 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
   log(JSON.stringify(results, null, 2));
   const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));
   log(`workflow scenes ${ok ? "PASSED" : "FAILED"}`);
+  return ok;
+}
+
+/**
+ * Projects folder, start screen, light mode (a file opened on its own,
+ * built without writing next to it), conversion into a project, recent
+ * files, renaming and trash. `dir` is a scratch folder.
+ */
+async function projectsScenes(log: (msg: string) => void, dir: string): Promise<boolean> {
+  const scene = async (name: string, holdMs = 2500) => {
+    await pause(700);
+    log(`scene: ${name}`);
+    await pause(holdMs);
+  };
+  const results: Record<string, unknown> = {};
+  const check = (name: string, value: boolean, detail: unknown = "") => {
+    results[name] = value ? "ok" : `FAILED ${detail}`;
+  };
+  try {
+    const projectsDir = `${dir}/mes-projets`;
+    await app.update((s) => (s.general.projectsDir = projectsDir));
+    check("projects folder", (await ipc.projectsDir()) === projectsDir, await ipc.projectsDir());
+
+    // Two projects, one built (its PDF gives the preview).
+    check("first project", await project.createEmpty(`${projectsDir}/rapport`, "Rapport de stage"));
+    await until(() => templates.list.length > 0, 10_000, "templates");
+    await templates.apply(templates.list.find((x) => x.id === "article")!);
+    await until(() => !build.running && build.status === "success", 60_000, "first build");
+    check("second project", await project.createEmpty(`${projectsDir}/td`, "TD de maths"));
+    await project.close();
+    await until(() => document.querySelectorAll(".browser .card").length >= 2, 10_000, "projects on the start screen");
+    await until(() => !!document.querySelector(".browser .card .page img"), 15_000, "project preview");
+    results.cards = document.querySelectorAll(".browser .card").length;
+    await scene("projects-home");
+
+    // ---------------------------------------------------------- light mode
+    // Prepared by the test script: devoir.tex (with \\input{partie}) and partie.tex.
+    const loose = `${dir}/telechargements`;
+    check("light opened", await project.openLight(`${loose}/devoir.tex`));
+    check("light flag", !!project.info?.light && project.info.name === "devoir.tex", project.info?.name);
+    await until(() => project.tree.length >= 1, 5_000, "light tree");
+    check("light tree", project.tree.length === 2 && project.tree[0].name === "devoir.tex", project.tree.map((n) => n.name).join(","));
+    check("badge", !!document.querySelector(".toolbar .light-badge"));
+    check("light build", await buildOk(log, "light"));
+    check("nothing written next to the file", !(await ipc.pathExists(`${loose}/build`)) && !(await ipc.pathExists(`${loose}/labaguetex.toml`)) && !(await ipc.pathExists(`${loose}/devoir.aux`)));
+    check("pdf in the cache", !!viewer.pdf && !viewer.pdf.startsWith(loose), viewer.pdf);
+    await scene("light-mode");
+
+    // Adding an image asks for a project.
+    void media.openImages();
+    await until(() => ui.overlay === "convert", 5_000, "conversion dialog");
+    await pause(400);
+    await scene("convert-dialog", 1500);
+    const nameInput = document.querySelector<HTMLInputElement>(".form input.large")!;
+    type(nameInput, "Devoir de maths");
+    document.querySelector<HTMLButtonElement>(".form .btn.primary")!.click();
+    await until(() => ui.overlay === "image", 20_000, "image dialog after conversion");
+    check("converted", !project.info?.light && project.info?.root === `${projectsDir}/devoir-de-maths`, project.info?.root);
+    check("files copied", (await ipc.pathExists(`${projectsDir}/devoir-de-maths/partie.tex`)) && (await ipc.pathExists(`${projectsDir}/devoir-de-maths/devoir.tex`)));
+    check("original untouched", !(await ipc.pathExists(`${loose}/labaguetex.toml`)));
+    ui.closeOverlay();
+    check("converted build", await buildOk(log, "converted"));
+
+    // Recent: the light file reopens as it was opened.
+    const overview = await ipc.listProjects();
+    const recentLight = overview.recent.find((r) => r.light);
+    check("recent light file", !!recentLight && recentLight.path.endsWith("devoir.tex"));
+    check("three projects listed", overview.projects.length === 3, overview.projects.map((p) => p.name).join(","));
+    if (recentLight) {
+      await project.openRecent(recentLight);
+      check("reopened light", !!project.info?.light);
+    }
+
+    // The projects window, renaming, trash.
+    await project.open(`${projectsDir}/rapport`);
+    ui.openOverlay("projects");
+    await until(() => document.querySelectorAll(".browser .card").length >= 3, 10_000, "projects window");
+    await scene("projects-window");
+    ui.closeOverlay();
+    await ipc.renameProject(`${projectsDir}/td`, "TD d'analyse");
+    await ipc.trashProject(`${projectsDir}/devoir-de-maths`);
+    const after = await ipc.listProjects();
+    check("renamed", after.projects.some((p) => p.name === "TD d'analyse"));
+    check("trashed", !after.projects.some((p) => p.path.endsWith("devoir-de-maths")));
+    let refused = false;
+    await ipc.trashProject(`${projectsDir}/rapport`).catch(() => (refused = true));
+    check("open project protected", refused);
+  } catch (e) {
+    results.failure = String(e);
+  }
+  log(JSON.stringify(results, null, 2));
+  const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));
+  log(`projects scenes ${ok ? "PASSED" : "FAILED"}`);
   return ok;
 }

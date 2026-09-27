@@ -1,32 +1,16 @@
 <script lang="ts">
-  // Start screen: create or open a project, recent projects, TeX status.
+  // Start screen: the projects (projects folder, recent projects and files),
+  // then guides and the TeX installation.
   import { keyFor } from "$lib/actions";
   import { t } from "$lib/i18n.svelte";
-  import * as ipc from "$lib/ipc";
   import { app } from "$lib/state/app.svelte";
-  import { project } from "$lib/state/project.svelte";
   import { distLabel, tex } from "$lib/state/tex.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import { prettyKey } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
+  import ProjectsBrowser from "./ProjectsBrowser.svelte";
 
-  const recent = $derived(app.session?.recent ?? []);
   const dist = $derived(tex.active);
-
-  function ago(seconds: number): string {
-    const diff = Date.now() / 1000 - seconds;
-    const rtf = new Intl.RelativeTimeFormat(document.documentElement.lang || "fr", { numeric: "auto" });
-    if (diff < 3600) return rtf.format(-Math.max(1, Math.round(diff / 60)), "minute");
-    if (diff < 86400) return rtf.format(-Math.round(diff / 3600), "hour");
-    if (diff < 86400 * 30) return rtf.format(-Math.round(diff / 86400), "day");
-    return new Date(seconds * 1000).toLocaleDateString();
-  }
-
-  async function forget(e: MouseEvent, path: string) {
-    e.stopPropagation();
-    await ipc.forgetRecent(path);
-    await app.refreshSession();
-  }
 
   const GUIDES = [
     { id: "getting-started", icon: "sparkles", title: "welcome.guideStart" },
@@ -46,33 +30,10 @@
       </div>
     </header>
 
-    <div class="grid">
-      <section>
-        <h2 class="section-title">{t("welcome.start")}</h2>
-        <button class="action primary" onclick={() => ui.openOverlay("newProject")} disabled={project.opening}>
-          <Icon name="sparkles" size={20} />
-          <span>
-            <strong>{t("action.newProject")}</strong>
-            <small>{t("welcome.newProjectHint")}</small>
-          </span>
-          <kbd>{prettyKey(keyFor("project.new") ?? "")}</kbd>
-        </button>
-        <button class="action" onclick={() => project.openFolderDialog()} disabled={project.opening}>
-          <Icon name="folder-open" size={20} />
-          <span>
-            <strong>{t("action.openProject")}</strong>
-            <small>{t("welcome.openProjectHint")}</small>
-          </span>
-          <kbd>{prettyKey(keyFor("project.open") ?? "")}</kbd>
-        </button>
-        <button class="action" onclick={() => project.openFileDialog()} disabled={project.opening}>
-          <Icon name="file-tex" size={20} />
-          <span>
-            <strong>{t("action.openFile")}</strong>
-            <small>{t("welcome.openFileHint")}</small>
-          </span>
-        </button>
+    <ProjectsBrowser />
 
+    <div class="bottom">
+      <section>
         <h2 class="section-title">{t("welcome.learn")}</h2>
         <div class="guides">
           {#each GUIDES as g}
@@ -83,29 +44,7 @@
           {/each}
         </div>
       </section>
-
       <section>
-        <h2 class="section-title">{t("welcome.recent")}</h2>
-        {#if project.opening}
-          <div class="empty"><span class="spinner"></span></div>
-        {:else if recent.length}
-          <div class="recent">
-            {#each recent.slice(0, 9) as r (r.path)}
-              <div class="recent-item" role="button" tabindex="0" onclick={() => project.open(r.path)} onkeydown={(e) => e.key === "Enter" && project.open(r.path)}>
-                <Icon name="folder" size={18} />
-                <div class="recent-text">
-                  <strong class="ellipsis">{r.name}</strong>
-                  <small class="ellipsis">{r.path}</small>
-                </div>
-                <small class="when">{ago(r.openedAt)}</small>
-                <button class="icon-btn forget" title={t("welcome.forget")} onclick={(e) => forget(e, r.path)}><Icon name="x" size={13} /></button>
-              </div>
-            {/each}
-          </div>
-        {:else}
-          <div class="empty">{t("welcome.noRecent")}</div>
-        {/if}
-
         <h2 class="section-title">{t("welcome.distribution")}</h2>
         <button class="tex card" onclick={() => ui.openOverlay("setup")}>
           {#if tex.status?.detecting}
@@ -126,7 +65,6 @@
             <span class="btn primary small">{t("welcome.install")}</span>
           {/if}
         </button>
-
         {#if app.settings?.general.beginnerTips}
           <div class="tip">
             <Icon name="lightbulb" size={16} />
@@ -144,43 +82,44 @@
     overflow: auto;
     display: flex;
     justify-content: center;
-    padding: 6vh 28px 40px;
+    padding: 5vh 28px 40px;
     background:
       radial-gradient(1200px 500px at 50% -10%, var(--accent-soft), transparent 70%),
       var(--bg);
   }
   .inner {
-    width: min(980px, 100%);
+    width: min(1100px, 100%);
   }
   header {
     display: flex;
     align-items: center;
-    gap: 20px;
-    margin-bottom: 40px;
+    gap: 18px;
+    margin-bottom: 28px;
   }
   .logo {
-    width: 84px;
-    height: 84px;
-    border-radius: 20px;
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
     box-shadow: var(--shadow);
   }
   h1 {
     margin: 0;
-    font-size: 34px;
+    font-size: 28px;
     letter-spacing: -0.02em;
   }
   .tagline {
     margin: 4px 0 0;
     color: var(--text-muted);
-    font-size: 15px;
+    font-size: 14px;
   }
-  .grid {
+  .bottom {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 36px;
+    margin-top: 28px;
   }
   @media (max-width: 860px) {
-    .grid {
+    .bottom {
       grid-template-columns: 1fr;
     }
   }
@@ -188,45 +127,6 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-  }
-  .section-title {
-    margin: 14px 0 4px;
-  }
-  .action {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 12px 14px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    background: var(--bg-elev-2);
-    text-align: left;
-    cursor: pointer;
-    color: var(--accent);
-    transition: border-color 0.12s, transform 0.08s;
-  }
-  .action:hover {
-    border-color: var(--accent);
-  }
-  .action:active {
-    transform: translateY(1px);
-  }
-  .action.primary {
-    background: var(--accent-soft);
-    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  }
-  .action span {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    color: var(--text);
-  }
-  .action small,
-  .recent small,
-  .tex small {
-    color: var(--text-faint);
-    font-size: 12px;
   }
   .guides {
     display: grid;
@@ -237,62 +137,32 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 9px 12px;
+    padding: 9px 11px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    background: none;
-    cursor: pointer;
+    background: var(--bg-elev);
+    color: var(--text);
+    font-size: 12.5px;
     text-align: left;
-    color: var(--text-muted);
+    cursor: pointer;
   }
   .guide:hover {
-    color: var(--text);
     border-color: var(--border-strong);
-    background: var(--bg-hover);
   }
-  .recent {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .recent-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 10px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    color: var(--text-faint);
-  }
-  .recent-item:hover {
-    background: var(--bg-hover);
-  }
-  .recent-text {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    color: var(--text);
-  }
-  .when {
-    white-space: nowrap;
-  }
-  .forget {
-    width: 22px;
-    height: 22px;
-    opacity: 0;
-  }
-  .recent-item:hover .forget {
-    opacity: 1;
+  .guide :global(.icon) {
+    color: var(--accent);
   }
   .tex {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elev);
+    color: var(--text);
     text-align: left;
     cursor: pointer;
-    border-radius: var(--radius-lg);
   }
   .tex:hover {
     border-color: var(--border-strong);
@@ -303,6 +173,10 @@
     flex-direction: column;
     gap: 2px;
   }
+  .tex small {
+    color: var(--text-muted);
+    font-size: 11.5px;
+  }
   .ok {
     color: var(--success);
   }
@@ -312,16 +186,14 @@
   .tip {
     display: flex;
     gap: 10px;
-    margin-top: 10px;
     padding: 10px 12px;
     border-radius: var(--radius);
     background: var(--accent-soft);
-    color: var(--text-muted);
     font-size: 12.5px;
-    line-height: 1.5;
+    line-height: 1.45;
   }
   .tip :global(.icon) {
     color: var(--accent);
-    margin-top: 2px;
+    flex-shrink: 0;
   }
 </style>

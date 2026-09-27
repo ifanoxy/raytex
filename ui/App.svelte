@@ -41,6 +41,8 @@
     image: () => import("./components/views/ImageDialog.svelte"),
     fonts: () => import("./components/views/FontDialog.svelte"),
     tikz: () => import("./components/views/TikzStudio.svelte"),
+    projects: () => import("./components/views/ProjectsWindow.svelte"),
+    convert: () => import("./components/views/ConvertProject.svelte"),
   } as const;
   type LazyView = keyof typeof VIEWS;
   const lazyView = $derived(ui.overlay && ui.overlay in VIEWS ? VIEWS[ui.overlay as LazyView]() : null);
@@ -69,7 +71,7 @@
         viewer.setDefaultZoom(app.settings?.viewer.defaultZoom);
         await editor.reconfigure();
         const last = app.session?.lastProject;
-        if (app.settings?.general.restoreSession && last) await project.open(last);
+        if (app.settings?.general.restoreSession && last) await (app.session?.lastLight ? project.openLight(last) : project.open(last));
       } catch (e) {
         failed = String(e);
       }
@@ -110,7 +112,8 @@
 
   // Window title: file — project — labaguetex.
   $effect(() => {
-    const parts = [editor.activeTab?.name, project.info?.name, "labaguetex"].filter(Boolean);
+    // A file opened on its own has no project name besides its own.
+    const parts = [editor.activeTab?.name, project.info?.light ? null : project.info?.name, "labaguetex"].filter(Boolean);
     const title = (editor.activeTab?.dirty ? "● " : "") + parts.join(" — ");
     document.title = title;
     void getCurrentWindow()
@@ -124,7 +127,9 @@
     const ratio = window.devicePixelRatio || 1;
     const target = document.elementFromPoint(e.position.x / ratio, e.position.y / ratio) as HTMLElement | null;
     if (!project.info) {
-      await project.open(e.paths[0]);
+      // A LaTeX file alone opens in light mode; a folder as a project.
+      const first = e.paths[0];
+      await (/\.(tex|ltx)$/i.test(first) ? project.openLight(first) : project.open(first));
       return;
     }
     // Dialogs that accept files take them.

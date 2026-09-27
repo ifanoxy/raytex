@@ -74,6 +74,9 @@ pub struct RecentProject {
     pub name: String,
     /// Last opening (seconds since the epoch).
     pub opened_at: u64,
+    /// A file opened on its own (light mode), not a project folder.
+    #[serde(default)]
+    pub light: bool,
 }
 
 /// What is restored at start-up.
@@ -84,6 +87,8 @@ pub struct Session {
     pub recent: Vec<RecentProject>,
     /// Project open when the application was closed.
     pub last_project: Option<PathBuf>,
+    /// That project was a file opened on its own (light mode).
+    pub last_light: bool,
     /// Files open in the editor, per project.
     pub open_files: HashMap<String, Vec<PathBuf>>,
     /// Active file, per project.
@@ -114,6 +119,10 @@ pub struct Project {
     pub ws: Workspace,
     /// File watcher (dropped when the project closes).
     pub watcher: Option<notify::RecommendedWatcher>,
+    /// Light mode: the file opened on its own. Nothing is written next to
+    /// it (builds go to the cache) and features that need a folder ask to
+    /// make a project first.
+    pub light: Option<PathBuf>,
 }
 
 /// Build coordination.
@@ -177,6 +186,42 @@ fn recover<T>(r: Result<T, std::sync::PoisonError<T>>) -> T {
 }
 
 impl AppState {
+    /// Folder of the projects (created if needed).
+    pub fn projects_dir(&self) -> PathBuf {
+        let dir = self
+            .settings()
+            .general
+            .projects_dir
+            .clone()
+            .unwrap_or_else(|| {
+                let user = directories::UserDirs::new();
+                let home = directories::BaseDirs::new()
+                    .map(|b| b.home_dir().to_path_buf())
+                    .unwrap_or_else(std::env::temp_dir);
+                labaguetex_core::projects::default_dir(
+                    user.as_ref().and_then(|u| u.document_dir()),
+                    &home,
+                )
+            });
+        let _ = std::fs::create_dir_all(&dir);
+        dir
+    }
+
+    /// Where a file opened on its own is built (never next to it).
+    pub fn light_out_dir(&self, file: &Path) -> PathBuf {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        file.hash(&mut h);
+        let stem = file
+            .file_stem()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        self.paths
+            .cache
+            .join("light")
+            .join(format!("{stem}-{:016x}", h.finish()))
+    }
+
     /// Loads settings and session.
     pub fn new() -> Self {
         let paths = AppPaths::default();

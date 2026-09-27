@@ -49,6 +49,8 @@ export interface Settings {
     restoreSession: boolean;
     beginnerTips: boolean;
     hideAuxFiles: boolean;
+    /** Folder of the projects (null: `labaguetex` in the documents folder). */
+    projectsDir: string | null;
   };
   editor: {
     fontFamily: string;
@@ -135,11 +137,32 @@ export interface RecentProject {
   path: string;
   name: string;
   openedAt: number;
+  /** A file opened on its own (light mode). */
+  light: boolean;
+}
+
+/** A project of the projects folder. */
+export interface ProjectEntry {
+  path: string;
+  name: string;
+  main: string | null;
+  /** Last change of its sources (seconds since the epoch). */
+  modified: number;
+  /** Its PDF, when built. */
+  pdf: string | null;
+}
+
+export interface ProjectsOverview {
+  dir: string;
+  projects: ProjectEntry[];
+  recent: RecentProject[];
 }
 
 export interface Session {
   recent: RecentProject[];
   lastProject: string | null;
+  /** The last one was a file opened on its own. */
+  lastLight: boolean;
   openFiles: Record<string, string[]>;
   activeFile: Record<string, string>;
 }
@@ -163,6 +186,8 @@ export interface ProjectInfo {
   configError: string | null;
   initialFile: string | null;
   openFiles: string[];
+  /** A file opened on its own (light mode): no project folder. */
+  light: boolean;
 }
 
 export interface FileNode {

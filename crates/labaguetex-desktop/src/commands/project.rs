@@ -35,23 +35,37 @@ pub struct ProjectInfo {
     pub initial_file: Option<PathBuf>,
     /// Files open last time.
     pub open_files: Vec<PathBuf>,
+    /// A file opened on its own (light mode): no project folder.
+    pub light: bool,
 }
 
 pub(crate) fn info(state: &AppState, initial: Option<PathBuf>) -> Option<ProjectInfo> {
     let project = state.project();
-    let ws = &project.as_ref()?.ws;
-    let candidates = ws.root_candidates();
-    let main = ws.configured_main().or_else(|| candidates.first().cloned());
+    let pr = project.as_ref()?;
+    let ws = &pr.ws;
+    let (candidates, main) = match &pr.light {
+        Some(file) => (vec![file.clone()], Some(file.clone())),
+        None => {
+            let candidates = ws.root_candidates();
+            let main = ws.configured_main().or_else(|| candidates.first().cloned());
+            (candidates, main)
+        }
+    };
     let key = ws.root_dir.to_string_lossy().into_owned();
     let session = state.session();
-    let open_files: Vec<PathBuf> = session
-        .open_files
-        .get(&key)
-        .cloned()
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|p| p.exists())
-        .collect();
+    let open_files: Vec<PathBuf> = if let Some(file) = &pr.light {
+        // Light mode: only the file itself.
+        vec![file.clone()]
+    } else {
+        session
+            .open_files
+            .get(&key)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|p| p.exists())
+            .collect()
+    };
     let initial = initial
         .or_else(|| {
             session
@@ -61,12 +75,19 @@ pub(crate) fn info(state: &AppState, initial: Option<PathBuf>) -> Option<Project
                 .filter(|p| p.exists())
         })
         .or_else(|| main.clone());
+    let light_name = pr
+        .light
+        .as_ref()
+        .and_then(|f| f.file_name())
+        .map(|n| n.to_string_lossy().into_owned());
     Some(ProjectInfo {
-        name: ws.config.project.name.clone().unwrap_or_else(|| {
-            ws.root_dir
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_default()
+        name: light_name.unwrap_or_else(|| {
+            ws.config.project.name.clone().unwrap_or_else(|| {
+                ws.root_dir
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default()
+            })
         }),
         root: ws.root_dir.clone(),
         main,
@@ -75,6 +96,7 @@ pub(crate) fn info(state: &AppState, initial: Option<PathBuf>) -> Option<Project
         config_error: ws.config_error.clone(),
         initial_file: initial,
         open_files,
+        light: pr.light.is_some(),
     })
 }
 
@@ -97,32 +119,191 @@ pub async fn open_project(app: AppHandle, path: String) -> CmdResult<ProjectInfo
         let _ = app
             .asset_protocol_scope()
             .allow_directory(&ws.root_dir, true);
-        let watcher = watcher::watch(app.clone(), &ws.root_dir);
+        let watcher = watcher::watch(app.clone(), &ws.root_dir, true);
         let root_dir = ws.root_dir.clone();
-        *state.project_mut() = Some(Project { ws, watcher });
-        {
-            let mut s = state.session();
-            let now = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map(|d| d.as_secs())
-                .unwrap_or(0);
-            s.recent.retain(|r| r.path != root_dir);
-            s.recent.insert(
-                0,
-                RecentProject {
-                    name: root_dir
-                        .file_name()
+        let name = ws.config.project.name.clone();
+        *state.project_mut() = Some(Project {
+            ws,
+            watcher,
+            light: None,
+        });
+        remember(state, &root_dir, name, false);
+        info(state, initial).ok_or_else(|| "project not opened".to_owned())
+    })
+    .await?
+}
+
+/// Puts a project (or a file opened on its own) at the top of the recent ones.
+fn remember(state: &AppState, path: &Path, name: Option<String>, light: bool) {
+    {
+        let mut s = state.session();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        s.recent.retain(|r| r.path != path);
+        s.recent.insert(
+            0,
+            RecentProject {
+                name: name.unwrap_or_else(|| {
+                    path.file_name()
                         .map(|n| n.to_string_lossy().into_owned())
-                        .unwrap_or_default(),
-                    path: root_dir.clone(),
-                    opened_at: now,
-                },
-            );
-            s.recent.truncate(20);
-            s.last_project = Some(root_dir);
+                        .unwrap_or_default()
+                }),
+                path: path.to_path_buf(),
+                opened_at: now,
+                light,
+            },
+        );
+        s.recent.truncate(30);
+        s.last_project = Some(path.to_path_buf());
+        s.last_light = light;
+    }
+    state.save_session();
+}
+
+/// Opens a `.tex` file on its own (light mode): no project folder, nothing
+/// written next to it; its builds go to the cache.
+#[tauri::command]
+pub async fn open_light_file(app: AppHandle, path: String) -> CmdResult<ProjectInfo> {
+    let file = abs(&path);
+    if !file.is_file() {
+        return Err(format!("{} does not exist", file.display()));
+    }
+    blocking(&app, move |app, state| {
+        let mut ws = Workspace::single_file(&file);
+        ws.set_packages(state.tex().analyzer.clone());
+        let _ = app
+            .asset_protocol_scope()
+            .allow_directory(&ws.root_dir, false);
+        let watcher = watcher::watch(app.clone(), &ws.root_dir, false);
+        *state.project_mut() = Some(Project {
+            ws,
+            watcher,
+            light: Some(file.clone()),
+        });
+        remember(state, &file, None, true);
+        info(state, Some(file)).ok_or_else(|| "file not opened".to_owned())
+    })
+    .await?
+}
+
+/// The projects folder, its projects and the recent projects and files.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectsOverview {
+    /// The projects folder.
+    pub dir: PathBuf,
+    /// Its projects, most recently changed first.
+    pub projects: Vec<labaguetex_core::projects::ProjectEntry>,
+    /// Recently opened projects and files (existing ones).
+    pub recent: Vec<RecentProject>,
+}
+
+/// The projects folder (created if needed).
+#[tauri::command]
+pub async fn projects_dir(state: State<'_, AppState>) -> CmdResult<PathBuf> {
+    Ok(state.projects_dir())
+}
+
+/// Everything the projects browser shows.
+#[tauri::command]
+pub async fn list_projects(app: AppHandle) -> CmdResult<ProjectsOverview> {
+    blocking(&app, |app, state| {
+        let dir = state.projects_dir();
+        let projects = labaguetex_core::projects::list(&dir);
+        // Thumbnails are drawn from the PDFs.
+        for p in &projects {
+            if let Some(pdf) = &p.pdf {
+                let _ = app.asset_protocol_scope().allow_file(pdf);
+            }
+        }
+        let recent = state
+            .session()
+            .recent
+            .iter()
+            .filter(|r| r.path.exists())
+            .cloned()
+            .collect();
+        ProjectsOverview {
+            dir,
+            projects,
+            recent,
+        }
+    })
+    .await
+}
+
+/// Makes a project from the file opened on its own: a folder `parent/name`
+/// (the projects folder by default) with the file and everything it uses,
+/// then opens it.
+#[tauri::command]
+pub async fn convert_to_project(
+    app: AppHandle,
+    name: String,
+    parent: Option<String>,
+) -> CmdResult<ProjectInfo> {
+    let main = blocking(&app, move |_, state| {
+        let parent = parent
+            .map(|p| abs(&p))
+            .unwrap_or_else(|| state.projects_dir());
+        let project = state.project();
+        let pr = project.as_ref().ok_or("no file open")?;
+        let file = pr.light.clone().ok_or("not a file opened on its own")?;
+        let files = pr.ws.referenced_files(&file);
+        drop(project);
+        let dir = labaguetex_core::projects::folder_for(&parent, &name);
+        labaguetex_core::projects::from_file(&file, &files, &dir, &name).map_err(err)
+    })
+    .await??;
+    open_project(app, main.to_string_lossy().into_owned()).await
+}
+
+/// Renames a project (its display name, in `labaguetex.toml`).
+#[tauri::command]
+pub async fn rename_project(app: AppHandle, path: String, name: String) -> CmdResult<()> {
+    let dir = abs(&path);
+    blocking(&app, move |_, state| {
+        let mut config = ProjectConfig::load(&dir).map_err(err)?;
+        config.project.name = Some(name.trim().to_owned()).filter(|n| !n.is_empty());
+        state.note_own_write(&dir.join(labaguetex_core::settings::PROJECT_FILE));
+        config.save(&dir).map_err(err)?;
+        // The open project and the recent list show the new name.
+        if let Some(pr) = state.project_mut().as_mut()
+            && pr.ws.root_dir == dir
+        {
+            pr.ws.config.project.name = config.project.name.clone();
+        }
+        for r in state.session().recent.iter_mut().filter(|r| r.path == dir) {
+            r.name = name.trim().to_owned();
         }
         state.save_session();
-        info(state, initial).ok_or_else(|| "project not opened".to_owned())
+        Ok(())
+    })
+    .await?
+}
+
+/// Moves a project (not the open one) to the trash.
+#[tauri::command]
+pub async fn trash_project(app: AppHandle, path: String) -> CmdResult<()> {
+    let dir = abs(&path);
+    blocking(&app, move |_, state| {
+        if state
+            .project()
+            .as_ref()
+            .is_some_and(|pr| pr.ws.root_dir == dir)
+        {
+            return Err("the project is open".to_owned());
+        }
+        if !dir.join(labaguetex_core::settings::PROJECT_FILE).is_file()
+            && labaguetex_core::projects::entry(&dir).is_none()
+        {
+            return Err("not a project".to_owned());
+        }
+        super::files::trash_context().delete(&dir).map_err(err)?;
+        state.session().recent.retain(|r| r.path != dir);
+        state.save_session();
+        Ok(())
     })
     .await?
 }
@@ -229,6 +410,23 @@ pub async fn file_tree(app: AppHandle) -> CmdResult<Vec<FileNode>> {
         let Some(pr) = project.as_ref() else {
             return Vec::new();
         };
+        if let Some(file) = &pr.light {
+            // Light mode: the file and those it reads, nothing else of the folder.
+            let mut files: Vec<PathBuf> = pr.ws.documents().map(|d| d.path.clone()).collect();
+            files.sort_by_key(|f| (f != file, f.clone()));
+            return files
+                .into_iter()
+                .map(|path| FileNode {
+                    name: path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().into_owned())
+                        .unwrap_or_default(),
+                    path,
+                    dir: false,
+                    children: Vec::new(),
+                })
+                .collect();
+        }
         let root = pr.ws.root_dir.clone();
         // Output folders of the compilable files (`build/` next to each of them).
         let out = pr.ws.config.effective_build(&base).out_dir;
@@ -255,6 +453,9 @@ pub async fn set_main_file(app: AppHandle, path: String) -> CmdResult<ProjectInf
         {
             let mut project = state.project_mut();
             let pr = project.as_mut().ok_or("no project")?;
+            if pr.light.is_some() {
+                return Err("light mode: no project settings".to_owned());
+            }
             let rel = p
                 .strip_prefix(&pr.ws.root_dir)
                 .map_err(|_| "the file is outside the project".to_owned())?;
@@ -274,6 +475,9 @@ pub async fn save_project_config(app: AppHandle, config: ProjectConfig) -> CmdRe
         {
             let mut project = state.project_mut();
             let pr = project.as_mut().ok_or("no project")?;
+            if pr.light.is_some() {
+                return Err("light mode: no project settings".to_owned());
+            }
             state.note_own_write(&pr.ws.root_dir.join(labaguetex_core::settings::PROJECT_FILE));
             config.save(&pr.ws.root_dir).map_err(err)?;
             pr.ws.config = config;
@@ -318,6 +522,9 @@ pub async fn apply_template(
     blocking(&app, move |_, state| {
         let mut project = state.project_mut();
         let pr = project.as_mut().ok_or("no project")?;
+        if pr.light.is_some() {
+            return Err("light mode: make a project first".to_owned());
+        }
         let root = pr.ws.root_dir.clone();
         state.note_own_write(&root.join(labaguetex_core::settings::PROJECT_FILE));
         let applied =
@@ -414,6 +621,9 @@ pub async fn save_as_template(app: AppHandle, name: String, description: String)
     blocking(&app, move |_, state| {
         let project = state.project();
         let pr = project.as_ref().ok_or("no project")?;
+        if pr.light.is_some() {
+            return Err("light mode: make a project first".to_owned());
+        }
         let id: String = name
             .to_lowercase()
             .chars()

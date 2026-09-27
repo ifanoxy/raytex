@@ -739,7 +739,8 @@
       {:else}
         <div class="segmented">
           <button class:active={destination === "cursor"} onclick={() => (destination = "cursor")}>{t("tikz.atCursor")}</button>
-          <button class:active={destination === "file"} onclick={() => (destination = "file")}>{t("tikz.ownFile")}</button>
+          <!-- A picture file needs a project folder (not in light mode). -->
+          <button class:active={destination === "file"} disabled={project.light} title={project.light ? t("light.tikzFile") : undefined} onclick={() => (destination = "file")}>{t("tikz.ownFile")}</button>
         </div>
         {#if destination === "file"}
           <input class="input small mono file" bind:value={fileName} />

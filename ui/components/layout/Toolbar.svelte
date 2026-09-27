@@ -6,6 +6,7 @@
   import { app } from "$lib/state/app.svelte";
   import { build } from "$lib/state/build.svelte";
   import { project } from "$lib/state/project.svelte";
+  import { viewer } from "$lib/state/viewer.svelte";
   import { type MenuItem, ui } from "$lib/state/ui.svelte";
   import { basename, formatDuration, prettyKey, relative, samePath } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
@@ -18,16 +19,21 @@
   }
 
   function projectMenu(e: MouseEvent) {
-    const recent = (app.session?.recent ?? []).filter((r) => !samePath(r.path, project.info?.root)).slice(0, 8);
+    const current = project.info?.light ? project.info.main : project.info?.root;
+    const recent = (app.session?.recent ?? []).filter((r) => !samePath(r.path, current)).slice(0, 8);
+    const light = !!project.info?.light;
     ui.openMenuBelow(e.currentTarget as HTMLElement, [
+      actionItem("project.browse"),
       actionItem("project.new"),
-      actionItem("project.open"),
       actionItem("project.openFile"),
-      ...(recent.length ? [{ separator: true }, ...recent.map((r) => ({ label: r.name, icon: "folder", run: () => project.open(r.path) }))] : []),
+      actionItem("project.open"),
+      ...(recent.length
+        ? [{ separator: true }, ...recent.map((r) => ({ label: r.name, icon: r.light ? "file-tex" : "folder", run: () => project.openRecent(r) }))]
+        : []),
       { separator: true },
-      actionItem("view.templates"),
-      actionItem("project.settings"),
-      actionItem("project.saveAsTemplate"),
+      ...(light
+        ? [actionItem("project.convert"), actionItem("pdf.export")]
+        : [actionItem("view.templates"), actionItem("project.settings"), actionItem("project.saveAsTemplate")]),
       actionItem("project.close"),
     ]);
   }
@@ -88,10 +94,14 @@
   </div>
 
   {#if project.info}
-    <button class="project" onclick={projectMenu} title={project.info.root}>
+    <button class="project" onclick={projectMenu} title={project.info.light ? (project.info.main ?? "") : project.info.root}>
+      {#if project.info.light}<Icon name="file-tex" size={15} />{/if}
       <span class="ellipsis">{project.info.name}</span>
       <Icon name="chevron-down" size={13} />
     </button>
+    {#if project.info.light}
+      <button class="light-badge" onclick={() => runAction("project.convert")} title={t("light.badgeHint")}>{t("light.badge")}</button>
+    {/if}
 
     <div class="sep"></div>
 
@@ -113,6 +123,12 @@
       </button>
     </div>
 
+    {#if project.info.light}
+      <button class="btn ghost small export" disabled={!viewer.pdf} onclick={() => runAction("pdf.export")} title={t("action.exportPdf")}>
+        <Icon name="download" size={14} />{t("light.export")}
+      </button>
+    {/if}
+
     {#if live}
       <button class="live" class:busy={build.running && !build.manual} onclick={() => runAction("build.live")} title={t("toolbar.liveOn")}>
         {#if build.running && !build.manual}<span class="spinner tiny"></span>{:else}<span class="pulse"></span>{/if}
@@ -133,10 +149,12 @@
       {/if}
     </button>
 
-    <button class="chip" onclick={mainMenu} title={t("toolbar.mainFile")}>
+{#if !project.info.light}
+          <button class="chip" onclick={mainMenu} title={t("toolbar.mainFile")}>
       <Icon name="star" size={13} />
       <span class="ellipsis">{project.info.main ? basename(project.info.main) : t("toolbar.noMain")}</span>
     </button>
+    {/if}
   {/if}
 
   <div class="spacer"></div>
@@ -260,6 +278,24 @@
   }
   .chip :global(.icon) {
     color: var(--accent);
+  }
+  .light-badge {
+    height: 22px;
+    padding: 0 8px;
+    border: 1px dashed var(--accent);
+    border-radius: 11px;
+    background: none;
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .light-badge:hover {
+    background: var(--accent-soft);
+  }
+  .export {
+    white-space: nowrap;
   }
   .live {
     display: flex;

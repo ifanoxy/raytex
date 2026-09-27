@@ -82,8 +82,18 @@
     const files = media.fontRequest;
     if (!files) return;
     media.fontRequest = null;
-    void addFiles(files.filter((f) => FONT_EXT.includes(ext(f))));
+    void takeFiles(files.filter((f) => FONT_EXT.includes(ext(f))));
   });
+
+  /** Font files are copied into the project: in light mode, a project is made first. */
+  async function takeFiles(files: string[]) {
+    if (!files.length) return;
+    if (project.light) {
+      if (await media.guard(t("light.reasonFonts"))) media.openFonts(files, { role });
+      return;
+    }
+    await addFiles(files);
+  }
 
   function ext(p: string) {
     return p.split(".").pop()?.toLowerCase() ?? "";
@@ -108,7 +118,7 @@
 
   async function chooseFiles() {
     const picked = await open({ multiple: true, title: t("fonts.chooseTitle"), filters: [{ name: "Fonts", extensions: FONT_EXT }] });
-    if (picked) await addFiles(Array.isArray(picked) ? picked : [picked]);
+    if (picked) await takeFiles(Array.isArray(picked) ? picked : [picked]);
   }
 
   function choose(s: NonNullable<typeof selected>) {

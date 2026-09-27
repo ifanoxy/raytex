@@ -38,6 +38,7 @@ Pure Rust, synchronous, no global state: every function receives what it needs. 
 | `aux` | Label numbers, citations and the table of contents written by the last build. |
 | `preview` | Small `standalone` documents compiled next to the project (TikZ drawings, font samples): the project's preamble without what breaks previews, errors mapped to the lines of the snippet, bounding box of the first TikZ picture (for the coordinate grid). |
 | `tikz`, `images`, `fonts` | Gallery of TikZ drawings (`data/tikz.json`); LaTeX-safe file names and SVG → PDF conversion (svg2pdf, pure Rust); system fonts and font files (fontdb), OpenType `MATH` detection, fontspec code, LaTeX font packages (`data/fonts.json`). |
+| `projects` | The projects folder (its projects, with their PDF for previews) and projects made from a file opened on its own (the file and every file it uses copied into a new folder). `Workspace::single_file` indexes such a file and what it reads, never the rest of its folder. |
 | `templates`, `help`, `settings`, `i18n`, `process`, `wordcount`, `bib` | Templates (empty projects, templates applied to an open project, example values for thumbnails compiled by `preview::compile_document`), help centre, settings files (versioned and migrated), messages, process spawning (streaming, process-tree kill, elevation), word count, BibTeX parsing. |
 
 ### Data (`crates/labaguetex-core/data`)
@@ -53,6 +54,7 @@ A thin Tauri 2 shell around the engine.
 - **Events**: `build:started`, `build:step`, `build:output` (batched every 60 ms), `build:finished`; `tex:status`; `job:output`, `job:finished`; `fs:changed` (debounced file watcher, ignoring the application's own writes).
 - **Builds** are coalesced: a build requested while another runs is queued, only the latest request runs next.
 - **Installations** use typed requests (`JobRequest`); the interface never sends shell commands. Plans are shown to the user before running.
+- **Light mode**: `Project::light` holds the file opened on its own; builds go to the cache (`light_out_dir`), writes are limited to the document's own files, the watcher is not recursive and templates, project settings and tabs of the folder are left alone.
 - **Security**: strict CSP, minimal capabilities, asset protocol limited to the open project and built PDFs.
 - **Background**: the web view is never throttled or unloaded when the window is hidden (`backgroundThrottling: disabled`), so unsaved work and running builds are never interrupted.
 

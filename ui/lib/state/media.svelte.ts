@@ -1,6 +1,7 @@
 // Requests opening the image, font and TikZ dialogs with content already
 // chosen (pasted image, dropped files, picture under the cursor…).
 
+import { t } from "../i18n.svelte";
 import type { FontRole } from "../types";
 import { ui } from "./ui.svelte";
 
@@ -33,10 +34,17 @@ class MediaStore {
   fontRequest = $state<string[] | null>(null);
   /** Role chosen before opening the font dialog (from the font menu). */
   fontPreset: FontPreset | null = null;
+  /**
+   * Light mode: asks to make a project before a feature that writes files
+   * (set by the project store). Resolves with false when the user declines.
+   */
+  guard: (reason: string) => Promise<boolean> = () => Promise.resolve(true);
   /** Unfinished new picture, kept when the studio is closed. */
   tikzDraft: { code: string; packages: string[]; libraries: string[]; extra: string; mode?: "draw" | "code" } | null = null;
 
-  openImages(request: ImageRequest = {}) {
+  /** Images are copied into the project: in light mode, a project is made first. */
+  async openImages(request: ImageRequest = {}) {
+    if (!(await this.guard(t("light.reasonImages")))) return;
     this.imageRequest = request;
     ui.openOverlay("image");
   }

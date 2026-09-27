@@ -60,6 +60,8 @@ labaguetex (LaTeX + baguette) is a LaTeX editor that helps beginners learn and l
 - Browse installed packages and the whole CTAN catalogue; `texdoc` documentation.
 
 **Projects**
+- A projects folder (`Documents/labaguetex` by default) and a **My projects** browser with previews of each PDF, search, recent projects and files.
+- Light mode: open a single `.tex` file, edit it and export its PDF without creating any file next to it; make it a project in one step when images or other files are needed.
 - New projects start empty; the **Templates** panel shows each template by its first page (compiled once, cached) and puts it in the document in one undoable click.
 - 16 templates (article, report, thesis, research article, slides, poster, course notes, exam, exercise sheet, homework, lab report, letter, CV, TikZ figure…), all building without warnings, in English and French.
 - Project settings in `labaguetex.toml`, versioned with the project.

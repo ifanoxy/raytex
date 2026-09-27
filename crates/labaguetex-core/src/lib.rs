@@ -44,6 +44,7 @@ pub mod log;
 pub mod navigation;
 pub mod preview;
 pub mod process;
+pub mod projects;
 pub mod settings;
 pub mod synctex;
 pub mod syntax;

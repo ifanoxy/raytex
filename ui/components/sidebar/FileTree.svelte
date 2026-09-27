@@ -53,12 +53,23 @@
 </script>
 
 <PanelHeader title={t("sidebar.files")}>
-  <button class="icon-btn" title={t("action.newFile")} onclick={() => project.newFile()}><Icon name="file-plus" /></button>
-  <button class="icon-btn" title={t("action.newFolder")} onclick={() => project.newFolder()}><Icon name="folder-plus" /></button>
-  <button class="icon-btn" title={t("action.importFiles")} onclick={() => project.importDialog()}><Icon name="download" /></button>
-  <button class="icon-btn" title={t("files.refresh")} onclick={() => project.refreshTree()}><Icon name="refresh" /></button>
-  <button class="icon-btn" title={t("files.collapseAll")} onclick={collapseAll}><Icon name="minus" /></button>
+  {#if !project.light}
+    <button class="icon-btn" title={t("action.newFile")} onclick={() => project.newFile()}><Icon name="file-plus" /></button>
+    <button class="icon-btn" title={t("action.newFolder")} onclick={() => project.newFolder()}><Icon name="folder-plus" /></button>
+    <button class="icon-btn" title={t("action.importFiles")} onclick={() => project.importDialog()}><Icon name="download" /></button>
+    <button class="icon-btn" title={t("files.refresh")} onclick={() => project.refreshTree()}><Icon name="refresh" /></button>
+    <button class="icon-btn" title={t("files.collapseAll")} onclick={collapseAll}><Icon name="minus" /></button>
+  {/if}
 </PanelHeader>
+
+{#if project.light}
+  <!-- Light mode: the file alone; nothing is created next to it. -->
+  <div class="light">
+    <strong><Icon name="file-tex" size={15} />{t("light.title")}</strong>
+    <p>{t("light.explanation")}</p>
+    <button class="btn small primary" onclick={() => project.requireProject("")}><Icon name="folder-plus" size={13} />{t("light.makeProject")}</button>
+  </div>
+{/if}
 
 <div
   class="tree"
@@ -80,7 +91,7 @@
   {:else}
     <div class="empty">{t("files.empty")}</div>
   {/each}
-  <div class="drop-hint faint">{t("files.dropHint")}</div>
+  {#if !project.light}<div class="drop-hint faint">{t("files.dropHint")}</div>{/if}
 </div>
 
 <style>
@@ -92,6 +103,24 @@
   }
   .tree.drag-over {
     background: var(--accent-soft);
+  }
+  .light {
+    margin: 2px 10px 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    background: var(--accent-soft);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .light strong {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent);
+  }
+  .light p {
+    margin: 4px 0 8px;
+    color: var(--text-muted);
   }
   .drop-hint {
     padding: 14px 10px;

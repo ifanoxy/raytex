@@ -96,6 +96,8 @@ export const actions: Action[] = [
   { id: "project.open", title: "action.openProject", category: "file", keys: "Mod-o", icon: "folder-open", run: () => project.openFolderDialog() },
   { id: "project.openFile", title: "action.openFile", category: "file", icon: "file", run: () => project.openFileDialog() },
   { id: "project.close", title: "action.closeProject", category: "file", when: hasProject, run: () => project.close() },
+  { id: "project.browse", title: "action.browseProjects", category: "file", icon: "folder", run: () => project.info && ui.openOverlay("projects") },
+  { id: "project.convert", title: "action.convertToProject", category: "file", icon: "folder-plus", when: () => !!project.info?.light, run: () => project.requireProject("") },
   { id: "file.new", title: "action.newFile", category: "file", icon: "file-plus", when: hasProject, run: () => project.newFile() },
   { id: "file.newFolder", title: "action.newFolder", category: "file", icon: "folder-plus", when: hasProject, run: () => project.newFolder() },
   { id: "file.import", title: "action.importFiles", category: "file", icon: "download", when: hasProject, run: () => project.importDialog() },
@@ -105,7 +107,7 @@ export const actions: Action[] = [
   { id: "file.closeAll", title: "action.closeAllTabs", category: "file", when: () => editor.tabs.length > 0, run: () => editor.closeAll() },
   { id: "file.reveal", title: "action.revealInOs", category: "file", when: () => !!editor.active, run: () => editor.active && ipc.revealInOs(editor.active) },
   { id: "project.saveAsTemplate", title: "action.saveAsTemplate", category: "file", when: hasProject, run: () => project.saveAsTemplate() },
-  { id: "project.settings", title: "action.projectSettings", category: "file", when: hasProject, run: () => ui.openSettings("project") },
+  { id: "project.settings", title: "action.projectSettings", category: "file", when: () => hasProject() && !project.info?.light, run: () => ui.openSettings("project") },
 
   // ------------------------------------------------------------ build
   { id: "build.run", title: "action.build", category: "build", keys: "Mod-Enter", icon: "play", when: hasProject, run: () => build.run() },
@@ -132,7 +134,7 @@ export const actions: Action[] = [
   { id: "view.symbols", title: "action.showSymbols", category: "view", icon: "sigma", run: () => ui.showSidebar("symbols") },
   { id: "view.snippets", title: "action.showSnippets", category: "view", icon: "snippets", run: () => ui.showSidebar("snippets") },
   { id: "view.packages", title: "action.showPackages", category: "view", icon: "packages", run: () => ui.showSidebar("packages") },
-  { id: "view.templates", title: "action.showTemplates", category: "view", icon: "template", when: hasProject, run: () => ui.showSidebar("templates") },
+  { id: "view.templates", title: "action.showTemplates", category: "view", icon: "template", when: () => hasProject() && !project.info?.light, run: () => ui.showSidebar("templates") },
   { id: "view.formatBar", title: "action.toggleFormatBar", category: "view", icon: "type", run: () => ui.toggleFormatBar() },
   { id: "view.zoomIn", title: "action.zoomIn", category: "view", keys: "Mod-=", icon: "zoom-in", when: notInPdf, run: () => zoomEditor(1) },
   { id: "view.zoomOut", title: "action.zoomOut", category: "view", keys: "Mod--", icon: "zoom-out", when: notInPdf, run: () => zoomEditor(-1) },

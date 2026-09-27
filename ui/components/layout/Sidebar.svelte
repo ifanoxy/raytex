@@ -1,5 +1,6 @@
 <script lang="ts">
   // Sidebar: shows the selected view.
+  import { project } from "$lib/state/project.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import FileTree from "../sidebar/FileTree.svelte";
   import Outline from "../sidebar/Outline.svelte";
@@ -12,8 +13,11 @@
 
 {#if ui.sidebar === "files"}
   <FileTree />
-{:else if ui.sidebar === "templates"}
+{:else if ui.sidebar === "templates" && !project.light}
   <Templates />
+{:else if ui.sidebar === "templates"}
+  <!-- Templates need a project: a file opened on its own shows its files. -->
+  <FileTree />
 {:else if ui.sidebar === "outline"}
   <Outline />
 {:else if ui.sidebar === "search"}

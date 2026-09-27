@@ -141,8 +141,13 @@ pub(crate) fn prepare(state: &AppState, file: &Path) -> Option<Prepared> {
         .iter()
         .map(|d| (d.path.clone(), d.text.clone()))
         .collect();
+    let mut settings = ws.config.effective_build(&base);
+    if let Some(file) = &project.as_ref()?.light {
+        // Light mode: nothing is written next to the file.
+        settings.out_dir = state.light_out_dir(file).to_string_lossy().into_owned();
+    }
     Some(Prepared {
-        settings: ws.config.effective_build(&base),
+        settings,
         root,
         facts,
         sources,

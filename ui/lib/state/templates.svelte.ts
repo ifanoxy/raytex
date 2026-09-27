@@ -3,6 +3,7 @@
 
 import { i18n, t, tr } from "../i18n.svelte";
 import * as ipc from "../ipc";
+import { renderFirstPage } from "../pdf/thumbnail";
 import type { TemplateInfo } from "../types";
 import { basename, join, prettyKey, relative } from "../utils";
 import { build } from "./build.svelte";
@@ -18,31 +19,6 @@ const THUMB_WORKERS = 3;
 const THUMB_WIDTH = 150;
 
 export type Thumb = { state: "loading" } | { state: "ready"; url: string; landscape: boolean } | { state: "failed" };
-
-/** Renders the first page of a PDF to an image URL. */
-async function renderFirstPage(pdf: string): Promise<{ url: string; landscape: boolean }> {
-  const { closePdf, loadPdf } = await import("../pdf/pdfjs");
-  const doc = await loadPdf(await ipc.readBinaryFile(pdf));
-  try {
-    const page = await doc.getPage(1);
-    const base = page.getViewport({ scale: 1 });
-    const landscape = base.width > base.height;
-    const scale = ((landscape ? THUMB_WIDTH * 1.4 : THUMB_WIDTH) / base.width) * Math.max(2, window.devicePixelRatio || 1);
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.ceil(viewport.width);
-    canvas.height = Math.ceil(viewport.height);
-    const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvas, viewport }).promise;
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-    if (!blob) throw new Error("no image");
-    return { url: URL.createObjectURL(blob), landscape };
-  } finally {
-    closePdf(doc);
-  }
-}
 
 class TemplatesStore {
   list = $state<TemplateInfo[]>([]);
@@ -88,7 +64,7 @@ class TemplatesStore {
         const lang = this.lang;
         try {
           const pdf = await ipc.templateThumbnail(tpl.id);
-          const img = await renderFirstPage(pdf);
+          const img = await renderFirstPage(pdf, THUMB_WIDTH);
           if (lang === this.lang) this.thumbs[tpl.id] = { state: "ready", ...img };
           else URL.revokeObjectURL(img.url);
         } catch {

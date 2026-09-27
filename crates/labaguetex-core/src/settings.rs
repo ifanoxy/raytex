@@ -67,6 +67,8 @@ pub struct GeneralSettings {
     pub beginner_tips: bool,
     /// Hide auxiliary files (`.aux`, `.log`…) in the file explorer.
     pub hide_aux_files: bool,
+    /// Folder of the projects (default: `labaguetex` in the documents folder).
+    pub projects_dir: Option<PathBuf>,
 }
 
 impl Default for GeneralSettings {
@@ -77,6 +79,7 @@ impl Default for GeneralSettings {
             restore_session: true,
             beginner_tips: true,
             hide_aux_files: true,
+            projects_dir: None,
         }
     }
 }

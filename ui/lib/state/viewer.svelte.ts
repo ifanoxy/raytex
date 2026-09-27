@@ -6,6 +6,7 @@ import * as ipc from "../ipc";
 import type { Rect } from "../types";
 import { basename, samePath } from "../utils";
 import { editor } from "./editor.svelte";
+import { project } from "./project.svelte";
 import { ui } from "./ui.svelte";
 
 export type Zoom = "page-width" | "page-fit" | number;
@@ -78,7 +79,10 @@ class ViewerStore {
 
   async exportPdf() {
     if (!this.pdf) return;
-    const dest = await save({ defaultPath: basename(this.pdf), filters: [{ name: "PDF", extensions: ["pdf"] }] });
+    // Light mode: proposed next to the .tex file (its build is in the cache).
+    const main = project.info?.light ? project.info.main : null;
+    const defaultPath = main ? main.replace(/\.[^./\\]+$/, ".pdf") : basename(this.pdf);
+    const dest = await save({ defaultPath, filters: [{ name: "PDF", extensions: ["pdf"] }] });
     if (!dest) return;
     try {
       await ipc.exportFile(this.pdf, dest);

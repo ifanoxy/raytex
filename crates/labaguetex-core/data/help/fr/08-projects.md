@@ -2,6 +2,23 @@
 
 Un projet labaguetex est simplement un **dossier**. Il contient vos fichiers `.tex`, `.bib`, vos images, et éventuellement un fichier de réglages `labaguetex.toml`.
 
+## Le dossier des projets et « Mes projets »
+
+Tous les nouveaux projets sont rangés dans un même dossier, propre à labaguetex : `Documents/labaguetex` par défaut, modifiable dans *Réglages › Général › Dossier des projets*.
+
+L'écran d'accueil, et **Mes projets…** (menu du projet, en haut à gauche) quand un projet est ouvert, montrent :
+
+- **Ouverts récemment** : les projets et les fichiers ouverts dernièrement, où qu'ils soient ; un clic les rouvre comme ils avaient été ouverts ;
+- **Tous mes projets** : chaque projet du dossier, avec l'aperçu de la première page de son PDF, son nom et sa dernière modification ; une recherche et un tri (derniers modifiés, par nom). Clic droit : ouvrir, afficher dans le Finder ou l'Explorateur, renommer, mettre à la corbeille (sauf le projet ouvert).
+
+Un projet situé ailleurs s'ouvre avec **Ouvrir un dossier…** ; il apparaît ensuite dans les récents.
+
+## Mode léger : un fichier seul
+
+**Ouvrir un fichier .tex** (ou déposer un `.tex` sur la fenêtre) l'ouvre **sans créer de projet** : vous le modifiez et le compilez normalement, mais **rien n'est créé à côté de lui**. Les fichiers de compilation vont dans le cache de l'application, et **Exporter le PDF** l'enregistre où vous voulez (à côté du `.tex` par défaut). Le badge *Mode léger* le rappelle dans la barre du haut.
+
+Les fichiers qu'il inclut (`\input`) et sa bibliographie sont lus et modifiables. Ce qui a besoin d'un dossier — ajouter des images, des fichiers de police, des fichiers ou des dossiers, un modèle, un schéma dans un fichier séparé — propose d'abord de **créer un projet** : un nom et un emplacement (le dossier des projets par défaut). Le projet reçoit une copie du fichier et de tout ce qu'il utilise (fichiers inclus, bibliographie, images) ; le fichier d'origine n'est pas modifié. L'action demandée continue ensuite dans le nouveau projet.
+
 ## Découper un long document
 
 Pour un mémoire ou une thèse, un fichier par chapitre :

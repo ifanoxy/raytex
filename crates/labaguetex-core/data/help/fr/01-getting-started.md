@@ -13,7 +13,9 @@ LaTeX transforme vos fichiers `.tex` en PDF grâce à une *distribution TeX* (Te
 
 ## 2. Créer un projet
 
-Cliquez sur **Nouveau projet** (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>N</kbd>), donnez-lui un nom et choisissez où le ranger. Le projet s'ouvre **vierge** : un fichier `main.tex` vide, et rien d'autre.
+Cliquez sur **Nouveau projet** (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>N</kbd>) et donnez-lui un nom : il est rangé dans le **dossier des projets** (`Documents/labaguetex`), que l'écran d'accueil présente avec l'aperçu de chaque projet. Le projet s'ouvre **vierge** : un fichier `main.tex` vide, et rien d'autre.
+
+Juste un fichier `.tex` à modifier ? **Ouvrir un fichier .tex** l'ouvre en **mode léger**, sans créer de projet ni de fichiers à côté (voir [Projets](08-projects.md)).
 
 Pour démarrer :
 
