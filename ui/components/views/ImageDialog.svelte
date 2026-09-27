@@ -689,6 +689,7 @@
     color: var(--text);
   }
   .sketch {
+    flex-shrink: 0;
     display: flex;
     justify-content: center;
     padding: 6px 0;
@@ -739,6 +740,7 @@
     margin-bottom: 4px;
   }
   .code {
+    flex-shrink: 0;
     margin: 0;
     padding: 8px 10px;
     border-radius: var(--radius);
