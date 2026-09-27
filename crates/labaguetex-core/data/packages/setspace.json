@@ -1,0 +1,7 @@
+{ "name": "setspace", "description": { "en": "Line spacing.", "fr": "Interligne." },
+  "commands": [
+    { "name": "onehalfspacing", "doc": { "en": "1.5 line spacing.", "fr": "Interligne 1,5." } },
+    { "name": "doublespacing", "doc": { "en": "Double line spacing.", "fr": "Interligne double." } },
+    { "name": "singlespacing", "doc": { "en": "Single line spacing.", "fr": "Interligne simple." } },
+    { "name": "setstretch", "args": "{factor}", "doc": { "en": "Custom line spacing factor.", "fr": "Facteur d'interligne personnalisé." } } ],
+  "environments": [ { "name": "spacing", "args": "{factor}", "mode": "text", "doc": { "en": "Local line spacing.", "fr": "Interligne local." } } ] }

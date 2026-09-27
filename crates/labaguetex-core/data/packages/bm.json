@@ -1,0 +1,2 @@
+{ "name": "bm", "description": { "en": "Bold math symbols.", "fr": "Symboles mathématiques en gras." },
+  "commands": [ { "name": "bm", "args": "{symbol}", "mode": "math", "doc": { "en": "Bold symbol, including Greek letters: \\bm{\\alpha}.", "fr": "Symbole gras, y compris les lettres grecques : \\bm{\\alpha}." } } ] }

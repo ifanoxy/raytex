@@ -1,0 +1,11 @@
+category = "student"
+order = 2
+main = "main.tex"
+engine = "pdflatex"
+tags = ["tp", "lab", "compte rendu", "physique", "chimie", "graphique"]
+[name]
+en = "Lab report"
+fr = "Compte rendu de TP"
+[description]
+en = "Title page, objectives, method, results with units (siunitx), a data table and a plot (pgfplots), discussion."
+fr = "Page de garde, objectifs, protocole, résultats avec unités (siunitx), tableau de mesures et graphique (pgfplots), discussion."

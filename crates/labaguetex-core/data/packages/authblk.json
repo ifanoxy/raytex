@@ -1,0 +1,2 @@
+{ "name": "authblk", "description": { "en": "Authors with affiliations.", "fr": "Auteurs avec affiliations." },
+  "commands": [ { "name": "affil", "args": "[mark]{affiliation}", "doc": { "en": "An affiliation; link with \\author[1]{…}.", "fr": "Une affiliation ; à relier avec \\author[1]{…}." } } ] }

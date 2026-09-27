@@ -1,0 +1,18 @@
+{
+  "name": "hyperref",
+  "description": { "en": "Clickable links, PDF bookmarks and metadata. Load it last (except cleveref).", "fr": "Liens cliquables, signets et métadonnées PDF. À charger en dernier (sauf cleveref)." },
+  "loads": ["url", "keyval"],
+  "options": ["colorlinks", "hidelinks", "linkcolor=", "citecolor=", "urlcolor=", "bookmarks", "bookmarksnumbered", "pdfusetitle", "breaklinks", "unicode", "pdftitle=", "pdfauthor="],
+  "commands": [
+    { "name": "href", "args": "{url}{text}", "doc": { "en": "Link with a custom text.", "fr": "Lien avec un texte personnalisé." }, "example": "\\href{https://ctan.org}{CTAN}" },
+    { "name": "hypersetup", "args": "{options}", "doc": { "en": "Configures links: colorlinks, linkcolor=blue, pdftitle={…}…", "fr": "Configure les liens : colorlinks, linkcolor=blue, pdftitle={…}…" } },
+    { "name": "autoref", "args": "{key}", "doc": { "en": "Reference with its type: \"Figure 3\".", "fr": "Référence avec son type : « Figure 3 »." } },
+    { "name": "nameref", "args": "{key}", "doc": { "en": "Reference by title (\"Introduction\").", "fr": "Référence par titre (« Introduction »)." } },
+    { "name": "hyperref", "args": "[key]{text}", "doc": { "en": "Link to a label with a custom text.", "fr": "Lien vers un label avec un texte personnalisé." } },
+    { "name": "hypertarget", "args": "{name}{text}", "doc": { "en": "Creates a named anchor.", "fr": "Crée une ancre nommée." } },
+    { "name": "hyperlink", "args": "{name}{text}", "doc": { "en": "Link to an anchor created with \\hypertarget.", "fr": "Lien vers une ancre créée avec \\hypertarget." } },
+    { "name": "texorpdfstring", "args": "{TeX}{PDF}", "doc": { "en": "Alternative text for PDF bookmarks (math in titles).", "fr": "Texte alternatif pour les signets PDF (maths dans les titres)." } },
+    { "name": "phantomsection", "doc": { "en": "Anchor for unnumbered sections added to the TOC.", "fr": "Ancre pour les sections non numérotées ajoutées à la table des matières." } },
+    { "name": "pdfbookmark", "args": "[level]{text}{name}", "doc": { "en": "Adds a PDF bookmark.", "fr": "Ajoute un signet PDF." } }
+  ]
+}

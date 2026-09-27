@@ -1,0 +1,5 @@
+[project]
+main = "main.tex"
+
+[build]
+engine = "pdflatex"

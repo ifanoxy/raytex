@@ -1,0 +1,24 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissions of the main window. Everything else goes through labaguetex's own commands.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-title",
+    "core:window:allow-start-dragging",
+    "core:window:allow-close",
+    "core:window:allow-destroy",
+    "core:webview:allow-set-webview-zoom",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-message",
+    "dialog:allow-ask",
+    "dialog:allow-confirm",
+    "opener:allow-open-url",
+    "opener:allow-reveal-item-in-dir",
+    "window-state:default"
+  ]
+}

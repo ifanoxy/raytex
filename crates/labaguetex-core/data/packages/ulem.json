@@ -1,0 +1,9 @@
+{ "name": "ulem", "description": { "en": "Underlining and strike-outs. Use [normalem] to keep \\emph in italics.", "fr": "Soulignements et barrés. Utilisez [normalem] pour garder \\emph en italique." }, "options": ["normalem"],
+  "commands": [
+    { "name": "uline", "args": "{text}", "mode": "text", "doc": { "en": "Underline.", "fr": "Soulignement." } },
+    { "name": "uuline", "args": "{text}", "mode": "text", "doc": { "en": "Double underline.", "fr": "Double soulignement." } },
+    { "name": "uwave", "args": "{text}", "mode": "text", "doc": { "en": "Wavy underline.", "fr": "Soulignement ondulé." } },
+    { "name": "sout", "args": "{text}", "mode": "text", "doc": { "en": "Strike-out.", "fr": "Barré." } },
+    { "name": "xout", "args": "{text}", "mode": "text", "doc": { "en": "Hatched strike-out.", "fr": "Barré hachuré." } },
+    { "name": "dashuline", "args": "{text}", "mode": "text", "doc": { "en": "Dashed underline.", "fr": "Soulignement tireté." } },
+    { "name": "dotuline", "args": "{text}", "mode": "text", "doc": { "en": "Dotted underline.", "fr": "Soulignement pointillé." } } ] }

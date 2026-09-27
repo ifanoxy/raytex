@@ -1,0 +1,84 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[{{babel}}]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\sisetup{locale = {{fr:FR|en:US}}}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+
+\begin{document}
+
+% {{fr:Pas d'ancre de page pour la page de titre (évite un doublon « page.1 »)|en:No page anchor for the title page (avoids a duplicate "page.1")}}
+\hypersetup{pageanchor=false}
+\begin{titlepage}
+  \centering
+  {\Large {{institution}}\par}
+  \vspace{3cm}
+  {\huge\bfseries {{title}}\par}
+  \vspace{1cm}
+  {\Large {{fr:Compte rendu de travaux pratiques|en:Lab report}}\par}
+  \vfill
+  {\large {{author}}\par}
+  {{date}}
+\end{titlepage}
+\hypersetup{pageanchor=true}
+
+\section{{{fr:Objectifs|en:Objectives}}}
+{{fr:Vérifier la loi d'Ohm $U = R I$ et mesurer la résistance $R$.|en:Check Ohm's law $U = R I$ and measure the resistance $R$.}}
+
+\section{{{fr:Matériel et protocole|en:Equipment and method}}}
+\begin{itemize}
+  \item {{fr:Générateur de tension continue (\qtyrange{0}{12}{\volt})|en:DC voltage supply (\qtyrange{0}{12}{\volt})}}
+  \item {{fr:Résistance nominale de \qty{100}{\ohm}|en:Resistor of nominal value \qty{100}{\ohm}}}
+  \item {{fr:Deux multimètres|en:Two multimeters}}
+\end{itemize}
+
+\section{{{fr:Résultats|en:Results}}}
+
+\begin{table}[H]
+  \centering
+  \caption{{{fr:Mesures|en:Measurements}}}
+  \label{tab:mesures}
+  \begin{tabular}{S[table-format=2.1] S[table-format=3.1]}
+    \toprule
+    {$U$ (\si{\volt})} & {$I$ (\si{\milli\ampere})} \\
+    \midrule
+    2.0  & 20.1 \\
+    4.0  & 39.8 \\
+    6.0  & 60.3 \\
+    8.0  & 79.9 \\
+    10.0 & 100.2 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.75\linewidth, height=6cm,
+      xlabel={$I$ (\si{\milli\ampere})}, ylabel={$U$ (\si{\volt})},
+      grid=major, legend pos=north west]
+      \addplot[only marks, mark=*, blue] coordinates {(20.1,2) (39.8,4) (60.3,6) (79.9,8) (100.2,10)};
+      \addlegendentry{{{fr:Mesures|en:Measurements}}}
+      \addplot[red, domain=0:110] {0.0998*x};
+      \addlegendentry{{{fr:Régression|en:Fit}} $U = RI$}
+    \end{axis}
+  \end{tikzpicture}
+  \caption{{{fr:Caractéristique $U(I)$ de la résistance.|en:$U(I)$ characteristic of the resistor.}}}
+  \label{fig:caracteristique}
+\end{figure}
+
+{{fr:La pente de la droite (figure~\ref{fig:caracteristique}) donne $R = \qty{99.8 \pm 0.5}{\ohm}$.|en:The slope of the line (Figure~\ref{fig:caracteristique}) gives $R = \qty{99.8 \pm 0.5}{\ohm}$.}}
+
+\section{Discussion}
+{{fr:Comparer avec la valeur nominale et discuter des incertitudes.|en:Compare with the nominal value and discuss uncertainties.}}
+
+\end{document}

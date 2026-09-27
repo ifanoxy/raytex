@@ -1,0 +1,8 @@
+{ "name": "listings", "description": { "en": "Source code listings with syntax highlighting (no external tool).", "fr": "Listings de code avec coloration syntaxique (sans outil externe)." },
+  "commands": [
+    { "name": "lstinline", "args": "[options]|code|", "snippet": "lstinline|${1:code}|", "doc": { "en": "Inline code.", "fr": "Code en ligne." } },
+    { "name": "lstinputlisting", "args": "[options]{file}", "doc": { "en": "Listing of a source file.", "fr": "Listing d'un fichier source." } },
+    { "name": "lstset", "args": "{options}", "doc": { "en": "Default options: language=Python, basicstyle=\\ttfamily, numbers=left…", "fr": "Options par défaut : language=Python, basicstyle=\\ttfamily, numbers=left…" } },
+    { "name": "lstdefinestyle", "args": "{name}{options}", "doc": { "en": "Defines a named style.", "fr": "Définit un style nommé." } },
+    { "name": "lstlistoflistings", "mode": "text", "doc": { "en": "List of listings.", "fr": "Liste des listings." } } ],
+  "environments": [ { "name": "lstlisting", "args": "[options]", "mode": "text", "doc": { "en": "Code block: [language=Python, caption=…].", "fr": "Bloc de code : [language=Python, caption=…]." } } ] }

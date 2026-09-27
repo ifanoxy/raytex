@@ -1,0 +1,1 @@
+{ "name": "keyval", "description": { "en": "Key=value option parsing (used by many packages).", "fr": "Analyse d'options clé=valeur (utilisé par de nombreux packages)." } }

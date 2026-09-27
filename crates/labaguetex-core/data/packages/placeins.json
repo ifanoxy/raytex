@@ -1,0 +1,2 @@
+{ "name": "placeins", "description": { "en": "Keeps floats in their section.", "fr": "Garde les flottants dans leur section." }, "options": ["section"],
+  "commands": [ { "name": "FloatBarrier", "doc": { "en": "Floats cannot move past this point.", "fr": "Les flottants ne peuvent pas dépasser ce point." } } ] }

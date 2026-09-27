@@ -1,0 +1,9 @@
+{ "name": "natbib", "description": { "en": "Author-year citations with BibTeX.", "fr": "Citations auteur-année avec BibTeX." }, "options": ["round", "square", "numbers", "authoryear", "sort", "sort&compress", "super"],
+  "commands": [
+    { "name": "citet", "args": "[prenote][postnote]{keys}", "mode": "text", "doc": { "en": "Textual citation: Knuth (1984).", "fr": "Citation textuelle : Knuth (1984)." } },
+    { "name": "citep", "args": "[prenote][postnote]{keys}", "mode": "text", "doc": { "en": "Parenthetical citation: (Knuth, 1984).", "fr": "Citation entre parenthèses : (Knuth, 1984)." } },
+    { "name": "citealt", "args": "{keys}", "mode": "text", "doc": { "en": "Like \\citet without parentheses.", "fr": "Comme \\citet sans parenthèses." } },
+    { "name": "citealp", "args": "{keys}", "mode": "text", "doc": { "en": "Like \\citep without parentheses.", "fr": "Comme \\citep sans parenthèses." } },
+    { "name": "citeauthor", "args": "{keys}", "mode": "text", "doc": { "en": "Authors only.", "fr": "Auteurs seuls." } },
+    { "name": "citeyear", "args": "{keys}", "mode": "text", "doc": { "en": "Year only.", "fr": "Année seule." } },
+    { "name": "setcitestyle", "args": "{options}", "mode": "preamble", "doc": { "en": "Citation style options.", "fr": "Options de style des citations." } } ] }

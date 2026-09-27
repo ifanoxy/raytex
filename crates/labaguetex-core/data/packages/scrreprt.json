@@ -1,0 +1,2 @@
+{ "name": "scrreprt", "class": true, "description": { "en": "KOMA-Script report class (chapters).", "fr": "Classe report de KOMA-Script (chapitres)." }, "loads": ["scrartcl"],
+  "commands": [ { "name": "addchap", "args": "{title}", "mode": "text", "doc": { "en": "Unnumbered chapter added to the table of contents.", "fr": "Chapitre non numéroté ajouté à la table des matières." } } ] }

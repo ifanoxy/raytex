@@ -1,0 +1,50 @@
+\documentclass[11pt,a4paper]{report}
+
+\usepackage[T1]{fontenc}
+\usepackage[{{babel}}]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+\usepackage{booktabs}
+\usepackage{csquotes}
+\usepackage[backend=biber, style=numeric, sorting=none]{biblatex}
+\addbibresource{references.bib}
+\usepackage[hidelinks]{hyperref}
+
+\title{{{title}}}
+\author{{{author}}}
+\date{{{date}}}
+
+\begin{document}
+
+% {{fr:Pas d'ancre de page pour la page de titre (évite un doublon « page.1 »)|en:No page anchor for the title page (avoids a duplicate "page.1")}}
+\hypersetup{pageanchor=false}
+\begin{titlepage}
+  \centering
+  {\large {{institution}}\par}
+  \vspace*{4cm}
+  {\Huge\bfseries {{title}}\par}
+  \vspace{2cm}
+  {\Large {{author}}\par}
+  \vfill
+  {\large {{date}}\par}
+\end{titlepage}
+\hypersetup{pageanchor=true}
+
+\tableofcontents
+
+% {{fr:Chaque chapitre est dans son propre fichier.|en:Each chapter lives in its own file.}}
+\include{chapters/introduction}
+\include{chapters/methode}
+\include{chapters/conclusion}
+
+\printbibliography[heading=bibintoc]
+
+\appendix
+\chapter{{{fr:Annexe|en:Appendix}}}
+{{fr:Contenu complémentaire.|en:Additional material.}}
+
+\end{document}

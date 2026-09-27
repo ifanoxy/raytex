@@ -1,0 +1,7 @@
+{ "name": "unicode-math", "description": { "en": "Unicode math fonts with XeLaTeX/LuaLaTeX.", "fr": "Polices mathématiques Unicode avec XeLaTeX/LuaLaTeX." }, "loads": ["fontspec", "amsfonts", "amssymb"],
+  "commands": [
+    { "name": "setmathfont", "args": "[features]{font}", "mode": "preamble", "doc": { "en": "Math font: \\setmathfont{STIX Two Math}.", "fr": "Police mathématique : \\setmathfont{STIX Two Math}." } },
+    { "name": "symbf", "args": "{symbol}", "mode": "math", "doc": { "en": "Bold math symbol.", "fr": "Symbole mathématique gras." } },
+    { "name": "symup", "args": "{symbol}", "mode": "math", "doc": { "en": "Upright math symbol.", "fr": "Symbole mathématique droit." } },
+    { "name": "symit", "args": "{symbol}", "mode": "math", "doc": { "en": "Italic math symbol.", "fr": "Symbole mathématique italique." } },
+    { "name": "symcal", "args": "{symbol}", "mode": "math", "doc": { "en": "Calligraphic math symbol.", "fr": "Symbole mathématique calligraphique." } } ] }

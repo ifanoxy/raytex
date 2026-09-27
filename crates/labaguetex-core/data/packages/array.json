@@ -1,0 +1,4 @@
+{ "name": "array", "description": { "en": "Extended column types (m{width}, b{width}, >{…}, <{…}).", "fr": "Types de colonnes étendus (m{largeur}, b{largeur}, >{…}, <{…})." },
+  "commands": [
+    { "name": "newcolumntype", "args": "{letter}[n]{specification}", "mode": "preamble", "doc": { "en": "Defines a column type: \\newcolumntype{C}{>{\\centering\\arraybackslash}p{3cm}}.", "fr": "Définit un type de colonne : \\newcolumntype{C}{>{\\centering\\arraybackslash}p{3cm}}." } },
+    { "name": "arraybackslash", "doc": { "en": "Restores \\\\ after \\centering or \\raggedright in a column.", "fr": "Rétablit \\\\ après \\centering ou \\raggedright dans une colonne." } } ] }

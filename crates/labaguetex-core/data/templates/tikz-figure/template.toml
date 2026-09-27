@@ -1,0 +1,11 @@
+category = "general"
+order = 6
+main = "figure.tex"
+engine = "pdflatex"
+tags = ["tikz", "figure", "dessin", "standalone", "schéma"]
+[name]
+en = "TikZ figure (standalone)"
+fr = "Figure TikZ (autonome)"
+[description]
+en = "A drawing compiled on its own and cropped to its content, ready to include in another document."
+fr = "Un dessin compilé seul et rogné à son contenu, prêt à être inclus dans un autre document."

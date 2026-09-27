@@ -1,0 +1,2 @@
+{ "name": "nicefrac", "description": { "en": "Nice slanted fractions.", "fr": "Belles fractions obliques." },
+  "commands": [ { "name": "nicefrac", "args": "{numerator}{denominator}", "doc": { "en": "Slanted fraction.", "fr": "Fraction oblique." } } ] }

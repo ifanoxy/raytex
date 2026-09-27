@@ -1,0 +1,58 @@
+[workspace]
+resolver = "3"
+members = ["crates/labaguetex-core", "crates/labaguetex-cli", "crates/labaguetex-desktop"]
+default-members = ["crates/labaguetex-core", "crates/labaguetex-cli", "crates/labaguetex-desktop"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/labaguetex/labaguetex"
+homepage = "https://github.com/labaguetex/labaguetex"
+authors = ["The labaguetex contributors"]
+
+[workspace.dependencies]
+labaguetex-core = { path = "crates/labaguetex-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.9"
+thiserror = "2"
+flate2 = "1"
+regex = "1"
+memchr = "2"
+ignore = "0.4"
+directories = "6"
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
+libc = "0.2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tempfile = "3"
+ureq = "3"
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-build = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-window-state = "2"
+notify = "8"
+trash = "5"
+clap = { version = "4", features = ["derive"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+panic = "abort"
+
+# Fast, debuggable dev builds but optimized dependencies (the PDF / regex heavy
+# code paths are otherwise painfully slow in debug).
+[profile.dev.package."*"]
+opt-level = 2

@@ -1,0 +1,137 @@
+// Completion source backed by the Rust engine.
+
+import { autocompletion, type Completion, type CompletionContext, type CompletionResult, snippet, startCompletion } from "@codemirror/autocomplete";
+import type { EditorView } from "@codemirror/view";
+import * as ipc from "../ipc";
+import type { CompletionItem, ItemKind } from "../types";
+import { docPath, hooks } from "./context";
+
+const TYPE: Record<ItemKind, string> = {
+  command: "function",
+  environment: "class",
+  label: "label",
+  citation: "citation",
+  package: "package",
+  class: "doctype",
+  file: "file",
+  color: "color",
+  snippet: "snippet",
+  macro: "macro",
+  symbol: "symbol",
+  option: "property",
+  keyword: "keyword",
+  glossary: "text",
+};
+
+/** What must precede the cursor for completion to open while typing. */
+const TRIGGER = /(?:\\[a-zA-Z@]*\*?|@\S{0,2}|[{[,][^{}[\]\n,]*|%\s*!.*)$/;
+
+interface Extra {
+  glyph?: string;
+  color?: string;
+}
+
+function apply(item: CompletionItem) {
+  return (view: EditorView, completion: Completion, from: number, to: number) => {
+    if (item.snippet) {
+      snippet(item.apply)(view, completion, from, to);
+    } else {
+      view.dispatch({
+        changes: { from, to, insert: item.apply },
+        selection: { anchor: from + item.apply.length },
+        userEvent: "input.complete",
+        scrollIntoView: true,
+      });
+    }
+    if (item.addPackage && hooks.settings().autoAddPackage) void hooks.addPackage(view, item.addPackage);
+    // After choosing \ref, \begin… open the next list right away.
+    if (/[{,]$/.test(item.apply) || /^\\(ref|eqref|cref|Cref|cite|citep|citet|parencite|textcite|autocite|usepackage|documentclass|input|include|includegraphics|begin)$/.test(item.label)) {
+      setTimeout(() => startCompletion(view), 20);
+    }
+  };
+}
+
+async function source(context: CompletionContext): Promise<CompletionResult | null> {
+  const path = context.state.facet(docPath);
+  if (!path) return null;
+  const pos = context.pos;
+  const line = context.state.doc.lineAt(pos);
+  const lineBefore = line.text.slice(0, pos - line.from);
+  if (!context.explicit && !TRIGGER.test(lineBefore)) return null;
+  const doc = context.state.doc;
+  const before = doc.sliceString(Math.max(0, pos - 12000), pos);
+  const after = doc.sliceString(pos, Math.min(doc.length, pos + 400));
+  let list;
+  try {
+    list = await ipc.complete(path, before, after, context.explicit);
+  } catch {
+    return null;
+  }
+  if (!list || context.aborted) return null;
+  const options: Completion[] = list.items.map((item) => {
+    const c: Completion & Extra = {
+      label: item.label,
+      detail: item.detail,
+      type: TYPE[item.kind] ?? "text",
+      boost: item.boost,
+      apply: apply(item),
+      glyph: item.glyph,
+      color: item.color,
+    };
+    if (item.info) {
+      const key = item.info;
+      c.info = async () => {
+        const html = await ipc.completionInfo(path, key).catch(() => null);
+        if (!html) return null;
+        const div = document.createElement("div");
+        div.className = "doc";
+        div.innerHTML = html;
+        return div;
+      };
+    }
+    return c;
+  });
+  // The engine only sends items matching what is typed: the list can be
+  // reused while the text extends it, not after deleting characters.
+  const typed = context.state.sliceDoc(pos - list.from, pos);
+  const pattern = list.validFor ? new RegExp(list.validFor) : null;
+  return {
+    from: pos - list.from,
+    to: pos + list.toAfter,
+    options,
+    validFor: pattern && !list.incomplete ? (text: string) => text.startsWith(typed) && pattern.test(text) : undefined,
+    filter: list.filter,
+  };
+}
+
+export function latexCompletion() {
+  return autocompletion({
+    override: [source],
+    activateOnTyping: true,
+    activateOnTypingDelay: 60,
+    maxRenderedOptions: 120,
+    closeOnBlur: true,
+    icons: true,
+    addToOptions: [
+      {
+        position: 60,
+        render(completion) {
+          const extra = completion as Completion & Extra;
+          if (extra.color) {
+            const swatch = document.createElement("span");
+            swatch.className = "cm-completion-swatch";
+            swatch.style.background = extra.color;
+            return swatch;
+          }
+          if (extra.glyph) {
+            const g = document.createElement("span");
+            g.className = "cm-completion-glyph";
+            g.textContent = extra.glyph;
+            return g;
+          }
+          return null;
+        },
+      },
+    ],
+  });
+}

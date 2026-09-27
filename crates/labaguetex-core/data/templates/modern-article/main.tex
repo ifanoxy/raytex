@@ -1,0 +1,45 @@
+% !TEX program = lualatex
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage[{{babel}}]{babel}
+\usepackage{unicode-math}
+% {{fr:Libertinus : belles polices libres avec lettres grecques|en:Libertinus: nice free fonts with Greek letters}}
+\setmainfont{Libertinus Serif}
+\setsansfont{Libertinus Sans}
+\setmathfont{Libertinus Math}
+\usepackage{microtype}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{csquotes}
+\usepackage[backend=biber, style=authoryear]{biblatex}
+\addbibresource{references.bib}
+\usepackage[hidelinks]{hyperref}
+\usepackage[{{babel}}, nameinlink]{cleveref}
+
+\title{{{title}}}
+\author{{{author}}}
+\date{{{date}}}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+
+{{fr:Avec LuaLaTeX, on écrit directement en Unicode : α, β, γ et même « guillemets ».|en:With LuaLaTeX you write Unicode directly: α, β, γ and even “quotes”.}}
+{{fr:Les unités sont gérées par siunitx : \qty{9.81}{\metre\per\second\squared}.|en:Units are handled by siunitx: \qty{9.81}{\metre\per\second\squared}.}}
+{{fr:Knuth a créé \TeX{} \autocite{knuth1984}.|en:Knuth created \TeX{} \autocite{knuth1984}.}}
+
+\begin{equation}
+  ∇ ⋅ 𝐄 = \frac{ρ}{ε_0}
+  \label{eq:gauss}
+\end{equation}
+
+{{fr:\Cref{eq:gauss} est l'une des équations de Maxwell (voir \cref{sec:intro}).|en:\Cref{eq:gauss} is one of Maxwell's equations (see \cref{sec:intro}).}}
+
+\printbibliography
+\end{document}

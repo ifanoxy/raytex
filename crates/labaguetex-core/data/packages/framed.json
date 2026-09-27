@@ -1,0 +1,2 @@
+{ "name": "framed", "description": { "en": "Framed and shaded blocks.", "fr": "Blocs encadrés et ombrés." },
+  "environments": [ { "name": "framed", "mode": "text", "doc": { "en": "Framed block.", "fr": "Bloc encadré." } }, { "name": "shaded", "mode": "text", "doc": { "en": "Shaded block (define shadecolor).", "fr": "Bloc ombré (définir shadecolor)." } } ] }

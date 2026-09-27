@@ -1,0 +1,2 @@
+{ "name": "circuitikz", "description": { "en": "Electrical circuits with TikZ.", "fr": "Circuits électriques avec TikZ." }, "loads": ["tikz"],
+  "environments": [ { "name": "circuitikz", "args": "[options]", "body": "\t\\draw (0,0) to[${1:R=$R$}] (2,0);", "doc": { "en": "Circuit diagram: to[R], to[C], to[V]…", "fr": "Schéma de circuit : to[R], to[C], to[V]…" } } ] }

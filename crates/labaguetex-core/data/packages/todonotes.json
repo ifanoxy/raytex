@@ -1,0 +1,5 @@
+{ "name": "todonotes", "description": { "en": "Todo notes in the margin.", "fr": "Notes « à faire » dans la marge." }, "loads": ["tikz", "xcolor"], "options": ["disable", "colorinlistoftodos", "french"],
+  "commands": [
+    { "name": "todo", "args": "[options]{text}", "doc": { "en": "Margin note; [inline] puts it in the text.", "fr": "Note en marge ; [inline] la place dans le texte." } },
+    { "name": "missingfigure", "args": "[options]{text}", "doc": { "en": "Placeholder for a missing figure.", "fr": "Emplacement pour une figure manquante." } },
+    { "name": "listoftodos", "args": "[title]", "mode": "text", "doc": { "en": "List of all notes.", "fr": "Liste de toutes les notes." } } ] }

@@ -1,0 +1,10 @@
+{ "name": "scrartcl", "class": true, "description": { "en": "KOMA-Script article class (European typography, flexible layout).", "fr": "Classe article de KOMA-Script (typographie européenne, mise en page flexible)." },
+  "options": ["fontsize=11pt", "paper=a4", "parskip=half", "DIV=12", "twoside", "titlepage"],
+  "commands": [
+    { "name": "addsec", "args": "{title}", "mode": "text", "doc": { "en": "Unnumbered section added to the table of contents.", "fr": "Section non numérotée ajoutée à la table des matières." } },
+    { "name": "minisec", "args": "{title}", "mode": "text", "doc": { "en": "Small heading.", "fr": "Petit titre." } },
+    { "name": "KOMAoptions", "args": "{options}", "doc": { "en": "Changes KOMA options.", "fr": "Change des options KOMA." } },
+    { "name": "setkomafont", "args": "{element}{commands}", "doc": { "en": "Font of an element (section, title…).", "fr": "Police d'un élément (section, title…)." } },
+    { "name": "addtokomafont", "args": "{element}{commands}", "doc": { "en": "Adds to the font of an element.", "fr": "Ajoute à la police d'un élément." } },
+    { "name": "publishers", "args": "{text}", "doc": { "en": "Publisher on the title page.", "fr": "Éditeur sur la page de titre." } },
+    { "name": "subject", "args": "{text}", "doc": { "en": "Subject above the title.", "fr": "Sujet au-dessus du titre." } } ] }

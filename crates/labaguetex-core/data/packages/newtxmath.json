@@ -1,0 +1,1 @@
+{ "name": "newtxmath", "loads": ["amsfonts", "amssymb"], "description": { "en": "Times-like math fonts (provides the AMS symbols).", "fr": "Polices mathématiques façon Times (fournit les symboles AMS)." } }

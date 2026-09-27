@@ -1,0 +1,8 @@
+{ "name": "fontspec", "description": { "en": "System fonts (OTF/TTF) with XeLaTeX or LuaLaTeX only.", "fr": "Polices système (OTF/TTF) avec XeLaTeX ou LuaLaTeX uniquement." },
+  "commands": [
+    { "name": "setmainfont", "args": "[features]{font}", "mode": "preamble", "doc": { "en": "Main (serif) font: \\setmainfont{TeX Gyre Pagella}.", "fr": "Police principale : \\setmainfont{TeX Gyre Pagella}." } },
+    { "name": "setsansfont", "args": "[features]{font}", "mode": "preamble", "doc": { "en": "Sans-serif font.", "fr": "Police sans empattements." } },
+    { "name": "setmonofont", "args": "[features]{font}", "mode": "preamble", "doc": { "en": "Monospace font.", "fr": "Police à chasse fixe." } },
+    { "name": "newfontfamily", "args": "{\\cmd}[features]{font}", "mode": "preamble", "doc": { "en": "Defines a command switching to a font.", "fr": "Définit une commande qui change de police." } },
+    { "name": "fontspec", "args": "[features]{font}", "doc": { "en": "Switches to a font locally.", "fr": "Change de police localement." } },
+    { "name": "addfontfeatures", "args": "{features}", "doc": { "en": "Adds OpenType features to the current font.", "fr": "Ajoute des fonctionnalités OpenType à la police courante." } } ] }

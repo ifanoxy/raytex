@@ -1,0 +1,7 @@
+{ "name": "minted", "description": { "en": "Code highlighting with Pygments. Requires shell escape (-shell-escape).", "fr": "Coloration de code avec Pygments. Nécessite shell escape (-shell-escape)." },
+  "commands": [
+    { "name": "mintinline", "args": "[options]{language}{code}", "doc": { "en": "Inline highlighted code.", "fr": "Code coloré en ligne." } },
+    { "name": "inputminted", "args": "[options]{language}{file}", "doc": { "en": "Highlighted source file.", "fr": "Fichier source coloré." } },
+    { "name": "setminted", "args": "[language]{options}", "doc": { "en": "Default options.", "fr": "Options par défaut." } },
+    { "name": "usemintedstyle", "args": "{style}", "doc": { "en": "Pygments style: friendly, monokai…", "fr": "Style Pygments : friendly, monokai…" } } ],
+  "environments": [ { "name": "minted", "args": "[options]{language}", "mode": "text", "doc": { "en": "Highlighted code block.", "fr": "Bloc de code coloré." } } ] }

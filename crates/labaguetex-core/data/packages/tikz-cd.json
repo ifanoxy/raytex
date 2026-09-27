@@ -1,0 +1,4 @@
+{ "name": "tikz-cd", "description": { "en": "Commutative diagrams.", "fr": "Diagrammes commutatifs." }, "loads": ["tikz"],
+  "commands": [ { "name": "arrow", "args": "[direction, label]", "snippet": "arrow[${1:r}, \"${2:f}\"]", "doc": { "en": "Arrow in a tikzcd: \\arrow[r, \"f\"].", "fr": "Flèche dans un tikzcd : \\arrow[r, \"f\"]." } },
+    { "name": "ar", "args": "[direction, label]", "doc": { "en": "Short form of \\arrow.", "fr": "Forme courte de \\arrow." } } ],
+  "environments": [ { "name": "tikzcd", "args": "[options]", "mode": "math", "doc": { "en": "Commutative diagram (cells separated by & and \\\\).", "fr": "Diagramme commutatif (cellules séparées par & et \\\\)." } } ] }

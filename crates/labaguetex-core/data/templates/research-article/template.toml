@@ -1,0 +1,11 @@
+category = "researcher"
+order = 2
+main = "main.tex"
+engine = "pdflatex"
+tags = ["recherche", "research", "paper", "affiliations", "biblatex"]
+[name]
+en = "Research paper"
+fr = "Article de recherche"
+[description]
+en = "Several authors with affiliations, abstract and keywords, theorem environments, SI units, smart references and a biblatex bibliography."
+fr = "Plusieurs auteurs avec affiliations, résumé et mots-clés, théorèmes, unités SI, références intelligentes et bibliographie biblatex."

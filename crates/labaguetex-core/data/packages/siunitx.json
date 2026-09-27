@@ -1,0 +1,14 @@
+{ "name": "siunitx", "description": { "en": "Numbers and SI units, correctly typeset.", "fr": "Nombres et unités SI, correctement composés." },
+  "commands": [
+    { "name": "qty", "args": "{number}{unit}", "snippet": "qty{${1:9.81}}{${2:\\metre\\per\\second\\squared}}", "doc": { "en": "Quantity: \\qty{9.81}{\\metre\\per\\second\\squared} (siunitx v3).", "fr": "Grandeur : \\qty{9.81}{\\metre\\per\\second\\squared} (siunitx v3)." } },
+    { "name": "SI", "args": "{number}{unit}", "doc": { "en": "Quantity (siunitx v2 name of \\qty).", "fr": "Grandeur (ancien nom de \\qty, siunitx v2)." } },
+    { "name": "num", "args": "{number}", "doc": { "en": "Formatted number: \\num{12345.678} or \\num{3e8}.", "fr": "Nombre formaté : \\num{12345,678} ou \\num{3e8}." } },
+    { "name": "unit", "args": "{unit}", "doc": { "en": "Unit alone: \\unit{\\kilo\\gram}.", "fr": "Unité seule : \\unit{\\kilo\\gram}." } },
+    { "name": "si", "args": "{unit}", "doc": { "en": "Unit alone (siunitx v2 name of \\unit).", "fr": "Unité seule (ancien nom de \\unit)." } },
+    { "name": "ang", "args": "{angle}", "doc": { "en": "Angle: \\ang{45} or \\ang{12;30;0}.", "fr": "Angle : \\ang{45} ou \\ang{12;30;0}." } },
+    { "name": "qtyrange", "args": "{from}{to}{unit}", "doc": { "en": "Range of quantities.", "fr": "Intervalle de grandeurs." } },
+    { "name": "numrange", "args": "{from}{to}", "doc": { "en": "Range of numbers.", "fr": "Intervalle de nombres." } },
+    { "name": "qtylist", "args": "{numbers}{unit}", "doc": { "en": "List of quantities.", "fr": "Liste de grandeurs." } },
+    { "name": "sisetup", "args": "{options}", "doc": { "en": "Options: locale=FR, output-decimal-marker={,}, per-mode=symbol…", "fr": "Options : locale=FR, output-decimal-marker={,}, per-mode=symbol…" } },
+    { "name": "tablenum", "args": "{number}", "doc": { "en": "Number aligned in a table (S columns).", "fr": "Nombre aligné dans un tableau (colonnes S)." } } ],
+  "symbols": [ { "category": "unit", "mode": "any", "items": [["metre","m"],["meter","m"],["second","s"],["kilogram","kg"],["gram","g"],["ampere","A"],["kelvin","K"],["mole","mol"],["candela","cd"],["newton","N"],["joule","J"],["watt","W"],["volt","V"],["ohm","Ω"],["hertz","Hz"],["pascal","Pa"],["coulomb","C"],["tesla","T"],["farad","F"],["henry","H"],["litre","L"],["electronvolt","eV"],["degreeCelsius","°C"],["percent","%"],["kilo","k"],["mega","M"],["giga","G"],["milli","m"],["micro","µ"],["nano","n"],["centi","c"],["per","/"],["squared","²"],["cubed","³"],["hour","h"],["minute","min"]] } ] }

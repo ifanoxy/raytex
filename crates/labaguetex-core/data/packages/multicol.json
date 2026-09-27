@@ -1,0 +1,4 @@
+{ "name": "multicol", "description": { "en": "Several balanced columns anywhere.", "fr": "Plusieurs colonnes équilibrées n'importe où." },
+  "commands": [ { "name": "columnbreak", "mode": "text", "doc": { "en": "Forces a column break.", "fr": "Force un changement de colonne." } } ],
+  "environments": [ { "name": "multicols", "args": "{columns}", "mode": "text", "body": "\t${2}", "doc": { "en": "Text in n balanced columns.", "fr": "Texte sur n colonnes équilibrées." } },
+    { "name": "multicols*", "args": "{columns}", "mode": "text", "doc": { "en": "Columns without balancing.", "fr": "Colonnes sans équilibrage." } } ] }

@@ -1,0 +1,7 @@
+{ "name": "tcolorbox", "description": { "en": "Coloured, framed boxes (theorems, exercises, notes).", "fr": "Boîtes colorées et encadrées (théorèmes, exercices, notes)." }, "loads": ["pgf", "xcolor"],
+  "commands": [
+    { "name": "tcbset", "args": "{options}", "doc": { "en": "Default box options.", "fr": "Options par défaut des boîtes." } },
+    { "name": "newtcolorbox", "args": "{name}[n]{options}", "mode": "preamble", "doc": { "en": "Defines a box environment.", "fr": "Définit un environnement de boîte." } },
+    { "name": "tcbuselibrary", "args": "{libraries}", "mode": "preamble", "doc": { "en": "Loads libraries: skins, breakable, theorems, listings…", "fr": "Charge des bibliothèques : skins, breakable, theorems, listings…" } },
+    { "name": "tcbox", "args": "[options]{text}", "doc": { "en": "Inline box.", "fr": "Boîte en ligne." } } ],
+  "environments": [ { "name": "tcolorbox", "args": "[options]", "mode": "text", "doc": { "en": "Box: [colback=blue!5, colframe=blue!50, title=…].", "fr": "Boîte : [colback=blue!5, colframe=blue!50, title=…]." } } ] }

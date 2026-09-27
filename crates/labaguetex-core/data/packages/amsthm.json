@@ -1,0 +1,14 @@
+{
+  "name": "amsthm",
+  "description": { "en": "Theorems and proofs: \\newtheorem with styles, proof environment.", "fr": "Théorèmes et démonstrations : \\newtheorem avec styles, environnement proof." },
+  "commands": [
+    { "name": "theoremstyle", "args": "{style}", "mode": "preamble", "doc": { "en": "Style of the next \\newtheorem: plain (italic), definition (upright), remark.", "fr": "Style des \\newtheorem suivants : plain (italique), definition (droit), remark." } },
+    { "name": "newtheoremstyle", "args": "{name}{above}{below}{body font}{indent}{head font}{punct}{space}{head spec}", "mode": "preamble", "doc": { "en": "Defines a custom theorem style.", "fr": "Définit un style de théorème personnalisé." } },
+    { "name": "qedhere", "doc": { "en": "Places the end-of-proof symbol here (e.g. at the end of an equation).", "fr": "Place le symbole de fin de preuve ici (ex. à la fin d'une équation)." } },
+    { "name": "qedsymbol", "doc": { "en": "The end-of-proof symbol (□ by default).", "fr": "Le symbole de fin de preuve (□ par défaut)." } },
+    { "name": "qed", "doc": { "en": "Prints the end-of-proof symbol.", "fr": "Affiche le symbole de fin de preuve." } }
+  ],
+  "environments": [
+    { "name": "proof", "args": "[title]", "mode": "text", "doc": { "en": "Proof, ended by a □ symbol.", "fr": "Démonstration, terminée par un symbole □." } }
+  ]
+}

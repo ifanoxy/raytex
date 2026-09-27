@@ -1,0 +1,13 @@
+{ "name": "pgfplots", "description": { "en": "Function and data plots with TikZ.", "fr": "Tracés de fonctions et de données avec TikZ." }, "loads": ["tikz"],
+  "commands": [
+    { "name": "pgfplotsset", "args": "{options}", "snippet": "pgfplotsset{compat=${1:1.18}}", "doc": { "en": "Global options, notably compat=1.18.", "fr": "Options globales, notamment compat=1.18." } },
+    { "name": "addplot", "args": "[options]", "snippet": "addplot[${1:blue, domain=-2:2}] {${2:x^2}};", "doc": { "en": "A plot: expression {x^2}, coordinates {…} or table {file.csv}.", "fr": "Un tracé : expression {x^2}, coordinates {…} ou table {fichier.csv}." } },
+    { "name": "addplot3", "args": "[options]", "doc": { "en": "3D plot.", "fr": "Tracé 3D." } },
+    { "name": "addlegendentry", "args": "{text}", "doc": { "en": "Legend of the last plot.", "fr": "Légende du dernier tracé." } },
+    { "name": "legend", "args": "{entries}", "doc": { "en": "All legend entries at once.", "fr": "Toutes les entrées de légende d'un coup." } },
+    { "name": "usepgfplotslibrary", "args": "{libraries}", "mode": "preamble", "doc": { "en": "Loads pgfplots libraries (fillbetween, groupplots…).", "fr": "Charge des bibliothèques pgfplots (fillbetween, groupplots…)." } } ],
+  "environments": [
+    { "name": "axis", "args": "[options]", "body": "\t\\addplot[${1:blue}] {${2:x^2}};", "doc": { "en": "Plot axes: xlabel=, ylabel=, grid=major, domain=…", "fr": "Axes de tracé : xlabel=, ylabel=, grid=major, domain=…" } },
+    { "name": "semilogyaxis", "args": "[options]", "doc": { "en": "Axes with logarithmic y.", "fr": "Axes avec y logarithmique." } },
+    { "name": "semilogxaxis", "args": "[options]", "doc": { "en": "Axes with logarithmic x.", "fr": "Axes avec x logarithmique." } },
+    { "name": "loglogaxis", "args": "[options]", "doc": { "en": "Log-log axes.", "fr": "Axes log-log." } } ] }

@@ -1,0 +1,1 @@
+{ "name": "xurl", "description": { "en": "Allows URL line breaks everywhere.", "fr": "Autorise les coupures d'URL partout." }, "loads": ["url"] }

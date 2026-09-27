@@ -1,0 +1,2 @@
+{ "name": "article", "class": true, "description": { "en": "Standard class for articles, short reports and homework (sections, no chapters).", "fr": "Classe standard pour articles, rapports courts et devoirs (sections, pas de chapitres)." },
+  "options": ["10pt", "11pt", "12pt", "a4paper", "letterpaper", "twocolumn", "twoside", "landscape", "titlepage", "draft", "fleqn", "leqno"] }

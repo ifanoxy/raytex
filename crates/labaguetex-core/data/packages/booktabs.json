@@ -1,0 +1,7 @@
+{ "name": "booktabs", "description": { "en": "Professional table rules. Avoid vertical lines with booktabs.", "fr": "Filets de tableaux professionnels. Évitez les filets verticaux avec booktabs." },
+  "commands": [
+    { "name": "toprule", "args": "[thickness]", "doc": { "en": "Top rule of a table.", "fr": "Filet supérieur d'un tableau." } },
+    { "name": "midrule", "args": "[thickness]", "doc": { "en": "Rule below the header.", "fr": "Filet sous l'en-tête." } },
+    { "name": "bottomrule", "args": "[thickness]", "doc": { "en": "Bottom rule of a table.", "fr": "Filet inférieur d'un tableau." } },
+    { "name": "cmidrule", "args": "(trim){a-b}", "doc": { "en": "Partial rule over columns a to b; (lr) trims the ends.", "fr": "Filet partiel sur les colonnes a à b ; (lr) raccourcit les extrémités." } },
+    { "name": "addlinespace", "args": "[space]", "doc": { "en": "Extra space between rows.", "fr": "Espace supplémentaire entre lignes." } } ] }

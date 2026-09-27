@@ -1,0 +1,33 @@
+[package]
+name = "labaguetex-core"
+description = "LaTeX language engine of labaguetex: parsing, completion, diagnostics, build, SyncTeX."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+build = "build.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+thiserror.workspace = true
+flate2.workspace = true
+regex.workspace = true
+memchr.workspace = true
+ignore.workspace = true
+directories.workspace = true
+pulldown-cmark.workspace = true
+tracing.workspace = true
+ureq.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

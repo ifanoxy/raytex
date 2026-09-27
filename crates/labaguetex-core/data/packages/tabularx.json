@@ -1,0 +1,2 @@
+{ "name": "tabularx", "description": { "en": "Tables of fixed width with stretchable X columns.", "fr": "Tableaux de largeur fixe avec colonnes X extensibles." }, "loads": ["array"],
+  "environments": [ { "name": "tabularx", "args": "{width}{columns}", "body": "\t${3}", "doc": { "en": "Table of the given width; X columns share the remaining space.", "fr": "Tableau de la largeur donnée ; les colonnes X se partagent l'espace restant." }, "example": "\\begin{tabularx}{\\linewidth}{lX}\n  Nom & Description longue \\\\\n\\end{tabularx}" } ] }

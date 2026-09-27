@@ -1,0 +1,7 @@
+{ "name": "gensymb", "description": { "en": "Generic symbols usable in text and math: °, µ, Ω.", "fr": "Symboles génériques utilisables en texte et en maths : °, µ, Ω." },
+  "commands": [
+    { "name": "degree", "glyph": "°", "doc": { "en": "Degree sign.", "fr": "Symbole degré." } },
+    { "name": "celsius", "glyph": "℃", "doc": { "en": "Degree Celsius.", "fr": "Degré Celsius." } },
+    { "name": "micro", "glyph": "µ", "doc": { "en": "Micro sign.", "fr": "Symbole micro." } },
+    { "name": "ohm", "glyph": "Ω", "doc": { "en": "Ohm sign.", "fr": "Symbole ohm." } },
+    { "name": "perthousand", "glyph": "‰", "doc": { "en": "Per-mille sign.", "fr": "Pour mille." } } ] }

@@ -1,0 +1,5 @@
+{ "name": "titlesec", "description": { "en": "Customises section titles.", "fr": "Personnalise les titres de sections." },
+  "commands": [
+    { "name": "titleformat", "args": "{command}[shape]{format}{label}{sep}{before}[after]", "mode": "preamble", "snippet": "titleformat{\\${1:section}}{${2:\\normalfont\\Large\\bfseries}}{${3:\\thesection}}{${4:1em}}{${5}}", "doc": { "en": "Format of a sectioning command.", "fr": "Format d'une commande de sectionnement." } },
+    { "name": "titlespacing", "args": "{command}{left}{before}{after}", "mode": "preamble", "doc": { "en": "Spacing around a title (starred: no indent after).", "fr": "Espacements autour d'un titre (étoilé : pas d'alinéa après)." } },
+    { "name": "titlelabel", "args": "{format}", "mode": "preamble", "doc": { "en": "Format of section numbers.", "fr": "Format des numéros de section." } } ] }

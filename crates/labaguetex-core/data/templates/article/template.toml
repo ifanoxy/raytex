@@ -1,0 +1,11 @@
+category = "general"
+order = 1
+main = "main.tex"
+engine = "pdflatex"
+tags = ["article", "simple", "maths"]
+[name]
+en = "Article"
+fr = "Article"
+[description]
+en = "A classic article with title, abstract, sections, maths, a figure, a table and cross-references."
+fr = "Un article classique avec titre, résumé, sections, maths, une figure, un tableau et des références croisées."

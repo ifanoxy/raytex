@@ -1,0 +1,5 @@
+{ "name": "blindtext", "description": { "en": "Dummy text and documents.", "fr": "Faux texte et faux documents." },
+  "commands": [
+    { "name": "blindtext", "mode": "text", "doc": { "en": "A dummy paragraph.", "fr": "Un paragraphe factice." } },
+    { "name": "Blindtext", "mode": "text", "doc": { "en": "Several dummy paragraphs.", "fr": "Plusieurs paragraphes factices." } },
+    { "name": "blinddocument", "mode": "text", "doc": { "en": "A whole dummy document.", "fr": "Un document factice complet." } } ] }

@@ -1,0 +1,2 @@
+{ "name": "xfrac", "description": { "en": "Split-level fractions like ½.", "fr": "Fractions obliques comme ½." },
+  "commands": [ { "name": "sfrac", "args": "{numerator}{denominator}", "doc": { "en": "Slanted fraction: \\sfrac{1}{2}.", "fr": "Fraction oblique : \\sfrac{1}{2}." } } ] }

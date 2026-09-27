@@ -1,0 +1,6 @@
+{ "name": "colortbl", "description": { "en": "Colored table rows, columns and cells.", "fr": "Lignes, colonnes et cellules de tableau en couleur." }, "loads": ["array"],
+  "commands": [
+    { "name": "rowcolor", "args": "{color}", "doc": { "en": "Background color of the current row.", "fr": "Couleur de fond de la ligne courante." } },
+    { "name": "columncolor", "args": "{color}", "doc": { "en": "Column background (in the column specification).", "fr": "Fond d'une colonne (dans la spécification des colonnes)." } },
+    { "name": "cellcolor", "args": "{color}", "doc": { "en": "Background of one cell.", "fr": "Fond d'une cellule." } },
+    { "name": "arrayrulecolor", "args": "{color}", "doc": { "en": "Color of table rules.", "fr": "Couleur des filets du tableau." } } ] }

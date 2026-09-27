@@ -1,0 +1,2 @@
+{ "name": "standalone", "description": { "en": "Standalone figures that can be included in the main document.", "fr": "Figures autonomes incluables dans le document principal." },
+  "commands": [ { "name": "includestandalone", "args": "[options]{file}", "doc": { "en": "Includes a standalone document (e.g. a TikZ figure).", "fr": "Inclut un document standalone (ex. une figure TikZ)." } } ] }

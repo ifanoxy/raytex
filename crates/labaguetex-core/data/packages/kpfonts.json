@@ -1,0 +1,1 @@
+{ "name": "kpfonts", "loads": ["amsfonts", "amssymb"], "description": { "en": "Kp-Fonts family for text and math.", "fr": "Famille Kp-Fonts pour le texte et les maths." } }

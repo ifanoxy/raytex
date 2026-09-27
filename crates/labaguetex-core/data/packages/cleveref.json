@@ -1,0 +1,10 @@
+{ "name": "cleveref", "description": { "en": "Smart references: \\cref{fig:a} gives \"fig. 1\". Load after hyperref.", "fr": "Références intelligentes : \\cref{fig:a} donne « fig. 1 ». À charger après hyperref." }, "options": ["french", "english", "capitalise", "nameinlink", "noabbrev"],
+  "commands": [
+    { "name": "cref", "args": "{keys}", "doc": { "en": "Reference with its type, lowercase (\"fig. 2\"); accepts several keys.", "fr": "Référence avec son type, en minuscules (« fig. 2 ») ; accepte plusieurs clés." } },
+    { "name": "Cref", "args": "{keys}", "doc": { "en": "Same as \\cref, capitalised (start of sentence).", "fr": "Comme \\cref, avec majuscule (début de phrase)." } },
+    { "name": "crefrange", "args": "{first}{last}", "doc": { "en": "Range of references: figs. 1 to 3.", "fr": "Plage de références : fig. 1 à 3." } },
+    { "name": "cpageref", "args": "{keys}", "doc": { "en": "Page reference with \"page\".", "fr": "Référence de page avec « page »." } },
+    { "name": "labelcref", "args": "{keys}", "doc": { "en": "Numbers only.", "fr": "Numéros seuls." } },
+    { "name": "namecref", "args": "{key}", "doc": { "en": "Type name only (\"figure\").", "fr": "Nom du type seul (« figure »)." } },
+    { "name": "crefname", "args": "{type}{singular}{plural}", "mode": "preamble", "doc": { "en": "Names used by \\cref for a type.", "fr": "Noms utilisés par \\cref pour un type." } },
+    { "name": "Crefname", "args": "{type}{singular}{plural}", "mode": "preamble", "doc": { "en": "Capitalised names used by \\Cref.", "fr": "Noms avec majuscule utilisés par \\Cref." } } ] }

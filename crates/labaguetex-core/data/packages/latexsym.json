@@ -1,0 +1,2 @@
+{ "name": "latexsym", "description": { "en": "A few extra symbols from LaTeX 2.09.", "fr": "Quelques symboles supplémentaires de LaTeX 2.09." },
+  "symbols": [ { "category": "misc", "items": [["Box","□"],["Diamond","◇"],["mho","℧"],["Join","⨝"]] } ] }

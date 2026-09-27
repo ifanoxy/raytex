@@ -1,0 +1,16 @@
+{ "name": "fancyhdr", "description": { "en": "Custom headers and footers.", "fr": "En-têtes et pieds de page personnalisés." },
+  "commands": [
+    { "name": "fancyhf", "args": "{}", "snippet": "fancyhf{}", "doc": { "en": "Clears all header and footer fields.", "fr": "Vide tous les champs d'en-tête et de pied de page." } },
+    { "name": "fancyhead", "args": "[position]{text}", "doc": { "en": "Header: positions L, C, R, with E/O for even/odd pages.", "fr": "En-tête : positions L, C, R, avec E/O pour pages paires/impaires." } },
+    { "name": "fancyfoot", "args": "[position]{text}", "doc": { "en": "Footer: \\fancyfoot[C]{\\thepage}.", "fr": "Pied de page : \\fancyfoot[C]{\\thepage}." } },
+    { "name": "lhead", "args": "{text}", "doc": { "en": "Left header.", "fr": "En-tête gauche." } },
+    { "name": "chead", "args": "{text}", "doc": { "en": "Centre header.", "fr": "En-tête central." } },
+    { "name": "rhead", "args": "{text}", "doc": { "en": "Right header.", "fr": "En-tête droit." } },
+    { "name": "lfoot", "args": "{text}", "doc": { "en": "Left footer.", "fr": "Pied gauche." } },
+    { "name": "cfoot", "args": "{text}", "doc": { "en": "Centre footer.", "fr": "Pied central." } },
+    { "name": "rfoot", "args": "{text}", "doc": { "en": "Right footer.", "fr": "Pied droit." } },
+    { "name": "fancypagestyle", "args": "{name}{definitions}", "doc": { "en": "Defines or redefines a page style (e.g. plain).", "fr": "Définit ou redéfinit un style de page (ex. plain)." } },
+    { "name": "headrulewidth", "doc": { "en": "Thickness of the header rule (0pt to remove it).", "fr": "Épaisseur du filet d'en-tête (0pt pour le supprimer)." } },
+    { "name": "footrulewidth", "doc": { "en": "Thickness of the footer rule.", "fr": "Épaisseur du filet de pied de page." } },
+    { "name": "leftmark", "doc": { "en": "Current chapter title (for headers).", "fr": "Titre du chapitre courant (pour les en-têtes)." } },
+    { "name": "rightmark", "doc": { "en": "Current section title (for headers).", "fr": "Titre de la section courante (pour les en-têtes)." } } ] }

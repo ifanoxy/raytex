@@ -1,0 +1,2 @@
+{ "name": "changepage", "description": { "en": "Locally changes margins.", "fr": "Modifie localement les marges." },
+  "environments": [ { "name": "adjustwidth", "args": "{left}{right}", "mode": "text", "doc": { "en": "Changes the text width locally (negative = wider).", "fr": "Modifie la largeur du texte localement (négatif = plus large)." } } ] }

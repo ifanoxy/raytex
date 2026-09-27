@@ -1,0 +1,7 @@
+{ "name": "tikzposter", "class": true, "description": { "en": "Scientific posters made with TikZ.", "fr": "Posters scientifiques réalisés avec TikZ." }, "loads": ["tikz", "xcolor", "graphicx"], "options": ["a0paper", "a1paper", "portrait", "landscape", "25pt"],
+  "commands": [
+    { "name": "block", "args": "{title}{content}", "doc": { "en": "A poster block.", "fr": "Un bloc du poster." } },
+    { "name": "column", "args": "{width fraction}", "doc": { "en": "Starts a column (inside columns).", "fr": "Commence une colonne (dans columns)." } },
+    { "name": "innerblock", "args": "{title}{content}", "doc": { "en": "Block inside a block.", "fr": "Bloc dans un bloc." } },
+    { "name": "coloredbox", "args": "{content}", "doc": { "en": "Colored box.", "fr": "Boîte colorée." } },
+    { "name": "usetheme", "args": "{theme}", "mode": "preamble", "doc": { "en": "Theme: Default, Rays, Basic, Simple, Envelope, Wave, Board, Autumn, Desert.", "fr": "Thème : Default, Rays, Basic, Simple, Envelope, Wave, Board, Autumn, Desert." } } ] }

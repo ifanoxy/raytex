@@ -1,0 +1,1 @@
+{ "name": "inputenc", "description": { "en": "Input encoding for pdfLaTeX. UTF-8 is the default since 2018; not needed with XeLaTeX/LuaLaTeX.", "fr": "Encodage d'entrée pour pdfLaTeX. UTF-8 est le défaut depuis 2018 ; inutile avec XeLaTeX/LuaLaTeX." }, "options": ["utf8", "latin1", "applemac", "cp1252"] }

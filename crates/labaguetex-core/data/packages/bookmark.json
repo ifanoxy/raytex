@@ -1,0 +1,1 @@
+{ "name": "bookmark", "description": { "en": "Better PDF bookmarks for hyperref.", "fr": "Meilleurs signets PDF pour hyperref." }, "loads": ["hyperref"] }

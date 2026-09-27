@@ -1,0 +1,9 @@
+{ "name": "etoolbox", "description": { "en": "Programming tools for LaTeX authors.", "fr": "Outils de programmation pour auteurs LaTeX." },
+  "commands": [
+    { "name": "AtBeginEnvironment", "args": "{environment}{code}", "mode": "preamble", "doc": { "en": "Runs code at the start of every such environment.", "fr": "Exécute du code au début de chaque environnement donné." } },
+    { "name": "AtEndPreamble", "args": "{code}", "mode": "preamble", "doc": { "en": "Runs code at the end of the preamble.", "fr": "Exécute du code à la fin du préambule." } },
+    { "name": "newtoggle", "args": "{name}", "doc": { "en": "Declares a boolean toggle.", "fr": "Déclare un interrupteur booléen." } },
+    { "name": "toggletrue", "args": "{name}", "doc": { "en": "Sets a toggle to true.", "fr": "Active un interrupteur." } },
+    { "name": "togglefalse", "args": "{name}", "doc": { "en": "Sets a toggle to false.", "fr": "Désactive un interrupteur." } },
+    { "name": "iftoggle", "args": "{name}{true}{false}", "doc": { "en": "Branches on a toggle.", "fr": "Choix selon un interrupteur." } },
+    { "name": "patchcmd", "args": "{\\cmd}{search}{replace}{success}{failure}", "doc": { "en": "Patches a command definition.", "fr": "Modifie la définition d'une commande." } } ] }

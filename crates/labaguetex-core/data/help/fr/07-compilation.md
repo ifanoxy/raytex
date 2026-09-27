@@ -1,0 +1,69 @@
+# Compilation
+
+Compiler, c'est transformer vos fichiers `.tex` en PDF. labaguetex le fait vite, au bon moment, et vous explique chaque problème.
+
+## Lancer une compilation
+
+- <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Entrée</kbd>, ou le bouton **Compiler**.
+- Automatiquement à l'enregistrement (réglage par défaut), ou après une pause dans la frappe : *Réglages › Compilation › Compiler automatiquement*.
+- <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>.</kbd> arrête une compilation en cours.
+
+Les fichiers modifiés sont enregistrés avant chaque compilation. Si vous compilez depuis un chapitre inclus par `\input`, c'est le document principal qui est compilé.
+
+## Quel fichier est compilé ?
+
+Le **fichier principal** (étoile ★ dans l'arborescence et la barre d'outils) est celui qui contient `\documentclass`. S'il y en a plusieurs, choisissez-le dans la barre d'outils ou par clic droit › *Définir comme fichier principal*.
+
+Un fichier inclus peut aussi indiquer sa racine sur sa première ligne :
+
+```latex
+% !TEX root = ../main.tex
+```
+
+## Quel moteur ?
+
+Si vous n'avez pas imposé de moteur (dans les réglages généraux ou ceux du projet), labaguetex choisit :
+
+1. le moteur du commentaire magique du fichier principal, s'il existe :
+   ```latex
+   % !TEX program = lualatex
+   ```
+2. **Tectonic** si c'est la distribution utilisée ;
+3. **LuaLaTeX** si le document charge `fontspec` ou `unicode-math` (polices système, OpenType) ;
+4. sinon **pdfLaTeX**.
+
+Le moteur choisi s'affiche en bas à droite de la fenêtre et dans le panneau **Sortie** ; survolez-le pour connaître la raison du choix.
+
+## Ce qui se passe pendant la compilation
+
+La méthode intégrée (recommandée) :
+
+1. lance le moteur ;
+2. lance **Biber** ou **BibTeX** seulement si les citations ou le `.bib` ont changé, puis **makeindex**, **makeglossaries**, **nomencl** si le document en a besoin ;
+3. relance le moteur tant que les renvois ne sont pas stables (5 passes au maximum).
+
+Les fichiers auxiliaires (`.aux`, `.log`, `.toc`…) sont rangés dans le dossier `build/` : votre projet reste propre. Le panneau **Sortie** affiche la sortie brute de chaque étape.
+
+Autres méthodes : **latexmk**, **une seule passe**, ou vos **étapes personnalisées** (avec les variables `%DOC%`, `%DOCFILE%`, `%OUTDIR%`, `%DIR%`, `%ENGINE%`).
+
+## Lire les erreurs
+
+Le panneau **Problèmes** regroupe les erreurs par fichier :
+
+- le message de TeX, traduit en une explication claire ;
+- la position exacte (ligne et colonne), soulignée dans l'éditeur ;
+- le contexte montré par TeX, avec le point où il s'est arrêté ;
+- des **corrections en un clic** : ajouter ou installer un package, corriger une commande mal orthographiée, changer de moteur, créer un fichier manquant…
+
+Les avertissements (renvois indéfinis, boîtes trop pleines) sont affichés séparément et filtrables.
+
+## Le PDF
+
+- Le PDF se recharge après chaque compilation **sans perdre votre position**.
+- Double-clic dans le PDF → ligne source correspondante ; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>J</kbd> → position du curseur dans le PDF.
+- Zoom : <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + molette, pincement, ou le menu de zoom.
+- *Exporter le PDF…* le copie où vous voulez ; l'option *Copier le PDF à côté du fichier principal* le fait à chaque compilation.
+
+## Programmes externes (shell escape)
+
+Certains packages (`minted`, `svg`, `gnuplottex`…) doivent lancer des programmes pendant la compilation. C'est désactivé par défaut pour votre sécurité. labaguetex vous propose de l'activer pour un projet lorsque c'est nécessaire.

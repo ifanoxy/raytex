@@ -1,0 +1,2 @@
+{ "name": "bbm", "description": { "en": "Blackboard bold digits and letters.", "fr": "Chiffres et lettres ajourés." },
+  "commands": [ { "name": "mathbbm", "args": "{symbol}", "mode": "math", "doc": { "en": "Blackboard bold, e.g. \\mathbbm{1}.", "fr": "Ajouré, ex. \\mathbbm{1}." } } ] }

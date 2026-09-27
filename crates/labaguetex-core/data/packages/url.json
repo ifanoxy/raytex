@@ -1,0 +1,5 @@
+{ "name": "url", "description": { "en": "Typesets URLs and paths with line breaks.", "fr": "Affiche URL et chemins avec coupures de ligne." },
+  "commands": [
+    { "name": "url", "args": "{address}", "doc": { "en": "A URL, breakable, in monospace.", "fr": "Une URL, sécable, en chasse fixe." } },
+    { "name": "urlstyle", "args": "{style}", "doc": { "en": "URL font: tt, rm, sf, same.", "fr": "Police des URL : tt, rm, sf, same." } },
+    { "name": "path", "args": "{path}", "doc": { "en": "A file path.", "fr": "Un chemin de fichier." } } ] }

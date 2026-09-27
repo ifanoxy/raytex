@@ -1,0 +1,2 @@
+{ "name": "mathrsfs", "description": { "en": "Script capitals \\mathscr.", "fr": "Majuscules cursives \\mathscr." },
+  "commands": [ { "name": "mathscr", "args": "{letter}", "mode": "math", "doc": { "en": "Script capitals: \\mathscr{F}.", "fr": "Majuscules cursives : \\mathscr{F}." } } ] }

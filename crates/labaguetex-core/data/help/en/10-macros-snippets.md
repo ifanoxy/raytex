@@ -1,0 +1,62 @@
+# Macros and snippets
+
+Type less, faster: **snippets** insert complete blocks, **macros** are your own shortcuts.
+
+## Snippets
+
+Type a trigger and pick it in the suggestions:
+
+| Trigger | Inserts |
+|---|---|
+| `doc` | a minimal document |
+| `fig`, `subfig` | a figure, two sub-figures |
+| `tab`, `tabular` | a table |
+| `item`, `enum`, `desc` | a list |
+| `eq`, `eq*`, `ali` | an equation, aligned equations |
+| `cases`, `mat` | cases, a matrix |
+| `thm`, `defn`, `proof` | theorem, definition, proof |
+| `sec`, `ssec`, `chap` | a heading with its label |
+| `frame`, `cols` | a slide, columns |
+| `tikz`, `plot` | a TikZ picture, a function plot |
+| `code`, `algo` | code, an algorithm |
+| `si`, `ce` | a quantity with its unit, a chemical formula |
+
+Once inserted, <kbd>Tab</kbd> moves to the next field, <kbd>⇧</kbd> + <kbd>Tab</kbd> to the previous one. The **Snippets & macros** view lists them all.
+
+## Your macros
+
+*Settings › Macros*: each macro has a name, a **trigger** (text followed by <kbd>Tab</kbd>), an optional **keyboard shortcut** and a **body**:
+
+```text
+Trigger: ff        (math mode only)
+Body   : \frac{${1:a}}{${2:b}}${0}
+```
+
+In the body:
+
+- `${1:text}`, `${2}`… are fields, visited with <kbd>Tab</kbd>;
+- `${0}` is the final cursor position;
+- `${SELECTION}` receives the selected text (ideal to wrap: `\textcolor{red}{${SELECTION}}`).
+
+## Your LaTeX commands
+
+For what must appear in the document, prefer a LaTeX command in the preamble:
+
+```latex
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+\newcommand{\R}{\mathbb{R}}
+```
+
+labaguetex recognises them at once: completion with the right number of arguments, math preview, <kbd>F12</kbd> to go to their definition, <kbd>F2</kbd> to rename them across the project.
+
+## Formatting shortcuts
+
+| Action | Shortcut |
+|---|---|
+| Bold, italic, emphasis | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>B</kbd>, <kbd>I</kbd>, <kbd>E</kbd> |
+| Underline | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>U</kbd> |
+| Inline math | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>M</kbd> |
+| Wrap in an environment | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>W</kbd> |
+| Comment | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>/</kbd> |
+
+Every shortcut can be changed in *Settings › Shortcuts*.

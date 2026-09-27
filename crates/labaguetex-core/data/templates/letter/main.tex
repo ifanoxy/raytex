@@ -1,0 +1,22 @@
+\documentclass[fontsize=11pt, parskip=half]{scrlttr2}
+\LoadLetterOption{{{fr:NF|en:DIN}}}
+\usepackage[T1]{fontenc}
+\usepackage[{{babel}}]{babel}
+\usepackage{lmodern}
+
+\setkomavar{fromname}{{{author}}}
+\setkomavar{fromaddress}{{{fr:12 rue des Baguettes\\75000 Paris|en:12 Baguette Street\\London}}}
+\setkomavar{fromemail}{prenom.nom@example.org}
+\setkomavar{subject}{{{title}}}
+\setkomavar{date}{{{date}}}
+\setkomavar{place}{{{fr:Paris|en:London}}}
+
+\begin{document}
+\begin{letter}{{{fr:Madame la Directrice|en:The Director}}\\{{institution}}\\{{fr:1 avenue de la Science\\69000 Lyon|en:1 Science Avenue\\Oxford}}}
+  \opening{{{fr:Madame la Directrice,|en:Dear Director,}}}
+
+  {{fr:Je me permets de vous écrire afin de…|en:I am writing to…}}
+
+  \closing{{{fr:Veuillez agréer, Madame la Directrice, l'expression de mes salutations distinguées.|en:Yours sincerely,}}}
+\end{letter}
+\end{document}

@@ -1,0 +1,2 @@
+{ "name": "forest", "description": { "en": "Trees (linguistics, algorithms).", "fr": "Arbres (linguistique, algorithmique)." }, "loads": ["tikz"],
+  "environments": [ { "name": "forest", "doc": { "en": "Tree in bracket notation: [root [a] [b]].", "fr": "Arbre en notation à crochets : [racine [a] [b]]." } } ] }

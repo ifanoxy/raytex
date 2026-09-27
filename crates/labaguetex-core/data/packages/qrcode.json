@@ -1,0 +1,2 @@
+{ "name": "qrcode", "description": { "en": "QR codes.", "fr": "QR codes." },
+  "commands": [ { "name": "qrcode", "args": "[options]{text}", "doc": { "en": "A QR code: \\qrcode{https://…}.", "fr": "Un QR code : \\qrcode{https://…}." } } ] }

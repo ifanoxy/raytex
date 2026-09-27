@@ -1,0 +1,2 @@
+{ "name": "dsfont", "description": { "en": "Double-struck font, including 𝟙.", "fr": "Police ajourée, dont 𝟙." },
+  "commands": [ { "name": "mathds", "args": "{letter}", "mode": "math", "doc": { "en": "Double-struck letters, e.g. the indicator \\mathds{1}.", "fr": "Lettres ajourées, ex. l'indicatrice \\mathds{1}." } } ] }

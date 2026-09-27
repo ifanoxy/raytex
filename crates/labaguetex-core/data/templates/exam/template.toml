@@ -1,0 +1,11 @@
+category = "teacher"
+order = 2
+main = "main.tex"
+engine = "pdflatex"
+tags = ["examen", "contrôle", "interrogation", "barème", "corrigé", "qcm", "exam"]
+[name]
+en = "Exam with answer key"
+fr = "Contrôle avec corrigé"
+[description]
+en = "The exam class: points per question, grading table, multiple choice, and solutions shown or hidden with one switch."
+fr = "La classe exam : points par question, tableau de notation, QCM, et corrigé affiché ou masqué d'un seul interrupteur."

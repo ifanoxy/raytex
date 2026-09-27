@@ -1,0 +1,55 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[{{babel}}]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{authblk}
+\usepackage{amsmath, amssymb, amsthm, mathtools}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{csquotes}
+\usepackage[backend=biber, style=numeric-comp]{biblatex}
+\addbibresource{references.bib}
+\usepackage{xcolor}
+\usepackage[colorlinks, allcolors=blue!60!black]{hyperref}
+\usepackage[{{babel}}, capitalise]{cleveref}
+{{fr:% babel-french rend « : » actif, ce qui casse cleveref avec pdfLaTeX :
+\AtBeginDocument{\shorthandoff{:}}|en:}}
+
+\newtheorem{theorem}{{{fr:Théorème|en:Theorem}}}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\title{{{title}}}
+\author[1]{{{author}}}
+\author[2]{{{fr:Second Auteur|en:Second Author}}}
+\affil[1]{{{institution}}}
+\affil[2]{{{fr:Autre laboratoire|en:Another laboratory}}}
+\date{{{date}}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+  {{fr:Le résumé présente la question, la méthode et les résultats principaux.|en:The abstract states the question, the method and the main results.}}
+
+  \medskip\noindent\textbf{{{fr:Mots-clés|en:Keywords}}:} {{fr:composition, typographie, LaTeX|en:typesetting, typography, LaTeX}}
+\end{abstract}
+
+\section{Introduction}\label{sec:intro}
+{{fr:Nous étendons les travaux de \cite{knuth1984, lamport1994}.|en:We extend the work of \cite{knuth1984, lamport1994}.}}
+
+\section{{{fr:Résultats principaux|en:Main results}}}\label{sec:results}
+\begin{theorem}\label{thm:main}
+  {{fr:Pour tout $x \in \mathbb{R}$, on a $\cos^2 x + \sin^2 x = 1$.|en:For all $x \in \mathbb{R}$, $\cos^2 x + \sin^2 x = 1$.}}
+\end{theorem}
+\begin{proof}
+  {{fr:Découle de $|e^{ix}| = 1$.|en:Follows from $|e^{ix}| = 1$.}}
+\end{proof}
+
+{{fr:Le \cref{thm:main} est illustré numériquement en \cref{sec:intro} ; la mesure vaut \qty{3.2(1)}{\milli\second}.|en:\Cref{thm:main} is illustrated numerically in \cref{sec:intro}; the measure is \qty{3.2(1)}{\milli\second}.}}
+
+\printbibliography
+\end{document}

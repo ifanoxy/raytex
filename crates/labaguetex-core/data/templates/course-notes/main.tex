@@ -1,0 +1,51 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[{{babel}}]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+
+% {{fr:Encadrés du cours (numérotés par section)|en:Course boxes (numbered per section)}}
+\newtcbtheorem[number within=section]{definition}{{{fr:Définition|en:Definition}}}%
+  {colback=blue!4, colframe=blue!55!black, fonttitle=\bfseries}{def}
+\newtcbtheorem[use counter from=definition]{theoreme}{{{fr:Théorème|en:Theorem}}}%
+  {colback=red!4, colframe=red!55!black, fonttitle=\bfseries}{thm}
+\newtcolorbox{exemple}{colback=green!4, colframe=green!45!black, title={{{fr:Exemple|en:Example}}}, fonttitle=\bfseries}
+\newtcolorbox{attention}{colback=orange!6, colframe=orange!70!black, title={{{fr:Attention|en:Watch out}}}, fonttitle=\bfseries}
+
+\title{{{title}}}
+\author{{{author}}}
+\date{{{institution}}}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\section{{{fr:Les fonctions|en:Functions}}}
+
+\begin{definition}{{{fr:Fonction|en:Function}}}{fonction}
+  {{fr:Une fonction $f$ de $E$ dans $F$ associe à chaque $x \in E$ un unique $f(x) \in F$.|en:A function $f$ from $E$ to $F$ maps each $x \in E$ to a unique $f(x) \in F$.}}
+\end{definition}
+
+\begin{exemple}
+  $f \colon x \mapsto x^2$ {{fr:est définie sur $\mathbb{R}$.|en:is defined on $\mathbb{R}$.}}
+\end{exemple}
+
+\begin{theoreme}{{{fr:Valeurs intermédiaires|en:Intermediate values}}}{tvi}
+  {{fr:Si $f$ est continue sur $[a,b]$ et $f(a) \leq 0 \leq f(b)$, alors $f$ s'annule sur $[a,b]$.|en:If $f$ is continuous on $[a,b]$ and $f(a) \leq 0 \leq f(b)$, then $f$ vanishes on $[a,b]$.}}
+\end{theoreme}
+
+\begin{attention}
+  {{fr:La continuité est indispensable (théorème~\ref{thm:tvi}).|en:Continuity is required (Theorem~\ref{thm:tvi}).}}
+\end{attention}
+
+\subsection*{Exercices}
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item {{fr:Montrer que $x^3 + x - 1$ s'annule sur $[0,1]$.|en:Show that $x^3 + x - 1$ vanishes on $[0,1]$.}}
+  \item {{fr:Donner un contre-exemple sans continuité.|en:Give a counter-example without continuity.}}
+\end{enumerate}
+
+\end{document}

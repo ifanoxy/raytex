@@ -1,0 +1,1 @@
+{ "name": "scrbook", "class": true, "description": { "en": "KOMA-Script book class.", "fr": "Classe book de KOMA-Script." }, "loads": ["scrreprt"] }

@@ -1,0 +1,11 @@
+category = "general"
+order = 0
+main = "main.tex"
+engine = "pdflatex"
+tags = ["minimal", "vide", "empty"]
+[name]
+en = "Blank document"
+fr = "Document vierge"
+[description]
+en = "The bare minimum: a class, the essential packages and an empty body."
+fr = "Le strict minimum : une classe, les packages essentiels et un corps vide."

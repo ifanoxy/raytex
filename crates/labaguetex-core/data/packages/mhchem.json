@@ -1,0 +1,3 @@
+{ "name": "mhchem", "description": { "en": "Chemical formulae and equations.", "fr": "Formules et équations chimiques." }, "options": ["version=4"],
+  "commands": [ { "name": "ce", "args": "{formula}", "doc": { "en": "Chemistry: \\ce{2H2 + O2 -> 2H2O}, \\ce{SO4^2-}.", "fr": "Chimie : \\ce{2H2 + O2 -> 2H2O}, \\ce{SO4^2-}." } },
+    { "name": "pu", "args": "{quantity}", "doc": { "en": "Physical unit: \\pu{123 kJ/mol}.", "fr": "Unité physique : \\pu{123 kJ/mol}." } } ] }

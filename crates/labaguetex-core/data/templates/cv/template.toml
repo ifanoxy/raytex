@@ -1,0 +1,11 @@
+category = "general"
+order = 5
+main = "main.tex"
+engine = "pdflatex"
+tags = ["cv", "curriculum", "resume", "moderncv"]
+[name]
+en = "CV (moderncv)"
+fr = "CV (moderncv)"
+[description]
+en = "A modern curriculum vitae: education, experience, skills and languages."
+fr = "Un curriculum vitæ moderne : formation, expérience, compétences et langues."

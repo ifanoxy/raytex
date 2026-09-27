@@ -1,0 +1,2 @@
+{ "name": "pdfpages", "description": { "en": "Inserts pages of external PDFs.", "fr": "Insère des pages de PDF externes." }, "loads": ["graphicx"],
+  "commands": [ { "name": "includepdf", "args": "[options]{file}", "snippet": "includepdf[pages=${1:-}]{${2:file}}", "doc": { "en": "Inserts PDF pages: [pages=-] (all), [pages={1,3-5}].", "fr": "Insère des pages PDF : [pages=-] (toutes), [pages={1,3-5}]." } } ] }

@@ -1,0 +1,2 @@
+{ "name": "scrlttr2", "class": true, "description": { "en": "KOMA-Script letters (DIN, French NF, Swiss layouts).", "fr": "Lettres KOMA-Script (formats DIN, NF français, suisse)." }, "options": ["NF", "DIN", "SN", "fromalign=right", "foldmarks=false"],
+  "commands": [ { "name": "setkomavar", "args": "{variable}{value}", "doc": { "en": "Letter field: fromname, fromaddress, subject, date…", "fr": "Champ de lettre : fromname, fromaddress, subject, date…" } } ] }

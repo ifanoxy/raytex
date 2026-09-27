@@ -1,0 +1,2 @@
+{ "name": "orcidlink", "description": { "en": "ORCID icons with links.", "fr": "Icônes ORCID avec lien." },
+  "commands": [ { "name": "orcidlink", "args": "{ORCID}", "doc": { "en": "ORCID icon linking to the profile.", "fr": "Icône ORCID liée au profil." } } ] }

@@ -1,0 +1,11 @@
+category = "teacher"
+order = 3
+main = "main.tex"
+engine = "pdflatex"
+tags = ["td", "feuille", "exercices", "corrections", "worksheet"]
+[name]
+en = "Exercise sheet"
+fr = "Feuille de TD"
+[description]
+en = "Numbered exercises with difficulty stars and hints; corrections printed or not with a single switch at the top."
+fr = "Exercices numérotés avec étoiles de difficulté et indications ; corrections imprimées ou non d'un seul interrupteur en haut du fichier."

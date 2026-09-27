@@ -1,0 +1,7 @@
+{ "name": "ifthen", "description": { "en": "Conditionals.", "fr": "Conditions." },
+  "commands": [
+    { "name": "ifthenelse", "args": "{test}{then}{else}", "doc": { "en": "Conditional: \\ifthenelse{\\equal{a}{b}}{…}{…}.", "fr": "Condition : \\ifthenelse{\\equal{a}{b}}{…}{…}." } },
+    { "name": "equal", "args": "{a}{b}", "doc": { "en": "String equality test.", "fr": "Test d'égalité de chaînes." } },
+    { "name": "newboolean", "args": "{name}", "doc": { "en": "Declares a boolean.", "fr": "Déclare un booléen." } },
+    { "name": "setboolean", "args": "{name}{true|false}", "doc": { "en": "Sets a boolean.", "fr": "Fixe un booléen." } },
+    { "name": "boolean", "args": "{name}", "doc": { "en": "Boolean test.", "fr": "Test d'un booléen." } } ] }

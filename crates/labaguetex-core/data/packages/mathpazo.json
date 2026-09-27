@@ -1,0 +1,1 @@
+{ "name": "mathpazo", "loads": ["amsfonts", "amssymb"], "description": { "en": "Palatino fonts for text and math.", "fr": "Polices Palatino pour le texte et les maths." } }

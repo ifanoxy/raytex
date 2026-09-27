@@ -1,0 +1,15 @@
+{ "name": "algorithm2e", "description": { "en": "Algorithms in pseudo-code.", "fr": "Algorithmes en pseudo-code." }, "options": ["ruled", "vlined", "linesnumbered", "french", "boxed"],
+  "commands": [
+    { "name": "KwIn", "args": "{inputs}", "doc": { "en": "Inputs line.", "fr": "Ligne des entrées." } },
+    { "name": "KwOut", "args": "{outputs}", "doc": { "en": "Outputs line.", "fr": "Ligne des sorties." } },
+    { "name": "KwData", "args": "{data}", "doc": { "en": "Data line.", "fr": "Ligne des données." } },
+    { "name": "KwResult", "args": "{result}", "doc": { "en": "Result line.", "fr": "Ligne du résultat." } },
+    { "name": "For", "args": "{condition}{body}", "doc": { "en": "For loop.", "fr": "Boucle pour." } },
+    { "name": "ForEach", "args": "{condition}{body}", "doc": { "en": "For-each loop.", "fr": "Boucle pour chaque." } },
+    { "name": "While", "args": "{condition}{body}", "doc": { "en": "While loop.", "fr": "Boucle tant que." } },
+    { "name": "If", "args": "{condition}{body}", "doc": { "en": "If block.", "fr": "Bloc si." } },
+    { "name": "eIf", "args": "{condition}{then}{else}", "doc": { "en": "If-else block.", "fr": "Bloc si-sinon." } },
+    { "name": "Return", "args": "{value}", "doc": { "en": "Return statement.", "fr": "Instruction retourner." } },
+    { "name": "SetAlgoLined", "doc": { "en": "Draws lines under blocks.", "fr": "Trace des lignes sous les blocs." } },
+    { "name": "SetKwInOut", "args": "{\\cmd}{text}", "doc": { "en": "Defines an input/output keyword.", "fr": "Définit un mot-clé d'entrée/sortie." } } ],
+  "environments": [ { "name": "algorithm", "args": "[placement]", "mode": "text", "body": "\t\\caption{${1:Name}}\n\t\\KwIn{${2}}\n\t\\KwOut{${3}}\n\t${4}", "doc": { "en": "An algorithm (algorithm2e syntax).", "fr": "Un algorithme (syntaxe algorithm2e)." } } ] }

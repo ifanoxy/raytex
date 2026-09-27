@@ -1,0 +1,1 @@
+{ "name": "standalone", "class": true, "description": { "en": "A document cropped to its content (figures, TikZ).", "fr": "Un document rogné à son contenu (figures, TikZ)." }, "options": ["tikz", "border=5pt", "preview", "varwidth", "convert"] }

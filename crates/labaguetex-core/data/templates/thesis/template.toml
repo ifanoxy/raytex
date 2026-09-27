@@ -1,0 +1,11 @@
+category = "researcher"
+order = 1
+main = "main.tex"
+engine = "pdflatex"
+tags = ["thèse", "thesis", "livre", "book", "doctorat"]
+[name]
+en = "Thesis"
+fr = "Thèse"
+[description]
+en = "A two-sided book-style thesis: front matter (abstract, acknowledgements), chapters in separate files, theorem environments, bibliography, index-ready."
+fr = "Une thèse recto-verso de type livre : pages liminaires (résumé, remerciements), chapitres dans des fichiers séparés, environnements de théorèmes, bibliographie."

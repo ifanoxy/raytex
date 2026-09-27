@@ -1,0 +1,4 @@
+{ "name": "threeparttable", "description": { "en": "Tables with notes below.", "fr": "Tableaux avec notes en dessous." },
+  "commands": [ { "name": "tnote", "args": "{mark}", "doc": { "en": "Note mark in a threeparttable.", "fr": "Appel de note dans un threeparttable." } } ],
+  "environments": [ { "name": "threeparttable", "mode": "text", "doc": { "en": "Groups caption, table and notes.", "fr": "Regroupe légende, tableau et notes." } },
+    { "name": "tablenotes", "mode": "text", "doc": { "en": "Notes of a threeparttable.", "fr": "Notes d'un threeparttable." } } ] }

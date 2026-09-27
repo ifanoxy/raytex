@@ -1,0 +1,6 @@
+{ "name": "soul", "description": { "en": "Highlighting, strike-through, letter-spacing (breakable).", "fr": "Surlignage, barré, espacement des lettres (sécables)." },
+  "commands": [
+    { "name": "hl", "args": "{text}", "mode": "text", "doc": { "en": "Highlighted text.", "fr": "Texte surligné." } },
+    { "name": "st", "args": "{text}", "mode": "text", "doc": { "en": "Struck-through text.", "fr": "Texte barré." } },
+    { "name": "ul", "args": "{text}", "mode": "text", "doc": { "en": "Underlined text, breakable.", "fr": "Texte souligné, sécable." } },
+    { "name": "so", "args": "{text}", "mode": "text", "doc": { "en": "Letter-spaced text.", "fr": "Texte espacé." } } ] }

@@ -1,0 +1,1 @@
+{ "name": "fontenc", "description": { "en": "Font encoding. T1 gives proper accents and hyphenation for European languages with pdfLaTeX.", "fr": "Encodage des polices. T1 donne des accents et une césure corrects pour les langues européennes avec pdfLaTeX." }, "options": ["T1", "OT1", "LY1", "T2A"] }

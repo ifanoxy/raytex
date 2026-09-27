@@ -1,0 +1,11 @@
+category = "teacher"
+order = 1
+main = "main.tex"
+engine = "pdflatex"
+tags = ["cours", "polycopié", "enseignant", "théorèmes", "course"]
+[name]
+en = "Course notes"
+fr = "Polycopié de cours"
+[description]
+en = "Lecture notes with coloured definition/theorem/example boxes, exercises, margin notes and a table of contents."
+fr = "Notes de cours avec encadrés colorés (définition, théorème, exemple), exercices, notes en marge et table des matières."

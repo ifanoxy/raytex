@@ -1,0 +1,3 @@
+{ "name": "import", "description": { "en": "Includes files from other folders with correct relative paths.", "fr": "Inclut des fichiers d'autres dossiers avec des chemins relatifs corrects." },
+  "commands": [ { "name": "import", "args": "{folder/}{file}", "doc": { "en": "Includes a file; its own \\input and images are relative to its folder.", "fr": "Inclut un fichier ; ses propres \\input et images sont relatifs à son dossier." } },
+    { "name": "subimport", "args": "{folder/}{file}", "doc": { "en": "\\import relative to the current folder.", "fr": "\\import relatif au dossier courant." } } ] }

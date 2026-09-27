@@ -1,0 +1,18 @@
+{ "name": "biblatex", "description": { "en": "Modern bibliographies (with the biber backend): styles, citation commands, filters.", "fr": "Bibliographies modernes (avec biber) : styles, commandes de citation, filtres." },
+  "loads": ["keyval", "url"],
+  "options": ["backend=biber", "backend=bibtex", "style=numeric", "style=authoryear", "style=alphabetic", "style=apa", "style=ieee", "style=verbose", "citestyle=", "bibstyle=", "sorting=nyt", "sorting=none", "maxbibnames=", "maxcitenames=", "giveninits=true", "doi=false", "isbn=false", "url=false"],
+  "commands": [
+    { "name": "addbibresource", "args": "[options]{file.bib}", "mode": "preamble", "snippet": "addbibresource{${1:references}.bib}", "doc": { "en": "Declares a bibliography database (with its .bib extension).", "fr": "Déclare une base bibliographique (avec son extension .bib)." } },
+    { "name": "printbibliography", "args": "[options]", "mode": "text", "doc": { "en": "Prints the bibliography; options: title=, heading=, keyword=, type=.", "fr": "Affiche la bibliographie ; options : title=, heading=, keyword=, type=." } },
+    { "name": "parencite", "args": "[prenote][postnote]{keys}", "mode": "text", "doc": { "en": "Citation in parentheses: (Knuth 1984).", "fr": "Citation entre parenthèses : (Knuth 1984)." } },
+    { "name": "textcite", "args": "[prenote][postnote]{keys}", "mode": "text", "doc": { "en": "Citation in the text: Knuth (1984).", "fr": "Citation dans le texte : Knuth (1984)." } },
+    { "name": "autocite", "args": "[prenote][postnote]{keys}", "mode": "text", "doc": { "en": "Citation adapted to the style (parenthetical or footnote).", "fr": "Citation adaptée au style (parenthèses ou note)." } },
+    { "name": "footcite", "args": "[prenote][postnote]{keys}", "mode": "text", "doc": { "en": "Citation in a footnote.", "fr": "Citation en note de bas de page." } },
+    { "name": "fullcite", "args": "{key}", "mode": "text", "doc": { "en": "Full reference in the text.", "fr": "Référence complète dans le texte." } },
+    { "name": "citeauthor", "args": "{keys}", "mode": "text", "doc": { "en": "Author names only.", "fr": "Noms des auteurs seuls." } },
+    { "name": "citeyear", "args": "{keys}", "mode": "text", "doc": { "en": "Year only.", "fr": "Année seule." } },
+    { "name": "citetitle", "args": "{keys}", "mode": "text", "doc": { "en": "Title only.", "fr": "Titre seul." } },
+    { "name": "supercite", "args": "{keys}", "mode": "text", "doc": { "en": "Superscript citation.", "fr": "Citation en exposant." } },
+    { "name": "printbibheading", "args": "[options]", "mode": "text", "doc": { "en": "Bibliography heading only.", "fr": "Titre de bibliographie seul." } },
+    { "name": "DeclareFieldFormat", "args": "[types]{field}{format}", "mode": "preamble", "doc": { "en": "Formatting of a field.", "fr": "Mise en forme d'un champ." } },
+    { "name": "ExecuteBibliographyOptions", "args": "{options}", "mode": "preamble", "doc": { "en": "Sets biblatex options after loading.", "fr": "Règle les options de biblatex après chargement." } } ] }

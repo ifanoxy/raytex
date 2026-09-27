@@ -1,0 +1,44 @@
+\documentclass[11pt,a4paper,twoside,openright]{book}
+
+\usepackage[T1]{fontenc}
+\usepackage[{{babel}}]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[inner=3cm, outer=2.5cm, top=2.5cm, bottom=2.5cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{csquotes}
+\usepackage[backend=biber, style=authoryear-comp]{biblatex}
+\addbibresource{references.bib}
+\usepackage[hidelinks]{hyperref}
+\usepackage[{{babel}}]{cleveref}
+{{fr:% babel-french rend « : » actif, ce qui casse cleveref avec pdfLaTeX :
+\AtBeginDocument{\shorthandoff{:}}|en:}}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{{{fr:Théorème|en:Theorem}}}[chapter]
+\newtheorem{lemma}[theorem]{{{fr:Lemme|en:Lemma}}}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{{{fr:Définition|en:Definition}}}
+
+\title{{{title}}}
+\author{{{author}}}
+
+\begin{document}
+
+\frontmatter
+\input{frontmatter/titlepage}
+\input{frontmatter/abstract}
+\tableofcontents
+
+\mainmatter
+\include{chapters/introduction}
+\include{chapters/state-of-the-art}
+
+\backmatter
+\printbibliography[heading=bibintoc]
+
+\end{document}

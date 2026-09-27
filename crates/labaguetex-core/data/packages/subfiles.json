@@ -1,0 +1,2 @@
+{ "name": "subfiles", "description": { "en": "Multi-file projects where each part also compiles alone.", "fr": "Projets multi-fichiers où chaque partie compile aussi seule." },
+  "commands": [ { "name": "subfile", "args": "{file}", "doc": { "en": "Includes a subfile (whose class is subfiles).", "fr": "Inclut un sous-fichier (de classe subfiles)." } } ] }

@@ -1,0 +1,6 @@
+{ "name": "cancel", "description": { "en": "Strike-outs to show cancelled terms.", "fr": "Barres pour montrer des termes qui se simplifient." },
+  "commands": [
+    { "name": "cancel", "args": "{expr}", "doc": { "en": "Diagonal strike-out.", "fr": "Barre en diagonale." } },
+    { "name": "bcancel", "args": "{expr}", "doc": { "en": "Back-diagonal strike-out.", "fr": "Barre en diagonale inverse." } },
+    { "name": "xcancel", "args": "{expr}", "doc": { "en": "Cross strike-out.", "fr": "Croix." } },
+    { "name": "cancelto", "args": "{value}{expr}", "mode": "math", "doc": { "en": "Strike-out with an arrow to a value.", "fr": "Barre avec une flèche vers une valeur." } } ] }

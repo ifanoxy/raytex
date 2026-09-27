@@ -1,0 +1,7 @@
+{ "name": "csquotes", "description": { "en": "Language-aware quotation marks (« » in French).", "fr": "Guillemets adaptés à la langue (« » en français)." }, "options": ["autostyle", "french=guillemets"],
+  "commands": [
+    { "name": "enquote", "args": "{text}", "doc": { "en": "Quoted text with the right marks for the language.", "fr": "Texte entre guillemets adaptés à la langue." } },
+    { "name": "textquote", "args": "[citation]{text}", "doc": { "en": "Quotation with a source.", "fr": "Citation avec une source." } },
+    { "name": "blockquote", "args": "[citation]{text}", "doc": { "en": "Inline or block quotation depending on length.", "fr": "Citation en ligne ou en bloc selon la longueur." } },
+    { "name": "MakeOuterQuote", "args": "{character}", "mode": "preamble", "doc": { "en": "Turns \" into smart quotes: \\MakeOuterQuote{\"}.", "fr": "Transforme \" en guillemets automatiques : \\MakeOuterQuote{\"}." } } ],
+  "environments": [ { "name": "displayquote", "args": "[citation]", "mode": "text", "doc": { "en": "Block quotation.", "fr": "Citation en bloc." } } ] }

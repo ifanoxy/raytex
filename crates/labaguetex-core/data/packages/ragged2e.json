@@ -1,0 +1,2 @@
+{ "name": "ragged2e", "description": { "en": "Better ragged text with hyphenation.", "fr": "Meilleur texte non justifié avec césure." },
+  "commands": [ { "name": "justifying", "doc": { "en": "Justified text again.", "fr": "Texte à nouveau justifié." } }, { "name": "RaggedRight", "doc": { "en": "Left-aligned with hyphenation.", "fr": "Aligné à gauche avec césure." } }, { "name": "Centering", "doc": { "en": "Centred with hyphenation.", "fr": "Centré avec césure." } } ] }

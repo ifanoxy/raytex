@@ -1,0 +1,14 @@
+{ "name": "glossaries", "description": { "en": "Glossaries and acronym lists (run makeglossaries).", "fr": "Glossaires et listes d'acronymes (lancer makeglossaries)." }, "options": ["acronym", "toc", "nopostdot", "nonumberlist"],
+  "commands": [
+    { "name": "makeglossaries", "mode": "preamble", "doc": { "en": "Enables glossary generation.", "fr": "Active la génération des glossaires." } },
+    { "name": "newglossaryentry", "args": "{key}{name={…}, description={…}}", "snippet": "newglossaryentry{${1:key}}{name={${2:name}}, description={${3:description}}}", "doc": { "en": "Defines a glossary term.", "fr": "Définit un terme du glossaire." } },
+    { "name": "newacronym", "args": "[options]{key}{short}{long}", "doc": { "en": "Defines an acronym.", "fr": "Définit un acronyme." } },
+    { "name": "gls", "args": "{key}", "doc": { "en": "Uses a term (full form the first time for acronyms).", "fr": "Utilise un terme (forme complète la première fois pour les acronymes)." } },
+    { "name": "Gls", "args": "{key}", "doc": { "en": "\\gls with a capital letter.", "fr": "\\gls avec majuscule." } },
+    { "name": "glspl", "args": "{key}", "doc": { "en": "Plural of a term.", "fr": "Pluriel d'un terme." } },
+    { "name": "acrshort", "args": "{key}", "doc": { "en": "Short form of an acronym.", "fr": "Forme courte d'un acronyme." } },
+    { "name": "acrlong", "args": "{key}", "doc": { "en": "Long form of an acronym.", "fr": "Forme longue d'un acronyme." } },
+    { "name": "acrfull", "args": "{key}", "doc": { "en": "Long form followed by the short form.", "fr": "Forme longue suivie de la forme courte." } },
+    { "name": "printglossaries", "mode": "text", "doc": { "en": "Prints all glossaries.", "fr": "Affiche tous les glossaires." } },
+    { "name": "printglossary", "args": "[options]", "mode": "text", "doc": { "en": "Prints a glossary.", "fr": "Affiche un glossaire." } },
+    { "name": "glsaddall", "doc": { "en": "Adds all terms, even unused.", "fr": "Ajoute tous les termes, même non utilisés." } } ] }

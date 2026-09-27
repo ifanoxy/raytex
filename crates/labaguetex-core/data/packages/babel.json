@@ -1,0 +1,23 @@
+{
+  "name": "babel",
+  "description": { "en": "Language support: hyphenation, typographic rules, translated names (Chapitre, Table des matières…).", "fr": "Gestion des langues : césure, règles typographiques, noms traduits (Chapitre, Table des matières…)." },
+  "options": [
+    { "name": "french", "doc": { "en": "French (non-breaking spaces before ; : ! ?, guillemets…).", "fr": "Français (espaces insécables avant ; : ! ?, guillemets…)." } },
+    "english", "british", "american", "german", "ngerman", "spanish", "italian", "portuguese", "brazilian", "dutch", "catalan", "polish", "russian", "greek", "arabic", "turkish", "swedish", "danish", "norsk", "finnish", "czech", "romanian", "latin"
+  ],
+  "commands": [
+    { "name": "selectlanguage", "args": "{language}", "doc": { "en": "Switches the language from here on.", "fr": "Change de langue à partir d'ici." } },
+    { "name": "foreignlanguage", "args": "{language}{text}", "doc": { "en": "Short text in another language.", "fr": "Court texte dans une autre langue." } },
+    { "name": "og", "mode": "text", "doc": { "en": "(french) Opening guillemet with space: \\og texte\\fg{}.", "fr": "(french) Guillemet ouvrant avec espace : \\og texte\\fg{}." } },
+    { "name": "fg", "mode": "text", "doc": { "en": "(french) Closing guillemet with space.", "fr": "(french) Guillemet fermant avec espace." } },
+    { "name": "frenchsetup", "args": "{options}", "mode": "preamble", "doc": { "en": "(french) Configures French typography.", "fr": "(french) Configure la typographie française." } },
+    { "name": "nombre", "args": "{number}", "doc": { "en": "(french) Number with French digit grouping (prefer siunitx \\num).", "fr": "(french) Nombre avec espaces de milliers (préférez \\num de siunitx)." } },
+    { "name": "up", "args": "{text}", "mode": "text", "doc": { "en": "(french) Superscript for abbreviations: M\\up{lle}.", "fr": "(french) Exposant pour abréviations : M\\up{lle}." } },
+    { "name": "ier", "mode": "text", "doc": { "en": "(french) 1\\ier = 1er.", "fr": "(french) 1\\ier = 1er." } },
+    { "name": "iere", "mode": "text", "doc": { "en": "(french) 1\\iere = 1re.", "fr": "(french) 1\\iere = 1re." } },
+    { "name": "ieme", "mode": "text", "doc": { "en": "(french) 2\\ieme = 2e.", "fr": "(french) 2\\ieme = 2e." } }
+  ],
+  "environments": [
+    { "name": "otherlanguage", "args": "{language}", "mode": "text", "doc": { "en": "Passage in another language.", "fr": "Passage dans une autre langue." } }
+  ]
+}

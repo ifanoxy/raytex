@@ -1,0 +1,4 @@
+{ "name": "enumitem", "description": { "en": "Customises lists (labels, spacing, resuming).", "fr": "Personnalise les listes (étiquettes, espacements, reprise)." },
+  "commands": [
+    { "name": "setlist", "args": "[list type]{options}", "doc": { "en": "Default options for lists: \\setlist{nosep}.", "fr": "Options par défaut des listes : \\setlist{nosep}." } },
+    { "name": "newlist", "args": "{name}{type}{depth}", "mode": "preamble", "doc": { "en": "Defines a new list environment.", "fr": "Définit un nouvel environnement de liste." } } ] }

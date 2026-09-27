@@ -1,0 +1,11 @@
+category = "researcher"
+order = 3
+main = "main.tex"
+engine = "pdflatex"
+tags = ["poster", "conférence", "A0", "tikzposter"]
+[name]
+en = "Scientific poster"
+fr = "Poster scientifique"
+[description]
+en = "A0 portrait poster (tikzposter) with title, columns, blocks, an equation and a figure."
+fr = "Poster A0 portrait (tikzposter) avec titre, colonnes, blocs, une équation et une figure."

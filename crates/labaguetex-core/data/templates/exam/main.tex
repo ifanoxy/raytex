@@ -1,0 +1,52 @@
+\documentclass[11pt,a4paper,addpoints]{exam}
+% {{fr:Décommentez pour afficher le corrigé :|en:Uncomment to show the answer key:}}
+% \printanswers
+
+\usepackage[T1]{fontenc}
+\usepackage[{{babel}}]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2cm]{geometry}
+\usepackage{amsmath, amssymb}
+
+\pointpoints{pt}{pts}
+\renewcommand{\solutiontitle}{\noindent\textbf{{{fr:Corrigé|en:Solution}}:}\enspace}
+\CorrectChoiceEmphasis{\color{red!70!black}\bfseries}
+\header{{{institution}}}{{{title}}}{{{date}}}
+\footer{}{{{fr:Page|en:Page}} \thepage\,/\,\numpages}{}
+
+\begin{document}
+
+\noindent {{fr:Nom|en:Name}}: \rule{6cm}{0.4pt} \hfill {{fr:Durée|en:Duration}}: 1\,h
+
+\begin{center}
+  \gradetable[h][questions]
+\end{center}
+
+\begin{questions}
+
+\question[4] {{fr:Calculer la dérivée de $f(x) = x^2 \ln x$.|en:Compute the derivative of $f(x) = x^2 \ln x$.}}
+\begin{solution}
+  $f'(x) = 2x \ln x + x$.
+\end{solution}
+
+\question {{fr:Répondre aux questions suivantes.|en:Answer the following questions.}}
+\begin{parts}
+  \part[2] {{fr:Donner la définition d'une fonction continue.|en:Define a continuous function.}}
+  \begin{solution}[3cm]
+    {{fr:$f$ est continue en $a$ si $\lim_{x \to a} f(x) = f(a)$.|en:$f$ is continuous at $a$ if $\lim_{x \to a} f(x) = f(a)$.}}
+  \end{solution}
+  \part[2] {{fr:Donner un exemple.|en:Give an example.}}
+  \begin{solution}[2cm]
+    $x \mapsto x$.
+  \end{solution}
+\end{parts}
+
+\question[2] {{fr:Quelle est la valeur de $\int_0^1 2x\,\mathrm{d}x$ ?|en:What is the value of $\int_0^1 2x\,\mathrm{d}x$?}}
+\begin{choices}
+  \choice $0$
+  \CorrectChoice $1$
+  \choice $2$
+\end{choices}
+
+\end{questions}
+\end{document}

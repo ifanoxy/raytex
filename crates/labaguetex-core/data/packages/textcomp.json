@@ -1,0 +1,1 @@
+{ "name": "textcomp", "description": { "en": "Text symbols (now built into the kernel; loading it is harmless).", "fr": "Symboles de texte (désormais dans le noyau ; le charger est sans effet)." } }

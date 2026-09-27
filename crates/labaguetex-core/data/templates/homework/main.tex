@@ -1,0 +1,60 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[{{babel}}]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.2cm, headheight=14pt]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage[hidelinks]{hyperref}
+
+% {{fr:En-tête et pied de page|en:Header and footer}}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{{{author}}}
+\chead{{{title}}}
+\rhead{{{institution}}}
+\cfoot{\thepage}
+
+% {{fr:Un environnement par exercice|en:One environment per exercise}}
+\newcounter{exercice}
+\newenvironment{exercice}[1][]{%
+  \refstepcounter{exercice}\par\medskip
+  \noindent\textbf{{{fr:Exercice|en:Exercise}}~\theexercice}\if\relax\detokenize{#1}\relax\else~(#1)\fi\par\smallskip}{\par\medskip}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries {{title}}}\\[4pt]
+  {{author}} --- {{date}}
+\end{center}
+
+\begin{exercice}[{{fr:Suites|en:Sequences}}]
+  \label{ex:suites}
+  \begin{enumerate}[label=\alph*)]
+    \item {{fr:Montrer que la suite $(u_n)_{n \in \N}$ définie par $u_n = \frac{1}{n+1}$ converge.|en:Show that the sequence $(u_n)_{n \in \N}$ defined by $u_n = \frac{1}{n+1}$ converges.}}
+
+    \begin{proof}
+      {{fr:Pour tout $\varepsilon > 0$, on choisit $N > \frac{1}{\varepsilon}$. Alors pour $n \geq N$, $|u_n| < \varepsilon$.|en:For every $\varepsilon > 0$, choose $N > \frac{1}{\varepsilon}$. Then for $n \geq N$, $|u_n| < \varepsilon$.}}
+    \end{proof}
+
+    \item {{fr:Calculer la limite.|en:Compute the limit.}}
+    \[
+      \lim_{n \to \infty} u_n = 0
+    \]
+  \end{enumerate}
+\end{exercice}
+
+\begin{exercice}
+  {{fr:Résoudre le système suivant dans $\R^2$ (voir aussi l'exercice~\ref{ex:suites}).|en:Solve the following system in $\R^2$ (see also exercise~\ref{ex:suites}).}}
+  \begin{align*}
+    2x + y &= 3 \\
+    x - y  &= 0
+  \end{align*}
+  {{fr:Solution :|en:Solution:}} $x = y = 1$.
+\end{exercice}
+
+\end{document}

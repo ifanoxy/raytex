@@ -1,0 +1,9 @@
+{ "name": "letter", "class": true, "description": { "en": "Standard class for letters.", "fr": "Classe standard pour les lettres." },
+  "commands": [
+    { "name": "address", "args": "{sender address}", "doc": { "en": "Sender's address.", "fr": "Adresse de l'expéditeur." } },
+    { "name": "signature", "args": "{name}", "doc": { "en": "Signature.", "fr": "Signature." } },
+    { "name": "opening", "args": "{Dear…,}", "doc": { "en": "Opening line.", "fr": "Formule d'appel." } },
+    { "name": "closing", "args": "{Yours…,}", "doc": { "en": "Closing line.", "fr": "Formule de politesse." } },
+    { "name": "ps", "doc": { "en": "Postscript.", "fr": "Post-scriptum." } },
+    { "name": "encl", "args": "{enclosures}", "doc": { "en": "Enclosures.", "fr": "Pièces jointes." } },
+    { "name": "cc", "args": "{names}", "doc": { "en": "Copies to.", "fr": "Copies à." } } ] }

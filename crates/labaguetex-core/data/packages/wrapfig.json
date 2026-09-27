@@ -1,0 +1,4 @@
+{ "name": "wrapfig", "description": { "en": "Figures with text flowing around.", "fr": "Figures habillées par le texte." },
+  "environments": [
+    { "name": "wrapfigure", "args": "[lines]{placement}{width}", "mode": "text", "doc": { "en": "Figure wrapped by text; placement r, l, i, o.", "fr": "Figure habillée par le texte ; placement r, l, i, o." } },
+    { "name": "wraptable", "args": "[lines]{placement}{width}", "mode": "text", "doc": { "en": "Table wrapped by text.", "fr": "Tableau habillé par le texte." } } ] }

@@ -1,0 +1,1 @@
+{ "name": "memoir", "class": true, "description": { "en": "Very configurable class for books and theses.", "fr": "Classe très configurable pour livres et thèses." }, "options": ["10pt", "11pt", "12pt", "a4paper", "oneside", "openany"] }

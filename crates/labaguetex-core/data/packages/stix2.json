@@ -1,0 +1,1 @@
+{ "name": "stix2", "loads": ["amsfonts", "amssymb"], "description": { "en": "STIX Two fonts for text and math.", "fr": "Polices STIX Two pour le texte et les maths." } }

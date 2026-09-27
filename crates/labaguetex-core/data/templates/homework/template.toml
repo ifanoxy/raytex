@@ -1,0 +1,11 @@
+category = "student"
+order = 1
+main = "main.tex"
+engine = "pdflatex"
+tags = ["devoir", "homework", "exercices", "maths"]
+[name]
+en = "Homework"
+fr = "Devoir maison"
+[description]
+en = "Answers to exercises with a clean header, numbered questions and ready-to-use maths environments."
+fr = "Réponses à des exercices avec un en-tête propre, des questions numérotées et des environnements mathématiques prêts à l'emploi."

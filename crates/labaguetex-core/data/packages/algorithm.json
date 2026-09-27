@@ -1,0 +1,2 @@
+{ "name": "algorithm", "description": { "en": "Float wrapper for algorithms (with algpseudocode).", "fr": "Flottant pour les algorithmes (avec algpseudocode)." }, "loads": ["float"],
+  "environments": [ { "name": "algorithm", "args": "[placement]", "mode": "text", "body": "\t\\caption{${1:Name}}\n\t\\begin{algorithmic}[1]\n\t\t\\State ${2}\n\t\\end{algorithmic}", "doc": { "en": "Algorithm float.", "fr": "Flottant d'algorithme." } } ] }

@@ -1,0 +1,1 @@
+{ "name": "imakeidx", "description": { "en": "Index generated automatically during compilation.", "fr": "Index généré automatiquement pendant la compilation." }, "loads": ["makeidx"] }

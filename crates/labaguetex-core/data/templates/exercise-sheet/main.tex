@@ -1,0 +1,46 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[{{babel}}]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{xcolor}
+\usepackage{etoolbox}
+
+% {{fr:Mettre \toggletrue pour imprimer les corrections|en:Use \toggletrue to print the corrections}}
+\newtoggle{corrections}
+\togglefalse{corrections}
+
+% {{fr:Exercice avec difficulté (0 à 3 étoiles)|en:Exercise with a difficulty (0 to 3 stars)}}
+\newcounter{exo}
+\newcommand{\etoiles}[1]{\ifcase#1\or$\star$\or$\star\star$\or$\star\star\star$\fi}
+\NewDocumentEnvironment{exo}{O{0}}{%
+  \refstepcounter{exo}\par\bigskip\noindent
+  \textbf{{{fr:Exercice|en:Exercise}}~\theexo}\ \textcolor{orange}{\etoiles{#1}}\par\smallskip}{\par}
+\newcommand{\indication}[1]{\par\noindent\textit{{{fr:Indication|en:Hint}}~: #1}}
+% {{fr:Le corps de la correction est lu puis imprimé seulement si demandé.|en:The body of a correction is read, then printed only when requested.}}
+\NewDocumentEnvironment{correction}{+b}{%
+  \iftoggle{corrections}{\par\smallskip\noindent{\color{blue!60!black}\textbf{{{fr:Correction|en:Correction}}.}~#1}\par}{}}{}
+
+\begin{document}
+\begin{center}
+  {\Large\bfseries {{title}}}\\[2pt]
+  {{institution}} --- {{author}}
+\end{center}
+
+\begin{exo}[1]
+  {{fr:Calculer $\displaystyle\sum_{k=1}^{n} k$.|en:Compute $\displaystyle\sum_{k=1}^{n} k$.}}
+  \indication{{{fr:écrire la somme dans les deux sens.|en:write the sum in both directions.}}}
+  \begin{correction}
+    $\displaystyle\sum_{k=1}^{n} k = \frac{n(n+1)}{2}$.
+  \end{correction}
+\end{exo}
+
+\begin{exo}[2]
+  {{fr:Montrer que $\sqrt{2}$ est irrationnel.|en:Prove that $\sqrt{2}$ is irrational.}}
+  \begin{correction}
+    {{fr:Par l'absurde, supposons $\sqrt{2} = p/q$ irréductible…|en:By contradiction, assume $\sqrt{2} = p/q$ in lowest terms…}}
+  \end{correction}
+\end{exo}
+
+\end{document}

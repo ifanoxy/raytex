@@ -1,0 +1,2 @@
+{ "name": "pdflscape", "description": { "en": "Landscape pages (rotated in the PDF viewer).", "fr": "Pages en paysage (tournées dans le lecteur PDF)." },
+  "environments": [ { "name": "landscape", "mode": "text", "doc": { "en": "Landscape pages.", "fr": "Pages en format paysage." } } ] }

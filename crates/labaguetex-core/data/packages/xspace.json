@@ -1,0 +1,2 @@
+{ "name": "xspace", "description": { "en": "Smart space after macros.", "fr": "Espace intelligente après les macros." },
+  "commands": [ { "name": "xspace", "doc": { "en": "Adds a space unless followed by punctuation (end of text macros).", "fr": "Ajoute une espace sauf devant une ponctuation (fin de macros de texte)." } } ] }

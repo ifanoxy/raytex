@@ -1,0 +1,2 @@
+{ "name": "svg", "description": { "en": "SVG images (needs Inkscape and shell escape).", "fr": "Images SVG (nécessite Inkscape et shell escape)." }, "loads": ["graphicx"],
+  "commands": [ { "name": "includesvg", "args": "[options]{file}", "doc": { "en": "Inserts an SVG image.", "fr": "Insère une image SVG." } } ] }

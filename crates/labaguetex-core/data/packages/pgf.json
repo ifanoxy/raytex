@@ -1,0 +1,1 @@
+{ "name": "pgf", "description": { "en": "The graphics engine behind TikZ.", "fr": "Le moteur graphique sous TikZ." }, "loads": ["xcolor", "graphicx"] }

@@ -1,0 +1,3 @@
+{ "name": "verbatim", "description": { "en": "Verbatim improvements and the comment environment.", "fr": "Améliorations du verbatim et environnement comment." },
+  "commands": [ { "name": "verbatiminput", "args": "{file}", "doc": { "en": "Includes a file verbatim.", "fr": "Inclut un fichier en verbatim." } } ],
+  "environments": [ { "name": "comment", "doc": { "en": "Ignored block (multi-line comment).", "fr": "Bloc ignoré (commentaire multi-lignes)." } } ] }

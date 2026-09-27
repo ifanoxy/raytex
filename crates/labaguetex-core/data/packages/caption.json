@@ -1,0 +1,4 @@
+{ "name": "caption", "description": { "en": "Customises captions.", "fr": "Personnalise les légendes." }, "loads": ["keyval"],
+  "commands": [
+    { "name": "captionsetup", "args": "[type]{options}", "doc": { "en": "Caption style: font=small, labelfont=bf, justification=centering…", "fr": "Style des légendes : font=small, labelfont=bf, justification=centering…" } },
+    { "name": "captionof", "args": "{type}{text}", "doc": { "en": "Caption outside a float (e.g. in a minipage): \\captionof{figure}{…}.", "fr": "Légende hors flottant (ex. dans une minipage) : \\captionof{figure}{…}." } } ] }

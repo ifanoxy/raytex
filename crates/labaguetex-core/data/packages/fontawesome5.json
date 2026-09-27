@@ -1,0 +1,2 @@
+{ "name": "fontawesome5", "description": { "en": "Font Awesome 5 icons.", "fr": "Icônes Font Awesome 5." },
+  "commands": [ { "name": "faIcon", "args": "{name}", "doc": { "en": "An icon: \\faIcon{github}.", "fr": "Une icône : \\faIcon{github}." } } ] }

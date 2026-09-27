@@ -1,0 +1,2 @@
+{ "name": "lettrine", "description": { "en": "Drop caps.", "fr": "Lettrines." },
+  "commands": [ { "name": "lettrine", "args": "[options]{letter}{text}", "mode": "text", "doc": { "en": "A drop cap: \\lettrine{L}{orem} ipsum.", "fr": "Une lettrine : \\lettrine{L}{orem} ipsum." } } ] }

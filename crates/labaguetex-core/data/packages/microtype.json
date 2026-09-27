@@ -1,0 +1,2 @@
+{ "name": "microtype", "description": { "en": "Micro-typography: character protrusion and font expansion for better justification.", "fr": "Micro-typographie : débordement des caractères et expansion des polices pour une meilleure justification." },
+  "commands": [ { "name": "microtypesetup", "args": "{options}", "doc": { "en": "Configures microtype.", "fr": "Configure microtype." } } ] }

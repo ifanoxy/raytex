@@ -1,0 +1,2 @@
+{ "name": "chemfig", "description": { "en": "Structural chemical formulae.", "fr": "Formules chimiques développées." }, "loads": ["tikz"],
+  "commands": [ { "name": "chemfig", "args": "{formula}", "doc": { "en": "Molecule: \\chemfig{H-C(-[2]H)(-[6]H)-H}.", "fr": "Molécule : \\chemfig{H-C(-[2]H)(-[6]H)-H}." } } ] }

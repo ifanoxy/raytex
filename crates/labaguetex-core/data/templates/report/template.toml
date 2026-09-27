@@ -1,0 +1,11 @@
+category = "student"
+order = 3
+main = "main.tex"
+engine = "pdflatex"
+tags = ["rapport", "mémoire", "stage", "multi-fichiers", "bibliographie"]
+[name]
+en = "Report / dissertation (multi-file)"
+fr = "Rapport / mémoire (multi-fichiers)"
+[description]
+en = "A report split into chapter files, with title page, table of contents, bibliography (biblatex), appendix and a figures folder."
+fr = "Un rapport découpé en fichiers de chapitres, avec page de titre, table des matières, bibliographie (biblatex), annexes et un dossier d'images."

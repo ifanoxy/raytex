@@ -1,0 +1,1 @@
+{ "name": "subfiles", "class": true, "description": { "en": "Class of a subfile compilable alone", "fr": " \\documentclass[../main.tex]{subfiles}.:Classe d'un sous-fichier compilable seul : \\documentclass[../main.tex]{subfiles}." } }

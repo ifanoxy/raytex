@@ -1,0 +1,3 @@
+{ "name": "fancyvrb", "description": { "en": "Improved verbatim.", "fr": "Verbatim amélioré." },
+  "commands": [ { "name": "VerbatimInput", "args": "[options]{file}", "doc": { "en": "Verbatim file.", "fr": "Fichier en verbatim." } } ],
+  "environments": [ { "name": "Verbatim", "args": "[options]", "mode": "text", "doc": { "en": "Verbatim with options (frame, numbers…).", "fr": "Verbatim avec options (cadre, numéros…)." } } ] }

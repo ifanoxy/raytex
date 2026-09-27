@@ -1,0 +1,9 @@
+{ "name": "acronym", "description": { "en": "Acronyms with automatic first-use expansion.", "fr": "Acronymes avec développement automatique à la première utilisation." },
+  "commands": [
+    { "name": "ac", "args": "{key}", "doc": { "en": "Acronym (full form on first use).", "fr": "Acronyme (forme complète à la première utilisation)." } },
+    { "name": "acf", "args": "{key}", "doc": { "en": "Full form.", "fr": "Forme complète." } },
+    { "name": "acs", "args": "{key}", "doc": { "en": "Short form.", "fr": "Forme courte." } },
+    { "name": "acl", "args": "{key}", "doc": { "en": "Long form.", "fr": "Forme longue." } },
+    { "name": "acp", "args": "{key}", "doc": { "en": "Plural.", "fr": "Pluriel." } },
+    { "name": "acro", "args": "{key}[short]{long}", "doc": { "en": "Defines an acronym (inside the acronym environment).", "fr": "Définit un acronyme (dans l'environnement acronym)." } } ],
+  "environments": [ { "name": "acronym", "mode": "text", "doc": { "en": "List of acronyms.", "fr": "Liste des acronymes." } } ] }

@@ -1,0 +1,14 @@
+{
+  "name": "xcolor",
+  "description": { "en": "Colors for text, backgrounds and boxes.", "fr": "Couleurs pour le texte, les fonds et les boîtes." },
+  "options": ["dvipsnames", "svgnames", "x11names", "table"],
+  "commands": [
+    { "name": "color", "args": "{color}", "doc": { "en": "Changes the color until the end of the group.", "fr": "Change la couleur jusqu'à la fin du groupe." } },
+    { "name": "textcolor", "args": "{color}{text}", "doc": { "en": "Colored text; mixes such as red!50!black are allowed.", "fr": "Texte en couleur ; mélanges comme red!50!black permis." }, "example": "\\textcolor{blue!70!black}{Important}" },
+    { "name": "colorbox", "args": "{color}{text}", "doc": { "en": "Text on a colored background.", "fr": "Texte sur fond coloré." } },
+    { "name": "fcolorbox", "args": "{frame}{background}{text}", "doc": { "en": "Framed box with a colored background.", "fr": "Boîte encadrée sur fond coloré." } },
+    { "name": "pagecolor", "args": "{color}", "doc": { "en": "Background color of the page.", "fr": "Couleur de fond de la page." } },
+    { "name": "definecolor", "args": "{name}{model}{value}", "snippet": "definecolor{${1:name}}{${2:HTML}}{${3:1E88E5}}", "doc": { "en": "Defines a color: models HTML, RGB, rgb, cmyk, gray.", "fr": "Définit une couleur : modèles HTML, RGB, rgb, cmyk, gray." } },
+    { "name": "colorlet", "args": "{name}{color expression}", "doc": { "en": "Names a color expression: \\colorlet{light}{blue!20}.", "fr": "Nomme une expression de couleur : \\colorlet{clair}{blue!20}." } }
+  ]
+}

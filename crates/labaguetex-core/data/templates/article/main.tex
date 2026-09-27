@@ -1,0 +1,78 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- {{fr:Encodage et langue|en:Encoding and language}} ---
+\usepackage[T1]{fontenc}
+\usepackage[{{babel}}]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% --- {{fr:Mise en page|en:Page layout}} ---
+\usepackage[margin=2.5cm]{geometry}
+
+% --- {{fr:Mathématiques|en:Mathematics}} ---
+\usepackage{amsmath, amssymb, amsthm}
+
+% --- {{fr:Figures et tableaux|en:Figures and tables}} ---
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+
+% --- {{fr:Liens (à charger en dernier)|en:Links (load last)}} ---
+\usepackage[hidelinks]{hyperref}
+
+\title{{{title}}}
+\author{{{author}}}
+\date{{{date}}}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+  {{fr:Résumez ici votre article en quelques lignes.|en:Summarise your article here in a few lines.}}
+\end{abstract}
+
+\section{Introduction}
+\label{sec:introduction}
+
+{{fr:Voici un paragraphe. Laissez une ligne vide pour commencer un nouveau paragraphe.|en:Here is a paragraph. Leave a blank line to start a new paragraph.}}
+{{fr:Les formules en ligne s'écrivent entre dollars : $e^{i\pi} + 1 = 0$.|en:Inline formulas go between dollars: $e^{i\pi} + 1 = 0$.}}
+
+\section{{{fr:Résultats|en:Results}}}
+\label{sec:resultats}
+
+{{fr:L'équation~\eqref{eq:gauss} est numérotée et peut être citée.|en:Equation~\eqref{eq:gauss} is numbered and can be referenced.}}
+\begin{equation}
+  \int_{-\infty}^{+\infty} e^{-x^2} \, \mathrm{d}x = \sqrt{\pi}
+  \label{eq:gauss}
+\end{equation}
+
+{{fr:La figure~\ref{fig:exemple} et le tableau~\ref{tab:exemple} illustrent les résultats.|en:Figure~\ref{fig:exemple} and Table~\ref{tab:exemple} illustrate the results.}}
+
+\begin{figure}[htbp]
+  \centering
+  % \includegraphics[width=0.7\linewidth]{figure}
+  \fbox{\parbox{0.6\linewidth}{\centering\vspace{2cm}{{fr:Placez votre image ici|en:Put your image here}}\vspace{2cm}}}
+  \caption{{{fr:Une figure d'exemple.|en:An example figure.}}}
+  \label{fig:exemple}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \caption{{{fr:Un tableau d'exemple.|en:An example table.}}}
+  \label{tab:exemple}
+  \begin{tabular}{lcc}
+    \toprule
+    {{fr:Méthode|en:Method}} & {{fr:Temps (s)|en:Time (s)}} & {{fr:Précision|en:Accuracy}} \\
+    \midrule
+    A & 1{,}2 & 0{,}91 \\
+    B & 0{,}8 & 0{,}87 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Conclusion}
+
+{{fr:Voir la section~\ref{sec:introduction}.|en:See Section~\ref{sec:introduction}.}}
+
+\end{document}

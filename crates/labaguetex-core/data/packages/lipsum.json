@@ -1,0 +1,2 @@
+{ "name": "lipsum", "description": { "en": "Lorem ipsum dummy text.", "fr": "Faux texte Lorem ipsum." },
+  "commands": [ { "name": "lipsum", "args": "[paragraphs]", "mode": "text", "doc": { "en": "Dummy text: \\lipsum[1-3].", "fr": "Faux texte : \\lipsum[1-3]." } } ] }

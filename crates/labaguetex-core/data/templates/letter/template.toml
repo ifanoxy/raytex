@@ -1,0 +1,11 @@
+category = "general"
+order = 4
+main = "main.tex"
+engine = "pdflatex"
+tags = ["lettre", "letter", "courrier", "motivation"]
+[name]
+en = "Letter"
+fr = "Lettre"
+[description]
+en = "A formal letter (KOMA-Script scrlttr2) with sender, recipient, subject, date and signature, in the French NF layout or the DIN layout."
+fr = "Une lettre formelle (KOMA-Script scrlttr2) avec expéditeur, destinataire, objet, date et signature, au format français NF ou DIN."

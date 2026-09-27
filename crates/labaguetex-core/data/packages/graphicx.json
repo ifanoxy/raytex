@@ -1,0 +1,14 @@
+{
+  "name": "graphicx",
+  "description": { "en": "Includes images (PDF, PNG, JPG) and transforms boxes.", "fr": "Inclut des images (PDF, PNG, JPG) et transforme des boîtes." },
+  "loads": ["graphics", "keyval"],
+  "options": ["draft", "final"],
+  "commands": [
+    { "name": "includegraphics", "args": "[options]{file}", "snippet": "includegraphics[width=${1:\\linewidth}]{${2:file}}", "doc": { "en": "Inserts an image. Options: width, height, scale, angle, trim, clip, page, keepaspectratio.", "fr": "Insère une image. Options : width, height, scale, angle, trim, clip, page, keepaspectratio." }, "example": "\\includegraphics[width=0.8\\linewidth]{figures/schema}" },
+    { "name": "graphicspath", "args": "{{dir1/}{dir2/}}", "mode": "preamble", "snippet": "graphicspath{{${1:figures}/}}", "doc": { "en": "Folders where \\includegraphics looks for images.", "fr": "Dossiers où \\includegraphics cherche les images." } },
+    { "name": "rotatebox", "args": "[options]{angle}{content}", "doc": { "en": "Rotates its content.", "fr": "Fait pivoter son contenu." } },
+    { "name": "scalebox", "args": "{factor}{content}", "doc": { "en": "Scales its content.", "fr": "Met son contenu à l'échelle." } },
+    { "name": "resizebox", "args": "{width}{height}{content}", "doc": { "en": "Resizes to a given size (! keeps the aspect ratio).", "fr": "Redimensionne à une taille donnée (! conserve les proportions)." } },
+    { "name": "reflectbox", "args": "{content}", "doc": { "en": "Mirrors its content.", "fr": "Retourne son contenu en miroir." } }
+  ]
+}

@@ -1,0 +1,7 @@
+{ "name": "longtable", "description": { "en": "Tables spanning several pages.", "fr": "Tableaux sur plusieurs pages." },
+  "commands": [
+    { "name": "endhead", "doc": { "en": "Ends the header repeated on each page.", "fr": "Termine l'en-tête répété à chaque page." } },
+    { "name": "endfirsthead", "doc": { "en": "Ends the header of the first page.", "fr": "Termine l'en-tête de la première page." } },
+    { "name": "endfoot", "doc": { "en": "Ends the footer repeated on each page.", "fr": "Termine le pied répété à chaque page." } },
+    { "name": "endlastfoot", "doc": { "en": "Ends the footer of the last page.", "fr": "Termine le pied de la dernière page." } } ],
+  "environments": [ { "name": "longtable", "args": "{columns}", "mode": "text", "doc": { "en": "Multi-page table (not inside a table float).", "fr": "Tableau multipage (hors d'un flottant table)." } } ] }

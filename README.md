@@ -1,0 +1,113 @@
+<p align="center">
+  <img src="assets/logo.svg" width="112" alt="labaguetex logo" />
+</p>
+
+<h1 align="center">labaguetex</h1>
+
+<p align="center">
+  <strong>A modern LaTeX IDE for students, teachers and researchers.</strong><br />
+  Fast, open source, for Linux, macOS and Windows. Written in Rust.
+</p>
+
+<p align="center">
+  English · <a href="README.fr.md">Français</a>
+</p>
+
+---
+
+labaguetex (LaTeX + baguette) is a LaTeX editor that helps beginners learn and lets experts go fast: live preview, completion learned from **every** installed package, a precise error console with one-click fixes, SyncTeX, templates, macros and a guided setup of **any** TeX distribution.
+
+## Features
+
+**Writing**
+- Context-aware completion: commands and environments of the LaTeX kernel, of every package your document loads (read from the package source, whatever the package), of your own `\newcommand`s; labels with their number, citations with authors and title, files, options, colours.
+- Choosing a command from a package that is not loaded adds the `\usepackage`.
+- Live math preview (KaTeX, with your macros), documentation on hover, image previews.
+- Snippets, `@` shortcuts in math mode (`@a` → `\alpha`), personal macros with triggers and keyboard shortcuts.
+- Go to definition, find references, rename labels / citation keys / commands across the project.
+- Environment auto-closing, list continuation, folding, multiple cursors, Vim mode, spell checking.
+- Paste or drop an image: it is saved in `figures/` and inserted as a figure.
+
+**Building**
+- One key (`Ctrl/⌘ + Enter`), or automatically on save.
+- Automatic engine choice (`% !TEX program`, `fontspec` → LuaLaTeX, Tectonic, pdfLaTeX).
+- Smart build driver: Biber / BibTeX / makeindex / glossaries only when their inputs changed, reruns until references are stable; or latexmk, a single pass, or your own steps.
+- Auxiliary files in `build/`; the project stays clean.
+
+**Understanding errors**
+- Lint while typing: undefined references and citations, duplicate labels, unbalanced braces, missing packages and files, obsolete commands, typography.
+- Log parser that pinpoints the exact line and column, with a plain-language explanation (English and French) and fixes: add or install a package, fix a misspelt command, switch engines, create a missing file…
+
+**PDF**
+- Built-in viewer (pdf.js): only visible pages are rendered, reloads keep your position, text selection, dark mode.
+- SyncTeX both ways, with a native parser (double-click in the PDF → source; `Ctrl/⌘ + Alt + J` → PDF).
+
+**Any TeX distribution, every package**
+- Detects TeX Live, MacTeX, MiKTeX, TinyTeX, Tectonic and Linux system TeX Live; lets you choose one or add custom folders.
+- Guided installation of a distribution for your OS, showing the exact commands before running them.
+- Installs missing packages with the right tool (tlmgr, MiKTeX, dnf/zypper…), in user mode when possible, asking for administrator rights only when needed.
+- Browse installed packages and the whole CTAN catalogue; `texdoc` documentation.
+
+**Projects**
+- 16 templates (article, report, thesis, research article, slides, poster, course notes, exam, exercise sheet, homework, lab report, letter, CV, TikZ figure…), all building without warnings, in English and French.
+- Project settings in `labaguetex.toml`, versioned with the project.
+- Command palette, quick open, project search and replace, outline with real numbers, TODO list, session restore.
+- Help centre: guides, command reference, symbol palette, common errors explained, shortcuts.
+
+The interface is available in English and French.
+
+## Install
+
+Download the installer for your system from the releases page, then open labaguetex: if no TeX distribution is found, the setup assistant helps you install one.
+
+## Build from source
+
+Requirements: [Rust](https://rustup.rs) 1.88 or newer (stable), [Node.js](https://nodejs.org) 20+, and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) of your OS (WebKitGTK on Linux, WebView2 on Windows).
+
+```bash
+npm install
+npm run app:dev      # run the desktop application in development mode
+npm run app:build    # build installers in target/release/bundle
+```
+
+Other useful commands:
+
+```bash
+cargo test --workspace                 # engine tests
+cargo test -p labaguetex-core -- --ignored   # tests that need a TeX distribution / the network
+npm run check                          # type-check the interface
+npm run dev                            # interface alone in a browser, with a simulated engine
+```
+
+## Command line
+
+The engine is also available as a command-line tool, `baguette`:
+
+```bash
+cargo run -p labaguetex-cli -- doctor            # distributions, tools and advice
+cargo run -p labaguetex-cli -- build main.tex    # build with the smart driver
+cargo run -p labaguetex-cli -- lint chapter.tex  # check without building
+cargo run -p labaguetex-cli -- new thesis my-thesis --title "My thesis"
+cargo run -p labaguetex-cli -- install siunitx
+```
+
+Every command accepts `--lang en|fr` and `--json`.
+
+## Project layout
+
+```
+crates/
+  labaguetex-core/     the engine, without any user interface (pure Rust)
+    data/              knowledge base, templates, help guides, error explanations
+  labaguetex-cli/      the `baguette` command-line tool
+  labaguetex-desktop/  the desktop application (Tauri 2): IPC commands, events, file watcher
+ui/                    the interface (Svelte 5 + TypeScript + CodeMirror 6 + pdf.js)
+assets/                logo sources
+docs/                  architecture and data format documentation
+```
+
+Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit together, [docs/knowledge-base.md](docs/knowledge-base.md) to add package documentation or templates, and [CONTRIBUTING.md](CONTRIBUTING.md) to contribute.
+
+## License
+
+labaguetex is free software, dual-licensed under the [MIT](LICENSE-MIT) and [Apache 2.0](LICENSE-APACHE) licenses, at your option.

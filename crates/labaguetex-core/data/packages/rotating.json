@@ -1,0 +1,6 @@
+{ "name": "rotating", "description": { "en": "Rotated floats and boxes.", "fr": "Flottants et boîtes pivotés." }, "loads": ["graphicx"],
+  "environments": [
+    { "name": "sidewaysfigure", "mode": "text", "doc": { "en": "Figure rotated by 90°, on its own page.", "fr": "Figure pivotée de 90°, sur sa propre page." } },
+    { "name": "sidewaystable", "mode": "text", "doc": { "en": "Table rotated by 90°.", "fr": "Tableau pivoté de 90°." } },
+    { "name": "turn", "args": "{angle}", "doc": { "en": "Rotates its content, taking the space.", "fr": "Pivote son contenu en réservant la place." } },
+    { "name": "rotate", "args": "{angle}", "doc": { "en": "Rotates its content, without taking space.", "fr": "Pivote son contenu sans réserver la place." } } ] }

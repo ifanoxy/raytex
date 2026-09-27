@@ -1,0 +1,2 @@
+{ "name": "comment", "description": { "en": "Multi-line comments.", "fr": "Commentaires multi-lignes." },
+  "environments": [ { "name": "comment", "doc": { "en": "Ignored block.", "fr": "Bloc ignoré." } } ] }

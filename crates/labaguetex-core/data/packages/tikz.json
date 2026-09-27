@@ -1,0 +1,24 @@
+{
+  "name": "tikz",
+  "description": { "en": "TikZ: drawings, diagrams and figures programmed in LaTeX.", "fr": "TikZ : dessins, schémas et figures programmés en LaTeX." },
+  "loads": ["pgf", "xcolor", "graphicx"],
+  "commands": [
+    { "name": "tikz", "args": "[options]{commands}", "doc": { "en": "Small inline picture: \\tikz \\draw (0,0) circle (1ex);", "fr": "Petite image en ligne : \\tikz \\draw (0,0) circle (1ex);" } },
+    { "name": "draw", "args": "[options]", "snippet": "draw[${1:thick}] (${2:0,0}) -- (${3:1,1});", "doc": { "en": "Draws a path: \\draw[->] (0,0) -- (2,1);", "fr": "Trace un chemin : \\draw[->] (0,0) -- (2,1);" } },
+    { "name": "fill", "args": "[options]", "snippet": "fill[${1:blue!20}] ${2:(0,0) rectangle (1,1)};", "doc": { "en": "Fills a closed path.", "fr": "Remplit un chemin fermé." } },
+    { "name": "filldraw", "args": "[options]", "doc": { "en": "Fills and draws a path.", "fr": "Remplit et trace un chemin." } },
+    { "name": "node", "args": "[options]", "snippet": "node[${1}] (${2:name}) at (${3:0,0}) {${4:text}};", "doc": { "en": "Places a node (text, shape) at a position.", "fr": "Place un nœud (texte, forme) à une position." } },
+    { "name": "coordinate", "args": "(name)", "snippet": "coordinate (${1:A}) at (${2:0,0});", "doc": { "en": "Names a point.", "fr": "Nomme un point." } },
+    { "name": "path", "args": "[options]", "doc": { "en": "Path without drawing (base of \\draw, \\fill…).", "fr": "Chemin sans tracé (base de \\draw, \\fill…)." } },
+    { "name": "shade", "args": "[options]", "doc": { "en": "Fills with a gradient.", "fr": "Remplit avec un dégradé." } },
+    { "name": "clip", "doc": { "en": "Restricts the drawing to a region.", "fr": "Restreint le dessin à une région." } },
+    { "name": "foreach", "args": "\\x in {list}", "snippet": "foreach \\x in {${1:1,...,5}} {${2}}", "doc": { "en": "Loop: \\foreach \\x in {1,...,5} {…}.", "fr": "Boucle : \\foreach \\x in {1,...,5} {…}." } },
+    { "name": "usetikzlibrary", "args": "{libraries}", "mode": "preamble", "doc": { "en": "Loads TikZ libraries: arrows.meta, positioning, calc, shapes…", "fr": "Charge des bibliothèques TikZ : arrows.meta, positioning, calc, shapes…" } },
+    { "name": "tikzset", "args": "{styles}", "doc": { "en": "Defines styles: \\tikzset{box/.style={draw, rounded corners}}.", "fr": "Définit des styles : \\tikzset{boite/.style={draw, rounded corners}}." } },
+    { "name": "pgfmathsetmacro", "args": "{\\macro}{expression}", "doc": { "en": "Computes a value into a macro.", "fr": "Calcule une valeur dans une macro." } }
+  ],
+  "environments": [
+    { "name": "tikzpicture", "args": "[options]", "body": "\t\\draw ${1:(0,0) -- (1,1)};", "doc": { "en": "A TikZ drawing.", "fr": "Un dessin TikZ." }, "example": "\\begin{tikzpicture}\n  \\draw[->] (0,0) -- (2,0) node[right] {$x$};\n  \\draw[thick, blue] (0,0) circle (1);\n\\end{tikzpicture}" },
+    { "name": "scope", "args": "[options]", "doc": { "en": "Group of TikZ commands sharing options.", "fr": "Groupe de commandes TikZ partageant des options." } }
+  ]
+}

@@ -1,0 +1,3 @@
+{ "name": "makecell", "description": { "en": "Multi-line cells and header cells.", "fr": "Cellules multi-lignes et cellules d'en-tête." },
+  "commands": [ { "name": "makecell", "args": "[alignment]{text}", "doc": { "en": "Cell with line breaks (\\\\).", "fr": "Cellule avec retours à la ligne (\\\\)." } },
+    { "name": "thead", "args": "{text}", "doc": { "en": "Header cell.", "fr": "Cellule d'en-tête." } } ] }

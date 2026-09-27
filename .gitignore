@@ -1,0 +1,26 @@
+# Rust
+/target/
+
+# Node / frontend
+/node_modules/
+/dist/
+*.tsbuildinfo
+
+# Tauri generated schemas
+/crates/labaguetex-desktop/gen/
+
+# LaTeX build artifacts (tests, templates smoke builds)
+build/
+# …but not the engine's `build` module.
+!crates/labaguetex-core/src/build/
+*.aux
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+
+# Editors / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db

@@ -1,0 +1,5 @@
+{ "name": "nomencl", "description": { "en": "List of symbols (nomenclature).", "fr": "Liste des symboles (nomenclature)." },
+  "commands": [
+    { "name": "makenomenclature", "mode": "preamble", "doc": { "en": "Enables the nomenclature.", "fr": "Active la nomenclature." } },
+    { "name": "nomenclature", "args": "{symbol}{description}", "doc": { "en": "Adds a symbol to the nomenclature.", "fr": "Ajoute un symbole à la nomenclature." } },
+    { "name": "printnomenclature", "mode": "text", "doc": { "en": "Prints the nomenclature.", "fr": "Affiche la nomenclature." } } ] }

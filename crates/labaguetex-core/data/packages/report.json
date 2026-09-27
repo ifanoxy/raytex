@@ -1,0 +1,2 @@
+{ "name": "report", "class": true, "description": { "en": "Standard class for reports and theses (chapters).", "fr": "Classe standard pour rapports et mémoires (chapitres)." },
+  "options": ["10pt", "11pt", "12pt", "a4paper", "letterpaper", "twocolumn", "twoside", "openright", "openany", "titlepage", "draft"] }

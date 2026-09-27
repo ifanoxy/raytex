@@ -1,0 +1,14 @@
+{ "name": "moderncv", "class": true, "description": { "en": "Modern curriculum vitae.", "fr": "Curriculum vitæ moderne." }, "options": ["11pt", "a4paper", "sans", "roman"],
+  "commands": [
+    { "name": "moderncvstyle", "args": "{style}", "mode": "preamble", "doc": { "en": "Style: casual, classic, banking, oldstyle, fancy.", "fr": "Style : casual, classic, banking, oldstyle, fancy." } },
+    { "name": "moderncvcolor", "args": "{color}", "mode": "preamble", "doc": { "en": "Color: blue, orange, green, red, purple, grey, black.", "fr": "Couleur : blue, orange, green, red, purple, grey, black." } },
+    { "name": "name", "args": "{first}{last}", "doc": { "en": "Your name.", "fr": "Votre nom." } },
+    { "name": "phone", "args": "[type]{number}", "doc": { "en": "Phone number (mobile, fixed).", "fr": "Numéro de téléphone (mobile, fixed)." } },
+    { "name": "email", "args": "{address}", "doc": { "en": "Email address.", "fr": "Adresse e-mail." } },
+    { "name": "homepage", "args": "{url}", "doc": { "en": "Web page.", "fr": "Page web." } },
+    { "name": "social", "args": "[network]{account}", "doc": { "en": "Social account: linkedin, github, orcid.", "fr": "Compte : linkedin, github, orcid." } },
+    { "name": "photo", "args": "[height][thickness]{file}", "doc": { "en": "Photo.", "fr": "Photo." } },
+    { "name": "makecvtitle", "mode": "text", "doc": { "en": "Prints the CV header.", "fr": "Affiche l'en-tête du CV." } },
+    { "name": "cventry", "args": "{years}{degree}{institution}{city}{grade}{description}", "doc": { "en": "An experience or education entry.", "fr": "Une expérience ou une formation." } },
+    { "name": "cvitem", "args": "{title}{text}", "doc": { "en": "A simple item.", "fr": "Un élément simple." } },
+    { "name": "cvlistitem", "args": "{text}", "doc": { "en": "A list item.", "fr": "Un élément de liste." } } ] }

@@ -1,0 +1,2 @@
+{ "name": "multirow", "description": { "en": "Cells spanning several rows.", "fr": "Cellules sur plusieurs lignes." },
+  "commands": [ { "name": "multirow", "args": "{rows}{width}{text}", "snippet": "multirow{${1:2}}{${2:*}}{${3:text}}", "doc": { "en": "Cell spanning several rows (* = natural width).", "fr": "Cellule sur plusieurs lignes (* = largeur naturelle)." } } ] }

@@ -1,0 +1,2 @@
+{ "name": "book", "class": true, "description": { "en": "Standard class for books (two-sided, chapters open on the right).", "fr": "Classe standard pour les livres (recto-verso, chapitres à droite)." },
+  "options": ["10pt", "11pt", "12pt", "a4paper", "letterpaper", "oneside", "openany", "draft"] }

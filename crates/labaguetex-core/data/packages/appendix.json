@@ -1,0 +1,3 @@
+{ "name": "appendix", "description": { "en": "Extra control over appendices.", "fr": "Contrôle supplémentaire des annexes." },
+  "commands": [ { "name": "appendixpage", "mode": "text", "doc": { "en": "Page titled \"Appendices\".", "fr": "Page intitulée « Annexes »." } } ],
+  "environments": [ { "name": "appendices", "mode": "text", "doc": { "en": "Appendix block.", "fr": "Bloc d'annexes." } } ] }

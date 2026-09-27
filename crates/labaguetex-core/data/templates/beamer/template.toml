@@ -1,0 +1,11 @@
+category = "general"
+order = 3
+main = "main.tex"
+engine = "pdflatex"
+tags = ["présentation", "slides", "beamer", "soutenance"]
+[name]
+en = "Presentation (Beamer)"
+fr = "Présentation (Beamer)"
+[description]
+en = "Slides in 16:9 with title page, outline, blocks, columns, step-by-step lists and a formula."
+fr = "Diapositives 16:9 avec page de titre, sommaire, blocs, colonnes, listes animées et une formule."

@@ -1,0 +1,5 @@
+{ "name": "float", "description": { "en": "H placement (exactly here) and custom floats.", "fr": "Placement H (exactement ici) et flottants personnalisés." },
+  "commands": [
+    { "name": "floatstyle", "args": "{style}", "doc": { "en": "Style of new floats: plain, boxed, ruled.", "fr": "Style des nouveaux flottants : plain, boxed, ruled." } },
+    { "name": "newfloat", "args": "{type}{placement}{extension}[within]", "mode": "preamble", "doc": { "en": "Declares a new float type.", "fr": "Déclare un nouveau type de flottant." } },
+    { "name": "restylefloat", "args": "{type}", "mode": "preamble", "doc": { "en": "Applies the float style to an existing type.", "fr": "Applique le style de flottant à un type existant." } } ] }

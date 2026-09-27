@@ -1,0 +1,11 @@
+{
+  "name": "geometry",
+  "description": { "en": "Page size and margins.", "fr": "Taille de page et marges." },
+  "loads": ["keyval"],
+  "options": ["a4paper", "a5paper", "letterpaper", "margin=2.5cm", "left=", "right=", "top=", "bottom=", "hmargin=", "vmargin=", "textwidth=", "textheight=", "landscape", "includeheadfoot", "showframe", "twoside", "bindingoffset="],
+  "commands": [
+    { "name": "geometry", "args": "{options}", "doc": { "en": "Sets the page layout: \\geometry{margin=2cm}.", "fr": "Règle la mise en page : \\geometry{margin=2cm}." } },
+    { "name": "newgeometry", "args": "{options}", "mode": "text", "doc": { "en": "Changes the layout from the next page.", "fr": "Change la mise en page à partir de la page suivante." } },
+    { "name": "restoregeometry", "mode": "text", "doc": { "en": "Restores the initial layout.", "fr": "Rétablit la mise en page initiale." } }
+  ]
+}

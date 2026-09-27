@@ -1,0 +1,11 @@
+category = "general"
+order = 2
+main = "main.tex"
+engine = "lualatex"
+tags = ["lualatex", "fontspec", "biblatex", "unicode"]
+[name]
+en = "Modern article (LuaLaTeX)"
+fr = "Article moderne (LuaLaTeX)"
+[description]
+en = "Unicode everywhere, OpenType fonts, biblatex bibliography and smart references (cleveref)."
+fr = "Unicode partout, polices OpenType, bibliographie biblatex et références intelligentes (cleveref)."

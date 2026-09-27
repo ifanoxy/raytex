@@ -1,0 +1,1 @@
+{ "name": "calc", "description": { "en": "Arithmetic in lengths and counters: \\setlength{\\x}{\\textwidth-2cm}.", "fr": "Calculs dans les longueurs et compteurs : \\setlength{\\x}{\\textwidth-2cm}." } }

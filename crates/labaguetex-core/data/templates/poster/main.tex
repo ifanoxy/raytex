@@ -1,0 +1,37 @@
+\documentclass[25pt, a0paper, portrait]{tikzposter}
+\usepackage[T1]{fontenc}
+\usepackage[{{babel}}]{babel}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{graphicx}
+
+\title{{{title}}}
+\author{{{author}}}
+\institute{{{institution}}}
+\usetheme{Simple}
+
+\begin{document}
+\maketitle
+
+\begin{columns}
+  \column{0.5}
+  \block{Introduction}{
+    {{fr:Présentez la problématique en quelques phrases claires.|en:State the problem in a few clear sentences.}}
+  }
+  \block{{{fr:Méthode|en:Method}}}{
+    {{fr:Le modèle repose sur l'équation|en:The model relies on the equation}}
+    \[ \frac{\partial u}{\partial t} = D \, \Delta u \]
+  }
+
+  \column{0.5}
+  \block{{{fr:Résultats|en:Results}}}{
+    \begin{tikzfigure}[{{fr:Une figure d'exemple|en:An example figure}}]
+      \includegraphics[width=0.8\linewidth]{example-image-a}
+    \end{tikzfigure}
+  }
+  \block{Conclusion}{
+    {{fr:Résumez l'apport principal.|en:Summarise the main contribution.}}
+  }
+\end{columns}
+
+\end{document}

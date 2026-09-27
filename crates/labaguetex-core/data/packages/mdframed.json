@@ -1,0 +1,2 @@
+{ "name": "mdframed", "description": { "en": "Framed environments breaking across pages.", "fr": "Environnements encadrés sécables entre les pages." },
+  "environments": [ { "name": "mdframed", "args": "[options]", "mode": "text", "doc": { "en": "Framed block.", "fr": "Bloc encadré." } } ] }

@@ -1,0 +1,32 @@
+{
+  "name": "mathtools",
+  "description": { "en": "Extends and fixes amsmath: paired delimiters, :=, dcases, better arrows.", "fr": "Étend et corrige amsmath : délimiteurs appariés, :=, dcases, meilleures flèches." },
+  "loads": ["amsmath"],
+  "commands": [
+    { "name": "coloneqq", "mode": "math", "glyph": "≔", "category": "relation", "doc": { "en": "Definition sign :=.", "fr": "Signe de définition :=." } },
+    { "name": "eqqcolon", "mode": "math", "glyph": "≕", "category": "relation", "doc": { "en": "Sign =:.", "fr": "Signe =:." } },
+    { "name": "vcentcolon", "mode": "math", "doc": { "en": "Vertically centred colon.", "fr": "Deux-points centrés verticalement." } },
+    { "name": "DeclarePairedDelimiter", "args": "{\\name}{left}{right}", "mode": "preamble", "snippet": "DeclarePairedDelimiter{\\${1:abs}}{${2:\\lvert}}{${3:\\rvert}}", "doc": { "en": "Defines \\abs{x}, \\abs*{x} (auto-sized), \\abs[\\big]{x}.", "fr": "Définit \\abs{x}, \\abs*{x} (taille auto), \\abs[\\big]{x}." } },
+    { "name": "mathclap", "args": "{math}", "mode": "math", "doc": { "en": "Zero-width centred box (long subscripts under sums).", "fr": "Boîte centrée de largeur nulle (longs indices sous les sommes)." } },
+    { "name": "mathllap", "args": "{math}", "mode": "math", "doc": { "en": "Zero-width box extending left.", "fr": "Boîte de largeur nulle débordant à gauche." } },
+    { "name": "mathrlap", "args": "{math}", "mode": "math", "doc": { "en": "Zero-width box extending right.", "fr": "Boîte de largeur nulle débordant à droite." } },
+    { "name": "xmapsto", "args": "[below]{above}", "mode": "math", "doc": { "en": "Extensible maps-to arrow.", "fr": "Flèche « associe » extensible." } },
+    { "name": "xhookrightarrow", "args": "[below]{above}", "mode": "math", "doc": { "en": "Extensible hooked arrow.", "fr": "Flèche à crochet extensible." } },
+    { "name": "xLeftrightarrow", "args": "[below]{above}", "mode": "math", "doc": { "en": "Extensible double arrow.", "fr": "Double flèche extensible." } },
+    { "name": "shortintertext", "args": "{text}", "mode": "math", "doc": { "en": "Like \\intertext with less vertical space.", "fr": "Comme \\intertext avec moins d'espace vertical." } },
+    { "name": "prescript", "args": "{sup}{sub}{symbol}", "mode": "math", "doc": { "en": "Pre-sub/superscripts: ₙᵃX.", "fr": "Indices et exposants à gauche : ₙᵃX." } },
+    { "name": "underbracket", "args": "{expr}", "mode": "math", "doc": { "en": "Square bracket under an expression.", "fr": "Crochet sous une expression." } },
+    { "name": "overbracket", "args": "{expr}", "mode": "math", "doc": { "en": "Square bracket over an expression.", "fr": "Crochet au-dessus d'une expression." } },
+    { "name": "Aboxed", "args": "{a &= b}", "mode": "math", "doc": { "en": "Frames an equation inside align.", "fr": "Encadre une équation dans align." } },
+    { "name": "splitfrac", "args": "{first}{second}", "mode": "math", "doc": { "en": "Numerator split over two lines.", "fr": "Numérateur réparti sur deux lignes." } },
+    { "name": "mathtoolsset", "args": "{options}", "doc": { "en": "Sets mathtools options (e.g. showonlyrefs).", "fr": "Règle les options de mathtools (ex. showonlyrefs)." } }
+  ],
+  "environments": [
+    { "name": "dcases", "mode": "math", "body": "\t${1} & \\text{si } ${2} \\\\\n\t${3} & \\text{sinon}", "doc": { "en": "cases in display style.", "fr": "cases en taille « display »." } },
+    { "name": "rcases", "mode": "math", "doc": { "en": "Cases with a right brace.", "fr": "Cas avec une accolade droite." } },
+    { "name": "pmatrix*", "args": "[alignment]", "mode": "math", "doc": { "en": "pmatrix with column alignment (l, c, r).", "fr": "pmatrix avec alignement des colonnes (l, c, r)." } },
+    { "name": "bmatrix*", "args": "[alignment]", "mode": "math", "doc": { "en": "bmatrix with column alignment.", "fr": "bmatrix avec alignement des colonnes." } },
+    { "name": "psmallmatrix", "mode": "math", "doc": { "en": "Small matrix in parentheses.", "fr": "Petite matrice entre parenthèses." } },
+    { "name": "multlined", "mode": "math", "doc": { "en": "multline inside another math environment.", "fr": "multline à l'intérieur d'un autre environnement mathématique." } }
+  ]
+}

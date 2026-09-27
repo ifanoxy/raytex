@@ -1,0 +1,5 @@
+{ "name": "makeidx", "description": { "en": "Index (run makeindex).", "fr": "Index (lancer makeindex)." },
+  "commands": [
+    { "name": "makeindex", "mode": "preamble", "doc": { "en": "Enables index generation.", "fr": "Active la génération de l'index." } },
+    { "name": "index", "args": "{entry}", "doc": { "en": "Index entry: \\index{word}, \\index{main!sub}.", "fr": "Entrée d'index : \\index{mot}, \\index{principal!secondaire}." } },
+    { "name": "printindex", "mode": "text", "doc": { "en": "Prints the index.", "fr": "Affiche l'index." } } ] }

@@ -1,0 +1,8 @@
+{ "name": "subcaption", "description": { "en": "Sub-figures and sub-tables (a), (b)…", "fr": "Sous-figures et sous-tableaux (a), (b)…" }, "loads": ["caption"],
+  "commands": [
+    { "name": "subcaption", "args": "{text}", "doc": { "en": "Caption of a sub-figure.", "fr": "Légende d'une sous-figure." } },
+    { "name": "subcaptionbox", "args": "{caption}{content}", "doc": { "en": "Box with a sub-caption.", "fr": "Boîte avec sous-légende." } },
+    { "name": "subref", "args": "{key}", "doc": { "en": "Reference to a sub-figure: (a).", "fr": "Référence à une sous-figure : (a)." } } ],
+  "environments": [
+    { "name": "subfigure", "args": "[position]{width}", "mode": "text", "body": "\t\\centering\n\t\\includegraphics[width=\\linewidth]{${2:file}}\n\t\\caption{${3:caption}}\n\t\\label{fig:${4:label}}", "doc": { "en": "Sub-figure inside a figure, e.g. {0.48\\linewidth}.", "fr": "Sous-figure dans une figure, ex. {0.48\\linewidth}." } },
+    { "name": "subtable", "args": "[position]{width}", "mode": "text", "doc": { "en": "Sub-table inside a table.", "fr": "Sous-tableau dans un tableau." } } ] }

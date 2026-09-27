@@ -1,0 +1,1 @@
+{ "name": "fourier", "loads": ["amsfonts", "amssymb"], "description": { "en": "Utopia fonts with Fourier math.", "fr": "Polices Utopia avec maths Fourier." } }

@@ -1,0 +1,8 @@
+{
+  "name": "amsfonts",
+  "description": { "en": "AMS fonts: blackboard bold (ℝ, ℕ) and Fraktur letters.", "fr": "Polices AMS : lettres ajourées (ℝ, ℕ) et gothiques." },
+  "commands": [
+    { "name": "mathbb", "args": "{letter}", "mode": "math", "doc": { "en": "Blackboard bold capitals: \\mathbb{R}, \\mathbb{N}.", "fr": "Majuscules ajourées : \\mathbb{R}, \\mathbb{N}." } },
+    { "name": "mathfrak", "args": "{letter}", "mode": "math", "doc": { "en": "Fraktur (gothic) letters: \\mathfrak{g}.", "fr": "Lettres gothiques : \\mathfrak{g}." } }
+  ]
+}

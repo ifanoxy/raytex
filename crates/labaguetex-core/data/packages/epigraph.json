@@ -1,0 +1,2 @@
+{ "name": "epigraph", "description": { "en": "Epigraphs.", "fr": "Épigraphes." },
+  "commands": [ { "name": "epigraph", "args": "{quote}{source}", "doc": { "en": "An epigraph at the start of a chapter.", "fr": "Une épigraphe en début de chapitre." } } ] }

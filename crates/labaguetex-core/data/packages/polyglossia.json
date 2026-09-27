@@ -1,0 +1,4 @@
+{ "name": "polyglossia", "description": { "en": "Language support for XeLaTeX/LuaLaTeX (alternative to babel).", "fr": "Gestion des langues pour XeLaTeX/LuaLaTeX (alternative à babel)." }, "loads": ["fontspec"],
+  "commands": [
+    { "name": "setdefaultlanguage", "args": "[options]{language}", "mode": "preamble", "doc": { "en": "Main language of the document.", "fr": "Langue principale du document." } },
+    { "name": "setotherlanguage", "args": "[options]{language}", "mode": "preamble", "doc": { "en": "Declares a secondary language.", "fr": "Déclare une langue secondaire." } } ] }

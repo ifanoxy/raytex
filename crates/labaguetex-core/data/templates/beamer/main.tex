@@ -1,0 +1,66 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[{{babel}}]{babel}
+\usepackage{lmodern}
+\usepackage{booktabs}
+
+\usetheme{Madrid}
+\usecolortheme{beaver}
+\setbeamertemplate{navigation symbols}{}
+
+\title{{{title}}}
+\author{{{author}}}
+\institute{{{institution}}}
+\date{{{date}}}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{{{fr:Sommaire|en:Outline}}}
+  \tableofcontents
+\end{frame}
+
+\section{Introduction}
+
+\begin{frame}{{{fr:Une liste animée|en:A step-by-step list}}}
+  \begin{itemize}
+    \item<1-> {{fr:Premier point|en:First point}}
+    \item<2-> {{fr:Deuxième point|en:Second point}}
+    \item<3-> \alert{{{fr:Point important|en:Important point}}}
+  \end{itemize}
+\end{frame}
+
+\section{{{fr:Résultats|en:Results}}}
+
+\begin{frame}{{{fr:Blocs et colonnes|en:Blocks and columns}}}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{{{fr:Théorème|en:Theorem}}}
+        $a^2 + b^2 = c^2$
+      \end{block}
+      \begin{exampleblock}{{{fr:Exemple|en:Example}}}
+        $3^2 + 4^2 = 5^2$
+      \end{exampleblock}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \centering
+      \begin{tabular}{lr}
+        \toprule
+        {{fr:Méthode|en:Method}} & Score \\
+        \midrule
+        A & 0.91 \\
+        B & 0.87 \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \centering\Huge {{fr:Merci !|en:Thank you!}}
+\end{frame}
+
+\end{document}
