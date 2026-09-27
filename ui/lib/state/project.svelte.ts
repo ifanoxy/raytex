@@ -4,7 +4,7 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { t } from "../i18n.svelte";
 import * as ipc from "../ipc";
-import type { Diagnostic, FileNode, ProjectConfig, ProjectInfo, Structure, TemplateValues } from "../types";
+import type { Diagnostic, FileNode, ProjectConfig, ProjectInfo, Structure } from "../types";
 import { basename, debounce, dirname, extension, fileKind, join, relative, samePath } from "../utils";
 import { app } from "./app.svelte";
 import { build } from "./build.svelte";
@@ -132,20 +132,6 @@ class ProjectStore {
     }
   }
 
-  async create(template: string, dir: string, values: TemplateValues): Promise<boolean> {
-    if (this.info && !(await this.close())) return false;
-    this.opening = true;
-    try {
-      await this.adopt(await ipc.createProject(template, dir, values));
-      return true;
-    } catch (e) {
-      ui.toast("error", t("project.createFailed"), { detail: String(e) });
-      return false;
-    } finally {
-      this.opening = false;
-    }
-  }
-
   // ------------------------------------------------------------- refresh
 
   async refreshTree() {
@@ -208,12 +194,10 @@ class ProjectStore {
 
   async saveAsTemplate() {
     if (!this.info) return;
-    const name = await ui.prompt({ title: t("project.templateName"), value: this.info.name, okLabel: t("common.continue") });
+    const name = await ui.prompt({ title: t("project.templateName"), value: this.info.name, okLabel: t("common.save") });
     if (!name) return;
-    const description = await ui.prompt({ title: t("project.templateDescription"), value: "", okLabel: t("common.save") });
-    if (description === null) return;
     try {
-      await ipc.saveAsTemplate(name, description);
+      await ipc.saveAsTemplate(name, "");
       ui.toast("success", t("project.templateSaved", { name }));
     } catch (e) {
       ui.toast("error", String(e));

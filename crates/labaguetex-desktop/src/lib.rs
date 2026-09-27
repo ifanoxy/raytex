@@ -69,8 +69,6 @@ pub fn run() {
             commands::project::set_main_file,
             commands::project::save_project_config,
             commands::project::list_templates,
-            commands::project::template_preview,
-            commands::project::create_project,
             commands::project::create_empty_project,
             commands::project::apply_template,
             commands::project::template_thumbnail,

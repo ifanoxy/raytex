@@ -290,39 +290,6 @@ pub async fn list_templates(state: State<'_, AppState>) -> CmdResult<Vec<Templat
     Ok(templates::list(Some(&state.paths.templates)))
 }
 
-/// The main file of a template, filled with example values (for the preview).
-#[tauri::command]
-pub async fn template_preview(
-    state: State<'_, AppState>,
-    id: String,
-    values: TemplateValues,
-) -> CmdResult<String> {
-    let all = templates::list(Some(&state.paths.templates));
-    let info = all.iter().find(|t| t.id == id).ok_or("unknown template")?;
-    let files = templates::files(&id, Some(&state.paths.templates)).ok_or("unknown template")?;
-    let main = files.get(&info.main).ok_or("template without main file")?;
-    Ok(templates::fill(&String::from_utf8_lossy(main), &values))
-}
-
-/// Creates a project from a template and opens it.
-#[tauri::command]
-pub async fn create_project(
-    app: AppHandle,
-    template: String,
-    dir: String,
-    values: TemplateValues,
-) -> CmdResult<ProjectInfo> {
-    let target = abs(&dir);
-    let user_dir = app.state::<AppState>().paths.templates.clone();
-    let main = tauri::async_runtime::spawn_blocking(move || {
-        templates::instantiate(&template, &target, &values, Some(&user_dir))
-    })
-    .await
-    .map_err(err)?
-    .map_err(err)?;
-    open_project(app, main.to_string_lossy().into_owned()).await
-}
-
 /// Creates an empty project (an empty `main.tex`) named `name` and opens it.
 #[tauri::command]
 pub async fn create_empty_project(

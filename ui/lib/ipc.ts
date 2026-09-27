@@ -28,9 +28,6 @@ export const fileTree = () => call<T.FileNode[]>("file_tree");
 export const setMainFile = (path: string) => call<T.ProjectInfo>("set_main_file", { path });
 export const saveProjectConfig = (config: T.ProjectConfig) => call<T.ProjectInfo>("save_project_config", { config });
 export const listTemplates = () => call<T.TemplateInfo[]>("list_templates");
-export const templatePreview = (id: string, values: T.TemplateValues) => call<string>("template_preview", { id, values });
-export const createProject = (template: string, dir: string, values: T.TemplateValues) =>
-  call<T.ProjectInfo>("create_project", { template, dir, values });
 export const createEmptyProject = (dir: string, name: string) => call<T.ProjectInfo>("create_empty_project", { dir, name });
 export const applyTemplate = (id: string, values: T.TemplateValues) => call<T.AppliedTemplate>("apply_template", { id, values });
 export const templateThumbnail = (id: string) => call<string>("template_thumbnail", { id });

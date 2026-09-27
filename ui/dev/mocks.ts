@@ -580,8 +580,12 @@ export function installMocks() {
             { id: "beamer", name: { fr: "Diaporama", en: "Slides" }, description: { fr: "Présentation beamer.", en: "Beamer slides." }, category: "student", order: 6, main: "main.tex", engine: null, tags: ["beamer"], user: false },
             { id: "exam", name: { fr: "Examen", en: "Exam" }, description: { fr: "Sujet avec barème et corrigé.", en: "Exam." }, category: "teacher", order: 9, main: "main.tex", engine: null, tags: ["exam"], user: false },
           ];
-        case "template_preview":
-          return "\\documentclass{article}\n\\title{" + (a.values as T.TemplateValues).title + "}\n\\begin{document}\n\\maketitle\n\\end{document}\n";
+        case "create_empty_project":
+          return info();
+        case "apply_template":
+          return { mainText: "\\documentclass{article}\n\\title{" + (a.values as T.TemplateValues).title + "}\n\\begin{document}\n\\maketitle\n\n\\end{document}\n", created: [], kept: [], engine: null };
+        case "template_thumbnail":
+          throw new Error("no TeX in the browser");
         case "tikz_templates":
           return [
             { id: "axes", category: "basics", name: "Axes et grille", description: "Une grille et deux axes.", packages: ["tikz"], libraries: ["arrows.meta"], preamble: "", code: "\\begin{tikzpicture}\n  \\draw[help lines] (0,0) grid (3,2);\n  \\draw[-Stealth] (0,0) -- (3.2,0);\n\\end{tikzpicture}" },
