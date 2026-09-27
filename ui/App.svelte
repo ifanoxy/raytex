@@ -29,14 +29,21 @@
   import Toolbar from "./components/layout/Toolbar.svelte";
   import BottomPanel from "./components/panel/BottomPanel.svelte";
   import PdfViewer from "./components/pdf/PdfViewer.svelte";
-  import FontDialog from "./components/views/FontDialog.svelte";
-  import HelpCenter from "./components/views/HelpCenter.svelte";
-  import ImageDialog from "./components/views/ImageDialog.svelte";
-  import NewProject from "./components/views/NewProject.svelte";
-  import Settings from "./components/views/Settings.svelte";
-  import SetupAssistant from "./components/views/SetupAssistant.svelte";
-  import TikzStudio from "./components/views/TikzStudio.svelte";
   import Welcome from "./components/views/Welcome.svelte";
+
+  // Large windows are loaded when first opened (and prepared in the
+  // background after start-up): less code to read before the first screen.
+  const VIEWS = {
+    settings: () => import("./components/views/Settings.svelte"),
+    help: () => import("./components/views/HelpCenter.svelte"),
+    newProject: () => import("./components/views/NewProject.svelte"),
+    setup: () => import("./components/views/SetupAssistant.svelte"),
+    image: () => import("./components/views/ImageDialog.svelte"),
+    fonts: () => import("./components/views/FontDialog.svelte"),
+    tikz: () => import("./components/views/TikzStudio.svelte"),
+  } as const;
+  type LazyView = keyof typeof VIEWS;
+  const lazyView = $derived(ui.overlay && ui.overlay in VIEWS ? VIEWS[ui.overlay as LazyView]() : null);
 
   let workEl = $state<HTMLElement | null>(null);
   let centerEl = $state<HTMLElement | null>(null);
@@ -67,6 +74,9 @@
         failed = String(e);
       }
       unlisten.push(await getCurrentWebview().onDragDropEvent((e) => void onDrop(e.payload)));
+      // Prepare the other windows while nothing happens.
+      const idle = window.requestIdleCallback ?? ((fn: () => void) => setTimeout(fn, 1500));
+      idle(() => Object.values(VIEWS).forEach((load) => void load().catch(() => {})));
       unlisten.push(
         await getCurrentWindow().onCloseRequested(async (event) => {
           if (!editor.dirtyTabs.length) return;
@@ -214,20 +224,10 @@
 
 {#if ui.overlay === "palette"}
   <CommandPalette />
-{:else if ui.overlay === "settings"}
-  <Settings />
-{:else if ui.overlay === "help"}
-  <HelpCenter />
-{:else if ui.overlay === "newProject"}
-  <NewProject />
-{:else if ui.overlay === "setup"}
-  <SetupAssistant />
-{:else if ui.overlay === "image"}
-  <ImageDialog />
-{:else if ui.overlay === "fonts"}
-  <FontDialog />
-{:else if ui.overlay === "tikz"}
-  <TikzStudio />
+{:else if lazyView}
+  {#await lazyView then view}
+    {#key ui.overlay}<view.default />{/key}
+  {/await}
 {/if}
 
 <ContextMenu />

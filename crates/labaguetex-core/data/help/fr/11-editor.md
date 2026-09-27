@@ -47,7 +47,8 @@ Sous la barre du haut, comme dans un traitement de texte (tous les boutons agiss
 | Style | la ligne devient une partie, un chapitre, une section… ou redevient du texte normal ; le menu indique le style de la ligne du curseur |
 | Taille | `{\large …}`, `{\small …}`… ; choisir *Normal* retire la taille |
 | Gras, italique, souligné, chasse fixe | `\textbf`, `\textit`, `\underline`, `\texttt` |
-| Couleur | `\textcolor{red}{…}` (ajoute `xcolor`) ; rechoisir une couleur la remplace |
+| Police | la police du document ; son menu règle la police de chaque usage et les polices pour un passage (voir [Polices](14-fonts.md)) |
+| Couleur | `\textcolor{red}{…}` (ajoute `xcolor`) ; rechoisir une couleur la remplace. Quand `xcolor` est chargé, le menu propose ses 19 couleurs, les 68 couleurs `dvipsnames` et les couleurs SVG (l'option est ajoutée au besoin, sans conflit avec TikZ ou Beamer), une recherche par nom, les couleurs définies par le document et une couleur au choix (`\definecolor`) |
 | Alignement | environnements `flushleft`, `center`, `flushright` ; rechoisir change l'alignement du bloc |
 | Listes | chaque ligne sélectionnée devient un `\item` ; sur une liste, change son type |
 | Formule, équation | `$…$` autour de la sélection ; environnement `equation` |

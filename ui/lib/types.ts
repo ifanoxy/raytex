@@ -88,6 +88,8 @@ export interface Settings {
     showBadboxes: boolean;
     miktexAutoInstall: boolean;
     copyPdfToRoot: boolean;
+    /** Precompiled preambles (pdfLaTeX): faster passes. */
+    precompilePreamble: boolean;
   };
   viewer: {
     syncAfterBuild: boolean;

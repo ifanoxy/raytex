@@ -112,7 +112,7 @@ const tree: T.FileNode[] = [
 ];
 
 let settings: T.Settings = {
-  version: 2,
+  version: 3,
   general: { language: "system", theme: "system", restoreSession: true, beginnerTips: true, hideAuxFiles: true },
   editor: {
     fontFamily: "",
@@ -139,7 +139,7 @@ let settings: T.Settings = {
     tool: "auto",
     bibTool: "auto",
     autoBuild: "onIdle",
-    autoBuildDelayMs: 800,
+    autoBuildDelayMs: 600,
     outDir: "build",
     synctex: true,
     shellEscape: false,
@@ -152,6 +152,7 @@ let settings: T.Settings = {
     showBadboxes: true,
     miktexAutoInstall: true,
     copyPdfToRoot: false,
+    precompilePreamble: true,
   },
   viewer: { syncAfterBuild: true, invertInDark: false, defaultZoom: "page-width", doubleClickSync: true },
   completion: { enabled: true, autoAddPackage: true, atShortcuts: true, snippets: true, learnFromPackages: true },
@@ -371,7 +372,7 @@ async function simulateBuild() {
     log: p("build/main.log"),
     synctex: p("build/main.synctex.gz"),
   };
-  await emit("build:started", { plan });
+  await emit("build:started", { plan, manual: true });
   for (const [name, command] of [
     ["pdflatex", "pdflatex -synctex=1 -interaction=nonstopmode -file-line-error -output-directory=build main.tex"],
     ["biber", "biber --input-directory=build main"],
@@ -425,7 +426,7 @@ async function simulateBuild() {
       diag({ severity: "info", source: "latex", code: "badbox-overfull", message: "Overfull \\hbox (3.2pt too wide) in paragraph at lines 11--12", file: p("chapitres/introduction.tex"), line: 11, endLine: 12 }),
     ],
   };
-  await emit("build:finished", { outcome, error: null });
+  await emit("build:finished", { outcome, error: null, manual: true });
 }
 
 export function installMocks() {

@@ -4,14 +4,18 @@
   // "See all" opens every command, grouped. Buttons never take the focus
   // from the text, so the selection stays and typing goes on.
   import { getAction, keyFor, runAction } from "$lib/actions";
-  import { COLORS, HEADINGS, type Heading, setColor, setHeading, setSize, SIZES, type Size, tableSnippet } from "$lib/editor/format";
+  import { HEADINGS, type Heading, setHeading, setSize, SIZES, type Size, tableSnippet } from "$lib/editor/format";
   import { t, type MessageKey } from "$lib/i18n.svelte";
   import { editor } from "$lib/state/editor.svelte";
   import { project } from "$lib/state/project.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import { prettyKey } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
+  import { colors } from "$lib/state/colors.svelte";
+  import { fonts } from "$lib/state/fonts.svelte";
+  import ColorMenu from "./ColorMenu.svelte";
   import AllTools from "./AllTools.svelte";
+  import FontMenu from "./FontMenu.svelte";
 
   const canEdit = $derived(!!editor.activeTab && editor.activeTab.kind === "tex" && !editor.activeTab.readOnly);
   const hasDoc = $derived(!!editor.activeTab && editor.activeTab.kind !== "image" && editor.activeTab.kind !== "pdf");
@@ -45,9 +49,17 @@
     return /\\documentclass\s*(\[[^\]]*\])?\s*\{(report|book|memoir|scrbook|scrreprt|thesis|[^}]*these[^}]*)\}/.test(text.slice(0, 4000));
   });
 
-  let pop = $state<{ kind: "color" | "table"; x: number; y: number } | null>(null);
+  let pop = $state<{ kind: "color" | "table" | "font"; x: number; y: number } | null>(null);
+
+  // Fonts of the document shown in the font box.
+  $effect(() => {
+    void editor.active;
+    void project.info?.root;
+    void fonts.refresh();
+    void colors.refresh();
+  });
+  const mainFont = $derived(fonts.current?.main);
   let allOpen = $state(false);
-  let lastColor = $state("red");
   let grid = $state({ rows: 0, cols: 0 });
 
   /** Keeps the focus (and selection) in the editor when a button is pressed. */
@@ -93,12 +105,6 @@
     done();
   }
 
-  async function color(name: string) {
-    pop = null;
-    lastColor = name;
-    apply((v) => setColor(v, name));
-    await editor.addPackage("xcolor", editor.view, true);
-  }
 
   async function table(rows: number, cols: number) {
     pop = null;
@@ -108,7 +114,7 @@
     done();
   }
 
-  function openPop(e: MouseEvent, kind: "color" | "table") {
+  function openPop(e: MouseEvent, kind: "color" | "table" | "font") {
     if (pop?.kind === kind) {
       pop = null;
       return;
@@ -121,7 +127,7 @@
   function outside(e: PointerEvent) {
     const el = e.target as HTMLElement;
     if (pop && !el.closest(".pop") && !el.closest("[data-pop]")) pop = null;
-    if (allOpen && !el.closest(".all-tools") && !el.closest("[data-all]")) allOpen = false;
+    if (allOpen && !el.closest(".all-tools") && !el.closest("[data-all]") && !el.closest(".pop")) allOpen = false;
   }
 
   function key(e: KeyboardEvent) {
@@ -133,12 +139,14 @@
   }
 
   const headingLabel = $derived(editor.lineHeading ? t(HEADING_LABEL[editor.lineHeading as Heading]) : t("format.normal"));
-  const swatch = $derived(COLORS.find((c) => c.name === lastColor)?.css ?? "currentColor");
+  const swatch = $derived(colors.last.css);
 </script>
 
 <svelte:window onpointerdown={outside} onkeydown={key} />
 
 <div class="format-bar" role="toolbar" aria-label={t("format.bar")}>
+  <!-- Groups that do not fit are clipped; "See all" always stays visible. -->
+  <div class="groups">
   <div class="group">
     <button class="icon-btn" disabled={!hasDoc || !editor.canUndo} onmousedown={keep} onclick={() => run("edit.undo")} title={title("edit.undo")} aria-label={t("action.undo")}><Icon name="undo" /></button>
     <button class="icon-btn" disabled={!hasDoc || !editor.canRedo} onmousedown={keep} onclick={() => run("edit.redo")} title={title("edit.redo")} aria-label={t("action.redo")}><Icon name="redo" /></button>
@@ -147,6 +155,11 @@
   <div class="group">
     <button class="select-btn style" disabled={!canEdit} onmousedown={keep} onclick={styleMenu} title={t("format.styleHint")}>
       <span class="ellipsis">{headingLabel}</span>
+      <Icon name="chevron-down" size={12} />
+    </button>
+    <button class="select-btn font" data-pop disabled={!canEdit} onmousedown={keep} onclick={(e) => openPop(e, "font")} title={t("fontMenu.hint")}>
+      <Icon name="type" size={14} />
+      <span class="ellipsis" style:font-family={mainFont && mainFont.source !== "default" ? `"${mainFont.name}"` : undefined}>{mainFont?.name ?? t("fontMenu.title")}</span>
       <Icon name="chevron-down" size={12} />
     </button>
     <button class="select-btn" disabled={!canEdit} onmousedown={keep} onclick={sizeMenu} title={t("format.size")} aria-label={t("format.size")}>
@@ -161,7 +174,7 @@
     <button class="icon-btn" disabled={!canEdit} onmousedown={keep} onclick={() => run("edit.underline")} title={title("edit.underline")} aria-label={t("action.underline")}><Icon name="underline" /></button>
     <button class="icon-btn" disabled={!canEdit} onmousedown={keep} onclick={() => run("edit.typewriter")} title={title("edit.typewriter")} aria-label={t("action.typewriter")}><Icon name="code" /></button>
     <div class="split">
-      <button class="icon-btn" disabled={!canEdit} onmousedown={keep} onclick={() => color(lastColor)} title={t("format.colorApply", { color: t(`color.${lastColor}` as MessageKey) })} aria-label={t("format.color")} style="--swatch: {swatch}">
+      <button class="icon-btn" disabled={!canEdit} onmousedown={keep} onclick={() => colors.apply(colors.last)} title={t("format.colorApply", { color: colors.last.name })} aria-label={t("format.color")} style="--swatch: {swatch}">
         <Icon name="text-color" />
       </button>
       <button class="icon-btn caret" data-pop disabled={!canEdit} onmousedown={keep} onclick={(e) => openPop(e, "color")} title={t("format.color")} aria-label={t("format.color")}><Icon name="chevron-down" size={12} /></button>
@@ -207,20 +220,17 @@
     <Icon name="at" size={16} /><span>{t("format.macros")}</span>
   </button>
 
-  <div class="spacer"></div>
+  </div>
 
   <button class="text-btn all" class:active={allOpen} data-all onmousedown={keep} onclick={() => (allOpen = !allOpen)} title={t("format.allHint")}>
     <Icon name="grid" size={15} /><span>{t("format.all")}</span>
   </button>
 </div>
 
-{#if pop?.kind === "color"}
-  <div class="pop colors" style:left="{pop.x}px" style:top="{pop.y}px">
-    {#each COLORS as c (c.name)}
-      <button class="swatch" class:current={c.name === lastColor} style:background={c.css} title={t(`color.${c.name}` as MessageKey)} aria-label={t(`color.${c.name}` as MessageKey)} onmousedown={keep} onclick={() => color(c.name)}></button>
-    {/each}
-    <p class="faint">{t("format.colorNote")}</p>
-  </div>
+{#if pop?.kind === "font"}
+  <FontMenu x={pop.x} y={pop.y} onclose={() => (pop = null)} />
+{:else if pop?.kind === "color"}
+  <ColorMenu x={pop.x} y={pop.y} onclose={() => (pop = null)} />
 {:else if pop?.kind === "table"}
   <div class="pop tables" style:left="{pop.x}px" style:top="{pop.y}px" role="grid" tabindex="-1" onmouseleave={() => (grid = { rows: 0, cols: 0 })}>
     <div class="cells">
@@ -248,6 +258,14 @@
     background: var(--bg-elev);
     border-bottom: 1px solid var(--border);
     min-width: 0;
+    overflow: hidden;
+  }
+  .groups {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
     overflow: hidden;
   }
   .group {
@@ -295,6 +313,18 @@
     opacity: 0.45;
     cursor: default;
   }
+  .select-btn.font {
+    width: 168px;
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    color: var(--text);
+  }
+  .select-btn.font span {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    font-size: 13px;
+  }
   .select-btn.style {
     width: 136px;
     justify-content: space-between;
@@ -312,6 +342,8 @@
     font-weight: 600;
   }
   .all {
+    flex-shrink: 0;
+    margin-left: 6px;
     border: 1px solid var(--border);
     font-weight: 600;
     color: var(--text);
@@ -328,27 +360,6 @@
   .pop p {
     margin: 8px 0 0;
     font-size: 11.5px;
-  }
-  .colors {
-    display: grid;
-    grid-template-columns: repeat(6, 26px);
-    gap: 6px;
-    width: 206px;
-  }
-  .colors p {
-    grid-column: 1 / -1;
-  }
-  .swatch {
-    width: 26px;
-    height: 26px;
-    border-radius: 6px;
-    border: 1px solid var(--border-strong);
-    cursor: pointer;
-  }
-  .swatch:hover,
-  .swatch.current {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
   }
   .cells {
     display: grid;
@@ -368,14 +379,18 @@
     background: var(--accent-soft);
     border-color: var(--accent);
   }
-  @media (max-width: 1320px) {
-    .text-btn:not(.all) span {
+  @media (max-width: 1560px) {
+    .text-btn:not(.all):not(.macros) span {
       display: none;
     }
   }
-  @media (max-width: 1100px) {
-    .wide-only {
+  @media (max-width: 1320px) {
+    .wide-only,
+    .macros span {
       display: none;
+    }
+    .select-btn.font {
+      width: 132px;
     }
   }
 </style>

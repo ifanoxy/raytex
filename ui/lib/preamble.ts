@@ -105,6 +105,25 @@ export function addPackages(text: string, packages: { name: string; options?: st
   return text;
 }
 
+/**
+ * Adds an option to a loaded package (`\usepackage{xcolor}` →
+ * `\usepackage[dvipsnames]{xcolor}`), or loads it with the option.
+ */
+export function addPackageOption(text: string, name: string, option: string): string {
+  const pkg = loadedPackages(text).find((p) => p.names.includes(name));
+  if (!pkg) return addPackages(text, [{ name, options: option }]);
+  const options = pkg.options.split(",").map((o) => o.trim()).filter(Boolean);
+  if (options.includes(option)) return text;
+  const code = `\\usepackage[${[...options, option].join(",")}]{${name}}`;
+  if (pkg.names.length > 1) {
+    // A line loading several packages: its options apply to all of them, so
+    // the package gets a line of its own.
+    const others = `\\usepackage${pkg.options ? `[${pkg.options}]` : ""}{${pkg.names.filter((n) => n !== name).join(",")}}`;
+    return `${text.slice(0, pkg.from)}${others}\n${code}${text.slice(pkg.to)}`;
+  }
+  return text.slice(0, pkg.from) + code + text.slice(pkg.to);
+}
+
 /** Adds lines after the last package (or after `after` when loaded), unless already there. */
 export function addLines(text: string, lines: string[], after?: string): string {
   const code = mask(text).slice(0, preambleEnd(text));

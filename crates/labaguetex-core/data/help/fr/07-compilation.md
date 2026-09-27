@@ -44,11 +44,15 @@ La méthode intégrée (recommandée) :
 
 Les fichiers auxiliaires (`.aux`, `.log`, `.toc`…) sont rangés dans le dossier `build/` : votre projet reste propre. Le panneau **Sortie** affiche la sortie brute de chaque étape.
 
+**Préambule précompilé** (pdfLaTeX) : après une première compilation, labaguetex prépare en arrière-plan une version « précompilée » du préambule (avec `mylatexformat`). Les compilations suivantes commencent directement à `\begin{document}` : souvent deux fois plus rapides (0,6 s au lieu de 1,3 s avec TikZ et pgfplots), le PDF est identique. Le préambule est préparé à nouveau dès qu'il change. Les documents qui écrivent des fichiers dans leur préambule (index, glossaires, `minted`…) sont compilés normalement. Réglage : *Réglages › Compilation › Précompiler le préambule*.
+
 Autres méthodes : **latexmk**, **une seule passe**, ou vos **étapes personnalisées** (avec les variables `%DOC%`, `%DOCFILE%`, `%OUTDIR%`, `%DIR%`, `%ENGINE%`).
 
 ## Lire les erreurs
 
 La console (panneaux **Problèmes** et **Sortie**) ne s'ouvre jamais d'elle-même : les erreurs sont soulignées dans le texte, leur nombre s'affiche en rouge dans la barre du haut et, quand vous avez lancé la compilation vous-même, une notification propose **Voir les problèmes**. Fermez la console avec sa croix ; rouvrez-la par le menu **Affichage** ou <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>J</kbd>.
+
+Tout le texte des panneaux se sélectionne et se copie : glissez sur la sortie du compilateur (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>A</kbd> la sélectionne en entier) ou sur un message ; **Tout copier** copie les problèmes affichés (`fichier:ligne : message`), et le clic droit sur un problème propose de copier son message, avec ou sans son emplacement.
 
 Le panneau **Problèmes** regroupe les erreurs par fichier :
 

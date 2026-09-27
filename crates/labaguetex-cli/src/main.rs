@@ -448,6 +448,7 @@ fn build_cmd(
         cancel: &cancel,
         lang,
         source: &source,
+        background: false,
     };
     let outcome = build::run(&plan, &ctx, &mut |e| match e {
         BuildEvent::Step { name, .. } => eprintln!("▸ {name}"),

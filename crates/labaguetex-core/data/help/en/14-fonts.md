@@ -1,6 +1,11 @@
 # Fonts
 
-The font gives the document its character. labaguetex offers three ways to choose it, in *Format › Fonts…* or the command palette.
+The font gives the document its character. The **font box** of the formatting bar (like in a word processor) shows the font of the document; a click opens the **Document fonts** menu:
+
+- one line per use — **main text**, **sans-serif** (headings of some classes, `\textsf`), **code** (`\texttt`), **maths** — with the current font: a click to choose another one, the cross to go back to the default font;
+- **fonts for passages**: a font added for a few words, a title, a quotation. Select the text, then *Choose a font for the selection…*; afterwards, *Apply* puts any selection in that font (`{\fontGeorgia …}`), the pencil changes it and the bin removes it.
+
+Several fonts thus combine naturally: a main font, another one for headings, one for code, and as many passage fonts as needed. The font window offers three sources:
 
 ## LaTeX fonts (every engine)
 
@@ -41,4 +46,4 @@ The document then compiles anywhere, even on a computer where the font is not in
 ## Good to know
 
 - The first LuaLaTeX build with a system font can take longer: LuaLaTeX prepares its list of fonts once and for all.
-- To go back to the default font, delete (or comment out) the `\setmainfont` line or the `\usepackage` of the font.
+- To go back to the default font: the cross of the **Document fonts** menu (it removes the `\setmainfont…` line or comments out the `\usepackage` of the font).

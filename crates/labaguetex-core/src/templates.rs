@@ -572,6 +572,7 @@ mod tests {
                     cancel: &cancel,
                     lang: Lang::En,
                     source: &source,
+                    background: false,
                 };
                 let outcome = crate::build::run(&plan, &ctx, &mut |_| {});
                 let errors: Vec<String> = outcome

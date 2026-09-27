@@ -33,8 +33,6 @@ class BuildStore {
   output: ConsoleLine[] = [];
   /** The running build was asked for by the user (not a live or on-save build). */
   manual = $state(false);
-  /** A build asked for by the user is waiting to start. */
-  private manualPending = false;
 
   get status(): "idle" | "running" | "success" | "failed" | "cancelled" {
     if (this.running) return "running";
@@ -45,11 +43,9 @@ class BuildStore {
   }
 
   async init() {
-    await ipc.on("build:started", ({ plan }) => {
-      // Requests are coalesced by the engine: a build is "manual" when the
-      // user asked for one since the previous build started.
-      this.manual = this.manualPending;
-      this.manualPending = false;
+    await ipc.on("build:started", ({ plan, manual }) => {
+      // The engine tells which builds the user asked for (queued requests are coalesced).
+      this.manual = manual;
       this.running = true;
       this.plan = plan;
       this.step = null;
@@ -63,7 +59,7 @@ class BuildStore {
       this.push([{ stream: "cmd", text: `$ ${command}` }]);
     });
     await ipc.on("build:output", ({ lines }) => this.push(lines));
-    await ipc.on("build:finished", ({ outcome, error }) => this.finished(outcome, error));
+    await ipc.on("build:finished", ({ outcome, error, manual }) => this.finished(outcome, error, manual));
   }
 
   private push(lines: ConsoleLine[]) {
@@ -97,14 +93,12 @@ class BuildStore {
       else ui.openOverlay("setup");
       return;
     }
-    if (!opts.auto) this.manualPending = true;
     // The engine reads files from disk: save first.
     await editor.saveAll({ auto: true, silent: true });
     await editor.flush();
     try {
-      await ipc.build(target);
+      await ipc.build(target, !opts.auto);
     } catch (e) {
-      if (!opts.auto) this.manualPending = false;
       ui.toast("error", t("build.failedToStart"), { detail: String(e) });
     }
   }
@@ -139,10 +133,10 @@ class BuildStore {
     diagnostics.setBuild([]);
   }
 
-  private finished(outcome: BuildOutcome | null, error: Diagnostic | null) {
+  private finished(outcome: BuildOutcome | null, error: Diagnostic | null, manual: boolean) {
     this.running = false;
     this.step = null;
-    const auto = !this.manual;
+    const auto = !manual;
     this.manual = false;
     if (error) {
       this.error = error;

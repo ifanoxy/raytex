@@ -12,6 +12,8 @@ import { tex } from "./tex.svelte";
 import { ui } from "./ui.svelte";
 
 const AUTHOR_KEY = "labaguetex.author";
+/** Thumbnails compiled at the same time (the engine allows as many). */
+const THUMB_WORKERS = 3;
 /** Width of the rendered thumbnails, in CSS pixels. */
 const THUMB_WIDTH = 150;
 
@@ -49,7 +51,9 @@ class TemplatesStore {
   applied = $state<string | null>(null);
   applying = $state<string | null>(null);
   private lang = "";
-  private queue: Promise<void> = Promise.resolve();
+  /** Thumbnails waiting to be compiled, and the workers compiling them. */
+  private pending: TemplateInfo[] = [];
+  private workers = 0;
   /** Text put in the main file by the last template (replacing it needs no confirmation). */
   private lastText: string | null = null;
 
@@ -57,6 +61,7 @@ class TemplatesStore {
   async load(force = false) {
     if (!force && this.lang === i18n.lang && this.list.length) return;
     if (this.lang !== i18n.lang) {
+      this.pending = [];
       for (const th of Object.values(this.thumbs)) if (th.state === "ready") URL.revokeObjectURL(th.url);
       this.thumbs = {};
     }
@@ -65,15 +70,22 @@ class TemplatesStore {
     this.renderAll();
   }
 
-  /** Compiles and renders missing thumbnails, one at a time. */
+  /** Compiles and renders missing thumbnails, a few at a time (in list order). */
   renderAll() {
     if (!tex.ready) return;
     for (const tpl of this.list) {
       if (this.thumbs[tpl.id]) continue;
       this.thumbs[tpl.id] = { state: "loading" };
-      const lang = this.lang;
-      this.queue = this.queue.then(async () => {
-        if (lang !== this.lang) return;
+      this.pending.push(tpl);
+    }
+    while (this.workers < THUMB_WORKERS && this.pending.length) void this.worker();
+  }
+
+  private async worker() {
+    this.workers++;
+    try {
+      for (let tpl = this.pending.shift(); tpl; tpl = this.pending.shift()) {
+        const lang = this.lang;
         try {
           const pdf = await ipc.templateThumbnail(tpl.id);
           const img = await renderFirstPage(pdf);
@@ -82,7 +94,9 @@ class TemplatesStore {
         } catch {
           if (lang === this.lang) this.thumbs[tpl.id] = { state: "failed" };
         }
-      });
+      }
+    } finally {
+      this.workers--;
     }
   }
 

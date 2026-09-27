@@ -368,13 +368,21 @@ pub async fn template_thumbnail(app: AppHandle, id: String) -> CmdResult<String>
             .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or_else(|| "main".into());
         let pdf = out.join(format!("{stem}.pdf"));
-        // One template at a time: they are compiled in the background.
-        let _guard = state.thumbnails.lock().map_err(|e| e.to_string())?;
+        // One compilation per template folder, a few templates at a time.
+        let dir_lock = state
+            .thumbnail_dirs
+            .lock()
+            .map_err(|e| e.to_string())?
+            .entry(dir.clone())
+            .or_default()
+            .clone();
+        let _dir = dir_lock.lock().map_err(|e| e.to_string())?;
         if pdf.is_file() {
             return Ok(pdf.to_string_lossy().into_owned());
         }
         // Sources in `dir`, around `out/`: `\include` writes `.aux` files in
         // sub-folders of the output folder, which must be inside the sources.
+        let _slot = state.thumbnails.acquire();
         let main =
             templates::write_files(&id, &dir, &templates::example_values(lang), Some(&user_dir))
                 .map_err(err)?;

@@ -72,7 +72,8 @@ export const wordCount = (path: string) => call<{ file: T.WordCount; project: T.
 export const rootOf = (path: string) => call<string | null>("root_of", { path });
 
 // --------------------------------------------------------------- build
-export const build = (path: string) => call<void>("build", { path });
+/** Starts (or queues) a build; `manual`: asked for by the user (not live or on save). */
+export const build = (path: string, manual: boolean) => call<void>("build", { path, manual });
 export const cancelBuild = () => call<void>("cancel_build");
 export const buildPlan = (path: string) => call<{ Ok?: T.BuildPlan; Err?: T.Diagnostic }>("build_plan", { path });
 export const cleanBuild = (path: string) => call<number>("clean_build", { path });
@@ -124,10 +125,10 @@ export const lintRules = () => call<[string, T.Severity][]>("lint_rules");
 
 // -------------------------------------------------------------- events
 export interface Events {
-  "build:started": { plan: T.BuildPlan };
+  "build:started": { plan: T.BuildPlan; manual: boolean };
   "build:step": { name: string; command: string };
   "build:output": { lines: T.OutputLine[] };
-  "build:finished": { outcome: T.BuildOutcome | null; error: T.Diagnostic | null };
+  "build:finished": { outcome: T.BuildOutcome | null; error: T.Diagnostic | null; manual: boolean };
   "tex:status": T.TexStatus;
   "job:output": { id: number; lines: string[] };
   "job:finished": { id: number; success: boolean; cancelled: boolean; code: number | null };

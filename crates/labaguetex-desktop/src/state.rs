@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::time::{Instant, SystemTime};
 
 use labaguetex_core::i18n::Lang;
@@ -121,8 +121,9 @@ pub struct Project {
 pub struct BuildControl {
     /// Cancellation flag of the running build.
     pub running: Option<Arc<AtomicBool>>,
-    /// A build requested while another was running (coalesced).
-    pub queued: Option<PathBuf>,
+    /// A build requested while another was running (coalesced), and
+    /// whether one of the coalesced requests came from the user.
+    pub queued: Option<(PathBuf, bool)>,
 }
 
 /// Cached SyncTeX data of a PDF.
@@ -163,8 +164,10 @@ pub struct AppState {
     pub own_writes: Mutex<HashMap<PathBuf, Instant>>,
     /// Previews run one at a time; the last result of each kind is kept.
     pub previews: Mutex<HashMap<String, (u64, labaguetex_core::preview::PreviewOutcome)>>,
-    /// Template thumbnails are compiled one at a time.
-    pub thumbnails: Mutex<()>,
+    /// Template thumbnails compiled at the same time (a few, not all).
+    pub thumbnails: Slots,
+    /// One compilation per thumbnail folder.
+    pub thumbnail_dirs: Mutex<HashMap<PathBuf, Arc<Mutex<()>>>>,
     /// Fonts installed on the system (read once).
     pub system_fonts: Mutex<Option<Arc<Vec<labaguetex_core::fonts::FontFamily>>>>,
 }
@@ -195,7 +198,8 @@ impl AppState {
             session: Mutex::new(session),
             own_writes: Mutex::new(HashMap::new()),
             previews: Mutex::new(HashMap::new()),
-            thumbnails: Mutex::new(()),
+            thumbnails: Slots::new(3),
+            thumbnail_dirs: Mutex::new(HashMap::new()),
             system_fonts: Mutex::new(None),
         }
     }
@@ -319,5 +323,47 @@ impl AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// A counting semaphore: at most `max` holders at a time.
+#[derive(Debug)]
+pub struct Slots {
+    used: Mutex<usize>,
+    freed: Condvar,
+    max: usize,
+}
+
+impl Slots {
+    pub fn new(max: usize) -> Self {
+        Self {
+            used: Mutex::new(0),
+            freed: Condvar::new(),
+            max: max.max(1),
+        }
+    }
+
+    /// Waits for a free slot; it is given back when the guard is dropped.
+    pub fn acquire(&self) -> SlotGuard<'_> {
+        let mut used = recover(self.used.lock());
+        while *used >= self.max {
+            used = self.freed.wait(used).unwrap_or_else(|e| e.into_inner());
+        }
+        *used += 1;
+        SlotGuard { slots: self }
+    }
+}
+
+/// A slot of [`Slots`], released when dropped.
+#[derive(Debug)]
+pub struct SlotGuard<'a> {
+    slots: &'a Slots,
+}
+
+impl Drop for SlotGuard<'_> {
+    fn drop(&mut self) {
+        let mut used = recover(self.slots.used.lock());
+        *used -= 1;
+        self.slots.freed.notify_one();
     }
 }

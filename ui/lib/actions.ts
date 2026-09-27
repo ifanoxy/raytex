@@ -9,6 +9,7 @@ import { toggleComment } from "@codemirror/commands";
 import { gotoLine, openSearchPanel } from "@codemirror/search";
 import { EditorView, type KeyBinding } from "@codemirror/view";
 import { REPOSITORY_URL } from "./constants";
+import { matchesKey } from "./keys";
 import { setAlignment, setList } from "./editor/format";
 import { wrapCommand, wrapEnvironment, wrapMath } from "./editor/structure";
 import { type MessageKey, t } from "./i18n.svelte";
@@ -291,52 +292,8 @@ export async function runAction(id: string) {
 
 // ------------------------------------------------------------ key matching
 
-interface ParsedKey {
-  mod: boolean;
-  ctrl: boolean;
-  meta: boolean;
-  alt: boolean;
-  shift: boolean;
-  key: string;
-}
-
-function parseKey(spec: string): ParsedKey {
-  const parts = spec.split(/-(?!$)/);
-  const key = parts.pop()!;
-  const k: ParsedKey = { mod: false, ctrl: false, meta: false, alt: false, shift: false, key: key.length === 1 ? key.toLowerCase() : key };
-  for (const p of parts) {
-    if (p === "Mod") k.mod = true;
-    else if (p === "Ctrl" || p === "Control") k.ctrl = true;
-    else if (p === "Cmd" || p === "Meta") k.meta = true;
-    else if (p === "Alt") k.alt = true;
-    else if (p === "Shift") k.shift = true;
-  }
-  if (k.mod) {
-    if (isMac()) k.meta = true;
-    else k.ctrl = true;
-  }
-  return k;
-}
-
-/** Key names of an event: the produced character, and the physical key as a fallback (Alt on macOS, digits on AZERTY). */
-function eventKeys(e: KeyboardEvent): string[] {
-  const names: string[] = [];
-  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-  names.push(k);
-  if (e.code.startsWith("Key")) names.push(e.code.slice(3).toLowerCase());
-  else if (e.code.startsWith("Digit")) names.push(e.code.slice(5));
-  if (k === "+") names.push("=");
-  return names;
-}
-
 export function matches(e: KeyboardEvent, spec: string): boolean {
-  const k = parseKey(spec);
-  if (e.ctrlKey !== k.ctrl || e.metaKey !== k.meta || e.altKey !== k.alt) return false;
-  const names = eventKeys(e);
-  if (!names.includes(k.key)) return false;
-  // Punctuation often needs Shift on non-US layouts: only check Shift for letters, digits and named keys.
-  const punctuation = k.key.length === 1 && !/[a-z0-9]/.test(k.key);
-  return punctuation ? !k.shift || e.shiftKey : e.shiftKey === k.shift;
+  return matchesKey(e, spec, isMac());
 }
 
 /** Window-level shortcuts. Returns true when an action ran. */

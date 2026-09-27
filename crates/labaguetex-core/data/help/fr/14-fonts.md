@@ -1,6 +1,11 @@
 # Polices
 
-La police donne son caractère au document. labaguetex propose trois façons de la choisir, dans *Mise en forme › Polices…* ou la palette de commandes.
+La police donne son caractère au document. La **case police** de la barre de mise en forme (comme dans un traitement de texte) montre la police du document ; un clic ouvre le menu **Polices du document** :
+
+- une ligne par usage — **texte principal**, **sans empattement** (titres de certaines classes, `\textsf`), **code** (`\texttt`), **maths** — avec la police actuelle : un clic pour en choisir une autre, la croix pour revenir à la police par défaut ;
+- les **polices pour un passage** : une police ajoutée pour quelques mots, un titre, une citation. Sélectionnez le texte, puis *Choisir une police pour la sélection…* ; ensuite, *Appliquer* met n'importe quelle sélection dans cette police (`{\fontGeorgia …}`), le crayon la change et la corbeille la supprime.
+
+Plusieurs polices se combinent ainsi naturellement : une police principale, une autre pour les titres, une pour le code, et autant de polices de passage que voulu. La fenêtre de choix propose trois sources :
 
 ## Polices LaTeX (tous les moteurs)
 
@@ -41,4 +46,4 @@ Le document compile alors partout, même sur un ordinateur où la police n'est p
 ## Bon à savoir
 
 - La première compilation LuaLaTeX avec une police du système peut être plus longue : LuaLaTeX prépare la liste des polices une fois pour toutes.
-- Pour revenir à la police par défaut, supprimez (ou commentez) la ligne `\setmainfont` ou le `\usepackage` de la police.
+- Pour revenir à la police par défaut : la croix du menu **Polices du document** (elle retire la ligne `\setmainfont…` ou commente le `\usepackage` de la police).

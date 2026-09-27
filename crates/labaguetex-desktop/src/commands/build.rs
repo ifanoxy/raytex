@@ -1,14 +1,16 @@
 //! Compilation commands and events.
 //!
 //! Events emitted while building:
-//! * `build:started` `{ plan }`
+//! * `build:started` `{ plan, manual }` (`manual`: asked for by the user,
+//!   not a live or on-save build)
 //! * `build:step` `{ name, command }`
 //! * `build:output` `{ lines: [{ stream, text }] }` (batched every 60 ms)
-//! * `build:finished` `{ outcome?, error? }`
+//! * `build:finished` `{ outcome?, error?, manual }`
 //!
 //! A build requested while another one runs is queued and coalesced: only
 //! the latest request runs after the current build (typing fast never
-//! stacks builds up).
+//! stacks builds up); it counts as asked for by the user when one of the
+//! coalesced requests was.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -40,6 +42,7 @@ pub struct OutputLine {
 #[derive(Debug, Clone, Serialize)]
 struct Started {
     plan: BuildPlan,
+    manual: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -57,16 +60,24 @@ struct Step {
 struct Finished {
     outcome: Option<BuildOutcome>,
     error: Option<Diagnostic>,
+    manual: bool,
 }
 
 /// Starts (or queues) the compilation of the document containing `path`.
 #[tauri::command]
-pub async fn build(app: AppHandle, state: State<'_, AppState>, path: String) -> CmdResult<()> {
+pub async fn build(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+    manual: Option<bool>,
+) -> CmdResult<()> {
     let file = abs(&path);
+    let manual = manual.unwrap_or(false);
     let flag = {
         let mut b = state.build();
         if b.running.is_some() {
-            b.queued = Some(file);
+            let was_manual = b.queued.as_ref().is_some_and(|(_, m)| *m);
+            b.queued = Some((file, manual || was_manual));
             return Ok(());
         }
         let flag = Arc::new(AtomicBool::new(false));
@@ -75,15 +86,15 @@ pub async fn build(app: AppHandle, state: State<'_, AppState>, path: String) -> 
     };
     std::thread::spawn(move || {
         let state = app.state::<AppState>();
-        run_one(&app, &state, &file, &flag);
+        run_one(&app, &state, &file, &flag, manual);
         loop {
             let next = {
                 let mut b = state.build();
                 match b.queued.take() {
-                    Some(f) => {
+                    Some((f, m)) => {
                         let fl = Arc::new(AtomicBool::new(false));
                         b.running = Some(fl.clone());
-                        Some((f, fl))
+                        Some((f, fl, m))
                     }
                     None => {
                         b.running = None;
@@ -92,7 +103,7 @@ pub async fn build(app: AppHandle, state: State<'_, AppState>, path: String) -> 
                 }
             };
             match next {
-                Some((f, fl)) => run_one(&app, &state, &f, &fl),
+                Some((f, fl, m)) => run_one(&app, &state, &f, &fl, m),
                 None => break,
             }
         }
@@ -138,7 +149,7 @@ pub(crate) fn prepare(state: &AppState, file: &Path) -> Option<Prepared> {
     })
 }
 
-fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBool>) {
+fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBool>, manual: bool) {
     let lang = state.lang();
     let Some(prep) = prepare(state, file) else {
         let _ = app.emit(
@@ -146,6 +157,7 @@ fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBo
             Finished {
                 outcome: None,
                 error: None,
+                manual,
             },
         );
         return;
@@ -159,13 +171,20 @@ fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBo
                 Finished {
                     outcome: None,
                     error: Some(e.to_diagnostic(lang)),
+                    manual,
                 },
             );
             return;
         }
     };
     let dist = dist.expect("plan checked the distribution");
-    let _ = app.emit("build:started", Started { plan: plan.clone() });
+    let _ = app.emit(
+        "build:started",
+        Started {
+            plan: plan.clone(),
+            manual,
+        },
+    );
 
     // Forward output in batches to keep the interface fluid on verbose builds.
     let (tx, rx) = mpsc::channel::<OutputLine>();
@@ -205,6 +224,8 @@ fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBo
         cancel,
         lang,
         source: &source,
+        // The app lives on: formats of preambles are prepared for the next builds.
+        background: true,
     };
     let outcome = build::run(&plan, &ctx, &mut |ev| match ev {
         BuildEvent::Step { name, command } => {
@@ -233,6 +254,7 @@ fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBo
         Finished {
             outcome: Some(outcome),
             error: None,
+            manual,
         },
     );
 }

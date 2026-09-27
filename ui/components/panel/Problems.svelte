@@ -20,6 +20,7 @@
   let expanded = $state<Set<Diagnostic>>(new Set());
 
   const ICON = { error: "alert-circle", warning: "alert-triangle", info: "info", hint: "lightbulb" } as const;
+  const SEVERITY = { error: "problems.severity.error", warning: "problems.severity.warning", info: "problems.severity.info", hint: "problems.severity.hint" } as const;
   const SOURCE: Record<string, string> = { latex: "LaTeX", bibtex: "BibTeX", biber: "Biber", index: "Index", syntax: "labaguetex", lint: "labaguetex", build: "Build" };
 
   const q = $derived(filter.trim().toLowerCase());
@@ -59,9 +60,48 @@
     return line ? (col ? `${line}:${col}` : `${line}`) : "";
   }
 
-  function copy(d: Diagnostic) {
-    const text = [d.file ? `${d.file}:${location(d)}` : "", d.message, d.raw ?? ""].filter(Boolean).join("\n");
+  /** One problem as text: `chapters/intro.tex:12:5: erreur : message`. */
+  function asText(d: Diagnostic, details = false): string {
+    const where = d.file ? `${relative(project.info?.root ?? "", d.file)}${location(d) ? `:${location(d)}` : ""}: ` : "";
+    const lines = [`${where}${t(SEVERITY[d.severity])}: ${d.hint?.title ?? d.message}`];
+    if (d.hint && d.hint.title !== d.message) lines.push(`  ${d.message}`);
+    if (details && (d.contextBefore || d.contextAfter)) lines.push(`  ${d.contextBefore ?? ""}⏐${d.contextAfter ?? ""}`);
+    if (details && d.raw) lines.push(d.raw);
+    return lines.join("\n");
+  }
+
+  function write(text: string) {
     void navigator.clipboard.writeText(text).then(() => ui.toast("success", t("files.copied")));
+  }
+
+  function copy(d: Diagnostic) {
+    write(asText(d, true));
+  }
+
+  function copyAll() {
+    write(groups.flatMap((g) => g.items.map((d) => asText(d))).join("\n"));
+  }
+
+  /** Text selected in the panel (the message stays selectable and copyable). */
+  function selection(): string {
+    return window.getSelection()?.toString() ?? "";
+  }
+
+  /** A click opens the location, unless it ended a text selection. */
+  function clicked(d: Diagnostic) {
+    if (selection()) return;
+    open(d);
+  }
+
+  function menu(e: MouseEvent, d: Diagnostic) {
+    const selected = selection();
+    ui.openMenu(e, [
+      ...(selected ? [{ label: t("problems.copySelection"), icon: "copy", keys: "Mod-c", run: () => write(selected) }, { separator: true }] : []),
+      { label: t("problems.copyMessage"), icon: "copy", run: () => write(d.hint?.title ?? d.message) },
+      { label: t("problems.copyWithLocation"), icon: "copy", run: () => write(asText(d, true)) },
+      { label: t("problems.copyAll"), icon: "copy", run: copyAll },
+      ...(d.file ? [{ separator: true }, { label: t("problems.goTo"), icon: "arrow-right", run: () => open(d) }] : []),
+    ]);
   }
 </script>
 
@@ -80,6 +120,7 @@
   {#if build.outcome}
     <span class="faint small">{t("problems.lastBuild", { engine: build.outcome.engine, pages: build.outcome.pages ?? "?" })}</span>
   {/if}
+  <button class="btn ghost small" disabled={!groups.length} onclick={copyAll} title={t("problems.copyAllHint")}><Icon name="copy" size={13} />{t("problems.copyAll")}</button>
   <button class="btn ghost small" onclick={() => project.lintAll()}><Icon name="refresh" size={13} />{t("problems.recheck")}</button>
 </div>
 
@@ -92,16 +133,17 @@
     </div>
     {#each g.items as d, i (i + d.message + (d.line ?? "") + d.source)}
       {@const open_ = expanded.has(d)}
-      <div class="item {d.severity}" role="listitem">
+      <div class="item {d.severity}" role="listitem" oncontextmenu={(e) => menu(e, d)}>
         <div class="line">
           <button class="expand" onclick={() => toggle(d)} aria-label={t("problems.details")} aria-expanded={open_}>
             <Icon name={open_ ? "chevron-down" : "chevron-right"} size={12} />
           </button>
           <span class="sev"><Icon name={ICON[d.severity]} size={14} /></span>
-          <button class="message" onclick={() => open(d)} ondblclick={() => toggle(d)}>
-            <span class="text selectable">{d.hint?.title ?? d.message}</span>
+          <!-- Not a button: the text must stay selectable (a click without selection opens the location). -->
+          <div class="message selectable" role="button" tabindex="0" onclick={() => clicked(d)} ondblclick={() => toggle(d)} onkeydown={(e) => e.key === "Enter" && open(d)}>
+            <span class="text">{d.hint?.title ?? d.message}</span>
             {#if d.hint && d.hint.title !== d.message}<span class="orig mono">{d.message}</span>{/if}
-          </button>
+          </div>
           <span class="src">{SOURCE[d.source]}{d.code && (d.source === "lint" || d.source === "syntax") ? ` · ${d.code}` : ""}</span>
           {#if location(d)}<button class="loc mono" onclick={() => open(d)}>{location(d)}</button>{/if}
         </div>
@@ -114,7 +156,7 @@
         {/if}
         {#if open_}
           <div class="details">
-            {#if d.hint}<p class="explanation">{@html inlineMarkdown(d.hint.explanation)}</p>{/if}
+            {#if d.hint}<p class="explanation selectable">{@html inlineMarkdown(d.hint.explanation)}</p>{/if}
             {#if d.contextBefore || d.contextAfter}
               <div class="context mono selectable">
                 <span class="before">{d.contextBefore ?? ""}</span><span class="cursor"></span><span class="after">{d.contextAfter ?? ""}</span>
@@ -249,11 +291,15 @@
     flex-direction: column;
     gap: 1px;
     padding: 3px 0;
-    border: none;
-    background: none;
     text-align: left;
+    color: var(--text);
     cursor: pointer;
     line-height: 1.4;
+    outline: none;
+  }
+  .message:focus-visible {
+    box-shadow: 0 0 0 2px var(--accent-soft);
+    border-radius: var(--radius-sm);
   }
   .orig {
     font-size: 11px;

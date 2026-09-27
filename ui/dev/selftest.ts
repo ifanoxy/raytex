@@ -16,6 +16,8 @@ import { editor } from "../lib/state/editor.svelte";
 import { project } from "../lib/state/project.svelte";
 import { distLabel, tex } from "../lib/state/tex.svelte";
 import { media } from "../lib/state/media.svelte";
+import { colors } from "../lib/state/colors.svelte";
+import { fonts } from "../lib/state/fonts.svelte";
 import { templates } from "../lib/state/templates.svelte";
 import { ui } from "../lib/state/ui.svelte";
 import { viewer } from "../lib/state/viewer.svelte";
@@ -356,6 +358,17 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     log(`console opened (${tab}) by ${new Error().stack?.split("\n").slice(1, 5).join(" < ")}`);
     showBottom(tab);
   };
+  const toast = ui.toast.bind(ui);
+  ui.toast = (kind, message, opts) => {
+    if (kind === "error") {
+      const o = build.outcome;
+      const detail = o ? ` [${o.engine}, success ${o.success}, pdf ${!!o.pdf}, steps ${o.steps.map((x) => `${x.name}:${x.exitCode}`).join(" ")}, ${o.diagnostics.filter((d) => d.severity === "error").map((d) => d.message).join(" | ")}]` : "";
+      log(`error notification: ${message}${opts?.detail ? ` — ${opts.detail}` : ""}${detail}`);
+      const tail = build.output.slice(-12).map((l) => l.text).join(" ⏎ ");
+      log(`last output: ${tail}`);
+    }
+    return toast(kind, message, opts);
+  };
   const toggleBottom = ui.toggleBottom.bind(ui);
   ui.toggleBottom = () => {
     log(`console toggled by ${new Error().stack?.split("\n").slice(1, 5).join(" < ")}`);
@@ -530,6 +543,101 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     await scene("macros-panel");
     await editor.saveAll();
     check("final build", await buildOk(log, "final"));
+
+    // ------------------------------------------ precompiled preamble
+    // The format is prepared in the background after a build; the next one uses it.
+    await pause(6000);
+    const t1 = Date.now();
+    check("build with the format", await buildOk(log, "with format"));
+    const usedFormat = build.output.some((l) => l.stream === "cmd" && l.text.includes("-fmt="));
+    results.formatBuildMs = `${Date.now() - t1} ms (format ${usedFormat ? "used" : "not used"})`;
+    check("format used", usedFormat);
+
+    await editor.open(main);
+    const selectText = (needle: string) => {
+      const v = editor.view!;
+      const at = v.state.doc.toString().indexOf(needle);
+      v.dispatch({ selection: { anchor: at, head: at + needle.length }, scrollIntoView: true });
+      v.focus();
+      return at >= 0;
+    };
+
+    // --------------------------------------------------------- colours
+    await colors.refresh();
+    check("select for colour", selectText("Voici un paragraphe"));
+    document.querySelector<HTMLButtonElement>(".format-bar .split .caret")!.click();
+    await until(() => document.querySelectorAll(".color-menu .grid.big .swatch").length >= 68, 5_000, "colour menu");
+    results.colors = document.querySelectorAll(".color-menu .swatch").length;
+    await scene("colors", 1500);
+    document.querySelector<HTMLButtonElement>('.color-menu .swatch[title="Emerald"]')!.click();
+    await pause(600);
+    const withColor = editor.textOf(main) ?? "";
+    check("dvipsnames colour", withColor.includes("\\textcolor{Emerald}{Voici un paragraphe}") && withColor.includes("\\usepackage[dvipsnames]{xcolor}"));
+    check("coloured build", await buildOk(log, "colours"));
+
+    // ----------------------------------------------------------- fonts
+    await fonts.refresh();
+    check("main font read", !!fonts.current?.main.name.startsWith("Latin Modern"), fonts.current?.main.name);
+    check("select for font", selectText("Résumez ici"));
+    document.querySelector<HTMLButtonElement>(".format-bar .select-btn.font")!.click();
+    await until(() => !!document.querySelector(".font-menu .add"), 5_000, "font menu");
+    await scene("font-menu", 1500);
+    document.querySelector<HTMLButtonElement>(".font-menu .add")!.click();
+    await until(() => document.querySelectorAll(".list .font").length > 20, 20_000, "system fonts");
+    clickText(".list .font", "Georgia");
+    await pause(1500);
+    check("role for a passage", !!document.querySelector(".roles .role.active")?.textContent?.match(/passage/i));
+    await scene("font-dialog", 1500);
+    document.querySelector<HTMLButtonElement>(".right .btn.primary")!.click();
+    await until(() => ui.overlay === null, 20_000, "font applied");
+    await pause(500);
+    const withFont = editor.textOf(main) ?? "";
+    check("extra font defined and applied", withFont.includes("\\newfontfamily\\fontGeorgia") && withFont.includes("{\\fontGeorgia Résumez ici"), withFont.slice(0, 300));
+    await fonts.refresh();
+    check("extra font listed", !!fonts.current?.extra.some((e) => e.command === "fontGeorgia"));
+    check("font build (LuaLaTeX)", await buildOk(log, "fonts"));
+
+    // ------------------------------------------------- TikZ whiteboard
+    const z = editor.view!;
+    const endAt = z.state.doc.toString().lastIndexOf("\\end{document}");
+    z.dispatch({ changes: { from: endAt, insert: "\n\n" }, selection: { anchor: endAt + 1 } });
+    document.querySelector<HTMLButtonElement>(".format-bar .text-btn.tikz")!.click();
+    await until(() => !!document.querySelector(".studio .board svg"), 10_000, "whiteboard");
+    await pause(500);
+    const svg = document.querySelector<SVGSVGElement>(".studio .board svg")!;
+    const boardEl = document.querySelector<HTMLElement>(".studio .board")!;
+    const r = svg.getBoundingClientRect();
+    const pe = (type: string, x: number, y: number) => svg.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: r.left + x, clientY: r.top + y, pointerId: 1, button: 0, isPrimary: true }));
+    const k = (key: string) => boardEl.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    const drag = (x1: number, y1: number, x2: number, y2: number) => {
+      pe("pointerdown", x1, y1);
+      pe("pointermove", (x1 + x2) / 2, (y1 + y2) / 2);
+      pe("pointermove", x2, y2);
+      pe("pointerup", x2, y2);
+    };
+    boardEl.focus();
+    k("r");
+    drag(120, 300, 260, 220);
+    k("c");
+    drag(420, 260, 470, 260);
+    k("a");
+    drag(260, 260, 370, 260);
+    k("t");
+    pe("pointerdown", 190, 180);
+    await pause(150);
+    const input = document.querySelector<HTMLInputElement>(".node-input")!;
+    input.value = "Entrée $x_1$";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    await pause(2500);
+    check("whiteboard shapes", document.querySelectorAll(".studio .board g.shape").length === 3 && !!document.querySelector(".studio .board .node .katex"));
+    await scene("whiteboard", 2500);
+    document.querySelector<HTMLButtonElement>(".footer .btn.primary")!.click();
+    await until(() => ui.overlay === null, 20_000, "drawing inserted");
+    const withDrawing = editor.textOf(main) ?? "";
+    check("drawing inserted", /\\draw \([^)]*\) rectangle/.test(withDrawing) && withDrawing.includes("\\node at") && withDrawing.includes("{Entrée $x_1$}"));
+    check("drawing build", await buildOk(log, "drawing"));
+    await scene("final-document", 2500);
   } catch (e) {
     results.failure = String(e);
   }

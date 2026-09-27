@@ -24,6 +24,8 @@ labaguetex (LaTeX + baguette) aide les débutants à apprendre et laisse les exp
 - Autocomplétion selon le contexte : commandes et environnements du noyau LaTeX, de chaque package chargé par le document (lus dans la source du package, quel qu'il soit), de vos `\newcommand` ; étiquettes avec leur numéro, citations avec auteurs et titre, fichiers, options, couleurs.
 - L'autocomplétion crée les accolades et les laisse vides, à vous de les remplir ; choisir une commande d'un package non chargé ajoute le `\usepackage`.
 - Aperçu des formules en direct (KaTeX, avec vos macros), documentation au survol, aperçu des images.
+- Les polices depuis la barre de mise en forme : polices du texte, des titres, du code et des maths d'un coup d'œil, chacune changée ou remise par défaut en un clic, et des polices pour un passage appliquées à la sélection ; des couleurs qui suivent le document (toutes celles de `xcolor`, `dvipsnames` et SVG quand xcolor est chargé, les couleurs du document, toute couleur au choix).
+- Console et problèmes dont le texte se sélectionne et se copie.
 - Raccourcis `@` en mode mathématique (`@a` → `\alpha`, `@/` → fraction), indiqués à côté des commandes dans les suggestions et dessinés dans leur propre panneau ; extraits ; macros personnelles avec déclencheurs et raccourcis clavier.
 - Aller à la définition, trouver les références, renommer étiquettes, clés de citation et commandes dans tout le projet.
 - `$` ne s'ouvre en paire que là où une formule peut commencer ; renommer un `\begin{…}` renomme son `\end{…}` ; `Ctrl/⌘ + Z` annule où que soit le focus, `Ctrl/⌘ + Maj + Z` ou `Ctrl/⌘ + Y` rétablit.
@@ -32,13 +34,14 @@ labaguetex (LaTeX + baguette) aide les débutants à apprendre et laisse les exp
 
 **Images, schémas et polices**
 - *Insérer des images* : choisissez, collez ou déposez des images (ou prenez celles du projet) ; dossier, nom de fichier sûr pour LaTeX, largeur avec aperçu de la page, position, légende et étiquette ; plusieurs images deviennent des sous-figures. Les SVG sont convertis en PDF vectoriel, WebP/GIF/HEIC/BMP/TIFF en PNG ; `graphicx`, `subcaption`, `float` sont ajoutés si besoin.
-- *Studio TikZ* : une galerie de 22 schémas (courbes, organigramme, arbre, carte mentale, Venn, géométrie, circuit, automate, graphe, réseau de neurones, diagramme commutatif…), des boutons d'éléments et de styles, un aperçu compilé en direct avec le préambule du document, une grille en centimètres, les coordonnées insérées d'un clic, l'insertion au curseur ou dans un fichier séparé, les packages et `\usetikzlibrary` ajoutés automatiquement ; modification d'un schéma existant sur place.
+- *Studio TikZ* : un **tableau blanc** pour dessiner à la souris sur une grille fine et réglable (le code TikZ s'écrit tout seul et reste lié au dessin dans les deux sens), une galerie de 22 schémas (courbes, organigramme, arbre, carte mentale, Venn, géométrie, circuit, automate, graphe, réseau de neurones, diagramme commutatif…), des boutons d'éléments et de styles, un aperçu compilé en direct avec le préambule du document, une grille en centimètres, les coordonnées insérées d'un clic, l'insertion au curseur ou dans un fichier séparé, les packages et `\usetikzlibrary` ajoutés automatiquement ; modification d'un schéma existant sur place.
 - *Polices* : n'importe quelle police de l'ordinateur ou des fichiers de police copiés dans le projet (fontspec, chaque style nommé, passage à LuaLaTeX), ou des packages de polices LaTeX qui fonctionnent aussi avec pdfLaTeX, toujours avec un aperçu compilé.
 
 **Compiler**
 - En direct par défaut : le document est compilé à chaque pause dans la frappe et le PDF suit ; ou une touche (`Ctrl/⌘ + Entrée`), ou à l'enregistrement.
 - La console ne s'ouvre jamais d'elle-même : les erreurs sont soulignées, comptées dans la barre du haut et annoncées après une compilation demandée.
 - Choix automatique du moteur (`% !TEX program`, `fontspec` → LuaLaTeX, Tectonic, pdfLaTeX).
+- Préambule précompilé (pdfLaTeX) : préparé en arrière-plan, passes 35 à 60 % plus rapides.
 - Compilation intelligente : Biber, BibTeX, makeindex, glossaires seulement quand leurs entrées ont changé, nouvelles passes jusqu'à des renvois stables ; ou latexmk, une passe unique, ou vos propres étapes.
 - Fichiers auxiliaires dans `build/` : le projet reste propre.
 

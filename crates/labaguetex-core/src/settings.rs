@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::tex::Engine;
 
 /// Version of the settings format written by this release (see [`Settings::load`]).
-pub const SETTINGS_VERSION: u32 = 2;
+pub const SETTINGS_VERSION: u32 = 3;
 
 /// Settings of the application, stored in the user's configuration directory.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -289,6 +289,9 @@ pub struct BuildSettings {
     pub miktex_auto_install: bool,
     /// Copy the PDF next to the root file after a successful build.
     pub copy_pdf_to_root: bool,
+    /// Precompile the preamble of pdfLaTeX documents (faster passes, see
+    /// [`crate::build::preamble`]).
+    pub precompile_preamble: bool,
 }
 
 impl Default for BuildSettings {
@@ -298,7 +301,7 @@ impl Default for BuildSettings {
             tool: BuildTool::Auto,
             bib_tool: BibTool::Auto,
             auto_build: AutoBuild::OnIdle,
-            auto_build_delay_ms: 800,
+            auto_build_delay_ms: 600,
             out_dir: "build".into(),
             synctex: true,
             shell_escape: false,
@@ -311,6 +314,7 @@ impl Default for BuildSettings {
             show_badboxes: true,
             miktex_auto_install: true,
             copy_pdf_to_root: false,
+            precompile_preamble: true,
         }
     }
 }
@@ -426,6 +430,11 @@ impl Settings {
             // Version 2: the preview follows the text by default. "After each
             // save" was the old default, not a choice (saving is automatic).
             self.build.auto_build = AutoBuild::OnIdle;
+        }
+        if self.version < 3 && self.build.auto_build_delay_ms == 800 {
+            // Version 3: builds are faster (precompiled preambles), the
+            // preview follows sooner. 800 ms was the old default.
+            self.build.auto_build_delay_ms = 600;
         }
         self.version = SETTINGS_VERSION;
         self
@@ -595,5 +604,9 @@ mod tests {
         chosen.save(&path).unwrap();
         assert_eq!(Settings::load(&path).build.auto_build, AutoBuild::OnSave);
         assert_eq!(Settings::default().build.auto_build, AutoBuild::OnIdle);
+        std::fs::write(&path, "version = 2\n[build]\nautoBuildDelayMs = 800\n").unwrap();
+        assert_eq!(Settings::load(&path).build.auto_build_delay_ms, 600);
+        std::fs::write(&path, "version = 2\n[build]\nautoBuildDelayMs = 1500\n").unwrap();
+        assert_eq!(Settings::load(&path).build.auto_build_delay_ms, 1500);
     }
 }

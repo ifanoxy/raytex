@@ -2,7 +2,10 @@
   // "See all": every formatting and insertion command, grouped, with its
   // shortcut, and the @ shortcuts to type symbols faster.
   import { getAction, keyFor, runAction } from "$lib/actions";
-  import { COLORS, HEADINGS, type Heading, setColor, setHeading, setSize, type Size } from "$lib/editor/format";
+  import { BASE_COLORS, type NamedColor } from "$lib/colors";
+  import { COLORS, HEADINGS, type Heading, setHeading, setSize, type Size } from "$lib/editor/format";
+  import { colors } from "$lib/state/colors.svelte";
+  import ColorMenu from "./ColorMenu.svelte";
   import { t, type MessageKey } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { editor } from "$lib/state/editor.svelte";
@@ -135,12 +138,19 @@
     editor.focus();
   }
 
-  async function color(name: string) {
+  async function color(c: NamedColor) {
     onclose();
-    if (!editor.view || !canEdit) return;
-    setColor(editor.view, name);
-    await editor.addPackage("xcolor", editor.view, true);
-    editor.focus();
+    if (canEdit) await colors.apply(c);
+  }
+
+  /** Colours of the document first, then those of xcolor (or the usual ones). */
+  const swatches = $derived([...(colors.current?.defined ?? []), ...(colors.current?.xcolor ? BASE_COLORS : COLORS)]);
+  let colorMenu = $state<{ x: number; y: number } | null>(null);
+
+  function label(c: NamedColor): string {
+    const key = `color.${c.name}` as MessageKey;
+    const text = t(key);
+    return text === key ? c.name : text;
   }
 
   function size(s: Size) {
@@ -155,6 +165,10 @@
     editor.focus();
   }
 </script>
+
+{#if colorMenu}
+  <ColorMenu x={colorMenu.x} y={colorMenu.y} onclose={() => ((colorMenu = null), onclose())} />
+{/if}
 
 <div class="all-tools" role="dialog" aria-label={t("format.all")}>
   <div class="columns">
@@ -177,10 +191,18 @@
           </div>
           <div class="row-title faint">{t("format.color")}</div>
           <div class="swatches">
-            {#each COLORS as c (c.name)}
-              <button class="swatch" disabled={!canEdit} style:background={c.css} title={t(`color.${c.name}` as MessageKey)} aria-label={t(`color.${c.name}` as MessageKey)} onmousedown={(e) => e.preventDefault()} onclick={() => color(c.name)}></button>
+            {#each swatches as c (c.name)}
+              <button class="swatch" disabled={!canEdit} style:background={c.css} title={label(c)} aria-label={label(c)} onmousedown={(e) => e.preventDefault()} onclick={() => color(c)}></button>
             {/each}
           </div>
+          <button
+            class="chip more-colors"
+            disabled={!canEdit}
+            onmousedown={(e) => e.preventDefault()}
+            onclick={(e) => {
+              const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              colorMenu = { x: r.left, y: r.bottom + 4 };
+            }}>{t("colors.more")}</button>
         {/if}
       </section>
     {/each}
@@ -293,6 +315,9 @@
   .chip:hover:not(:disabled) {
     color: var(--text);
     border-color: var(--border-strong);
+  }
+  .more-colors {
+    margin: 6px 6px 0;
   }
   .swatches {
     display: flex;

@@ -1,8 +1,11 @@
 <script lang="ts">
-  // TikZ studio: start from a gallery picture, edit the code with element
-  // and style buttons, see the picture compiled live (with a centimetre
-  // grid; a click inserts the coordinates), then insert it at the cursor
-  // or in its own file, with the packages and libraries it needs.
+  // TikZ studio. "Drawing" (the default): a whiteboard on a grid, drawn with
+  // the mouse, whose TikZ code is written as you draw. "Code": the code
+  // with element and style buttons and the picture compiled live (a click
+  // inserts coordinates). "Templates": ready-made pictures. The drawing and
+  // the code stay in step both ways; statements the whiteboard cannot draw
+  // are kept as they are. The picture is then inserted at the cursor or in
+  // its own file, with the packages and libraries it needs.
   import { closeBrackets, closeBracketsKeymap, snippet, startCompletion } from "@codemirror/autocomplete";
   import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
   import { indentUnit } from "@codemirror/language";
@@ -27,6 +30,9 @@
   import Icon from "../common/Icon.svelte";
   import Modal from "../common/Modal.svelte";
   import PdfPreview from "../common/PdfPreview.svelte";
+  import { codeShapes, type Drawing, drawingCode, emptyStyle, parseDrawing, type Style } from "$lib/tikz/model";
+  import ShapeProps from "./tikz/ShapeProps.svelte";
+  import Whiteboard, { type Tool } from "./tikz/Whiteboard.svelte";
 
   const CATEGORIES: { id: string; label: MessageKey; icon: string }[] = [
     { id: "basics", label: "tikz.cat.basics", icon: "layers" },
@@ -77,6 +83,55 @@
   };
   const STYLES = ["thin", "thick", "very thick", "ultra thick", "dashed", "dotted", "densely dashed", "rounded corners", "fill=blue!20", "opacity=0.5", "->", "<->", "-Stealth"];
 
+  type Mode = "draw" | "code" | "templates";
+  const TOOLS: { id: Tool; icon: string; label: MessageKey; key: string }[] = [
+    { id: "select", icon: "pointer", label: "tikz.tool.select", key: "V" },
+    { id: "line", icon: "minus", label: "tikz.tool.line", key: "L" },
+    { id: "arrow", icon: "arrow-right", label: "tikz.tool.arrow", key: "A" },
+    { id: "rect", icon: "square", label: "tikz.tool.rect", key: "R" },
+    { id: "circle", icon: "circle", label: "tikz.tool.circle", key: "C" },
+    { id: "ellipse", icon: "ellipse", label: "tikz.tool.ellipse", key: "E" },
+    { id: "polygon", icon: "polygon", label: "tikz.tool.polygon", key: "P" },
+    { id: "text", icon: "type", label: "tikz.tool.text", key: "T" },
+  ];
+  const EMPTY = "\\begin{tikzpicture}\n\\end{tikzpicture}";
+  const GRID_KEY = "labaguetex.tikz.grid";
+  const savedGrid: { step?: number; show?: boolean; snap?: boolean; axes?: boolean } = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(GRID_KEY) ?? "{}");
+    } catch {
+      return {};
+    }
+  })();
+
+  let mode = $state<Mode>("draw");
+  let drawing = $state<Drawing>({ shapes: [], options: "" });
+  let selected = $state<string[]>([]);
+  let tool = $state<Tool>("select");
+  let drawStyle = $state<Style>(emptyStyle());
+  // A fine grid, without axes, unless chosen otherwise.
+  let step = $state(savedGrid.step ?? 0.25);
+  let showGrid = $state(savedGrid.show ?? true);
+  let showAxes = $state(savedGrid.axes ?? false);
+  let snapOn = $state(savedGrid.snap ?? true);
+  /** The code is one tikzpicture (the whiteboard can show it). */
+  let drawable = $state(true);
+  let board = $state<ReturnType<typeof Whiteboard> | null>(null);
+  // History of the drawing (snapshots), for undo / redo on the whiteboard.
+  let past: string[] = [];
+  let future: string[] = [];
+  let committed = "";
+  let canUndo = $state(false);
+  let canRedo = $state(false);
+
+  $effect(() => {
+    try {
+      localStorage.setItem(GRID_KEY, JSON.stringify({ step, show: showGrid, snap: snapOn, axes: showAxes }));
+    } catch {
+      /* not remembered */
+    }
+  });
+
   let templates = $state<TikzTemplate[]>([]);
   let allLibraries = $state<string[]>([]);
   let category = $state("basics");
@@ -117,19 +172,23 @@
       packages = detectPackages(code);
       extra = packages.includes("pgfplots") ? "\\pgfplotsset{compat=1.18}" : "";
       wrap = false;
+      mode = loadDrawing(code) && codeShapes(drawing) < drawing.shapes.length ? "draw" : "code";
     } else if (media.tikzDraft) {
       ({ code, packages, libraries, extra } = media.tikzDraft);
       pristine = false;
+      mode = loadDrawing(code) ? (media.tikzDraft.mode ?? "draw") : "code";
     } else {
-      const first = templates.find((x) => x.id === "axes") ?? templates[0];
-      if (first) use(first, true);
+      // A blank whiteboard.
+      code = EMPTY;
+      loadDrawing(code);
+      mode = "draw";
     }
     createEditor();
     void refresh();
   });
 
   onDestroy(() => {
-    if (!editing && !pristine) media.tikzDraft = { code, packages: [...packages], libraries: [...libraries], extra };
+    if (!editing && !pristine && hasContent) media.tikzDraft = { code, packages: [...packages], libraries: [...libraries], extra, mode: mode === "templates" ? "draw" : mode };
     view?.destroy();
   });
 
@@ -193,8 +252,101 @@
     if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next } });
   }
 
-  async function use(tpl: TikzTemplate, initial = false) {
-    if (!initial && !pristine && code.trim() && code !== tpl.code) {
+  // ------------------------------------------------------------ drawing
+
+  function snapshot(): string {
+    return JSON.stringify(drawing);
+  }
+
+  function updateHistoryFlags() {
+    canUndo = past.length > 0;
+    canRedo = future.length > 0;
+  }
+
+  /** Reads `src` into the whiteboard; false when it is not one tikzpicture. */
+  function loadDrawing(src: string): boolean {
+    const d = parseDrawing(src);
+    drawable = !!d;
+    if (!d) return false;
+    drawing = d;
+    selected = [];
+    committed = snapshot();
+    return true;
+  }
+
+  /** The drawing changed: history, code, libraries and preview follow. */
+  function commitDrawing() {
+    const now = snapshot();
+    if (now === committed) return;
+    past.push(committed);
+    if (past.length > 300) past.shift();
+    future = [];
+    committed = now;
+    updateHistoryFlags();
+    syncFromDrawing();
+  }
+
+  function syncFromDrawing() {
+    const next = drawingCode(drawing);
+    if (next !== code) {
+      setCode(next);
+      pristine = false;
+    }
+    for (const lib of detectLibraries(next)) if (!libraries.includes(lib)) libraries = [...libraries, lib];
+    refreshSoon();
+  }
+
+  function undoDrawing() {
+    if (!past.length) return;
+    future.push(committed);
+    committed = past.pop()!;
+    drawing = JSON.parse(committed);
+    selected = [];
+    updateHistoryFlags();
+    syncFromDrawing();
+  }
+
+  function redoDrawing() {
+    if (!future.length) return;
+    past.push(committed);
+    committed = future.pop()!;
+    drawing = JSON.parse(committed);
+    selected = [];
+    updateHistoryFlags();
+    syncFromDrawing();
+  }
+
+  function setMode(next: Mode) {
+    if (next === mode) return;
+    if (mode === "code" && next === "draw") {
+      // The code may have been edited: the drawing is read from it again.
+      const before = committed;
+      if (loadDrawing(code) && committed !== before) {
+        past.push(before);
+        future = [];
+        updateHistoryFlags();
+      }
+    }
+    mode = next;
+    if (next === "draw") requestAnimationFrame(() => board?.fit());
+    if (next === "code")
+      requestAnimationFrame(() => {
+        // The editor was hidden: it measures itself again.
+        view?.requestMeasure();
+        view?.focus();
+      });
+  }
+
+  function chooseTool(id: Tool) {
+    tool = id;
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(".studio .board")?.focus());
+  }
+
+  /** The picture draws something. */
+  const hasContent = $derived(!/^\s*\\begin\{tikzpicture\}(\[[^\]]*\])?\s*\\end\{tikzpicture\}\s*$/.test(code) && !!code.trim());
+
+  async function use(tpl: TikzTemplate) {
+    if (!pristine && hasContent && code !== tpl.code) {
       const ok = await ui.confirm({ title: t("tikz.replaceTitle"), message: t("tikz.replaceMessage"), okLabel: t("tikz.replace") });
       if (!ok) return;
     }
@@ -202,9 +354,15 @@
     libraries = [...tpl.libraries];
     extra = tpl.preamble;
     category = tpl.category;
-    if (initial) code = tpl.code;
-    else setCode(tpl.code);
+    setCode(tpl.code);
     pristine = true;
+    // Pictures the whiteboard can draw open in it; the others in the code.
+    const ok = loadDrawing(tpl.code);
+    past = [];
+    future = [];
+    updateHistoryFlags();
+    mode = ok && codeShapes(drawing) === 0 ? "draw" : "code";
+    if (mode === "draw") requestAnimationFrame(() => board?.fit());
     void refresh();
   }
 
@@ -219,7 +377,10 @@
       return;
     }
     const path = editor.active ?? project.info?.main;
-    if (!path || !code.trim()) return;
+    if (!path || !hasContent) {
+      outcome = null;
+      return;
+    }
     compiling = true;
     try {
       outcome = await ipc.previewSnippet({
@@ -338,7 +499,7 @@
   }
 
   async function insert() {
-    if (busy || !code.trim()) return;
+    if (busy || !hasContent) return;
     if (errors.length) {
       const ok = await ui.confirm({ title: t("tikz.errorsTitle"), message: t("tikz.errorsMessage", { n: errors.length }), okLabel: t("tikz.insertAnyway") });
       if (!ok) return;
@@ -407,120 +568,195 @@
     <span class="faint small">{t("tikz.shortcutHint", { key: prettyKey("Mod-Enter") })}</span>
   {/snippet}
   <div class="wrap">
-  <div class="studio">
-    <aside class="gallery">
-      <div class="cats">
-        {#each CATEGORIES as c}
-          <button class="cat" class:active={category === c.id} title={t(c.label)} onclick={() => (category = c.id)}>
-            <Icon name={c.icon} size={16} />
-            <span>{t(c.label)}</span>
-          </button>
-        {/each}
+    <div class="modes">
+      <div class="mode-tabs" role="tablist">
+        <button role="tab" aria-selected={mode === "draw"} class:active={mode === "draw"} onclick={() => setMode("draw")}><Icon name="draw" size={15} />{t("tikz.modeDraw")}</button>
+        <button role="tab" aria-selected={mode === "code"} class:active={mode === "code"} onclick={() => setMode("code")}><Icon name="code" size={15} />{t("tikz.modeCode")}</button>
+        <button role="tab" aria-selected={mode === "templates"} class:active={mode === "templates"} onclick={() => setMode("templates")}><Icon name="layers" size={15} />{t("tikz.modeTemplates")}</button>
       </div>
-      <div class="templates">
-        {#each shown as tpl (tpl.id)}
-          <button class="tpl" onclick={() => use(tpl)}>
-            <strong>{tpl.name}</strong>
-            <span>{tpl.description}</span>
-          </button>
-        {/each}
-      </div>
-    </aside>
+      <span class="faint small hint">{mode === "draw" ? t("tikz.drawHint") : mode === "code" ? t("tikz.codeHint") : t("tikz.templatesHint")}</span>
+    </div>
 
-    <section class="code-pane">
-      <div class="elements">
-        {#each ELEMENTS as el}
-          <button class="el" title={t(el.label)} onclick={() => insertElement(el)}>
-            <Icon name={el.icon} size={14} />
-            <span>{t(el.label)}</span>
-          </button>
-        {/each}
-      </div>
-      <div class="styles">
-        {#each COLORS as c}
-          <button class="swatch" title={c} style:background={SWATCH[c]} onclick={() => insertOption(c)} aria-label={c}></button>
-        {/each}
-        <span class="sep"></span>
-        {#each STYLES as s}
-          <button class="style mono" onclick={() => insertOption(s)}>{s}</button>
-        {/each}
-      </div>
-      <div class="cm" bind:this={host}></div>
-      <div class="libs">
-        <span class="faint">{t("tikz.packages")}</span>
-        {#each packages as p}<span class="chip mono">{p}</span>{/each}
-        <span class="faint">{t("tikz.libraries")}</span>
-        {#each libraries as l (l)}
-          <span class="chip mono">{l}<button class="x" onclick={() => removeLibrary(l)} aria-label={t("common.delete")}>×</button></span>
-        {/each}
-        <input
-          class="input small mono lib-input"
-          list="tikz-libraries"
-          placeholder={t("tikz.addLibrary")}
-          bind:value={libraryInput}
-          onkeydown={(e) => e.key === "Enter" && addLibrary(libraryInput)}
-          onchange={() => allLibraries.includes(libraryInput) && addLibrary(libraryInput)}
-        />
-        <datalist id="tikz-libraries">{#each allLibraries as l}<option value={l}></option>{/each}</datalist>
-        <button class="icon-btn" title={t("tikz.complete")} onclick={() => view && startCompletion(view)}><Icon name="sparkles" size={14} /></button>
-      </div>
-    </section>
+    <div class="studio">
+      {#if mode === "templates"}
+        <div class="gallery">
+          <div class="cats">
+            {#each CATEGORIES as c}
+              <button class="cat" class:active={category === c.id} title={t(c.label)} onclick={() => (category = c.id)}>
+                <Icon name={c.icon} size={16} />
+                <span>{t(c.label)}</span>
+              </button>
+            {/each}
+          </div>
+          <div class="templates">
+            {#each shown as tpl (tpl.id)}
+              <button class="tpl" onclick={() => use(tpl)}>
+                <strong>{tpl.name}</strong>
+                <span>{tpl.description}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
+      {/if}
 
-    <section class="preview-pane">
-      <div class="preview-bar">
-        {#if compiling}
-          <span class="spinner"></span><span class="faint">{t("tikz.compiling")}</span>
-        {:else if outcome}
-          {#if errors.length}
-            <span class="status err"><Icon name="alert-circle" size={13} />{t("tikz.errors", { n: errors.length })}</span>
-          {:else}
-            <span class="status ok"><Icon name="check" size={13} />{t("tikz.upToDate", { ms: outcome.durationMs })}</span>
-          {/if}
-        {/if}
-        <div class="spacer"></div>
-        <label class="toggle"><input type="checkbox" bind:checked={grid} />{t("tikz.grid")}</label>
-        <button class="icon-btn" title={t("viewer.reload")} onclick={() => refresh()}><Icon name="refresh" size={14} /></button>
-      </div>
-      <PdfPreview pdf={outcome?.pdf ?? null} {revision} bbox={outcome?.bbox ?? null} border={outcome?.border ?? 0} {grid} onpoint={insertPoint} />
-      {#if errors.length}
-        <div class="errors">
-          {#each errors.slice(0, 4) as e}
-            <button class="error" onclick={() => goToLine(e.line)}>
-              <Icon name="alert-circle" size={13} />
-              <span>{#if e.line}<strong>{t("tikz.line", { n: e.line })}</strong> {/if}{e.hint?.title ?? e.message}</span>
+      <div class="draw" class:hidden={mode !== "draw"}>
+        <div class="tools" role="toolbar" aria-label={t("tikz.tools")}>
+          {#each TOOLS as tl (tl.id)}
+            <button class="tool" class:active={tool === tl.id} title="{t(tl.label)} ({tl.key})" aria-label={t(tl.label)} aria-pressed={tool === tl.id} onclick={() => chooseTool(tl.id)}>
+              <Icon name={tl.icon} size={18} />
             </button>
           {/each}
+          <span class="tool-sep"></span>
+          <button class="tool" disabled={!canUndo} title="{t('action.undo')} ({prettyKey('Mod-z')})" aria-label={t("action.undo")} onclick={undoDrawing}><Icon name="undo" size={17} /></button>
+          <button class="tool" disabled={!canRedo} title="{t('action.redo')} ({prettyKey('Mod-Shift-z')})" aria-label={t("action.redo")} onclick={redoDrawing}><Icon name="redo" size={17} /></button>
+          <span class="tool-sep"></span>
+          <button class="tool" title={t("viewer.zoomIn")} aria-label={t("viewer.zoomIn")} onclick={() => board?.zoom(1.25)}><Icon name="zoom-in" size={17} /></button>
+          <button class="tool" title={t("viewer.zoomOut")} aria-label={t("viewer.zoomOut")} onclick={() => board?.zoom(0.8)}><Icon name="zoom-out" size={17} /></button>
+          <button class="tool" title={t("tikz.fit")} aria-label={t("tikz.fit")} onclick={() => board?.fit()}><Icon name="fit-page" size={17} /></button>
         </div>
-      {:else}
-        <p class="tip faint">{t("tikz.clickTip")}</p>
-      {/if}
-    </section>
-  </div>
 
-  <footer class="footer">
-    {#if editing}
-      <span class="editing"><Icon name="edit" size={14} />{request?.file ? t("tikz.editingFile", { file: relative(rootDir, request.file) }) : t("tikz.editingPicture")}</span>
-    {:else}
-      <div class="segmented">
-        <button class:active={destination === "cursor"} onclick={() => (destination = "cursor")}>{t("tikz.atCursor")}</button>
-        <button class:active={destination === "file"} onclick={() => (destination = "file")}>{t("tikz.ownFile")}</button>
+        {#if drawable}
+          <Whiteboard
+            bind:this={board}
+            bind:drawing
+            bind:selected
+            bind:tool
+            style={drawStyle}
+            {step}
+            {showGrid}
+            {showAxes}
+            {snapOn}
+            oncommit={commitDrawing}
+            onundo={undoDrawing}
+            onredo={redoDrawing}
+          />
+        {:else}
+          <div class="not-drawable">
+            <Icon name="code" size={28} stroke={1.3} />
+            <p>{t("tikz.notDrawable")}</p>
+            <button class="btn" onclick={() => setMode("code")}>{t("tikz.editCode")}</button>
+          </div>
+        {/if}
+
+        <aside class="side">
+          <ShapeProps bind:drawing bind:selected bind:style={drawStyle} bind:step bind:showGrid bind:showAxes bind:snapOn oncommit={commitDrawing} oncode={() => setMode("code")} />
+          <div class="mini">
+            <div class="mini-bar">
+              <span class="section-title">{t("tikz.latexRendering")}</span>
+              <div class="spacer"></div>
+              {#if compiling}
+                <span class="spinner"></span>
+              {:else if outcome && errors.length}
+                <span class="status err"><Icon name="alert-circle" size={13} />{t("tikz.errors", { n: errors.length })}</span>
+              {:else if outcome}
+                <span class="status ok"><Icon name="check" size={13} />{t("tikz.upToDate", { ms: outcome.durationMs })}</span>
+              {/if}
+            </div>
+            {#if hasContent}
+              <PdfPreview pdf={outcome?.pdf ?? null} {revision} maxScale={1.4} />
+            {:else}
+              <p class="faint empty-mini">{t("tikz.emptyBoard")}</p>
+            {/if}
+          </div>
+        </aside>
       </div>
-      {#if destination === "file"}
-        <input class="input small mono file" bind:value={fileName} />
+
+      <div class="code-mode" class:hidden={mode !== "code"}>
+        <section class="code-pane">
+          <div class="elements">
+            {#each ELEMENTS as el}
+              <button class="el" title={t(el.label)} onclick={() => insertElement(el)}>
+                <Icon name={el.icon} size={14} />
+                <span>{t(el.label)}</span>
+              </button>
+            {/each}
+          </div>
+          <div class="styles">
+            {#each COLORS as c}
+              <button class="swatch" title={c} style:background={SWATCH[c]} onclick={() => insertOption(c)} aria-label={c}></button>
+            {/each}
+            <span class="sep"></span>
+            {#each STYLES as s}
+              <button class="style mono" onclick={() => insertOption(s)}>{s}</button>
+            {/each}
+          </div>
+          <div class="cm" bind:this={host}></div>
+          <div class="libs">
+            <span class="faint">{t("tikz.packages")}</span>
+            {#each packages as p}<span class="chip mono">{p}</span>{/each}
+            <span class="faint">{t("tikz.libraries")}</span>
+            {#each libraries as l (l)}
+              <span class="chip mono">{l}<button class="x" onclick={() => removeLibrary(l)} aria-label={t("common.delete")}>×</button></span>
+            {/each}
+            <input
+              class="input small mono lib-input"
+              list="tikz-libraries"
+              placeholder={t("tikz.addLibrary")}
+              bind:value={libraryInput}
+              onkeydown={(e) => e.key === "Enter" && addLibrary(libraryInput)}
+              onchange={() => allLibraries.includes(libraryInput) && addLibrary(libraryInput)}
+            />
+            <datalist id="tikz-libraries">{#each allLibraries as l}<option value={l}></option>{/each}</datalist>
+            <button class="icon-btn" title={t("tikz.complete")} onclick={() => view && startCompletion(view)}><Icon name="sparkles" size={14} /></button>
+          </div>
+        </section>
+
+        <section class="preview-pane">
+          <div class="preview-bar">
+            {#if compiling}
+              <span class="spinner"></span><span class="faint">{t("tikz.compiling")}</span>
+            {:else if outcome}
+              {#if errors.length}
+                <span class="status err"><Icon name="alert-circle" size={13} />{t("tikz.errors", { n: errors.length })}</span>
+              {:else}
+                <span class="status ok"><Icon name="check" size={13} />{t("tikz.upToDate", { ms: outcome.durationMs })}</span>
+              {/if}
+            {/if}
+            <div class="spacer"></div>
+            <label class="toggle"><input type="checkbox" bind:checked={grid} />{t("tikz.grid")}</label>
+            <button class="icon-btn" title={t("viewer.reload")} onclick={() => refresh()}><Icon name="refresh" size={14} /></button>
+          </div>
+          <PdfPreview pdf={outcome?.pdf ?? null} {revision} bbox={outcome?.bbox ?? null} border={outcome?.border ?? 0} {grid} onpoint={insertPoint} />
+          {#if errors.length}
+            <div class="errors">
+              {#each errors.slice(0, 4) as e}
+                <button class="error" onclick={() => goToLine(e.line)}>
+                  <Icon name="alert-circle" size={13} />
+                  <span>{#if e.line}<strong>{t("tikz.line", { n: e.line })}</strong> {/if}{e.hint?.title ?? e.message}</span>
+                </button>
+              {/each}
+            </div>
+          {:else}
+            <p class="tip faint">{t("tikz.clickTip")}</p>
+          {/if}
+        </section>
+      </div>
+    </div>
+
+    <footer class="footer">
+      {#if editing}
+        <span class="editing"><Icon name="edit" size={14} />{request?.file ? t("tikz.editingFile", { file: relative(rootDir, request.file) }) : t("tikz.editingPicture")}</span>
+      {:else}
+        <div class="segmented">
+          <button class:active={destination === "cursor"} onclick={() => (destination = "cursor")}>{t("tikz.atCursor")}</button>
+          <button class:active={destination === "file"} onclick={() => (destination = "file")}>{t("tikz.ownFile")}</button>
+        </div>
+        {#if destination === "file"}
+          <input class="input small mono file" bind:value={fileName} />
+        {/if}
+        <label class="toggle"><input type="checkbox" bind:checked={wrap} />{t("tikz.wrapFigure")}</label>
+        {#if wrap}
+          <input class="input small" placeholder={t("snippet.caption")} bind:value={caption} />
+          <input class="input small mono label" bind:value={label} />
+        {/if}
       {/if}
-      <label class="toggle"><input type="checkbox" bind:checked={wrap} />{t("tikz.wrapFigure")}</label>
-      {#if wrap}
-        <input class="input small" placeholder={t("snippet.caption")} bind:value={caption} />
-        <input class="input small mono label" bind:value={label} />
-      {/if}
-    {/if}
-    <div class="spacer"></div>
-    <button class="btn" onclick={copy}><Icon name="copy" size={14} />{t("tikz.copy")}</button>
-    <button class="btn primary" disabled={busy || !code.trim()} onclick={insert}>
-      {#if busy}<span class="spinner"></span>{:else}<Icon name="check" size={14} />{/if}
-      {editing ? t("tikz.update") : t("tikz.insert")}
-    </button>
-  </footer>
+      <div class="spacer"></div>
+      <button class="btn" disabled={!hasContent} onclick={copy}><Icon name="copy" size={14} />{t("tikz.copy")}</button>
+      <button class="btn primary" disabled={busy || !hasContent} onclick={insert}>
+        {#if busy}<span class="spinner"></span>{:else}<Icon name="check" size={14} />{/if}
+        {editing ? t("tikz.update") : t("tikz.insert")}
+      </button>
+    </footer>
   </div>
 </Modal>
 
@@ -535,6 +771,147 @@
     flex: 1;
     min-height: 0;
     display: flex;
+  }
+  .hidden {
+    display: none !important;
+  }
+  .modes {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mode-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: var(--radius);
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+  }
+  .mode-tabs button {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 30px;
+    padding: 0 14px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-muted);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .mode-tabs button:hover {
+    color: var(--text);
+  }
+  .mode-tabs button.active {
+    background: var(--accent);
+    color: var(--accent-contrast);
+  }
+  .modes .hint {
+    font-size: 12px;
+  }
+  .draw,
+  .code-mode {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+  }
+  .gallery {
+    flex: 1;
+  }
+  .tools {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    width: 48px;
+    padding: 8px 0;
+    border-right: 1px solid var(--border);
+    background: var(--bg-elev);
+    flex-shrink: 0;
+  }
+  .tool {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: var(--radius);
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .tool:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text);
+  }
+  .tool.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .tool:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  .tool-sep {
+    width: 24px;
+    height: 1px;
+    margin: 4px 0;
+    background: var(--border);
+  }
+  .not-drawable {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+  .not-drawable p {
+    max-width: 420px;
+    line-height: 1.5;
+  }
+  .side {
+    width: 300px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-left: 1px solid var(--border);
+    background: var(--bg-elev);
+  }
+  .side > :global(.props) {
+    flex: 1;
+    min-height: 0;
+  }
+  .mini {
+    height: 210px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--border);
+  }
+  .mini-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+  }
+  .mini :global(.preview) {
+    flex: 1;
+    min-height: 0;
+  }
+  .empty-mini {
+    padding: 0 12px;
+    font-size: 12px;
+    line-height: 1.5;
   }
   .gallery {
     width: 250px;

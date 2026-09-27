@@ -287,6 +287,7 @@
         {@render toggle(t("settings.copyPdf"), t("settings.copyPdfHint"), s.build.copyPdfToRoot, (v) => set((x) => (x.build.copyPdfToRoot = v)))}
         {@render toggle(t("settings.synctex"), t("settings.synctexHint"), s.build.synctex, (v) => set((x) => (x.build.synctex = v)))}
         {@render toggle(t("settings.haltOnError"), t("settings.haltOnErrorHint"), s.build.haltOnError, (v) => set((x) => (x.build.haltOnError = v)))}
+        {@render toggle(t("settings.precompilePreamble"), t("settings.precompilePreambleHint"), s.build.precompilePreamble, (v) => set((x) => (x.build.precompilePreamble = v)))}
         {@render toggle(t("settings.shellEscape"), t("settings.shellEscapeHint"), s.build.shellEscape, (v) => set((x) => (x.build.shellEscape = v)))}
         {@render toggle(t("settings.badboxes"), t("settings.badboxesHint"), s.build.showBadboxes, (v) => set((x) => (x.build.showBadboxes = v)))}
         {#snippet argsControl()}

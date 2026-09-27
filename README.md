@@ -24,6 +24,8 @@ labaguetex (LaTeX + baguette) is a LaTeX editor that helps beginners learn and l
 - Context-aware completion: commands and environments of the LaTeX kernel, of every package your document loads (read from the package source, whatever the package), of your own `\newcommand`s; labels with their number, citations with authors and title, files, options, colours.
 - Completion creates the braces and leaves them empty for you to type; choosing a command from a package that is not loaded adds the `\usepackage`.
 - Live math preview (KaTeX, with your macros), documentation on hover, image previews.
+- Fonts from the formatting bar: the main, sans-serif, code and maths fonts of the document at a glance, each changed or reset in one click, plus fonts for passages applied to the selection; colours that follow the document (all `xcolor`, `dvipsnames` and SVG colours when xcolor is loaded, the document's own colours, any custom colour).
+- Console and problems whose text can be selected and copied.
 - `@` shortcuts in math mode (`@a` → `\alpha`, `@/` → fraction), shown next to the matching commands in completion and drawn in their own panel; snippets; personal macros with triggers and keyboard shortcuts.
 - Go to definition, find references, rename labels / citation keys / commands across the project.
 - `$` pairs only where a formula can start; renaming a `\begin{…}` renames its `\end{…}`; `Ctrl/⌘ + Z` undoes wherever the focus is, `Ctrl/⌘ + Shift + Z` or `Ctrl/⌘ + Y` redoes.
@@ -32,13 +34,14 @@ labaguetex (LaTeX + baguette) is a LaTeX editor that helps beginners learn and l
 
 **Images, drawings and fonts**
 - *Insert images*: choose, paste or drop images (or pick those of the project); folder, LaTeX-safe file name, width with a page preview, placement, caption and label; several images become sub-figures. SVG is converted to vector PDF, WebP/GIF/HEIC/BMP/TIFF to PNG; `graphicx`, `subcaption`, `float` are added when needed.
-- *TikZ studio*: a gallery of 22 drawings (plots, flowchart, tree, mind map, Venn, geometry, circuit, automaton, graph, neural network, commutative diagram…), element and style buttons, a live preview compiled with the document's preamble, a centimetre grid, click-to-insert coordinates, insertion at the cursor or in its own file, packages and `\usetikzlibrary` added automatically; edit an existing drawing in place.
+- *TikZ studio*: a **whiteboard** to draw with the mouse on a fine, adjustable grid (the TikZ code writes itself and stays in step with the drawing both ways), a gallery of 22 drawings (plots, flowchart, tree, mind map, Venn, geometry, circuit, automaton, graph, neural network, commutative diagram…), element and style buttons, a live preview compiled with the document's preamble, a centimetre grid, click-to-insert coordinates, insertion at the cursor or in its own file, packages and `\usetikzlibrary` added automatically; edit an existing drawing in place.
 - *Fonts*: any font of the computer or font files copied into the project (fontspec, each style named, engine switched to LuaLaTeX), or LaTeX font packages that also work with pdfLaTeX, all with a compiled preview.
 
 **Building**
 - Live by default: the document is compiled after each pause in typing and the PDF follows; or one key (`Ctrl/⌘ + Enter`), or on save.
 - The console never opens by itself: errors are underlined, counted in the top bar and announced after a build you asked for.
 - Automatic engine choice (`% !TEX program`, `fontspec` → LuaLaTeX, Tectonic, pdfLaTeX).
+- Precompiled preambles (pdfLaTeX): prepared in the background, passes 35–60 % faster.
 - Smart build driver: Biber / BibTeX / makeindex / glossaries only when their inputs changed, reruns until references are stable; or latexmk, a single pass, or your own steps.
 - Auxiliary files in `build/`; the project stays clean.
 

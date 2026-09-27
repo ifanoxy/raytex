@@ -47,7 +47,8 @@ Under the top bar, like in a word processor (every button acts on the selection,
 | Style | the line becomes a part, a chapter, a section… or normal text again; the menu shows the style of the cursor line |
 | Size | `{\large …}`, `{\small …}`…; choosing *Normal* removes the size |
 | Bold, italic, underline, monospace | `\textbf`, `\textit`, `\underline`, `\texttt` |
-| Colour | `\textcolor{red}{…}` (adds `xcolor`); choosing another colour replaces it |
+| Font | the font of the document; its menu sets the font of each use and fonts for passages (see [Fonts](14-fonts.md)) |
+| Colour | `\textcolor{red}{…}` (adds `xcolor`); choosing another colour replaces it. With `xcolor` loaded, the menu offers its 19 colours, the 68 `dvipsnames` colours and the SVG colours (the option is added when needed, without clashing with TikZ or Beamer), a search by name, the colours the document defines and a colour of your choice (`\definecolor`) |
 | Alignment | `flushleft`, `center`, `flushright` environments; choosing again changes the alignment of the block |
 | Lists | each selected line becomes an `\item`; on a list, changes its kind |
 | Formula, equation | `$…$` around the selection; `equation` environment |

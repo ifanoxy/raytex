@@ -5,10 +5,12 @@
   // when needed (system fonts require XeLaTeX or LuaLaTeX).
   import { open } from "@tauri-apps/plugin-dialog";
   import { onMount } from "svelte";
-  import { t } from "$lib/i18n.svelte";
+  import { type MessageKey, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { addLines, addPackages, commentOutPackages, hasPackage, loadedPackages, setStatement } from "$lib/preamble";
+  import { fontCommand } from "$lib/fonts";
   import { app } from "$lib/state/app.svelte";
+  import { fonts } from "$lib/state/fonts.svelte";
   import { editor } from "$lib/state/editor.svelte";
   import { media } from "$lib/state/media.svelte";
   import { project } from "$lib/state/project.svelte";
@@ -22,9 +24,22 @@
   type Tab = "system" | "files" | "latex";
   const FONT_EXT = ["ttf", "otf", "ttc", "otc"];
 
+  // Role asked by the font menu (main font, extra font…).
+  const preset = media.fontPreset;
+  media.fontPreset = null;
   let tab = $state<Tab>("system");
-  let role = $state<FontRole>("main");
-  let command = $state("myfont");
+  let role = $state<FontRole>(preset?.role ?? "main");
+  let command = $state(preset?.command ?? "");
+  /** The command name was typed (not suggested from the font name). */
+  let commandEdited = $state(!!preset?.command);
+  /** Text selected in the editor when the window opened: an extra font can be applied to it. */
+  const selectedText = (() => {
+    const v = editor.view;
+    if (!v || editor.activeTab?.kind !== "tex") return "";
+    const sel = v.state.selection.main;
+    return v.state.sliceDoc(sel.from, sel.to);
+  })();
+  let applyToSelection = $state(!!selectedText);
   let filter = $state("");
   let systemFamilies = $state<FontFamily[] | null>(null);
   let fileFamilies = $state<FontFamily[]>([]);
@@ -104,6 +119,22 @@
     if (role === "math" && s.family) role = "main";
     schedulePreview();
   }
+
+  const ROLES: { id: FontRole; label: MessageKey; hint: MessageKey }[] = [
+    { id: "main", label: "fonts.roleMain", hint: "fonts.roleMainHint" },
+    { id: "sans", label: "fonts.roleSans", hint: "fonts.roleSansHint" },
+    { id: "mono", label: "fonts.roleMono", hint: "fonts.roleMonoHint" },
+    { id: "math", label: "fonts.roleMath", hint: "fonts.roleMathHint" },
+    { id: "command", label: "fonts.roleCommand", hint: "fonts.roleCommandHint" },
+  ];
+
+  // An extra font gets a command named after it (\fontPlayfairDisplay) until one is typed.
+  $effect(() => {
+    const name = selected?.family?.name;
+    if (role === "command" && name && !commandEdited) {
+      command = fontCommand(name, (fonts.current?.extra ?? []).map((x) => x.command));
+    }
+  });
 
   const q = $derived(filter.trim().toLowerCase());
   const shownSystem = $derived((systemFamilies ?? []).filter((f) => !q || f.name.toLowerCase().includes(q)).slice(0, 400));
@@ -207,6 +238,7 @@
       return out;
     });
     if (root) ui.toast("success", t("fonts.applied", { name: font.name }));
+    await fonts.refresh();
   }
 
   async function applyFamily(family: FontFamily, fromFiles: boolean) {
@@ -226,8 +258,8 @@
       }
     }
     const effectiveRole: FontRole = role === "math" && !hasMath ? "main" : role;
-    const code = await ipc.fontspecCode(fam, effectiveRole, dir, command.replace(/[^A-Za-z]/g, "") || "myfont");
-    const statement = effectiveRole === "command" ? `\\newfontfamily\\${command.replace(/[^A-Za-z]/g, "") || "myfont"}` : ROLE_COMMAND[effectiveRole];
+    const code = await ipc.fontspecCode(fam, effectiveRole, dir, cmdName());
+    const statement = effectiveRole === "command" ? `\\newfontfamily\\${cmdName()}` : ROLE_COMMAND[effectiveRole];
     const root = await editor.transformRoot((text) => {
       let out = text;
       if (disableFontenc) out = commentOutPackages(out, ["fontenc", "inputenc"], t("fonts.fontspecHandles"));
@@ -238,21 +270,27 @@
       return setStatement(out, statement, code, anchor);
     });
     if (!root) return;
+    if (effectiveRole === "command" && applyToSelection && selectedText) fonts.applyExtra(cmdName());
     if (engineWillChange) await editor.setMagicProgram("lualatex");
     // An engine forced in the settings wins over the magic comment.
     if (project.info?.config.build.engine === "pdflatex") await project.updateConfig((c) => (c.build.engine = null));
     if (app.settings?.build.engine === "pdflatex") ui.toast("warning", t("fonts.settingsForcePdflatex"), { timeout: 0 });
     ui.toast(
       "success",
-      effectiveRole === "command" ? t("fonts.appliedCommand", { cmd: `\\${command}` }) : t("fonts.applied", { name: fam.name }),
+      effectiveRole === "command" ? t("fonts.appliedCommand", { cmd: `\\${cmdName()}` }) : t("fonts.applied", { name: fam.name }),
     );
+    await fonts.refresh();
+  }
+
+  function cmdName(): string {
+    return command.replace(/[^A-Za-z]/g, "") || fontCommand(selected?.family?.name ?? "");
   }
 
   const hasFontspec = $derived(hasPackage(rootText, "fontspec") || hasPackage(rootText, "unicode-math"));
   const hasFontenc = $derived(loadedPackages(rootText).some((p) => p.names.includes("fontenc") || p.names.includes("inputenc")));
 </script>
 
-<Modal title={t("fonts.title")} icon="type" width="min(1120px, 95vw)" height="min(780px, 92vh)">
+<Modal title={preset?.role ? t("fonts.titleFor", { role: t(ROLES.find((r) => r.id === preset.role)?.label ?? "fonts.roleMain") }) : t("fonts.title")} icon="type" width="min(1120px, 95vw)" height="min(780px, 92vh)">
   <div class="left">
     <div class="tabs" role="tablist">
       <button class="tab" class:active={tab === "system"} onclick={() => (tab = "system")}><Icon name="cpu" size={14} />{t("fonts.tabSystem")}</button>
@@ -331,21 +369,36 @@
 
       {#if selected.family}
         <div class="field">
-          <span>{t("fonts.role")}</span>
-          <select class="select input" bind:value={role}>
-            <option value="main">{t("fonts.roleMain")}</option>
-            <option value="sans">{t("fonts.roleSans")}</option>
-            <option value="mono">{t("fonts.roleMono")}</option>
-            <option value="math" disabled={!hasMath}>{t("fonts.roleMath")}{hasMath ? "" : ` — ${t("fonts.noMath")}`}</option>
-            <option value="command">{t("fonts.roleCommand")}</option>
-          </select>
+          <span>{t("fonts.useAs")}</span>
+          <div class="roles" role="radiogroup" aria-label={t("fonts.useAs")}>
+            {#each ROLES as r (r.id)}
+              <button
+                class="role"
+                class:active={role === r.id}
+                role="radio"
+                aria-checked={role === r.id}
+                disabled={r.id === "math" && !hasMath}
+                title={r.id === "math" && !hasMath ? t("fonts.noMath") : t(r.hint)}
+                onclick={() => (role = r.id)}
+              >
+                <strong>{t(r.label)}</strong>
+                <span class="faint">{r.id === "math" && !hasMath ? t("fonts.noMath") : t(r.hint)}</span>
+              </button>
+            {/each}
+          </div>
         </div>
         {#if role === "command"}
           <label class="field">
             <span>{t("fonts.commandName")}</span>
-            <div class="row"><span class="mono faint">\</span><input class="input mono" bind:value={command} /></div>
-            <span class="hint faint">{t("fonts.commandHint", { cmd: `\\${command}` })}</span>
+            <div class="row"><span class="mono faint">\</span><input class="input mono" bind:value={command} oninput={() => (commandEdited = true)} spellcheck="false" /></div>
+            <span class="hint faint">{t("fonts.commandHint", { cmd: `\\${cmdName()}` })}</span>
           </label>
+          {#if selectedText}
+            <label class="check">
+              <input type="checkbox" bind:checked={applyToSelection} />
+              <span>{t("fonts.applyToSelection", { text: selectedText.length > 40 ? `${selectedText.slice(0, 40)}…` : selectedText })}</span>
+            </label>
+          {/if}
         {/if}
         {#if selected.fromFiles && projectDirOf(selected.family) === null}
           <label class="field">
@@ -529,6 +582,45 @@
     gap: 5px;
     font-size: 12px;
     color: var(--text-muted);
+  }
+  .roles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .role {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-input);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+  .role:last-child {
+    grid-column: 1 / -1;
+  }
+  .role strong {
+    font-size: 12.5px;
+  }
+  .role span {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  .role:hover:not(:disabled) {
+    border-color: var(--border-strong);
+  }
+  .role.active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .role:disabled {
+    opacity: 0.5;
+    cursor: default;
   }
   .field .row {
     display: flex;

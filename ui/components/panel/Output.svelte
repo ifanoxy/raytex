@@ -1,5 +1,8 @@
 <script lang="ts">
   // Raw compiler output (virtualised: only visible lines are in the DOM).
+  // The text can be selected and copied like in a terminal: a selection
+  // spanning lines copies them from the output itself, even those scrolled
+  // out of the DOM; Ctrl/⌘ + A selects the whole output.
   import { t } from "$lib/i18n.svelte";
   import { build, type ConsoleLine } from "$lib/state/build.svelte";
   import { editor } from "$lib/state/editor.svelte";
@@ -20,8 +23,12 @@
     return q ? build.output.filter((l) => l.text.toLowerCase().includes(q)) : build.output.slice();
   });
 
-  const first = $derived(Math.max(0, Math.floor(scrollTop / ROW) - 20));
-  const last = $derived(Math.min(lines.length, Math.ceil((scrollTop + height) / ROW) + 20));
+  // Lines kept around the visible ones: a selection dragged a little out of view keeps its ends.
+  const OVERSCAN = 120;
+  const first = $derived(Math.max(0, Math.floor(scrollTop / ROW) - OVERSCAN));
+  const last = $derived(Math.min(lines.length, Math.ceil((scrollTop + height) / ROW) + OVERSCAN));
+  /** The whole output is selected (Ctrl/⌘ + A). */
+  let all = $state(false);
 
   $effect(() => {
     void lines.length;
@@ -45,6 +52,8 @@
   }
 
   function openLine(l: ConsoleLine) {
+    // A click that ends a selection only selects.
+    if (window.getSelection()?.toString()) return;
     const m = FILE_LINE.exec(l.text);
     const root = build.plan?.root;
     if (!m || !root) return;
@@ -53,7 +62,50 @@
   }
 
   function copyAll() {
-    void navigator.clipboard.writeText(build.output.map((l) => l.text).join("\n")).then(() => ui.toast("success", t("files.copied")));
+    void navigator.clipboard.writeText(lines.map((l) => l.text).join("\n")).then(() => ui.toast("success", t("files.copied")));
+  }
+
+  /** Index (in `lines`) of the row containing a node. */
+  function rowOf(node: Node | null): { el: HTMLElement; index: number } | null {
+    const el = (node instanceof HTMLElement ? node : node?.parentElement)?.closest<HTMLElement>("[data-i]");
+    return el ? { el, index: Number(el.dataset.i) } : null;
+  }
+
+  /** Copy: the selected text, rebuilt from the output when it spans lines. */
+  function onCopy(e: ClipboardEvent) {
+    let text: string | null = null;
+    if (all) {
+      text = lines.map((l) => l.text).join("\n");
+    } else {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+      const a = rowOf(range.startContainer);
+      const b = rowOf(range.endContainer);
+      if (!a || !b || a.index === b.index) return;
+      // Ends: the part of their row inside the selection; between them, whole lines.
+      const head = document.createRange();
+      head.setStart(range.startContainer, range.startOffset);
+      head.setEndAfter(a.el);
+      const tail = document.createRange();
+      tail.setStartBefore(b.el);
+      tail.setEnd(range.endContainer, range.endOffset);
+      const middle = lines.slice(a.index + 1, b.index).map((l) => l.text);
+      text = [head.toString(), ...middle, tail.toString()].join("\n");
+    }
+    e.preventDefault();
+    e.clipboardData?.setData("text/plain", text);
+  }
+
+  function onKey(e: KeyboardEvent) {
+    const mod = e.metaKey || e.ctrlKey;
+    if (mod && e.key.toLowerCase() === "a") {
+      e.preventDefault();
+      window.getSelection()?.removeAllRanges();
+      all = true;
+    } else if (e.key === "Escape") {
+      all = false;
+    }
   }
 </script>
 
@@ -72,17 +124,28 @@
   <button class="icon-btn" title={t("output.copy")} onclick={copyAll}><Icon name="copy" /></button>
 </div>
 
-<div class="scroller mono selectable" bind:this={scroller} bind:clientHeight={height} onscroll={onScroll}>
+<!-- A log that can be focused, selected and copied. -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+<div
+  class="scroller mono selectable"
+  class:all
+  bind:this={scroller}
+  bind:clientHeight={height}
+  onscroll={onScroll}
+  oncopy={onCopy}
+  onkeydown={onKey}
+  onpointerdown={() => (all = false)}
+  tabindex="0"
+  role="log"
+  aria-label={t("panel.output")}
+>
   {#if lines.length}
     <div class="spacer-box" style:height="{lines.length * ROW}px">
       <div class="window" style:transform="translateY({first * ROW}px)">
         {#each lines.slice(first, last) as l, i (first + i)}
           {@const k = kind(l)}
-          {#if FILE_LINE.test(l.text)}
-            <button class="row link {k}" onclick={() => openLine(l)}>{l.text}</button>
-          {:else}
-            <div class="row {k}">{l.text || " "}</div>
-          {/if}
+          {@const m = FILE_LINE.exec(l.text)}
+          <div class="row {k}" data-i={first + i}>{#if m}<span class="link" role="link" tabindex="-1" onclick={() => openLine(l)} onkeydown={(e) => e.key === "Enter" && openLine(l)} title={t("output.openLocation")}>{m[0]}</span>{l.text.slice(m[0].length)}{:else}{l.text || " "}{/if}</div>
         {/each}
       </div>
     </div>
@@ -134,13 +197,15 @@
     white-space: pre;
     color: var(--text-muted);
   }
-  button.row {
-    border: none;
-    background: none;
-    font: inherit;
-    text-align: left;
-    width: 100%;
+  .scroller:focus {
+    outline: none;
+  }
+  .scroller.all .row {
+    background: var(--selection, rgba(120, 150, 255, 0.25));
+  }
+  .link {
     cursor: pointer;
+    color: var(--link);
     text-decoration: underline dotted;
   }
   .row.cmd {

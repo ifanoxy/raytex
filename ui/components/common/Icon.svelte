@@ -110,6 +110,12 @@
     layout: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M9 14h12"/>',
     comment: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
     "page-break": '<path d="M6 3v5h12V3M6 21v-5h12v5M3 12h2M8 12h2M14 12h2M19 12h2"/>',
+    pointer: '<path d="M5 3l14 7.5-6.2 1.6L10 19z"/><path d="m12.8 12.1 5 5"/>',
+    square: '<rect x="4" y="5" width="16" height="14" rx="1.5"/>',
+    circle: '<circle cx="12" cy="12" r="8"/>',
+    ellipse: '<ellipse cx="12" cy="12" rx="9.5" ry="6"/>',
+    polygon: '<path d="M12 3.5 20.5 10 17 20H7L3.5 10z"/>',
+    draw: '<path d="M4 20l1.2-4.4L15.8 5a2.1 2.1 0 0 1 3 3L8.2 18.6z"/><path d="m13.8 7 3 3M4 20h16"/>',
   };
   export type IconName = keyof typeof ICONS;
 </script>

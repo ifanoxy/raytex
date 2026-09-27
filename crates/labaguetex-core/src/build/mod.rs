@@ -13,6 +13,7 @@
 //! * **latexmk**, **single pass** (fastest preview), **Tectonic**, and
 //!   **custom** step lists.
 
+pub mod preamble;
 pub mod refine;
 
 use std::collections::hash_map::DefaultHasher;
@@ -370,6 +371,9 @@ pub struct RunContext<'a> {
     pub lang: Lang,
     /// Current text of a source file (editor buffers first, then disk).
     pub source: &'a dyn Fn(&Path) -> Option<String>,
+    /// Long-lived caller (the application): work useful to the next builds
+    /// may continue in the background (precompiled preambles).
+    pub background: bool,
 }
 
 struct Runner<'a, 'b> {
@@ -380,6 +384,8 @@ struct Runner<'a, 'b> {
     cancelled: bool,
     ran_bib: Option<BibTool>,
     deadline: Instant,
+    /// Precompiled preamble in use (format without extension, its key).
+    format: Option<(PathBuf, u64)>,
 }
 
 /// Runs a build.
@@ -392,6 +398,30 @@ pub fn run(
     let started_at = SystemTime::now();
     let _ = std::fs::create_dir_all(&plan.out_dir);
     mirror_directories(&plan.root_dir, &plan.out_dir);
+    // Auxiliary files written by another engine (pdfLaTeX → LuaLaTeX…) make
+    // the first pass fail: they are removed when the engine changes.
+    let engine_mark = plan
+        .out_dir
+        .join(format!(".labaguetex-engine-{}", plan.job));
+    let previous = std::fs::read_to_string(&engine_mark).ok();
+    if previous
+        .as_deref()
+        .is_some_and(|e| e != plan.engine.program())
+    {
+        clean(&plan.out_dir, &plan.job);
+    }
+    if previous.as_deref() != Some(plan.engine.program()) {
+        let _ = std::fs::write(&engine_mark, plan.engine.program());
+    }
+    // Precompiled preamble: used when ready, prepared after the build otherwise.
+    let preamble_key = if preamble::applies(plan, ctx.settings, ctx.dist) {
+        (ctx.source)(&plan.root)
+            .and_then(|text| preamble::preamble_of(&text))
+            .filter(|p| preamble::unsafe_reason(p).is_none())
+            .map(|p| preamble::key(plan, ctx.settings, ctx.dist, &p))
+    } else {
+        None
+    };
     let mut r = Runner {
         ctx,
         plan,
@@ -400,6 +430,7 @@ pub fn run(
         cancelled: false,
         ran_bib: None,
         deadline: start + Duration::from_secs(ctx.settings.timeout_s.max(10) as u64),
+        format: preamble_key.and_then(|k| preamble::ready(plan, k).map(|f| (f, k))),
     };
     let mut report = match (plan.engine, plan.tool) {
         (Engine::Tectonic, _) => r.tectonic(),
@@ -436,8 +467,26 @@ pub fn run(
     if pdf_updated && ctx.settings.copy_pdf_to_root && plan.out_dir != plan.root_dir {
         let _ = std::fs::copy(&plan.pdf, plan.root_dir.join(format!("{}.pdf", plan.job)));
     }
-    let failed_step = r.steps.iter().any(|s| s.exit_code.is_some_and(|c| c != 0));
+    // A failed step counts unless a later run of the same tool succeeded
+    // (a first pass stopping on stale auxiliary files, then a good rerun).
+    let base = |name: &str| name.split(" (").next().unwrap_or(name).to_owned();
+    let failed_step = r.steps.iter().enumerate().any(|(i, s)| {
+        s.exit_code.is_some_and(|c| c != 0)
+            && !r.steps[i + 1..]
+                .iter()
+                .any(|later| base(&later.name) == base(&s.name) && later.exit_code == Some(0))
+    });
     let errors = report.error_count();
+    // The preamble compiled without error: its format can be prepared for the next builds.
+    if let Some(key) = preamble_key
+        && ctx.background
+        && r.format.is_none()
+        && !r.cancelled
+        && pdf_updated
+        && !report.fatal
+    {
+        preamble::prepare_in_background(plan, ctx.dist, plan.env(ctx.dist), key);
+    }
     BuildOutcome {
         success: !r.cancelled && errors == 0 && !failed_step && pdf.is_some(),
         cancelled: r.cancelled,
@@ -557,6 +606,9 @@ impl Runner<'_, '_> {
             cmd = cmd.arg("-output-format=dvi");
         }
         cmd = cmd.arg(format!("-output-directory={}", plan.out_dir.display()));
+        if let Some((format, _)) = &self.format {
+            cmd = cmd.arg(format!("-fmt={}", format.display()));
+        }
         cmd = cmd.args(s.extra_args.iter().cloned());
         cmd.arg(
             plan.root
@@ -574,8 +626,23 @@ impl Runner<'_, '_> {
         } else {
             self.plan.engine.label().to_owned()
         };
-        let code = self.step(name, self.engine_cmd());
+        let code = self.step(name.clone(), self.engine_cmd());
         let report = self.read_log();
+        // A pass that stops with a precompiled preamble is redone without it;
+        // when that works, the format is abandoned for this preamble.
+        if let Some((_, key)) = self.format
+            && code != Some(0)
+            && report.fatal
+            && !self.cancelled()
+        {
+            self.format = None;
+            let code = self.step(name, self.engine_cmd());
+            let report = self.read_log();
+            if !report.fatal {
+                preamble::abandon(self.plan, key);
+            }
+            return (code, report);
+        }
         (code, report)
     }
 
@@ -982,6 +1049,16 @@ pub const AUX_EXTENSIONS: &[&str] = &[
 /// Only files with a known auxiliary extension are touched; the PDF is kept.
 pub fn clean(out_dir: &Path, job: &str) -> usize {
     let mut removed = 0;
+    // Precompiled preambles.
+    let formats = out_dir.join(".labaguetex-fmt");
+    if let Ok(rd) = std::fs::read_dir(&formats) {
+        for entry in rd.flatten() {
+            if std::fs::remove_file(entry.path()).is_ok() {
+                removed += 1;
+            }
+        }
+        let _ = std::fs::remove_dir(&formats);
+    }
     let walker = ignore::WalkBuilder::new(out_dir)
         .hidden(false)
         .git_ignore(false)
@@ -1104,6 +1181,7 @@ mod tests {
             cancel: &cancel,
             lang: Lang::Fr,
             source: &source,
+            background: false,
         };
         let mut lines = 0;
         let outcome = run(&plan, &ctx, &mut |e| {
@@ -1166,5 +1244,63 @@ mod tests {
         );
         assert!(clean(&plan.out_dir, &plan.job) > 3);
         assert!(plan.pdf.exists(), "clean keeps the PDF");
+    }
+
+    /// pdfLaTeX then LuaLaTeX on the same document (the article template,
+    /// switched to fontspec like the font window does): the auxiliary files
+    /// of the first engine do not make the second build fail.
+    #[test]
+    #[ignore = "depends on the local TeX installation"]
+    fn switching_engines_keeps_builds_clean() {
+        let dist = crate::tex::detect(&[]).into_iter().next().expect("no TeX");
+        let dir = tempfile::tempdir().unwrap();
+        let root = crate::templates::write_files(
+            "article",
+            dir.path(),
+            &crate::templates::example_values(Lang::Fr),
+            None,
+        )
+        .unwrap();
+        let pdf_text = std::fs::read_to_string(&root).unwrap();
+        let lua_text = format!(
+            "% !TEX program = lualatex\n{}",
+            pdf_text
+                .replace("\\usepackage[T1]{fontenc}", "% \\usepackage[T1]{fontenc}")
+                .replace(
+                    "\\usepackage{graphicx}",
+                    "\\usepackage{graphicx}\n\\usepackage{fontspec}"
+                )
+        );
+        let cancel = AtomicBool::new(false);
+        let source = |path: &Path| std::fs::read_to_string(path).ok();
+        let settings = BuildSettings::default();
+        let ctx = RunContext {
+            dist: &dist,
+            settings: &settings,
+            cancel: &cancel,
+            lang: Lang::Fr,
+            source: &source,
+            background: false,
+        };
+        for (engine, text) in [(Engine::Pdflatex, &pdf_text), (Engine::Lualatex, &lua_text)] {
+            std::fs::write(&root, text).unwrap();
+            let facts = DocumentFacts {
+                magic_program: (engine == Engine::Lualatex).then(|| "lualatex".into()),
+                ..Default::default()
+            };
+            let p = plan(&root, &settings, Some(&dist), &facts, Lang::Fr).unwrap();
+            assert_eq!(p.engine, engine);
+            let outcome = run(&p, &ctx, &mut |_| {});
+            assert!(
+                outcome.success,
+                "{engine:?}: {:?} {:?}",
+                outcome.steps, outcome.diagnostics
+            );
+            assert!(
+                outcome.steps.iter().all(|s| s.exit_code == Some(0)),
+                "{engine:?}: {:?}",
+                outcome.steps
+            );
+        }
     }
 }

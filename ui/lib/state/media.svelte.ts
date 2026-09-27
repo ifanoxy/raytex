@@ -1,7 +1,15 @@
 // Requests opening the image, font and TikZ dialogs with content already
 // chosen (pasted image, dropped files, picture under the cursor…).
 
+import type { FontRole } from "../types";
 import { ui } from "./ui.svelte";
+
+/** What the font window is opened for: a role of the document, an extra font. */
+export interface FontPreset {
+  role?: FontRole;
+  /** Command of an extra font being changed (`fontTitle`). */
+  command?: string;
+}
 
 export interface ImageRequest {
   /** Files of the computer or of the project. */
@@ -23,8 +31,10 @@ class MediaStore {
   tikzRequest = $state<TikzRequest | null>(null);
   /** Font files to show first in the font dialog. */
   fontRequest = $state<string[] | null>(null);
+  /** Role chosen before opening the font dialog (from the font menu). */
+  fontPreset: FontPreset | null = null;
   /** Unfinished new picture, kept when the studio is closed. */
-  tikzDraft: { code: string; packages: string[]; libraries: string[]; extra: string } | null = null;
+  tikzDraft: { code: string; packages: string[]; libraries: string[]; extra: string; mode?: "draw" | "code" } | null = null;
 
   openImages(request: ImageRequest = {}) {
     this.imageRequest = request;
@@ -36,8 +46,9 @@ class MediaStore {
     ui.openOverlay("tikz");
   }
 
-  openFonts(files: string[] | null = null) {
+  openFonts(files: string[] | null = null, preset: FontPreset | null = null) {
     this.fontRequest = files;
+    this.fontPreset = preset;
     ui.openOverlay("fonts");
   }
 }

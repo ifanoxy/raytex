@@ -44,11 +44,15 @@ The built-in method (recommended):
 
 Auxiliary files (`.aux`, `.log`, `.toc`…) go to the `build/` folder: your project stays clean. The **Output** panel shows the raw output of every step.
 
+**Precompiled preamble** (pdfLaTeX): after a first build, labaguetex prepares in the background a “precompiled” version of the preamble (with `mylatexformat`). The next builds start directly at `\begin{document}`: often twice as fast (0.6 s instead of 1.3 s with TikZ and pgfplots), with the same PDF. The preamble is prepared again as soon as it changes. Documents that write files in their preamble (indexes, glossaries, `minted`…) are built normally. Setting: *Settings › Compilation › Precompile the preamble*.
+
 Other methods: **latexmk**, **a single pass**, or your **custom steps** (with the placeholders `%DOC%`, `%DOCFILE%`, `%OUTDIR%`, `%DIR%`, `%ENGINE%`).
 
 ## Reading errors
 
 The console (**Problems** and **Output** panels) never opens by itself: errors are underlined in the text, their number shows in red in the top bar and, when you started the build yourself, a notification offers **Show problems**. Close the console with its cross; bring it back with the **View** menu or <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>J</kbd>.
+
+All the text of the panels can be selected and copied: drag over the compiler output (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>A</kbd> selects all of it) or over a message; **Copy all** copies the shown problems (`file:line: message`), and right-clicking a problem offers to copy its message, with or without its location.
 
 The **Problems** panel groups errors by file:
 

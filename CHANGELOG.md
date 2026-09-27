@@ -7,6 +7,12 @@ All notable changes to labaguetex are documented here. The format follows [Keep 
 First version.
 
 ### Writing and layout
+- Fonts from the formatting bar: a font box showing the document's font and a **Document fonts** menu (main, sans-serif, code, maths — change or reset each), fonts for passages applied to the selection (`\newfontfamily\fontName`), a clearer role chooser in the font window.
+- Colours follow the document: with xcolor, its 19 colours, the 68 `dvipsnames` and the SVG colours (the option added without clashing with TikZ or Beamer), search, the document's `\definecolor` colours and a custom colour.
+- TikZ studio with a **whiteboard** by default: shapes drawn with the mouse (line, arrow, rectangle, circle, ellipse, polygon, text with maths) on a fine grid (0.25 cm, adjustable, snapping, can be hidden; axes optional), style and coordinates panel, undo/redo, the LaTeX rendering alongside; drawing and code kept in step both ways, unknown statements kept as code.
+- Console and problems: text selectable and copyable (copy across the virtualised output, select all, copy all problems, context menu).
+- Fix: on AZERTY keyboards, ⌘Z closed the tab (the physical key was matched as ⌘W).
+- Speed: precompiled preambles for pdfLaTeX (prepared in the background, 35–60 % faster passes, fallback when unsafe), large windows loaded on demand, template thumbnails three at a time, a shorter pause before live builds (600 ms).
 - Formatting bar (undo / redo, heading style, size, bold, italic, underline, monospace, colour, alignment, lists, formula, equation, image, table picker, TikZ, link, footnote, reference, citation, @ macros) and a **See all** panel with every command and its shortcut; **View** menu replacing the panel toggles; close buttons on the PDF preview and the console.
 - New projects start empty (name, optional author, location); a **Templates** side panel shows first-page thumbnails compiled once and cached, and applies a template to the main file as one undoable change (other files added, engine recorded).
 - Empty files offer ways to start (template, minimal document, slides, section, chapter, inclusion in the main file, bibliography entries).
