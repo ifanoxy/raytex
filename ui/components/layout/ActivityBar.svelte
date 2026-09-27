@@ -11,10 +11,11 @@
 
   const VIEWS: { id: SidebarView; icon: string; title: MessageKey; action: string }[] = [
     { id: "files", icon: "files", title: "sidebar.files", action: "view.files" },
+    { id: "templates", icon: "template", title: "sidebar.templates", action: "view.templates" },
     { id: "outline", icon: "outline", title: "sidebar.outline", action: "view.outline" },
     { id: "search", icon: "search", title: "sidebar.search", action: "view.search" },
     { id: "symbols", icon: "sigma", title: "sidebar.symbols", action: "view.symbols" },
-    { id: "snippets", icon: "snippets", title: "sidebar.snippets", action: "view.snippets" },
+    { id: "snippets", icon: "at", title: "sidebar.snippets", action: "view.snippets" },
     { id: "packages", icon: "packages", title: "sidebar.packages", action: "view.packages" },
   ];
 

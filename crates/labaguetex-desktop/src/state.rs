@@ -34,6 +34,19 @@ pub struct AppPaths {
 impl Default for AppPaths {
     /// Standard locations for this OS.
     fn default() -> Self {
+        // Development builds can run apart from the installed application
+        // (self-tests): LABAGUETEX_CONFIG_DIR holds settings, session and cache.
+        if cfg!(debug_assertions)
+            && let Some(dir) = std::env::var_os("LABAGUETEX_CONFIG_DIR")
+        {
+            let config = PathBuf::from(dir);
+            return Self {
+                settings: config.join("settings.toml"),
+                session: config.join("session.json"),
+                templates: config.join("templates"),
+                cache: config.join("cache"),
+            };
+        }
         let dirs = directories::ProjectDirs::from("org", "labaguetex", "labaguetex");
         let (config, cache) = match &dirs {
             Some(d) => (d.config_dir().to_path_buf(), d.cache_dir().to_path_buf()),
@@ -150,6 +163,8 @@ pub struct AppState {
     pub own_writes: Mutex<HashMap<PathBuf, Instant>>,
     /// Previews run one at a time; the last result of each kind is kept.
     pub previews: Mutex<HashMap<String, (u64, labaguetex_core::preview::PreviewOutcome)>>,
+    /// Template thumbnails are compiled one at a time.
+    pub thumbnails: Mutex<()>,
     /// Fonts installed on the system (read once).
     pub system_fonts: Mutex<Option<Arc<Vec<labaguetex_core::fonts::FontFamily>>>>,
 }
@@ -180,6 +195,7 @@ impl AppState {
             session: Mutex::new(session),
             own_writes: Mutex::new(HashMap::new()),
             previews: Mutex::new(HashMap::new()),
+            thumbnails: Mutex::new(()),
             system_fonts: Mutex::new(None),
         }
     }

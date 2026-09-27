@@ -9,10 +9,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::tex::Engine;
 
+/// Version of the settings format written by this release (see [`Settings::load`]).
+pub const SETTINGS_VERSION: u32 = 2;
+
 /// Settings of the application, stored in the user's configuration directory.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
+    /// Format version (0 when absent: files written before versioning).
+    #[serde(default)]
+    pub version: u32,
     /// Language, theme, session.
     pub general: GeneralSettings,
     /// Text editor.
@@ -29,6 +35,22 @@ pub struct Settings {
     pub macros: Vec<Macro>,
     /// Keyboard shortcut overrides: action id → key (e.g. `"build": "Mod-Enter"`).
     pub keybindings: std::collections::BTreeMap<String, String>,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            version: SETTINGS_VERSION,
+            general: GeneralSettings::default(),
+            editor: EditorSettings::default(),
+            build: BuildSettings::default(),
+            viewer: ViewerSettings::default(),
+            completion: CompletionSettings::default(),
+            lint: LintSettings::default(),
+            macros: Vec::new(),
+            keybindings: std::collections::BTreeMap::new(),
+        }
+    }
 }
 
 /// General settings.
@@ -134,9 +156,9 @@ pub enum AutoBuild {
     /// Only on demand.
     Off,
     /// After each save.
-    #[default]
     OnSave,
     /// While typing (after a pause): live preview.
+    #[default]
     OnIdle,
 }
 
@@ -170,6 +192,17 @@ impl EngineChoice {
             Self::Latex => Some(Engine::Latex),
             Self::Tectonic => Some(Engine::Tectonic),
         }
+    }
+
+    /// A fixed engine from its name (`lualatex`, `XeLaTeX`…).
+    pub fn parse(name: &str) -> Option<Self> {
+        Some(match Engine::parse(name)? {
+            Engine::Pdflatex => Self::Pdflatex,
+            Engine::Xelatex => Self::Xelatex,
+            Engine::Lualatex => Self::Lualatex,
+            Engine::Latex => Self::Latex,
+            Engine::Tectonic => Self::Tectonic,
+        })
     }
 }
 
@@ -264,7 +297,7 @@ impl Default for BuildSettings {
             engine: EngineChoice::Auto,
             tool: BuildTool::Auto,
             bib_tool: BibTool::Auto,
-            auto_build: AutoBuild::OnSave,
+            auto_build: AutoBuild::OnIdle,
             auto_build_delay_ms: 800,
             out_dir: "build".into(),
             synctex: true,
@@ -378,11 +411,24 @@ pub struct Macro {
 
 impl Settings {
     /// Loads settings from TOML, falling back to defaults on any problem.
+    /// Files of older versions are migrated.
     pub fn load(path: &Path) -> Self {
         std::fs::read_to_string(path)
             .ok()
-            .and_then(|s| toml::from_str(&s).ok())
+            .and_then(|s| toml::from_str::<Self>(&s).ok())
+            .map(Self::migrated)
             .unwrap_or_default()
+    }
+
+    /// Brings settings written by an older release up to date.
+    pub fn migrated(mut self) -> Self {
+        if self.version < 2 && self.build.auto_build == AutoBuild::OnSave {
+            // Version 2: the preview follows the text by default. "After each
+            // save" was the old default, not a choice (saving is automatic).
+            self.build.auto_build = AutoBuild::OnIdle;
+        }
+        self.version = SETTINGS_VERSION;
+        self
     }
 
     /// Saves settings as TOML (atomically).
@@ -533,5 +579,21 @@ mod tests {
         assert_eq!(b.out_dir, "build");
         let roundtrip: Settings = toml::from_str(&toml::to_string(&s).unwrap()).unwrap();
         assert_eq!(roundtrip, s);
+    }
+
+    #[test]
+    fn old_files_are_migrated_once() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
+        std::fs::write(&path, "[build]\nautoBuild = \"onSave\"\n").unwrap();
+        let s = Settings::load(&path);
+        assert_eq!(s.build.auto_build, AutoBuild::OnIdle);
+        assert_eq!(s.version, SETTINGS_VERSION);
+        // A choice made after the migration is kept.
+        let mut chosen = s.clone();
+        chosen.build.auto_build = AutoBuild::OnSave;
+        chosen.save(&path).unwrap();
+        assert_eq!(Settings::load(&path).build.auto_build, AutoBuild::OnSave);
+        assert_eq!(Settings::default().build.auto_build, AutoBuild::OnIdle);
     }
 }

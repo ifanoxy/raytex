@@ -31,6 +31,9 @@ export const listTemplates = () => call<T.TemplateInfo[]>("list_templates");
 export const templatePreview = (id: string, values: T.TemplateValues) => call<string>("template_preview", { id, values });
 export const createProject = (template: string, dir: string, values: T.TemplateValues) =>
   call<T.ProjectInfo>("create_project", { template, dir, values });
+export const createEmptyProject = (dir: string, name: string) => call<T.ProjectInfo>("create_empty_project", { dir, name });
+export const applyTemplate = (id: string, values: T.TemplateValues) => call<T.AppliedTemplate>("apply_template", { id, values });
+export const templateThumbnail = (id: string) => call<string>("template_thumbnail", { id });
 export const saveAsTemplate = (name: string, description: string) => call<void>("save_as_template", { name, description });
 export const deleteTemplate = (id: string) => call<void>("delete_template", { id });
 

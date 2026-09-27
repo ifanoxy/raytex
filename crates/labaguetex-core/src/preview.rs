@@ -261,6 +261,59 @@ const DOCUMENT_ONLY: &[&str] = &[
     "\\newglossaryentry",
 ];
 
+/// Compiles a whole document once (twice when the table of contents or
+/// references need it), for a picture of its first pages: template
+/// thumbnails. Errors do not stop the run, so a missing bibliography still
+/// gives pages. Returns the PDF.
+pub fn compile_document(
+    dist: &Distribution,
+    engine: Engine,
+    main: &Path,
+    out_dir: &Path,
+    timeout: Duration,
+) -> Result<PathBuf, String> {
+    std::fs::create_dir_all(out_dir).map_err(|e| e.to_string())?;
+    let dir = main.parent().ok_or("no folder")?;
+    // `\include{chapters/x}` writes `chapters/x.aux` in the output folder.
+    crate::build::mirror_directories(dir, out_dir);
+    let stem = main
+        .file_stem()
+        .ok_or("no file name")?
+        .to_string_lossy()
+        .into_owned();
+    let pdf = out_dir.join(format!("{stem}.pdf"));
+    let out = out_dir.to_string_lossy().into_owned();
+    let file = main.to_string_lossy().into_owned();
+    let run = || {
+        let cmd = if engine == Engine::Tectonic {
+            dist.cmd("tectonic")
+                .args(["--keep-logs", "--outdir", &out])
+                .arg(file.clone())
+        } else {
+            dist.cmd(engine.program())
+                .env("max_print_line", "10000")
+                .args(["-interaction=nonstopmode", "-file-line-error"])
+                .arg(format!("-output-directory={out}"))
+                .arg(file.clone())
+        }
+        .cwd(dir);
+        process::output(&cmd, timeout).map_err(|e| format!("{}: {e}", engine.label()))
+    };
+    run()?;
+    let log = std::fs::read(out_dir.join(format!("{stem}.log")))
+        .map(|b| String::from_utf8_lossy(&b).into_owned())
+        .unwrap_or_default();
+    let rerun = log.contains("Rerun to get") || log.contains("Label(s) may have changed");
+    if engine != Engine::Tectonic && (rerun || out_dir.join(format!("{stem}.toc")).is_file()) {
+        run()?;
+    }
+    if pdf.is_file() {
+        Ok(pdf)
+    } else {
+        Err(format!("{}: no PDF", engine.label()))
+    }
+}
+
 /// The preamble of `root_source` (between `\documentclass` and
 /// `\begin{document}`), without what cannot work in a small preview.
 pub fn project_preamble(root_source: &str) -> String {
@@ -585,5 +638,39 @@ mod tests {
             filter_packages("\\usepackage[style={a,b}]{hyperref,tikz}").as_deref(),
             Some("\\usepackage[style={a,b}]{tikz}")
         );
+    }
+
+    #[test]
+    #[ignore = "needs a TeX distribution"]
+    fn every_template_gives_a_thumbnail() {
+        let dist = distribution();
+        let dir = tempfile::tempdir().unwrap();
+        for lang in [Lang::Fr, Lang::En] {
+            for t in crate::templates::list(None) {
+                let src = dir.path().join(format!("{}-{}", t.id, lang.code()));
+                let main = crate::templates::write_files(
+                    &t.id,
+                    &src,
+                    &crate::templates::example_values(lang),
+                    None,
+                )
+                .unwrap();
+                let engine = t
+                    .engine
+                    .as_deref()
+                    .and_then(Engine::parse)
+                    .unwrap_or(Engine::Pdflatex);
+                let start = Instant::now();
+                let pdf = compile_document(
+                    &dist,
+                    engine,
+                    &main,
+                    &src.join("out"),
+                    Duration::from_secs(120),
+                );
+                assert!(pdf.is_ok(), "{} ({}): {pdf:?}", t.id, lang.code());
+                eprintln!("{} {}: {:?}", t.id, lang.code(), start.elapsed());
+            }
+        }
     }
 }

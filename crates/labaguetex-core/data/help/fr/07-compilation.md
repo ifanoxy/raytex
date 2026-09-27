@@ -5,7 +5,7 @@ Compiler, c'est transformer vos fichiers `.tex` en PDF. labaguetex le fait vite,
 ## Lancer une compilation
 
 - <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Entrée</kbd>, ou le bouton **Compiler**.
-- Automatiquement à l'enregistrement (réglage par défaut), ou après une pause dans la frappe : *Réglages › Compilation › Compiler automatiquement*.
+- **En direct** (réglage par défaut) : après chaque pause dans la frappe. Le badge *En direct* de la barre du haut l'indique et, pendant une compilation automatique, tourne sans toucher au bouton **Compiler**. Cliquez dessus, ou utilisez le menu du bouton **Compiler**, pour passer à une compilation à chaque enregistrement ; *Réglages › Compilation › Compiler automatiquement* propose aussi *Jamais* et le délai de la pause.
 - <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>.</kbd> arrête une compilation en cours.
 
 Les fichiers modifiés sont enregistrés avant chaque compilation. Si vous compilez depuis un chapitre inclus par `\input`, c'est le document principal qui est compilé.
@@ -47,6 +47,8 @@ Les fichiers auxiliaires (`.aux`, `.log`, `.toc`…) sont rangés dans le dossie
 Autres méthodes : **latexmk**, **une seule passe**, ou vos **étapes personnalisées** (avec les variables `%DOC%`, `%DOCFILE%`, `%OUTDIR%`, `%DIR%`, `%ENGINE%`).
 
 ## Lire les erreurs
+
+La console (panneaux **Problèmes** et **Sortie**) ne s'ouvre jamais d'elle-même : les erreurs sont soulignées dans le texte, leur nombre s'affiche en rouge dans la barre du haut et, quand vous avez lancé la compilation vous-même, une notification propose **Voir les problèmes**. Fermez la console avec sa croix ; rouvrez-la par le menu **Affichage** ou <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>J</kbd>.
 
 Le panneau **Problèmes** regroupe les erreurs par fichier :
 

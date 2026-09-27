@@ -112,6 +112,7 @@ const tree: T.FileNode[] = [
 ];
 
 let settings: T.Settings = {
+  version: 2,
   general: { language: "system", theme: "system", restoreSession: true, beginnerTips: true, hideAuxFiles: true },
   editor: {
     fontFamily: "",
@@ -137,7 +138,7 @@ let settings: T.Settings = {
     engine: "auto",
     tool: "auto",
     bibTool: "auto",
-    autoBuild: "onSave",
+    autoBuild: "onIdle",
     autoBuildDelayMs: 800,
     outDir: "build",
     synctex: true,

@@ -13,30 +13,38 @@ LaTeX transforme vos fichiers `.tex` en PDF grâce à une *distribution TeX* (Te
 
 ## 2. Créer un projet
 
-Cliquez sur **Nouveau projet** (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>N</kbd>) et choisissez un modèle : article, rapport, mémoire, diaporama, examen, fiche d'exercices, CV, lettre…
+Cliquez sur **Nouveau projet** (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>N</kbd>), donnez-lui un nom et choisissez où le ranger. Le projet s'ouvre **vierge** : un fichier `main.tex` vide, et rien d'autre.
 
-Renseignez le titre, l'auteur et l'emplacement : labaguetex crée le dossier, remplit le modèle et l'ouvre. Chaque modèle compile sans erreur dès le départ.
+Pour démarrer :
+
+- le panneau **Modèles**, à gauche, montre chaque modèle par sa première page : article, rapport, mémoire, diaporama, examen, fiche d'exercices, CV, lettre… Un clic le place dans votre document (le titre est celui du projet). <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Z</kbd> vous rend votre texte ;
+- ou choisissez dans la carte affichée sur le fichier vide : *Document minimal*, *Diaporama*… ;
+- ou commencez simplement à écrire.
+
+Chaque modèle compile sans erreur dès le départ.
 
 Vous avez déjà des fichiers ? **Ouvrir un dossier** suffit : labaguetex trouve seul le fichier principal (celui qui contient `\documentclass`).
 
 ## 3. Écrire
 
-L'éditeur vous aide à chaque frappe :
+La **barre de mise en forme**, sous la barre du haut, fonctionne comme dans un traitement de texte : style de la ligne (texte normal, section, sous-section…), taille, gras, italique, souligné, couleur, alignement, listes, formules, image, tableau, schéma. **Tout voir** ouvre toutes les commandes, avec leur raccourci.
+
+L'éditeur vous aide aussi à chaque frappe :
 
 - tapez `\` : les commandes apparaissent, avec leur documentation ;
 - tapez `\begin{` : choisissez un environnement, le `\end{…}` est ajouté ;
-- dans une formule, l'**aperçu mathématique** s'affiche sous le curseur ;
+- dans une formule, l'**aperçu mathématique** s'affiche sous le curseur, et les **raccourcis @** écrivent les symboles en deux touches : `@a` donne `\alpha`, `@/` une fraction, `@R` donne `\mathbb{R}` (liste complète : bouton **Macros @**) ;
 - survolez une commande, une étiquette ou une citation pour voir ce qu'elle fait ou désigne.
 
 ## 4. Compiler
 
-Appuyez sur <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Entrée</kbd> ou cliquez sur **Compiler**. Le PDF s'affiche à droite et se met à jour à chaque compilation, sans perdre votre position.
+Rien à faire : la compilation est **en direct**. Dès que vous marquez une pause dans la frappe, le document est compilé et le PDF, à droite, se met à jour sans perdre votre position. Le badge **En direct** de la barre du haut le rappelle ; un clic dessus la désactive (le document est alors compilé à chaque enregistrement).
 
-Par défaut, labaguetex recompile à chaque enregistrement (réglable dans *Réglages › Compilation*). Il choisit le bon moteur et ne lance Biber, BibTeX ou l'index que lorsque c'est utile.
+Vous pouvez aussi compiler vous-même : <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Entrée</kbd> ou le bouton **Compiler**. labaguetex choisit le bon moteur et ne lance Biber, BibTeX ou l'index que lorsque c'est utile.
 
 ## 5. Corriger les erreurs
 
-Les problèmes apparaissent pendant la frappe (soulignés) et après la compilation, dans le panneau **Problèmes** :
+Les problèmes apparaissent pendant la frappe (soulignés), et la barre du haut indique le nombre d'erreurs de la dernière compilation. La console ne s'ouvre pas d'elle-même : cliquez sur ce nombre, ou sur **Voir les problèmes** dans la notification, pour ouvrir le panneau **Problèmes** :
 
 - chaque erreur indique le fichier et la ligne exacts, cliquez pour y aller ;
 - une explication en français dit *pourquoi* ;

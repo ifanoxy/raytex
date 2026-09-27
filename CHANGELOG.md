@@ -6,6 +6,13 @@ All notable changes to labaguetex are documented here. The format follows [Keep 
 
 First version.
 
+### Writing and layout
+- Formatting bar (undo / redo, heading style, size, bold, italic, underline, monospace, colour, alignment, lists, formula, equation, image, table picker, TikZ, link, footnote, reference, citation, @ macros) and a **See all** panel with every command and its shortcut; **View** menu replacing the panel toggles; close buttons on the PDF preview and the console.
+- New projects start empty (name, optional author, location); a **Templates** side panel shows first-page thumbnails compiled once and cached, and applies a template to the main file as one undoable change (other files added, engine recorded).
+- Empty files offer ways to start (template, minimal document, slides, section, chapter, inclusion in the main file, bibliography entries).
+- Live compilation by default (settings written by older versions are migrated); the console no longer opens by itself; automatic and requested builds are told apart even when queued.
+- Undo / redo from anywhere (`Mod-Z`, `Mod-Shift-Z`, `Mod-Y`); `$` pairs only where a formula can start; linked `\begin` / `\end` names; completion leaves braces empty; `@` shortcuts shown next to commands and in a drawn grid.
+
 ### Images, drawings and fonts
 - *Insert images* dialog: files, clipboard, drag and drop or project images; folder and safe names; width, placement, caption, label; sub-figures; SVG → vector PDF, WebP/GIF/HEIC/BMP/TIFF → PNG.
 - TikZ studio: gallery of 22 bilingual drawings, element and style palette, live preview with the document's preamble, centimetre grid and click-to-insert coordinates, insertion at the cursor or in a `.tikz` file, automatic packages and libraries, in-place editing.

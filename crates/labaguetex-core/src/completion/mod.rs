@@ -110,6 +110,10 @@ pub struct CompletionItem {
     /// Hex color (swatch).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
+    /// Faster way to type it (`@a` for `\alpha`), shown to make the `@`
+    /// shortcuts known.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shortcut: Option<String>,
 }
 
 impl CompletionItem {
@@ -126,6 +130,7 @@ impl CompletionItem {
             glyph: None,
             add_package: None,
             color: None,
+            shortcut: None,
         }
     }
 
@@ -188,6 +193,7 @@ pub fn complete(ws: &Workspace, req: &CompletionRequest<'_>) -> Option<Completio
         return None;
     }
     let ctx = cursor_context(req.before, req.after);
+    let is_command = matches!(ctx, CursorContext::Command { .. });
     let c = Completer {
         ws,
         req,
@@ -213,7 +219,70 @@ pub fn complete(ws: &Workspace, req: &CompletionRequest<'_>) -> Option<Completio
     };
     let mut list = list;
     narrow(&mut list, req.before);
+    for item in &mut list.items {
+        if item.snippet && item.kind != ItemKind::Macro {
+            item.apply = empty_brace_fields(&item.apply);
+        }
+        if is_command && req.settings.at_shortcuts {
+            item.shortcut = item
+                .label
+                .strip_prefix('\\')
+                .and_then(|name| data::at_shortcut_of(name))
+                .map(|k| format!("@{k}"));
+        }
+    }
     (!list.items.is_empty()).then_some(list)
+}
+
+/// Empties the snippet fields written between braces: `\section{${1:title}}`
+/// becomes `\section{${1}}`, so completion creates the braces and the user
+/// types the value. Defaults between brackets (`[${1:htbp}]`) are real
+/// values and are kept.
+pub fn empty_brace_fields(snippet: &str) -> String {
+    let bytes = snippet.as_bytes();
+    let mut out = String::with_capacity(snippet.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'$' && bytes.get(i + 1) == Some(&b'{') {
+            let digits = bytes[i + 2..]
+                .iter()
+                .take_while(|b| b.is_ascii_digit())
+                .count();
+            let body = i + 2 + digits + 1;
+            if digits > 0 && bytes.get(body - 1) == Some(&b':') {
+                // End of the field: the brace closing it (escaped braces skipped).
+                let (mut depth, mut j, mut end) = (0, body, None);
+                while j < bytes.len() {
+                    match bytes[j] {
+                        b'\\' => j += 1,
+                        b'{' => depth += 1,
+                        b'}' if depth == 0 => {
+                            end = Some(j);
+                            break;
+                        }
+                        b'}' => depth -= 1,
+                        _ => {}
+                    }
+                    j += 1;
+                }
+                if let Some(end) = end {
+                    let default = &snippet[body..end];
+                    let opened = out.ends_with('{') || out.ends_with("{\\");
+                    let closed = bytes.get(end + 1) == Some(&b'}');
+                    if opened && closed && !default.contains("${") {
+                        out.push_str(&snippet[i..body - 1]);
+                        out.push('}');
+                        i = end + 1;
+                        continue;
+                    }
+                }
+            }
+        }
+        let ch = snippet[i..].chars().next().expect("char boundary");
+        out.push(ch);
+        i += ch.len_utf8();
+    }
+    out
 }
 
 /// Most items sent for one request: the editor shows about a hundred, and
@@ -1404,5 +1473,39 @@ mod tests {
         assert!(cite.contains("The TeXbook"));
         let user = info(&ws, &main, "user:norm", Lang::En).unwrap();
         assert!(user.contains("main.tex"));
+    }
+
+    #[test]
+    fn fields_between_braces_start_empty() {
+        assert_eq!(empty_brace_fields("section{${1:title}}"), "section{${1}}");
+        assert_eq!(
+            empty_brace_fields("newcommand{\\${1:name}}{${2:definition}}"),
+            "newcommand{\\${1}}{${2}}"
+        );
+        assert_eq!(
+            empty_brace_fields(
+                "begin{figure}[${1:htbp}]\n\t\\includegraphics[width=${2:0.8}\\linewidth]{${3:file}}"
+            ),
+            "begin{figure}[${1:htbp}]\n\t\\includegraphics[width=${2:0.8}\\linewidth]{${3}}"
+        );
+        assert_eq!(
+            empty_brace_fields("\\sum_{${1:i=1}}^{${2:n}} ${3}"),
+            "\\sum_{${1}}^{${2}} ${3}"
+        );
+        assert_eq!(empty_brace_fields("x{${1:a\\{b\\}}}é"), "x{${1}}é");
+        assert_eq!(empty_brace_fields("item ${1:text}"), "item ${1:text}");
+        assert_eq!(
+            empty_brace_fields("{${1:${SELECTION}}}"),
+            "{${1:${SELECTION}}}"
+        );
+    }
+
+    #[test]
+    fn at_shortcuts_are_shown_next_to_commands() {
+        assert_eq!(data::at_shortcut_of("alpha"), Some("a"));
+        assert_eq!(data::at_shortcut_of("frac"), Some("/"));
+        assert_eq!(data::at_shortcut_of("sqrt"), Some("2"));
+        assert_eq!(data::at_shortcut_of("mathbb"), None);
+        assert_eq!(data::at_shortcut_of("left"), None);
     }
 }

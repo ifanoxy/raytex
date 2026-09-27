@@ -194,7 +194,8 @@ const latexParser: StreamParser<LatexState> = {
   },
   languageData: {
     commentTokens: { line: "%" },
-    closeBrackets: { brackets: ["(", "[", "{", "$"], before: ")]}$:;,. \n" },
+    // `$` is handled by editor/dollar.ts (no pair after text).
+    closeBrackets: { brackets: ["(", "[", "{"], before: ")]}$:;,. \n" },
     wordChars: "@",
   },
   tokenTable: {

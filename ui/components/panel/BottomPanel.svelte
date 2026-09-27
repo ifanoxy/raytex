@@ -30,7 +30,7 @@
       {#if runningJobs}<span class="spinner"></span>{:else if tex.jobs.length}<span class="badge">{tex.jobs.length}</span>{/if}
     </button>
     <div class="spacer"></div>
-    <button class="icon-btn" title={t("panel.hide")} onclick={() => ui.toggleBottom()}><Icon name="chevron-down" /></button>
+    <button class="icon-btn" title={t("panel.hide")} aria-label={t("panel.hide")} onclick={() => ui.setVisible("bottom", false)}><Icon name="x" /></button>
   </div>
   <div class="content">
     {#if ui.bottomTab === "problems"}

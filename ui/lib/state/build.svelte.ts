@@ -4,7 +4,7 @@
 import { t } from "../i18n.svelte";
 import * as ipc from "../ipc";
 import type { BuildOutcome, BuildPlan, Diagnostic } from "../types";
-import { basename, fileKind, formatDuration } from "../utils";
+import { basename, fileKind, formatDuration, samePath } from "../utils";
 import { app } from "./app.svelte";
 import { diagnostics } from "./diagnostics.svelte";
 import { editor } from "./editor.svelte";
@@ -31,7 +31,10 @@ class BuildStore {
   /** Incremented when `output` changes (the array itself is not reactive: it can be huge). */
   outputRevision = $state(0);
   output: ConsoleLine[] = [];
-  private auto = false;
+  /** The running build was asked for by the user (not a live or on-save build). */
+  manual = $state(false);
+  /** A build asked for by the user is waiting to start. */
+  private manualPending = false;
 
   get status(): "idle" | "running" | "success" | "failed" | "cancelled" {
     if (this.running) return "running";
@@ -43,6 +46,10 @@ class BuildStore {
 
   async init() {
     await ipc.on("build:started", ({ plan }) => {
+      // Requests are coalesced by the engine: a build is "manual" when the
+      // user asked for one since the previous build started.
+      this.manual = this.manualPending;
+      this.manualPending = false;
       this.running = true;
       this.plan = plan;
       this.step = null;
@@ -78,19 +85,26 @@ class BuildStore {
       if (!opts.auto) ui.toast("info", t("build.nothingToBuild"));
       return;
     }
+    // An empty main file (new project): nothing to compile yet.
+    const text = editor.textOf(target);
+    if (text !== null && !text.trim() && samePath(target, project.info?.main)) {
+      if (!opts.auto) ui.toast("info", t("build.emptyDocument"));
+      return;
+    }
     if (!tex.ready) {
       if (opts.auto) return;
       if (tex.status?.detecting) ui.toast("info", t("build.stillDetecting"));
       else ui.openOverlay("setup");
       return;
     }
-    this.auto = !!opts.auto;
+    if (!opts.auto) this.manualPending = true;
     // The engine reads files from disk: save first.
     await editor.saveAll({ auto: true, silent: true });
     await editor.flush();
     try {
       await ipc.build(target);
     } catch (e) {
+      if (!opts.auto) this.manualPending = false;
       ui.toast("error", t("build.failedToStart"), { detail: String(e) });
     }
   }
@@ -128,13 +142,13 @@ class BuildStore {
   private finished(outcome: BuildOutcome | null, error: Diagnostic | null) {
     this.running = false;
     this.step = null;
-    const auto = this.auto;
-    this.auto = false;
+    const auto = !this.manual;
+    this.manual = false;
     if (error) {
       this.error = error;
       this.outcome = null;
       diagnostics.setBuild([error]);
-      ui.toast("error", error.message, { action: { label: t("build.showProblems"), run: () => ui.showBottom("problems") } });
+      if (!auto) ui.toast("error", error.message, { action: { label: t("build.showProblems"), run: () => ui.showBottom("problems") } });
       return;
     }
     if (!outcome) return;
@@ -146,11 +160,19 @@ class BuildStore {
       ui.toast("info", t("build.cancelled"));
       return;
     }
+    // The console is never opened by itself: errors are shown in the text,
+    // in the top bar, and (for a compilation asked for) in a notification.
     const errors = outcome.diagnostics.filter((d) => d.severity === "error").length;
     if (!outcome.success || errors) {
-      if (!auto) ui.showBottom("problems");
+      if (!auto && !ui.bottomVisible) {
+        ui.toast("error", errors ? t("build.failedErrors", { n: errors }) : t("build.failed"), {
+          action: { label: t("build.showProblems"), run: () => ui.showBottom("problems") },
+        });
+      }
     } else if (!auto && !ui.pdfVisible) {
-      ui.toast("success", t("build.succeeded", { file: basename(outcome.pdf ?? ""), time: formatDuration(outcome.durationMs) }));
+      ui.toast("success", t("build.succeeded", { file: basename(outcome.pdf ?? ""), time: formatDuration(outcome.durationMs) }), {
+        action: { label: t("build.showPdf"), run: () => ui.setVisible("pdf", true) },
+      });
     }
     if (outcome.success && app.settings?.viewer.syncAfterBuild && !auto) void editor.syncForward(true);
     void project.refreshStructure();

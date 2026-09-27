@@ -1,6 +1,21 @@
 # Macros et extraits
 
-Écrire moins, plus vite : les **extraits** insèrent des blocs complets, les **macros** sont vos propres raccourcis.
+Écrire moins, plus vite : les **raccourcis @** écrivent les symboles en deux touches, les **extraits** insèrent des blocs complets, les **macros** sont vos propres raccourcis.
+
+## Les raccourcis @
+
+Dans une formule, tapez `@` puis une touche : la commande s'écrit toute seule.
+
+| Tapez | Obtenez | Tapez | Obtenez |
+|---|---|---|---|
+| `@a`, `@b`, `@g`, `@l`, `@p` | `\alpha`, `\beta`, `\gamma`, `\lambda`, `\pi` | `@G`, `@D`, `@S`, `@W` | `\Gamma`, `\Delta`, `\Sigma`, `\Omega` |
+| `@/` | `\frac{}{}` | `@2` | `\sqrt{}` |
+| `@8` | `\infty` | `@6` | `\partial` |
+| `@R`, `@N`, `@Z`, `@C` | `\mathbb{R}`… | `@I` | `\int_{}^{}` |
+| `@<`, `@>` | `\leq`, `\geq` | `@->`, `@=>` | `\to`, `\implies` |
+| `@(`, `@[`, `@\|` | `\left( … \right)`… | `@^`, `@_`, `@V` | `\hat{}`, `\bar{}`, `\vec{}` |
+
+Pour les découvrir : le bouton **Macros @** de la barre de mise en forme ouvre la liste complète, avec chaque symbole dessiné (un clic l'insère) ; **Tout voir** montre les plus utiles ; et quand vous tapez une commande qui a un raccourci, les suggestions l'affichent à côté (`\alpha` → `@a`). Ils se désactivent dans *Réglages › Autocomplétion*.
 
 ## Les extraits
 
@@ -21,7 +36,7 @@ Tapez un déclencheur puis choisissez-le dans les suggestions :
 | `code`, `algo` | du code, un algorithme |
 | `si`, `ce` | une grandeur avec unité, une formule chimique |
 
-Une fois inséré, <kbd>Tab</kbd> passe au champ suivant, <kbd>⇧</kbd> + <kbd>Tab</kbd> revient au précédent. La vue **Extraits et macros** les liste tous.
+Une fois inséré, <kbd>Tab</kbd> passe au champ suivant, <kbd>⇧</kbd> + <kbd>Tab</kbd> revient au précédent. La vue **Macros @ et extraits** les liste tous.
 
 ## Vos macros
 
@@ -58,5 +73,7 @@ labaguetex les reconnaît aussitôt : autocomplétion avec le bon nombre d'argum
 | Formule en ligne | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>M</kbd> |
 | Entourer d'un environnement | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>W</kbd> |
 | Commenter | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>/</kbd> |
+| Liste à puces, liste numérotée | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>8</kbd>, <kbd>7</kbd> |
+| Annuler, rétablir | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Z</kbd> ; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>Z</kbd> ou <kbd>Y</kbd> |
 
 Tous les raccourcis se modifient dans *Réglages › Raccourcis*.

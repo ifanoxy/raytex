@@ -11,6 +11,7 @@
   import { viewer } from "$lib/state/viewer.svelte";
   import { prettyKey, relative, samePath } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
+  import EmptyStart from "./EmptyStart.svelte";
 
   let host = $state<HTMLElement | null>(null);
   let dragIndex = $state<number | null>(null);
@@ -130,6 +131,9 @@
 
   <div class="body">
     <div class="cm-host" class:hidden={!showsText} bind:this={host}></div>
+    {#if active && showsText && editor.activeEmpty && !active.readOnly && (active.kind === "tex" || active.kind === "bib")}
+      {#key active.path}<EmptyStart tab={active} />{/key}
+    {/if}
 
     {#if active?.kind === "image"}
       <div class="image">

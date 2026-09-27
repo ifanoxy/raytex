@@ -5,7 +5,7 @@ Building turns your `.tex` files into a PDF. labaguetex does it fast, at the rig
 ## Starting a build
 
 - <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd>, or the **Build** button.
-- Automatically on save (default), or after a pause in typing: *Settings › Compilation › Build automatically*.
+- **Live** (default): after each pause in typing. The *Live* badge of the top bar shows it and, during an automatic build, spins without touching the **Build** button. Click it, or use the menu of the **Build** button, to build on each save instead; *Settings › Compilation › Build automatically* also offers *Never* and the length of the pause.
 - <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>.</kbd> stops a running build.
 
 Modified files are saved before each build. If you build from a chapter included with `\input`, the main document is built.
@@ -47,6 +47,8 @@ Auxiliary files (`.aux`, `.log`, `.toc`…) go to the `build/` folder: your proj
 Other methods: **latexmk**, **a single pass**, or your **custom steps** (with the placeholders `%DOC%`, `%DOCFILE%`, `%OUTDIR%`, `%DIR%`, `%ENGINE%`).
 
 ## Reading errors
+
+The console (**Problems** and **Output** panels) never opens by itself: errors are underlined in the text, their number shows in red in the top bar and, when you started the build yourself, a notification offers **Show problems**. Close the console with its cross; bring it back with the **View** menu or <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>J</kbd>.
 
 The **Problems** panel groups errors by file:
 

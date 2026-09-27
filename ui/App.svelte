@@ -23,6 +23,7 @@
   import Toasts from "./components/dialogs/Toasts.svelte";
   import EditorArea from "./components/editor/EditorArea.svelte";
   import ActivityBar from "./components/layout/ActivityBar.svelte";
+  import FormatBar from "./components/layout/FormatBar.svelte";
   import Sidebar from "./components/layout/Sidebar.svelte";
   import StatusBar from "./components/layout/StatusBar.svelte";
   import Toolbar from "./components/layout/Toolbar.svelte";
@@ -165,7 +166,10 @@
 </script>
 
 <div class="app" class:no-project={!hasProject}>
-  <Toolbar />
+  <div class="top">
+    <Toolbar />
+    {#if hasProject && ui.formatBarVisible}<FormatBar />{/if}
+  </div>
   <div class="main">
     <ActivityBar />
     {#if hasProject && ui.sidebarVisible}
@@ -233,8 +237,11 @@
 <style>
   .app {
     display: grid;
-    grid-template-rows: var(--toolbar-height) minmax(0, 1fr) var(--statusbar-height);
+    grid-template-rows: auto minmax(0, 1fr) var(--statusbar-height);
     height: 100%;
+  }
+  .top {
+    min-width: 0;
   }
   .main {
     display: flex;

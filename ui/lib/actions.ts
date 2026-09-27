@@ -9,6 +9,7 @@ import { toggleComment } from "@codemirror/commands";
 import { gotoLine, openSearchPanel } from "@codemirror/search";
 import { EditorView, type KeyBinding } from "@codemirror/view";
 import { REPOSITORY_URL } from "./constants";
+import { setAlignment, setList } from "./editor/format";
 import { wrapCommand, wrapEnvironment, wrapMath } from "./editor/structure";
 import { type MessageKey, t } from "./i18n.svelte";
 import { confirmAndRun } from "./install";
@@ -32,6 +33,8 @@ export interface Action {
   category: Category;
   /** Default shortcut, in CodeMirror notation (`Mod-Shift-p`). */
   keys?: string;
+  /** Other shortcuts doing the same (not customisable): `Mod-y` for redo. */
+  altKeys?: string[];
   /** Runs inside the editor (receives the view, only when a text file is shown). */
   editor?: boolean;
   icon?: string;
@@ -46,6 +49,22 @@ const hasTex = () => hasText() && fileKind(editor.active ?? "") === "tex";
 const hasPdf = () => !!viewer.pdf;
 /** The PDF viewer handles its own zoom shortcuts when focused. */
 const notInPdf = () => !document.activeElement?.closest(".pdf-viewer");
+/**
+ * Undo/redo of the document: everywhere except in text fields and other
+ * editors (dialogs, the TikZ studio), which keep their own history.
+ */
+const documentHistory = () => {
+  if (!hasText() || ui.overlay || ui.dialog) return false;
+  const el = document.activeElement as HTMLElement | null;
+  if (!el || el === document.body) return true;
+  if (el.closest(".cm-editor")) return !!editor.view?.dom.contains(el) && !el.closest(".cm-panel");
+  return !(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || el.isContentEditable);
+};
+/** Indentation unit of the editor. */
+const unit = () => {
+  const s = app.settings?.editor;
+  return s?.useTabs ? "\t" : " ".repeat(s?.tabSize ?? 2);
+};
 
 /** Runs `fn` with the editor view when a text file is shown. */
 function withView(fn: (view: EditorView) => unknown) {
@@ -57,8 +76,11 @@ function withView(fn: (view: EditorView) => unknown) {
   };
 }
 
+/** Environments and headings are blocks: they go on lines of their own. */
+const isBlock = (body: string) => /^\\(begin|part|chapter|section|subsection)\b/.test(body);
+
 function snippetAction(id: string, title: MessageKey, body: () => string, when = hasTex): Action {
-  return { id, title, category: "insert", editor: true, when, run: withView((v) => editor.insertSnippet(body(), v)) };
+  return { id, title, category: "insert", editor: true, when, run: withView((v) => editor.insertSnippet(body(), v, { block: isBlock(body()) })) };
 }
 
 function zoomEditor(delta: number | null) {
@@ -92,6 +114,7 @@ export const actions: Action[] = [
   { id: "build.log", title: "action.openLog", category: "build", icon: "file", when: () => !!build.outcome, run: () => build.openLog() },
   { id: "build.output", title: "action.showOutput", category: "build", keys: "Mod-Shift-u", icon: "terminal", run: () => ui.showBottom("output") },
   { id: "build.problems", title: "action.showProblems", category: "build", icon: "alert-circle", run: () => ui.showBottom("problems") },
+  { id: "build.live", title: "action.toggleLiveBuild", category: "build", icon: "bolt", run: () => toggleLiveBuild() },
   { id: "pdf.export", title: "action.exportPdf", category: "build", icon: "download", when: hasPdf, run: () => viewer.exportPdf() },
   { id: "pdf.external", title: "action.openPdfExternal", category: "build", icon: "external", when: hasPdf, run: () => viewer.openExternal() },
 
@@ -108,6 +131,8 @@ export const actions: Action[] = [
   { id: "view.symbols", title: "action.showSymbols", category: "view", icon: "sigma", run: () => ui.showSidebar("symbols") },
   { id: "view.snippets", title: "action.showSnippets", category: "view", icon: "snippets", run: () => ui.showSidebar("snippets") },
   { id: "view.packages", title: "action.showPackages", category: "view", icon: "packages", run: () => ui.showSidebar("packages") },
+  { id: "view.templates", title: "action.showTemplates", category: "view", icon: "template", when: hasProject, run: () => ui.showSidebar("templates") },
+  { id: "view.formatBar", title: "action.toggleFormatBar", category: "view", icon: "type", run: () => ui.toggleFormatBar() },
   { id: "view.zoomIn", title: "action.zoomIn", category: "view", keys: "Mod-=", icon: "zoom-in", when: notInPdf, run: () => zoomEditor(1) },
   { id: "view.zoomOut", title: "action.zoomOut", category: "view", keys: "Mod--", icon: "zoom-out", when: notInPdf, run: () => zoomEditor(-1) },
   { id: "view.zoomReset", title: "action.zoomReset", category: "view", keys: "Mod-0", when: notInPdf, run: () => zoomEditor(null) },
@@ -128,6 +153,8 @@ export const actions: Action[] = [
   { id: "nav.goToLine", title: "action.goToLine", category: "navigate", keys: "Mod-l", editor: true, when: hasText, run: withView((v) => gotoLine(v)) },
 
   // ------------------------------------------------------------- edit
+  { id: "edit.undo", title: "action.undo", category: "edit", keys: "Mod-z", icon: "undo", when: documentHistory, run: () => editor.undo() },
+  { id: "edit.redo", title: "action.redo", category: "edit", keys: "Mod-Shift-z", altKeys: ["Mod-y"], icon: "redo", when: documentHistory, run: () => editor.redo() },
   { id: "edit.bold", title: "action.bold", category: "edit", keys: "Mod-b", editor: true, when: hasTex, run: withView((v) => wrapCommand(v, "textbf")) },
   { id: "edit.italic", title: "action.italic", category: "edit", keys: "Mod-i", editor: true, when: hasTex, run: withView((v) => wrapCommand(v, "textit")) },
   { id: "edit.emph", title: "action.emph", category: "edit", keys: "Mod-e", editor: true, when: hasTex, run: withView((v) => wrapCommand(v, "emph")) },
@@ -136,6 +163,12 @@ export const actions: Action[] = [
   { id: "edit.smallcaps", title: "action.smallcaps", category: "edit", editor: true, when: hasTex, run: withView((v) => wrapCommand(v, "textsc")) },
   { id: "edit.math", title: "action.inlineMath", category: "edit", keys: "Mod-Shift-m", editor: true, when: hasTex, run: withView((v) => wrapMath(v)) },
   { id: "edit.comment", title: "action.toggleComment", category: "edit", editor: true, when: hasText, run: withView((v) => toggleComment(v)) },
+  { id: "edit.bulletList", title: "action.bulletList", category: "edit", keys: "Mod-Shift-8", editor: true, icon: "list", when: hasTex, run: withView((v) => setList(v, "itemize", unit())) },
+  { id: "edit.numberedList", title: "action.numberedList", category: "edit", keys: "Mod-Shift-7", editor: true, icon: "list-ordered", when: hasTex, run: withView((v) => setList(v, "enumerate", unit())) },
+  { id: "edit.alignLeft", title: "action.alignLeft", category: "edit", editor: true, icon: "align-left", when: hasTex, run: withView((v) => setAlignment(v, "flushleft", unit())) },
+  { id: "edit.alignCenter", title: "action.alignCenter", category: "edit", editor: true, icon: "align-center", when: hasTex, run: withView((v) => setAlignment(v, "center", unit())) },
+  { id: "edit.alignRight", title: "action.alignRight", category: "edit", editor: true, icon: "align-right", when: hasTex, run: withView((v) => setAlignment(v, "flushright", unit())) },
+  { id: "edit.alignJustify", title: "action.alignJustify", category: "edit", editor: true, icon: "align-justify", when: hasTex, run: withView((v) => setAlignment(v, null, unit())) },
   {
     id: "edit.wrapEnv",
     title: "action.wrapEnvironment",
@@ -216,6 +249,13 @@ function openPalette(mode: "commands" | "files") {
   }
   ui.paletteMode = mode;
   ui.openOverlay("palette");
+}
+
+/** Live compilation (while typing) on or off; "off" keeps compiling on save. */
+function toggleLiveBuild() {
+  void app.update((s) => {
+    s.build.autoBuild = s.build.autoBuild === "onIdle" ? "onSave" : "onIdle";
+  });
 }
 
 function toggleSidebar() {
@@ -305,7 +345,8 @@ export function handleGlobalKey(e: KeyboardEvent): boolean {
   for (const a of actions) {
     if (a.editor) continue;
     const spec = keyFor(a.id);
-    if (!spec || !matches(e, spec)) continue;
+    const specs = [spec, ...(a.altKeys ?? [])].filter((k): k is string => !!k);
+    if (!specs.some((k) => matches(e, k))) continue;
     if (!isAvailable(a)) continue;
     e.preventDefault();
     e.stopPropagation();

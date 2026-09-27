@@ -7,10 +7,13 @@
   import Search from "../sidebar/Search.svelte";
   import Snippets from "../sidebar/Snippets.svelte";
   import Symbols from "../sidebar/Symbols.svelte";
+  import Templates from "../sidebar/Templates.svelte";
 </script>
 
 {#if ui.sidebar === "files"}
   <FileTree />
+{:else if ui.sidebar === "templates"}
+  <Templates />
 {:else if ui.sidebar === "outline"}
   <Outline />
 {:else if ui.sidebar === "search"}

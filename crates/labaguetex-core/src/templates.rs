@@ -165,11 +165,12 @@ pub fn instantiate(
     values: &TemplateValues,
     user_dir: Option<&Path>,
 ) -> Result<PathBuf, TemplateError> {
-    let info = list(user_dir)
-        .into_iter()
-        .find(|t| t.id == id)
-        .ok_or_else(|| TemplateError::Unknown(id.into()))?;
-    let files = files(id, user_dir).ok_or_else(|| TemplateError::Unknown(id.into()))?;
+    ensure_empty(dir)?;
+    write_files(id, dir, values, user_dir)
+}
+
+/// Fails when `dir` contains files other than hidden ones.
+fn ensure_empty(dir: &Path) -> Result<(), TemplateError> {
     if dir.exists()
         && std::fs::read_dir(dir)?
             .filter_map(Result::ok)
@@ -177,24 +178,157 @@ pub fn instantiate(
     {
         return Err(TemplateError::NotEmpty(dir.to_path_buf()));
     }
+    Ok(())
+}
+
+/// Name of the main file of an empty project.
+pub const EMPTY_MAIN: &str = "main.tex";
+
+/// Creates an empty project in `dir` (which must be empty or absent): an
+/// empty main file, declared in `labaguetex.toml` (with the display `name`)
+/// so that it is compiled once it has content. Returns the main file.
+pub fn create_empty(dir: &Path, name: Option<&str>) -> Result<PathBuf, TemplateError> {
+    ensure_empty(dir)?;
+    std::fs::create_dir_all(dir)?;
+    let main = dir.join(EMPTY_MAIN);
+    std::fs::write(&main, "")?;
+    let config = crate::settings::ProjectConfig {
+        project: crate::settings::ProjectSection {
+            main: Some(EMPTY_MAIN.into()),
+            name: name
+                .map(str::trim)
+                .filter(|n| !n.is_empty())
+                .map(str::to_owned),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    config.save(dir)?;
+    Ok(main)
+}
+
+/// Whether a template file is text (its placeholders are filled).
+fn is_text_file(rel: &str) -> bool {
+    [
+        ".tex", ".bib", ".toml", ".sty", ".cls", ".md", ".txt", ".cfg",
+    ]
+    .iter()
+    .any(|e| rel.ends_with(e))
+}
+
+/// Content of a template file with its placeholders filled.
+fn filled(rel: &str, bytes: Vec<u8>, values: &TemplateValues) -> Vec<u8> {
+    match String::from_utf8(bytes) {
+        Ok(text) if is_text_file(rel) => fill(&text, values).into_bytes(),
+        Ok(text) => text.into_bytes(),
+        Err(e) => e.into_bytes(),
+    }
+}
+
+/// Writes every file of template `id` into `dir` (replacing existing ones).
+/// Returns the main file.
+pub fn write_files(
+    id: &str,
+    dir: &Path,
+    values: &TemplateValues,
+    user_dir: Option<&Path>,
+) -> Result<PathBuf, TemplateError> {
+    let info = find(id, user_dir)?;
+    let files = files(id, user_dir).ok_or_else(|| TemplateError::Unknown(id.into()))?;
     std::fs::create_dir_all(dir)?;
     for (rel, bytes) in files {
         let path = dir.join(&rel);
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let is_text = [
-            ".tex", ".bib", ".toml", ".sty", ".cls", ".md", ".txt", ".cfg",
-        ]
-        .iter()
-        .any(|e| rel.ends_with(e));
-        match (is_text, String::from_utf8(bytes)) {
-            (true, Ok(text)) => std::fs::write(&path, fill(&text, values))?,
-            (_, Ok(text)) => std::fs::write(&path, text)?,
-            (_, Err(e)) => std::fs::write(&path, e.into_bytes())?,
-        }
+        std::fs::write(&path, filled(&rel, bytes, values))?;
     }
     Ok(dir.join(info.main))
+}
+
+fn find(id: &str, user_dir: Option<&Path>) -> Result<TemplateInfo, TemplateError> {
+    list(user_dir)
+        .into_iter()
+        .find(|t| t.id == id)
+        .ok_or_else(|| TemplateError::Unknown(id.into()))
+}
+
+/// A template applied to an open project (see [`apply`]).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Applied {
+    /// New text of the project's main file (the editor replaces the current
+    /// text with it, so that the change can be undone).
+    pub main_text: String,
+    /// Other files of the template written into the project.
+    pub created: Vec<PathBuf>,
+    /// Files of the template that already existed and were left untouched.
+    pub kept: Vec<PathBuf>,
+    /// Engine required by the template (`lualatex`…), `None` for pdfLaTeX.
+    pub engine: Option<String>,
+}
+
+/// Applies template `id` to the project in `root`: its main file becomes the
+/// returned text (the caller puts it in the editor), its other files are
+/// written unless a file of the same name exists, and its engine is
+/// recorded in `labaguetex.toml` (reset to automatic for pdfLaTeX).
+pub fn apply(
+    id: &str,
+    root: &Path,
+    values: &TemplateValues,
+    user_dir: Option<&Path>,
+) -> Result<Applied, TemplateError> {
+    let info = find(id, user_dir)?;
+    let files = files(id, user_dir).ok_or_else(|| TemplateError::Unknown(id.into()))?;
+    let mut applied = Applied {
+        main_text: String::new(),
+        created: Vec::new(),
+        kept: Vec::new(),
+        engine: info
+            .engine
+            .clone()
+            .filter(|e| !e.eq_ignore_ascii_case("pdflatex")),
+    };
+    for (rel, bytes) in files {
+        if rel == info.main {
+            applied.main_text = String::from_utf8_lossy(&filled(&rel, bytes, values)).into_owned();
+            continue;
+        }
+        // The project keeps its own configuration (main file, settings).
+        if rel == crate::settings::PROJECT_FILE {
+            continue;
+        }
+        let path = root.join(&rel);
+        if path.exists() {
+            applied.kept.push(path);
+            continue;
+        }
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&path, filled(&rel, bytes, values))?;
+        applied.created.push(path);
+    }
+    let mut config = crate::settings::ProjectConfig::load(root).unwrap_or_default();
+    let engine = applied
+        .engine
+        .as_deref()
+        .and_then(crate::settings::EngineChoice::parse);
+    if config.build.engine != engine {
+        config.build.engine = engine;
+        config.save(root)?;
+    }
+    Ok(applied)
+}
+
+/// Values used to preview templates (thumbnails).
+pub fn example_values(lang: Lang) -> TemplateValues {
+    TemplateValues {
+        title: lang.pick("Titre du document", "Document title").to_owned(),
+        author: lang.pick("Camille Martin", "Alex Smith").to_owned(),
+        institution: lang.pick("Université", "University").to_owned(),
+        language: lang.code().to_owned(),
+    }
 }
 
 /// Replaces the placeholders of a template file.
@@ -489,5 +623,52 @@ mod tests {
             }
         }
         assert!(failures.is_empty(), "{failures:#?}");
+    }
+
+    #[test]
+    fn empty_project_then_template() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("projet");
+        let main = create_empty(&root, Some(" Mon projet ")).unwrap();
+        assert_eq!(std::fs::read_to_string(&main).unwrap(), "");
+        let config = crate::settings::ProjectConfig::load(&root).unwrap();
+        assert_eq!(config.project.main.as_deref(), Some("main.tex"));
+        assert_eq!(config.project.name.as_deref(), Some("Mon projet"));
+        assert!(
+            create_empty(&root, None).is_err(),
+            "the folder is not empty any more"
+        );
+
+        let values = example_values(Lang::Fr);
+        // A template with other files and another engine.
+        let applied = apply("modern-article", &root, &values, None).unwrap();
+        assert!(applied.main_text.contains("\\documentclass"));
+        assert!(applied.main_text.contains("Titre du document"));
+        assert_eq!(applied.engine.as_deref(), Some("lualatex"));
+        assert!(root.join("references.bib").is_file());
+        assert_eq!(applied.created, vec![root.join("references.bib")]);
+        // The main file itself is left to the editor.
+        assert_eq!(std::fs::read_to_string(&main).unwrap(), "");
+        let config = crate::settings::ProjectConfig::load(&root).unwrap();
+        assert_eq!(config.project.main.as_deref(), Some("main.tex"));
+        assert_eq!(
+            config.build.engine,
+            Some(crate::settings::EngineChoice::Lualatex)
+        );
+        // Existing files are kept; pdfLaTeX templates reset the engine.
+        std::fs::write(root.join("references.bib"), "% mine").unwrap();
+        let applied = apply("research-article", &root, &values, None).unwrap();
+        assert_eq!(applied.kept, vec![root.join("references.bib")]);
+        assert_eq!(
+            std::fs::read_to_string(root.join("references.bib")).unwrap(),
+            "% mine"
+        );
+        assert_eq!(applied.engine, None);
+        let config = crate::settings::ProjectConfig::load(&root).unwrap();
+        assert_eq!(config.build.engine, None);
+        // A template whose main file has another name fills the project's.
+        let applied = apply("tikz-figure", &root, &values, None).unwrap();
+        assert!(applied.main_text.contains("tikzpicture"));
+        assert!(!root.join("figure.tex").exists());
     }
 }

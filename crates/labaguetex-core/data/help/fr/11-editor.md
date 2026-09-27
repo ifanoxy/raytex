@@ -12,7 +12,9 @@ Les suggestions s'adaptent au contexte :
 - dans `\includegraphics{…}`, `\input{…}` : les fichiers du projet ;
 - dans les options `[…]` : les options connues.
 
-Choisir une commande d'un package non chargé ajoute le `\usepackage` correspondant. <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Espace</kbd> ouvre les suggestions à tout moment.
+Choisir une commande crée ses accolades, **vides** : le curseur est dans la première, <kbd>Tab</kbd> passe à la suivante. Choisir une commande d'un package non chargé ajoute le `\usepackage` correspondant. <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Espace</kbd> ouvre les suggestions à tout moment.
+
+Quand un **raccourci @** existe, il est affiché à côté de la commande : `\alpha` montre `@a`. Dans une formule, taper `@a` suffit.
 
 ## Vérification pendant la frappe
 
@@ -35,8 +37,33 @@ Survolez une commande, un environnement ou un package : sa documentation s'affic
 | Problème suivant | <kbd>F8</kbd> |
 | Rechercher dans le projet | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>F</kbd> |
 
+## Barre de mise en forme
+
+Sous la barre du haut, comme dans un traitement de texte (tous les boutons agissent sur la sélection, ou sur la ligne du curseur) :
+
+| Bouton | Effet |
+|---|---|
+| Annuler, Rétablir | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Z</kbd> ; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>Z</kbd> ou <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Y</kbd> |
+| Style | la ligne devient une partie, un chapitre, une section… ou redevient du texte normal ; le menu indique le style de la ligne du curseur |
+| Taille | `{\large …}`, `{\small …}`… ; choisir *Normal* retire la taille |
+| Gras, italique, souligné, chasse fixe | `\textbf`, `\textit`, `\underline`, `\texttt` |
+| Couleur | `\textcolor{red}{…}` (ajoute `xcolor`) ; rechoisir une couleur la remplace |
+| Alignement | environnements `flushleft`, `center`, `flushright` ; rechoisir change l'alignement du bloc |
+| Listes | chaque ligne sélectionnée devient un `\item` ; sur une liste, change son type |
+| Formule, équation | `$…$` autour de la sélection ; environnement `equation` |
+| Image, Tableau, Schéma TikZ | fenêtre d'images ; grille pour choisir la taille du tableau (cellules vides, `booktabs` ajouté) ; studio TikZ |
+| Lien, note, renvoi, citation | `\href`, `\footnote`, `\ref`, `\cite` |
+| Macros @ | la liste des raccourcis @ |
+| Tout voir | toutes les commandes de mise en forme et d'insertion, groupées, avec leur raccourci |
+
+Le menu **Affichage** (en haut à droite) montre ou masque cette barre, le panneau latéral, l'aperçu PDF et la console ; l'aperçu et la console se ferment aussi par leur croix.
+
 ## Édition
 
+- Annuler : <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Z</kbd>, même quand le curseur n'est pas dans le texte (après un clic dans la barre ou le PDF). Rétablir : <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>Z</kbd> ou <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Y</kbd>.
+- `$` : ouvre une paire `$…$` là où une formule peut commencer (après une espace, en début de ligne) ; après du texte, ou pour fermer une formule, un seul `$` est écrit (celui qui ferme déjà la formule est simplement franchi).
+- Modifier le nom d'un `\begin{…}` modifie aussi son `\end{…}` (et inversement) ; une seule annulation défait les deux.
+- Un fichier vide propose de quoi commencer : modèle, document minimal, diaporama ; pour un chapitre, une section ou l'inclusion dans le document principal ; pour un `.bib`, les entrées courantes.
 - Plusieurs curseurs : <kbd>⌥</kbd>/<kbd>Alt</kbd> + clic ; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>D</kbd> sélectionne l'occurrence suivante.
 - Repli des sections et environnements (flèches dans la marge).
 - <kbd>Entrée</kbd> après `\begin{…}` ferme l'environnement ; dans une liste, ajoute un `\item`.

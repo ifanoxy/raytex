@@ -81,6 +81,37 @@ pub const AT_SHORTCUTS: &[(&str, &str)] = &[
     ("E", "\\exists"),
 ];
 
+/// The `@` shortcut of a command (`alpha` → `a`, `frac` → `/`), for the
+/// commands whose shortcut inserts nothing else.
+pub fn at_shortcut_of(command: &str) -> Option<&'static str> {
+    static BY_COMMAND: LazyLock<std::collections::HashMap<&'static str, &'static str>> =
+        LazyLock::new(|| {
+            let mut map = std::collections::HashMap::new();
+            for (key, value) in AT_SHORTCUTS {
+                let Some(rest) = value.strip_prefix('\\') else {
+                    continue;
+                };
+                let name_len = rest
+                    .find(|c: char| !c.is_ascii_alphabetic())
+                    .unwrap_or(rest.len());
+                let (name, args) = rest.split_at(name_len);
+                // `\frac{${1}}{${2}}` is `\frac`; `\mathbb{N}` is not `\mathbb`.
+                let only_fields = args
+                    .split("${")
+                    .skip(1)
+                    .all(|f| f.starts_with(|c: char| c.is_ascii_digit()))
+                    && args
+                        .replace(|c: char| "{}$0123456789".contains(c), "")
+                        .is_empty();
+                if !name.is_empty() && only_fields {
+                    map.entry(name).or_insert(*key);
+                }
+            }
+            map
+        });
+    BY_COMMAND.get(command).copied()
+}
+
 /// xcolor base colors with their RGB value.
 pub const BASE_COLORS: &[(&str, &str)] = &[
     ("black", "#000000"),

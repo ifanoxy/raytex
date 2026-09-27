@@ -4,6 +4,7 @@ import { autocompletion, type Completion, type CompletionContext, type Completio
 import type { EditorView } from "@codemirror/view";
 import * as ipc from "../ipc";
 import type { CompletionItem, ItemKind } from "../types";
+import { t } from "../i18n.svelte";
 import { docPath, hooks } from "./context";
 
 const TYPE: Record<ItemKind, string> = {
@@ -29,6 +30,7 @@ const TRIGGER = /(?:\\[a-zA-Z@]*\*?|@\S{0,2}|[{[,][^{}[\]\n,]*|%\s*!.*)$/;
 interface Extra {
   glyph?: string;
   color?: string;
+  shortcut?: string;
 }
 
 function apply(item: CompletionItem) {
@@ -77,6 +79,7 @@ async function source(context: CompletionContext): Promise<CompletionResult | nu
       apply: apply(item),
       glyph: item.glyph,
       color: item.color,
+      shortcut: item.shortcut,
     };
     if (item.info) {
       const key = item.info;
@@ -130,6 +133,19 @@ export function latexCompletion() {
             return g;
           }
           return null;
+        },
+      },
+      {
+        // `@a` next to `\alpha`: makes the @ shortcuts known where they help.
+        position: 90,
+        render(completion) {
+          const extra = completion as Completion & Extra;
+          if (!extra.shortcut) return null;
+          const badge = document.createElement("span");
+          badge.className = "cm-completion-shortcut";
+          badge.textContent = extra.shortcut;
+          badge.title = t("completion.shortcutHint", { key: extra.shortcut });
+          return badge;
         },
       },
     ],

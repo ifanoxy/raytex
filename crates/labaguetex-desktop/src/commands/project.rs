@@ -6,6 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use labaguetex_core::build::AUX_EXTENSIONS;
 use labaguetex_core::settings::ProjectConfig;
 use labaguetex_core::templates::{self, TemplateInfo, TemplateValues};
+use labaguetex_core::tex::Engine;
 use labaguetex_core::workspace::{Workspace, project_root_for};
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
@@ -320,6 +321,116 @@ pub async fn create_project(
     .map_err(err)?
     .map_err(err)?;
     open_project(app, main.to_string_lossy().into_owned()).await
+}
+
+/// Creates an empty project (an empty `main.tex`) named `name` and opens it.
+#[tauri::command]
+pub async fn create_empty_project(
+    app: AppHandle,
+    dir: String,
+    name: Option<String>,
+) -> CmdResult<ProjectInfo> {
+    let target = abs(&dir);
+    let main = tauri::async_runtime::spawn_blocking(move || {
+        templates::create_empty(&target, name.as_deref())
+    })
+    .await
+    .map_err(err)?
+    .map_err(err)?;
+    open_project(app, main.to_string_lossy().into_owned()).await
+}
+
+/// Applies a template to the open project (see [`templates::apply`]): the
+/// interface puts the returned text in the main file.
+#[tauri::command]
+pub async fn apply_template(
+    app: AppHandle,
+    id: String,
+    values: TemplateValues,
+) -> CmdResult<templates::Applied> {
+    blocking(&app, move |_, state| {
+        let mut project = state.project_mut();
+        let pr = project.as_mut().ok_or("no project")?;
+        let root = pr.ws.root_dir.clone();
+        state.note_own_write(&root.join(labaguetex_core::settings::PROJECT_FILE));
+        let applied =
+            templates::apply(&id, &root, &values, Some(&state.paths.templates)).map_err(err)?;
+        if let Ok(config) = ProjectConfig::load(&root) {
+            pr.ws.config = config;
+            pr.ws.config_error = None;
+        }
+        Ok(applied)
+    })
+    .await?
+}
+
+/// First page of a template, compiled once with example values and the
+/// active distribution, then kept in the cache. Returns the PDF.
+#[tauri::command]
+pub async fn template_thumbnail(app: AppHandle, id: String) -> CmdResult<String> {
+    use std::hash::{DefaultHasher, Hash, Hasher};
+    blocking(&app, move |_, state| {
+        let dist = state.active_distribution().ok_or("no TeX distribution")?;
+        let lang = state.lang();
+        let user_dir = state.paths.templates.clone();
+        let info = templates::list(Some(&user_dir))
+            .into_iter()
+            .find(|t| t.id == id)
+            .ok_or("unknown template")?;
+        let files = templates::files(&id, Some(&user_dir)).ok_or("unknown template")?;
+        let mut hasher = DefaultHasher::new();
+        (&files, lang.code(), &dist.id, &info.engine).hash(&mut hasher);
+        let safe: String = id
+            .chars()
+            .map(|c| {
+                if c.is_ascii_alphanumeric() || c == '-' {
+                    c
+                } else {
+                    '_'
+                }
+            })
+            .collect();
+        let dir = state
+            .paths
+            .cache
+            .join("template-previews")
+            .join(format!("{safe}-{:016x}", hasher.finish()));
+        let out = dir.join("out");
+        let stem = Path::new(&info.main)
+            .file_stem()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "main".into());
+        let pdf = out.join(format!("{stem}.pdf"));
+        // One template at a time: they are compiled in the background.
+        let _guard = state.thumbnails.lock().map_err(|e| e.to_string())?;
+        if pdf.is_file() {
+            return Ok(pdf.to_string_lossy().into_owned());
+        }
+        // Sources in `dir`, around `out/`: `\include` writes `.aux` files in
+        // sub-folders of the output folder, which must be inside the sources.
+        let main =
+            templates::write_files(&id, &dir, &templates::example_values(lang), Some(&user_dir))
+                .map_err(err)?;
+        let wanted = info
+            .engine
+            .as_deref()
+            .and_then(Engine::parse)
+            .unwrap_or(Engine::Pdflatex);
+        let engine = if !dist.has_engine(wanted) && dist.has_engine(Engine::Tectonic) {
+            Engine::Tectonic
+        } else {
+            wanted
+        };
+        let pdf = labaguetex_core::preview::compile_document(
+            &dist,
+            engine,
+            &main,
+            &out,
+            std::time::Duration::from_secs(90),
+        )?;
+        Ok(pdf.to_string_lossy().into_owned())
+    })
+    .await?
 }
 
 /// Saves the open project as a user template.

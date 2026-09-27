@@ -7,6 +7,7 @@
 // completion and SyncTeX, prints a report on the terminal and quits.
 
 import { startCompletion } from "@codemirror/autocomplete";
+import { EditorView } from "@codemirror/view";
 import { invoke } from "@tauri-apps/api/core";
 import * as ipc from "../lib/ipc";
 import { app } from "../lib/state/app.svelte";
@@ -15,6 +16,7 @@ import { editor } from "../lib/state/editor.svelte";
 import { project } from "../lib/state/project.svelte";
 import { distLabel, tex } from "../lib/state/tex.svelte";
 import { media } from "../lib/state/media.svelte";
+import { templates } from "../lib/state/templates.svelte";
 import { ui } from "../lib/state/ui.svelte";
 import { viewer } from "../lib/state/viewer.svelte";
 
@@ -35,6 +37,10 @@ export async function runSelfTest() {
   let ok = true;
   try {
     report.startMs = await until(() => app.ready, 20_000, "app ready");
+    // The layout is remembered between runs: start from the default one.
+    ui.setVisible("pdf", true);
+    ui.setVisible("formatBar", true);
+    ui.setVisible("bottom", false);
     report.texMs = await until(() => tex.ready, 60_000, "TeX detection");
     report.distribution = tex.active ? distLabel(tex.active) : null;
     if (!(await project.open(target))) throw new Error("project did not open");
@@ -79,8 +85,11 @@ export async function runSelfTest() {
   log(JSON.stringify(report, null, 2));
   log(ok ? "PASSED" : "FAILED");
   const [which, assets] = await invoke<[string | null, string | null]>("selftest_scenes");
-  if (ok && which && which !== "media") await scenes(log);
-  if (ok && which && (which === "media" || which === "all") && assets) ok = await mediaScenes(log, assets);
+  if (ok && which === "workflow" && assets) ok = await workflowScenes(log, assets);
+  else {
+    if (ok && which && which !== "media") await scenes(log);
+    if (ok && which && (which === "media" || which === "all") && assets) ok = await mediaScenes(log, assets);
+  }
   await new Promise((r) => setTimeout(r, 300));
   await invoke("selftest_exit", { code: ok ? 0 : 1 });
 }
@@ -300,5 +309,232 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
   }
   await editor.saveAll();
   log(`media scenes ${ok ? "PASSED" : "FAILED"}`);
+  return ok;
+}
+
+/** A key press as the user would make it (window capture handlers included). */
+function press(key: string, mods: { shift?: boolean; alt?: boolean } = {}) {
+  const mac = navigator.platform.toLowerCase().includes("mac");
+  const target = (document.activeElement as HTMLElement | null) ?? document.body;
+  target.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: mods.shift ? key.toUpperCase() : key,
+      code: `Key${key.toUpperCase()}`,
+      metaKey: mac,
+      ctrlKey: !mac,
+      shiftKey: !!mods.shift,
+      altKey: !!mods.alt,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+}
+
+/** Sets the value of an input as if typed. */
+function type(input: HTMLInputElement, value: string) {
+  input.value = value;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+/**
+ * New empty project, templates, live compilation, undo/redo, formatting
+ * bar, closing and reopening panels. `dir` is where the project is created.
+ */
+async function workflowScenes(log: (msg: string) => void, dir: string): Promise<boolean> {
+  const scene = async (name: string, holdMs = 2500) => {
+    await pause(700);
+    log(`scene: ${name}`);
+    await pause(holdMs);
+  };
+  const results: Record<string, unknown> = {};
+  const check = (name: string, value: boolean, detail: unknown = "") => {
+    results[name] = value ? "ok" : `FAILED ${detail}`;
+  };
+  // Anything opening the console by itself is reported (it must not happen).
+  const showBottom = ui.showBottom.bind(ui);
+  ui.showBottom = (tab) => {
+    log(`console opened (${tab}) by ${new Error().stack?.split("\n").slice(1, 5).join(" < ")}`);
+    showBottom(tab);
+  };
+  const toggleBottom = ui.toggleBottom.bind(ui);
+  ui.toggleBottom = () => {
+    log(`console toggled by ${new Error().stack?.split("\n").slice(1, 5).join(" < ")}`);
+    toggleBottom();
+  };
+  try {
+    check("live by default", app.settings?.build.autoBuild === "onIdle", app.settings?.build.autoBuild);
+
+    // --------------------------------------------------- new project
+    ui.openOverlay("newProject");
+    await until(() => !!document.querySelector<HTMLInputElement>(".form input.large"), 5_000, "new project dialog");
+    type(document.querySelector<HTMLInputElement>(".form input.large")!, "Rapport de stage");
+    await scene("new-project", 1500);
+    ui.closeOverlay();
+    const target = `${dir}/rapport-${Date.now()}`;
+    check("created", await project.createEmpty(target, "Rapport de stage"));
+    const main = project.info!.main!;
+    await until(() => editor.active === main && !!editor.view, 5_000, "main open");
+    check("empty main", editor.textOf(main) === "", editor.textOf(main));
+    await until(() => !!document.querySelector(".start .card"), 5_000, "start card");
+    check("start card", !!document.querySelector(".start .card"));
+    check("templates panel", ui.sidebarVisible && ui.sidebar === "templates");
+    check("project name", project.info?.name === "Rapport de stage", project.info?.name);
+    await scene("empty-project", 1500);
+    const t0 = Date.now();
+    await until(() => templates.list.length > 0 && templates.list.every((x) => templates.thumbs[x.id] && templates.thumbs[x.id].state !== "loading"), 240_000, "thumbnails");
+    const states = templates.list.map((x) => templates.thumbs[x.id]?.state);
+    results.thumbnails = `${states.filter((x) => x === "ready").length}/${states.length} in ${Date.now() - t0} ms`;
+    check("thumbnails ready", states.every((x) => x === "ready"), states.join(","));
+    await scene("templates");
+
+    // An empty document is not compiled.
+    await build.run();
+    check("empty not built", build.status === "idle" && ui.toasts.some((x) => x.kind === "info"), build.status);
+
+    // ------------------------------------------------ apply a template
+    document.querySelector<HTMLButtonElement>('.card[data-template="article"]')!.click();
+    await until(() => (editor.textOf(main) ?? "").includes("\\documentclass"), 10_000, "template applied");
+    check("title filled", (editor.textOf(main) ?? "").includes("Rapport de stage"));
+    await until(() => build.running || build.status !== "idle", 15_000, "automatic build");
+    await until(() => !build.running, 120_000, "build end");
+    check("template builds", build.status === "success", build.status);
+    await until(() => viewer.pages > 0, 20_000, "PDF loaded");
+    check("console stays closed", !ui.bottomVisible);
+    await drawn(".pdf-viewer canvas.canvas", log, "PDF page drawn");
+    await scene("template-applied");
+
+    // ------------------------------------------------------ undo / redo
+    const applied = editor.textOf(main)!;
+    (document.activeElement as HTMLElement | null)?.blur();
+    press("z");
+    check("undo from outside the editor", editor.textOf(main) === "", (editor.textOf(main) ?? "").slice(0, 40));
+    press("z", { shift: true });
+    check("redo (shift)", editor.textOf(main) === applied);
+    press("z");
+    press("y");
+    check("redo (Mod-y)", editor.textOf(main) === applied);
+
+    // --------------------------------------------------- live compile
+    const v = editor.view!;
+    const end = v.state.doc.toString().lastIndexOf("\\end{document}");
+    const beforeRev = viewer.revision;
+    const startLive = Date.now();
+    v.dispatch({ changes: { from: end, insert: "\\section{Essai en direct}\nCe paragraphe apparaît sans cliquer sur Compiler.\n\n" }, userEvent: "input.type" });
+    await until(() => build.running, 10_000, "live build start");
+    await until(() => !build.running, 120_000, "live build end");
+    await until(() => viewer.revision !== beforeRev, 10_000, "PDF reloaded");
+    results.liveMs = Date.now() - startLive;
+    check("live build", build.status === "success", build.status);
+
+    // ------------------------------------- manual build with an error
+    const toasts = ui.toasts.length;
+    const at = editor.view!.state.doc.toString().lastIndexOf("\\end{document}");
+    editor.view!.dispatch({ changes: { from: at, insert: "Un \\textbff{mot}.\n\n" }, userEvent: "input.type" });
+    await build.run();
+    await until(() => build.running, 10_000, "build start");
+    await until(() => !build.running, 120_000, "build end");
+    check("error: console closed", !ui.bottomVisible);
+    check("error: notified", ui.toasts.length > toasts && ui.toasts.some((x) => x.kind === "error"));
+    check("error: status", build.status === "failed", build.status);
+    await scene("build-error", 1500);
+    press("z");
+
+    // ---------------------------------------- linked environment names
+    const w = editor.view!;
+    const pos = w.state.doc.toString().lastIndexOf("\\end{document}");
+    w.dispatch({ changes: { from: pos, insert: "\\begin{itemize}\n\t\\item un\n\\end{itemize}\n\n" }, userEvent: "input.type" });
+    const begin = w.state.doc.toString().lastIndexOf("\\begin{itemize}") + 7;
+    w.dispatch({ changes: { from: begin, to: begin + 7, insert: "enumerate" }, userEvent: "input.type" });
+    const txt = w.state.doc.toString();
+    check("linked rename", txt.includes("\\begin{enumerate}\n\t\\item un\n\\end{enumerate}"));
+
+    // ------------------------------------------------ typing dollars
+    const typeText = (text: string) => {
+      for (const ch of text) {
+        const { from, to } = w.state.selection.main;
+        const handled = w.state.facet(EditorView.inputHandler).some((h) => h(w, from, to, ch, () => w.state.update({ changes: { from, to, insert: ch } })));
+        if (!handled) w.dispatch({ changes: { from, to, insert: ch }, selection: { anchor: from + ch.length }, userEvent: "input.type" });
+      }
+    };
+    const dollarAt = w.state.doc.toString().lastIndexOf("\\end{document}");
+    // At the end of an empty line: the first $ makes a pair, the closing one steps over it.
+    w.dispatch({ changes: { from: dollarAt, insert: "\n\n" }, selection: { anchor: dollarAt } });
+    typeText("Soit $f(x)$ et le prix$");
+    const line = w.state.doc.lineAt(dollarAt).text;
+    check("dollars", line.startsWith("Soit $f(x)$ et le prix$") && !line.includes("$$"), line);
+    w.dispatch({ changes: { from: dollarAt, to: w.state.doc.lineAt(dollarAt).to } });
+
+    // -------------------------------------------------- formatting bar
+    const para = w.state.doc.toString().indexOf("Ce paragraphe");
+    w.dispatch({ selection: { anchor: para + 3, head: para + 13 } });
+    w.focus();
+    document.querySelector<HTMLButtonElement>('.format-bar [aria-label="' + (document.documentElement.lang === "en" ? "Bold" : "Gras") + '"]')!.click();
+    check("bold button", (editor.textOf(main) ?? "").includes("Ce \\textbf{paragraphe}"));
+    document.querySelector<HTMLButtonElement>(".format-bar .select-btn.style")!.click();
+    await pause(200);
+    clickText(".menu .item", "Sous-section") || clickText(".menu .item", "Subsection");
+    check("heading style", (editor.textOf(main) ?? "").includes("\\subsection{Ce \\textbf{paragraphe}"));
+    const tableBtn = [...document.querySelectorAll<HTMLButtonElement>(".format-bar .text-btn")].find((b) => b.querySelector("span")?.textContent?.match(/Tableau|Table/))!;
+    editor.view!.dispatch({ selection: { anchor: editor.view!.state.doc.toString().lastIndexOf("\\end{document}") } });
+    tableBtn.click();
+    await pause(200);
+    log(`table picker open: ${!!document.querySelector(".tables")}, console ${ui.bottomVisible}`);
+    const cells = document.querySelectorAll<HTMLButtonElement>(".tables .cell");
+    cells[8 * 2 + 2].dispatchEvent(new MouseEvent("mouseenter"));
+    await pause(300);
+    await scene("table-picker", 1200);
+    cells[8 * 2 + 2].click();
+    await pause(600);
+    check("table 3x3", /\\begin\{tabular\}\{lll\}/.test(editor.textOf(main) ?? "") && (editor.textOf(main) ?? "").includes("{booktabs}"));
+    press("Escape");
+    document.querySelector<HTMLButtonElement>(".format-bar .all")!.click();
+    await until(() => !!document.querySelector(".all-tools .at-item .katex"), 10_000, "all tools");
+    await scene("all-tools");
+    document.querySelector<HTMLButtonElement>(".format-bar .all")!.click();
+
+    // ------------------------------------------ completion with @ hint
+    const e2 = editor.view!;
+    const p2 = e2.state.doc.toString().lastIndexOf("\\end{document}");
+    e2.dispatch({ changes: { from: p2, insert: "$\\alp$\n" }, selection: { anchor: p2 + 5 }, scrollIntoView: true });
+    e2.focus();
+    startCompletion(e2);
+    await until(() => !!document.querySelector(".cm-completion-shortcut"), 10_000, "@ badge");
+    check("@ badge", document.querySelector(".cm-completion-shortcut")?.textContent === "@a", document.querySelector(".cm-completion-shortcut")?.textContent);
+    await scene("completion-at", 1500);
+    e2.dispatch({ changes: { from: p2, to: p2 + 7 } });
+
+    // -------------------------------------------------- close / reopen
+    document.querySelector<HTMLButtonElement>(".pdf-viewer .bar > .icon-btn:last-child")!.click();
+    check("pdf closed", !ui.pdfVisible);
+    document.querySelector<HTMLButtonElement>(".toolbar .view-btn")!.click();
+    await pause(200);
+    await scene("view-menu", 1200);
+    clickText(".menu .item", "Aperçu PDF") || clickText(".menu .item", "PDF preview");
+    check("pdf reopened", ui.pdfVisible);
+    ui.showBottom("output");
+    await pause(300);
+    document.querySelector<HTMLButtonElement>(".panel .tabs .icon-btn")!.click();
+    check("console closed by its cross", !ui.bottomVisible);
+
+    // ------------------------------------------- empty chapter, @ panel
+    const chapter = `${project.info!.root}/chapitre.tex`;
+    await ipc.createFile(chapter, "");
+    await editor.open(chapter);
+    await until(() => !!document.querySelector(".start .card"), 5_000, "chapter start card");
+    await scene("empty-chapter", 1500);
+    clickText(".start .choice", "Inclure") || clickText(".start .choice", "Include");
+    await pause(300);
+    check("chapter included", (editor.textOf(main) ?? "").includes("\\input{chapitre}"));
+    ui.showSidebar("snippets");
+    await until(() => !!document.querySelector(".at-grid .at-item .katex"), 10_000, "@ panel");
+    await scene("macros-panel");
+    await editor.saveAll();
+    check("final build", await buildOk(log, "final"));
+  } catch (e) {
+    results.failure = String(e);
+  }
+  log(JSON.stringify(results, null, 2));
+  const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));
+  log(`workflow scenes ${ok ? "PASSED" : "FAILED"}`);
   return ok;
 }

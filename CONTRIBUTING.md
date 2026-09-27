@@ -30,6 +30,12 @@ cargo test -p labaguetex-core --release -- --ignored
 LABAGUETEX_SELFTEST=/path/to/a/project npm run app:dev   # prints PASSED or FAILED and quits
 ```
 
+Optional variables of the end-to-end check (development builds only):
+
+- `LABAGUETEX_SELFTEST_SCENES=workflow` with `LABAGUETEX_SELFTEST_ASSETS=<folder>`: creates an empty project in that folder, then checks templates and their thumbnails, live compilation, undo / redo, the formatting bar, `$` typing, linked environments and the panels; `=media` (assets: test images) checks the image, TikZ and font tools; `=1` walks through the main screens for screenshots (each logs `scene: <name>`).
+- `LABAGUETEX_CONFIG_DIR=<folder>`: settings, session and cache in that folder, so the check never touches those of an installed labaguetex.
+- `LABAGUETEX_SELFTEST_KEEP=1`: leaves the window open at the end.
+
 The continuous integration runs the same checks on Linux, macOS and Windows.
 
 ## Guidelines

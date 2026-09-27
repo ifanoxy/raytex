@@ -899,7 +899,7 @@ fn hash_file(path: &Path) -> Option<u64> {
 
 /// Creates in `out` the sub-directories of `root` that contain `.tex` files
 /// (TeX writes the `.aux` of `\include{dir/file}` there and fails otherwise).
-fn mirror_directories(root: &Path, out: &Path) {
+pub(crate) fn mirror_directories(root: &Path, out: &Path) {
     if out == root || !out.starts_with(root) {
         return;
     }

@@ -10,9 +10,11 @@
   import * as ipc from "$lib/ipc";
   import { app } from "$lib/state/app.svelte";
   import { build } from "$lib/state/build.svelte";
+  import { editor } from "$lib/state/editor.svelte";
+  import { project } from "$lib/state/project.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import { viewer } from "$lib/state/viewer.svelte";
-  import { basename, prettyKey } from "$lib/utils";
+  import { basename, prettyKey, samePath } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
 
   type PdfJs = typeof import("../../lib/pdf/pdfjs");
@@ -437,6 +439,15 @@
       <span class="faint">/ {viewer.pages || "–"}</span>
       <button class="icon-btn" disabled={viewer.page >= viewer.pages} onclick={() => goToPage(viewer.page + 1)} title={t("viewer.next")}><Icon name="chevron-down" /></button>
     </div>
+    <button
+      class="icon-btn"
+      disabled={editor.activeTab?.kind !== "tex" || !viewer.pdf}
+      onclick={() => editor.syncForward()}
+      title="{t('action.syncForward')} ({prettyKey(keyFor('nav.syncForward') ?? '')})"
+      aria-label={t("action.syncForward")}
+    >
+      <Icon name="target" />
+    </button>
     <div class="spacer"></div>
     <button class="icon-btn" onclick={() => viewer.zoomBy(1 / 1.15)} title={t("viewer.zoomOut")}><Icon name="zoom-out" /></button>
     <button class="zoom" onclick={zoomMenu}>{zoomLabel}</button>
@@ -445,6 +456,8 @@
       <Icon name={viewer.zoom === "page-width" ? "fit-page" : "fit-width"} />
     </button>
     <button class="icon-btn" onclick={moreMenu} title={t("viewer.more")}><Icon name="more" /></button>
+    <div class="bar-sep"></div>
+    <button class="icon-btn" onclick={() => ui.setVisible("pdf", false)} title={t("viewer.hide")} aria-label={t("viewer.hide")}><Icon name="x" /></button>
   </div>
 
   <!-- A scrollable region must be focusable to be scrolled with the keyboard. -->
@@ -480,6 +493,11 @@
       </div>
     {:else if loading}
       <div class="message"><span class="spinner"></span></div>
+    {:else if editor.activeEmpty && samePath(editor.active, project.info?.main)}
+      <div class="message">
+        <Icon name="pdf" size={40} stroke={1.2} />
+        <p>{t("viewer.emptyDocument")}</p>
+      </div>
     {:else}
       <div class="message">
         <Icon name="pdf" size={40} stroke={1.2} />
@@ -513,6 +531,12 @@
     flex-shrink: 0;
     background: var(--bg-elev);
     border-bottom: 1px solid var(--border);
+  }
+  .bar-sep {
+    width: 1px;
+    height: 18px;
+    margin: 0 3px;
+    background: var(--border);
   }
   .pages-nav {
     display: flex;

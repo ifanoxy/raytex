@@ -20,11 +20,14 @@ labaguetex (LaTeX + baguette) is a LaTeX editor that helps beginners learn and l
 ## Features
 
 **Writing**
+- A formatting bar like a word processor's: undo / redo, heading style of the line, text size, bold, italic, underline, colour, alignment, lists, formulas, image, table (size picked on a grid), TikZ drawing, links and references; **See all** lists every command with its shortcut. The top bar keeps the project, the build and a **View** menu; the PDF preview and the console close with a cross.
 - Context-aware completion: commands and environments of the LaTeX kernel, of every package your document loads (read from the package source, whatever the package), of your own `\newcommand`s; labels with their number, citations with authors and title, files, options, colours.
-- Choosing a command from a package that is not loaded adds the `\usepackage`.
+- Completion creates the braces and leaves them empty for you to type; choosing a command from a package that is not loaded adds the `\usepackage`.
 - Live math preview (KaTeX, with your macros), documentation on hover, image previews.
-- Snippets, `@` shortcuts in math mode (`@a` → `\alpha`), personal macros with triggers and keyboard shortcuts.
+- `@` shortcuts in math mode (`@a` → `\alpha`, `@/` → fraction), shown next to the matching commands in completion and drawn in their own panel; snippets; personal macros with triggers and keyboard shortcuts.
 - Go to definition, find references, rename labels / citation keys / commands across the project.
+- `$` pairs only where a formula can start; renaming a `\begin{…}` renames its `\end{…}`; `Ctrl/⌘ + Z` undoes wherever the focus is, `Ctrl/⌘ + Shift + Z` or `Ctrl/⌘ + Y` redoes.
+- Empty files suggest how to start (template, minimal document, section, inclusion in the main document, bibliography entries).
 - Environment auto-closing, list continuation, folding, multiple cursors, Vim mode, spell checking.
 
 **Images, drawings and fonts**
@@ -33,7 +36,8 @@ labaguetex (LaTeX + baguette) is a LaTeX editor that helps beginners learn and l
 - *Fonts*: any font of the computer or font files copied into the project (fontspec, each style named, engine switched to LuaLaTeX), or LaTeX font packages that also work with pdfLaTeX, all with a compiled preview.
 
 **Building**
-- One key (`Ctrl/⌘ + Enter`), or automatically on save.
+- Live by default: the document is compiled after each pause in typing and the PDF follows; or one key (`Ctrl/⌘ + Enter`), or on save.
+- The console never opens by itself: errors are underlined, counted in the top bar and announced after a build you asked for.
 - Automatic engine choice (`% !TEX program`, `fontspec` → LuaLaTeX, Tectonic, pdfLaTeX).
 - Smart build driver: Biber / BibTeX / makeindex / glossaries only when their inputs changed, reruns until references are stable; or latexmk, a single pass, or your own steps.
 - Auxiliary files in `build/`; the project stays clean.
@@ -53,6 +57,7 @@ labaguetex (LaTeX + baguette) is a LaTeX editor that helps beginners learn and l
 - Browse installed packages and the whole CTAN catalogue; `texdoc` documentation.
 
 **Projects**
+- New projects start empty; the **Templates** panel shows each template by its first page (compiled once, cached) and puts it in the document in one undoable click.
 - 16 templates (article, report, thesis, research article, slides, poster, course notes, exam, exercise sheet, homework, lab report, letter, CV, TikZ figure…), all building without warnings, in English and French.
 - Project settings in `labaguetex.toml`, versioned with the project.
 - Command palette, quick open, project search and replace, outline with real numbers, TODO list, session restore.

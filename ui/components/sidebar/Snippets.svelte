@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Snippets (built in), personal macros and @ shortcuts.
+  // @ shortcuts (first: the fastest way to type symbols), snippets (built
+  // in) and personal macros.
   import { keyFor } from "$lib/actions";
   import { t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
@@ -9,12 +10,13 @@
   import type { SnippetView } from "$lib/types";
   import { prettyKey } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
+  import MathGlyph from "../common/MathGlyph.svelte";
   import PanelHeader from "../common/PanelHeader.svelte";
 
   let snippets = $state<SnippetView[]>([]);
   let shortcuts = $state<[string, string][]>([]);
   let filter = $state("");
-  let tab = $state<"snippets" | "macros" | "shortcuts">("snippets");
+  let tab = $state<"snippets" | "macros" | "shortcuts">("shortcuts");
 
   $effect(() => {
     void ipc.builtinSnippets().then((s) => (snippets = s));
@@ -36,9 +38,9 @@
 </PanelHeader>
 
 <div class="tabs" role="tablist">
+  <button class="tab" class:active={tab === "shortcuts"} onclick={() => (tab = "shortcuts")}>{t("snippets.tabShortcuts")}</button>
   <button class="tab" class:active={tab === "snippets"} onclick={() => (tab = "snippets")}>{t("snippets.tabSnippets")}</button>
   <button class="tab" class:active={tab === "macros"} onclick={() => (tab = "macros")}>{t("snippets.tabMacros")}</button>
-  <button class="tab" class:active={tab === "shortcuts"} onclick={() => (tab = "shortcuts")}>{t("snippets.tabShortcuts")}</button>
 </div>
 
 <div class="filter"><input class="input small" placeholder={t("snippets.filter")} bind:value={filter} spellcheck="false" /></div>
@@ -68,13 +70,18 @@
       </div>
     {/each}
   {:else}
-    <p class="tip faint">{t("snippets.shortcutsTip")}</p>
-    {#each shownShortcuts as [key, cmd] (key)}
-      <button class="row" onclick={() => editor.insertText(cmd)}>
-        <span class="trigger mono">{key}</span>
-        <span class="name mono ellipsis">{cmd}</span>
-      </button>
-    {/each}
+    <div class="intro">
+      <strong>{t("snippets.shortcutsTitle")}</strong>
+      <p>{t("snippets.shortcutsTip")}</p>
+    </div>
+    <div class="at-grid">
+      {#each shownShortcuts as [key, cmd] (key)}
+        <button class="at-item" onclick={() => editor.insertMath(cmd)} title={cmd}>
+          <span class="at-key mono">@{key}</span>
+          <MathGlyph latex={cmd} />
+        </button>
+      {/each}
+    </div>
   {/if}
 </div>
 <div class="foot faint">{t("snippets.foot", { key: prettyKey(keyFor("view.palette") ?? "") })}</div>
@@ -132,6 +139,49 @@
   .row:hover {
     background: var(--bg-hover);
     color: var(--text);
+  }
+  .intro {
+    margin: 8px 4px 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    background: var(--accent-soft);
+  }
+  .intro strong {
+    color: var(--accent);
+    font-size: 12.5px;
+  }
+  .intro p {
+    margin: 4px 0 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
+  .at-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 5px;
+    padding: 0 4px;
+  }
+  .at-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    cursor: pointer;
+  }
+  .at-item:hover {
+    border-color: var(--accent);
+  }
+  .at-key {
+    font-variant-ligatures: none;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
   }
   .trigger {
     min-width: 58px;

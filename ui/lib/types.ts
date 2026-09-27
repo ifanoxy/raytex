@@ -41,6 +41,8 @@ export interface Macro {
 }
 
 export interface Settings {
+  /** Format version (migrations are done by the engine). */
+  version: number;
   general: {
     language: "system" | "fr" | "en";
     theme: "system" | "light" | "dark";
@@ -192,6 +194,18 @@ export interface TemplateValues {
   language: string;
 }
 
+/** A template applied to the open project. */
+export interface AppliedTemplate {
+  /** New text of the main file (put in the editor: undoable). */
+  mainText: string;
+  /** Other files written into the project. */
+  created: string[];
+  /** Files of the template that existed already (left untouched). */
+  kept: string[];
+  /** Engine required by the template (`lualatex`…), null for pdfLaTeX. */
+  engine: string | null;
+}
+
 export interface TextFile {
   text: string;
   lossy: boolean;
@@ -262,6 +276,8 @@ export interface CompletionItem {
   glyph?: string;
   addPackage?: string;
   color?: string;
+  /** `@` shortcut typing the same thing (`@a` for `\alpha`). */
+  shortcut?: string;
 }
 
 export interface CompletionList {

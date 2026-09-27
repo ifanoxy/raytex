@@ -1,10 +1,10 @@
 <script lang="ts">
-  // Top bar: project, compilation, insertion menu and view toggles.
+  // Top bar: project, compilation, main file, search and the "View" menu.
+  // Formatting lives in the bar below (FormatBar).
   import { getAction, keyFor, runAction } from "$lib/actions";
   import { t } from "$lib/i18n.svelte";
   import { app } from "$lib/state/app.svelte";
   import { build } from "$lib/state/build.svelte";
-  import { editor } from "$lib/state/editor.svelte";
   import { project } from "$lib/state/project.svelte";
   import { type MenuItem, ui } from "$lib/state/ui.svelte";
   import { basename, formatDuration, prettyKey, relative, samePath } from "$lib/utils";
@@ -25,6 +25,7 @@
       actionItem("project.openFile"),
       ...(recent.length ? [{ separator: true }, ...recent.map((r) => ({ label: r.name, icon: "folder", run: () => project.open(r.path) }))] : []),
       { separator: true },
+      actionItem("view.templates"),
       actionItem("project.settings"),
       actionItem("project.saveAsTemplate"),
       actionItem("project.close"),
@@ -33,6 +34,8 @@
 
   function buildMenu(e: MouseEvent) {
     ui.openMenuBelow(e.currentTarget as HTMLElement, [
+      { label: t("toolbar.liveBuild"), icon: "bolt", checked: app.settings?.build.autoBuild === "onIdle", run: () => runAction("build.live") },
+      { separator: true },
       actionItem("build.run"),
       actionItem("build.clean"),
       actionItem("build.log"),
@@ -59,43 +62,24 @@
     ]);
   }
 
-  function insertMenu(e: MouseEvent) {
-    ui.openMenuBelow(
-      e.currentTarget as HTMLElement,
-      [
-        "insert.section",
-        "insert.subsection",
-        "insert.image",
-        "insert.tikz",
-        "insert.figure",
-        "insert.table",
-        "insert.equation",
-        "insert.align",
-        "insert.itemize",
-        "insert.enumerate",
-        "insert.footnote",
-        "insert.cite",
-        "insert.ref",
-        "insert.link",
-        "insert.frame",
-      ].map(actionItem),
-    );
-  }
-
-  function formatMenu(e: MouseEvent) {
-    ui.openMenuBelow(
-      e.currentTarget as HTMLElement,
-      [
-        ...["edit.bold", "edit.italic", "edit.emph", "edit.underline", "edit.typewriter", "edit.smallcaps", "edit.math", "edit.wrapEnv", "edit.comment"].map(actionItem),
-        { separator: true },
-        actionItem("format.fonts"),
-      ],
-    );
+  /** What is shown in the window: every part can be closed and brought back here. */
+  function viewMenu(e: MouseEvent) {
+    const shortcut = (id: string) => keyFor(id);
+    ui.openMenuBelow(e.currentTarget as HTMLElement, [
+      { label: t("view.formatBar"), icon: "type", checked: ui.formatBarVisible, run: () => ui.toggleFormatBar() },
+      { label: t("view.sidebar"), icon: "panel-left", keys: shortcut("view.sidebar"), checked: ui.sidebarVisible, run: () => ui.setVisible("sidebar", !ui.sidebarVisible) },
+      { label: t("view.pdf"), icon: "panel-right", keys: shortcut("view.pdf"), checked: ui.pdfVisible, run: () => ui.setVisible("pdf", !ui.pdfVisible) },
+      { label: t("view.console"), icon: "panel-bottom", keys: shortcut("view.panel"), checked: ui.bottomVisible, run: () => ui.setVisible("bottom", !ui.bottomVisible) },
+      { separator: true },
+      { label: t("view.darkTheme"), icon: "moon", checked: app.theme === "dark", run: () => runAction("view.theme") },
+      actionItem("view.zoomIn"),
+      actionItem("view.zoomOut"),
+    ]);
   }
 
   const status = $derived(build.status);
   const errors = $derived(build.outcome?.diagnostics.filter((d) => d.severity === "error").length ?? 0);
-  const canEdit = $derived(!!editor.activeTab && editor.activeTab.kind === "tex");
+  const live = $derived(app.settings?.build.autoBuild === "onIdle");
 </script>
 
 <header class="toolbar">
@@ -111,8 +95,8 @@
 
     <div class="sep"></div>
 
-    <div class="build" class:running={build.running}>
-      {#if build.running}
+    <div class="build" class:running={build.running && build.manual}>
+      {#if build.running && build.manual}
         <button class="btn primary run" onclick={() => build.cancel()} title="{t('action.cancelBuild')} ({prettyKey(keyFor('build.cancel') ?? '')})">
           <span class="spinner light"></span>
           <span class="ellipsis">{build.step ?? t("toolbar.building")}</span>
@@ -128,6 +112,13 @@
         <Icon name="chevron-down" size={13} />
       </button>
     </div>
+
+    {#if live}
+      <button class="live" class:busy={build.running && !build.manual} onclick={() => runAction("build.live")} title={t("toolbar.liveOn")}>
+        {#if build.running && !build.manual}<span class="spinner tiny"></span>{:else}<span class="pulse"></span>{/if}
+        {t("toolbar.live")}
+      </button>
+    {/if}
 
     <button class="state {status}" onclick={() => ui.showBottom(status === "failed" ? "problems" : "output")} title={t("toolbar.lastBuild")}>
       {#if status === "success"}
@@ -146,25 +137,6 @@
       <Icon name="star" size={13} />
       <span class="ellipsis">{project.info.main ? basename(project.info.main) : t("toolbar.noMain")}</span>
     </button>
-
-    <div class="sep"></div>
-
-    <button class="btn ghost small" disabled={!canEdit} onclick={insertMenu}>
-      <Icon name="plus" size={14} />
-      {t("toolbar.insert")}
-    </button>
-    <button class="btn ghost small" disabled={!canEdit} onclick={formatMenu}>
-      <Icon name="type" size={14} />
-      {t("toolbar.format")}
-    </button>
-    <button class="btn ghost small" disabled={!canEdit} onclick={() => runAction("insert.image")} title="{t('action.insertImage')} ({prettyKey(keyFor('insert.image') ?? '')})">
-      <Icon name="image" size={14} />
-      {t("toolbar.image")}
-    </button>
-    <button class="btn ghost small tikz" class:editing={editor.inTikz} onclick={() => runAction("insert.tikz")} title="{t('action.tikzStudio')} ({prettyKey(keyFor('insert.tikz') ?? '')})">
-      <Icon name="sparkles" size={14} />
-      {editor.inTikz ? t("toolbar.editTikz") : t("toolbar.tikz")}
-    </button>
   {/if}
 
   <div class="spacer"></div>
@@ -176,13 +148,11 @@
   </button>
 
   {#if project.info}
-    <button class="icon-btn" disabled={!canEdit} onclick={() => editor.syncForward()} title="{t('action.syncForward')} ({prettyKey(keyFor('nav.syncForward') ?? '')})">
-      <Icon name="sync" />
+    <button class="btn ghost small view-btn" onclick={viewMenu} title={t("view.menuHint")}>
+      <Icon name="layout" size={15} />
+      <span>{t("view.menu")}</span>
+      <Icon name="chevron-down" size={12} />
     </button>
-    <div class="sep"></div>
-    <button class="icon-btn" class:active={ui.sidebarVisible} onclick={() => runAction("view.sidebar")} title={t("action.toggleSidebar")}><Icon name="panel-left" /></button>
-    <button class="icon-btn" class:active={ui.bottomVisible} onclick={() => runAction("view.panel")} title={t("action.togglePanel")}><Icon name="panel-bottom" /></button>
-    <button class="icon-btn" class:active={ui.pdfVisible} onclick={() => runAction("view.pdf")} title={t("action.togglePdf")}><Icon name="panel-right" /></button>
   {/if}
 </header>
 
@@ -191,6 +161,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    height: var(--toolbar-height);
     padding: 0 10px 0 11px;
     background: var(--bg-elev);
     border-bottom: 1px solid var(--border);
@@ -290,9 +261,43 @@
   .chip :global(.icon) {
     color: var(--accent);
   }
-  .tikz.editing {
-    color: var(--accent);
+  .live {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+    padding: 0 8px;
+    border: none;
+    border-radius: 12px;
     background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .spinner.tiny {
+    width: 9px;
+    height: 9px;
+    border-width: 1.5px;
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+    border-top-color: var(--accent);
+  }
+  .pulse {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+  .view-btn {
+    gap: 6px;
+    white-space: nowrap;
   }
   .palette-btn {
     display: flex;
@@ -318,6 +323,8 @@
   }
   @media (max-width: 1100px) {
     .chip,
+    .live,
+    .view-btn span,
     .palette-btn span {
       display: none;
     }

@@ -12,7 +12,9 @@ Suggestions follow the context:
 - in `\includegraphics{…}`, `\input{…}`: project files;
 - in `[…]` options: known options.
 
-Choosing a command from a package that is not loaded adds the matching `\usepackage`. <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Space</kbd> opens suggestions at any time.
+Choosing a command creates its braces, **empty**: the cursor is in the first one, <kbd>Tab</kbd> goes to the next. Choosing a command from a package that is not loaded adds the matching `\usepackage`. <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Space</kbd> opens suggestions at any time.
+
+When an **@ shortcut** exists, it is shown next to the command: `\alpha` shows `@a`. In a formula, typing `@a` is enough.
 
 ## Checking while typing
 
@@ -35,8 +37,33 @@ Hover a command, an environment or a package: its documentation appears. On a la
 | Next problem | <kbd>F8</kbd> |
 | Search the project | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>F</kbd> |
 
+## Formatting bar
+
+Under the top bar, like in a word processor (every button acts on the selection, or on the cursor line):
+
+| Button | Effect |
+|---|---|
+| Undo, Redo | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Z</kbd>; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>Z</kbd> or <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Y</kbd> |
+| Style | the line becomes a part, a chapter, a section… or normal text again; the menu shows the style of the cursor line |
+| Size | `{\large …}`, `{\small …}`…; choosing *Normal* removes the size |
+| Bold, italic, underline, monospace | `\textbf`, `\textit`, `\underline`, `\texttt` |
+| Colour | `\textcolor{red}{…}` (adds `xcolor`); choosing another colour replaces it |
+| Alignment | `flushleft`, `center`, `flushright` environments; choosing again changes the alignment of the block |
+| Lists | each selected line becomes an `\item`; on a list, changes its kind |
+| Formula, equation | `$…$` around the selection; `equation` environment |
+| Image, Table, TikZ drawing | image window; a grid to choose the size of the table (empty cells, `booktabs` added); TikZ studio |
+| Link, footnote, reference, citation | `\href`, `\footnote`, `\ref`, `\cite` |
+| @ Macros | the list of @ shortcuts |
+| See all | every formatting and insertion command, grouped, with its shortcut |
+
+The **View** menu (top right) shows or hides this bar, the side panel, the PDF preview and the console; the preview and the console also close with their cross.
+
 ## Editing
 
+- Undo: <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Z</kbd>, even when the cursor is not in the text (after a click in the bar or the PDF). Redo: <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>Z</kbd> or <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Y</kbd>.
+- `$`: opens a `$…$` pair where a formula can start (after a space, at the start of a line); after text, or to close a formula, a single `$` is typed (the one already closing the formula is simply stepped over).
+- Renaming a `\begin{…}` also renames its `\end{…}` (and the other way round); one undo reverts both.
+- An empty file offers ways to start: template, minimal document, slides; for a chapter, a section or its inclusion in the main document; for a `.bib`, the common entries.
 - Multiple cursors: <kbd>⌥</kbd>/<kbd>Alt</kbd> + click; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>D</kbd> selects the next occurrence.
 - Folding of sections and environments (arrows in the gutter).
 - <kbd>Enter</kbd> after `\begin{…}` closes the environment; in a list, adds an `\item`.

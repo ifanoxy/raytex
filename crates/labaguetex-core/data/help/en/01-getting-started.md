@@ -13,30 +13,38 @@ LaTeX turns your `.tex` files into PDF with a *TeX distribution* (TeX Live, MacT
 
 ## 2. Create a project
 
-Click **New project** (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>N</kbd>) and pick a template: article, report, thesis, slides, exam, exercise sheet, CV, letter…
+Click **New project** (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>N</kbd>), give it a name and choose where to keep it. The project opens **empty**: an empty `main.tex`, nothing else.
 
-Fill in the title, author and location: labaguetex creates the folder, fills in the template and opens it. Every template compiles without errors from the start.
+To start:
+
+- the **Templates** panel, on the left, shows each template by its first page: article, report, thesis, slides, exam, exercise sheet, CV, letter… A click puts it in your document (the title is the project's name). <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Z</kbd> gives your text back;
+- or choose in the card shown on the empty file: *Minimal document*, *Slides*…;
+- or simply start writing.
+
+Every template compiles without errors from the start.
 
 Already have files? **Open folder** is enough: labaguetex finds the main file (the one with `\documentclass`) by itself.
 
 ## 3. Write
 
-The editor helps at every keystroke:
+The **formatting bar**, under the top bar, works like a word processor's: style of the line (normal text, section, subsection…), size, bold, italic, underline, colour, alignment, lists, formulas, image, table, drawing. **See all** opens every command, with its shortcut.
+
+The editor also helps at every keystroke:
 
 - type `\`: commands appear, with their documentation;
 - type `\begin{`: pick an environment, its `\end{…}` is added;
-- inside a formula, the **math preview** appears under the cursor;
+- inside a formula, the **math preview** appears under the cursor, and the **@ shortcuts** type symbols in two keys: `@a` gives `\alpha`, `@/` a fraction, `@R` gives `\mathbb{R}` (full list: the **@ Macros** button);
 - hover a command, a label or a citation to see what it does or refers to.
 
 ## 4. Build
 
-Press <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd> or click **Build**. The PDF appears on the right and updates after every build, keeping your position.
+Nothing to do: compilation is **live**. As soon as you pause typing, the document is built and the PDF, on the right, updates while keeping your position. The **Live** badge of the top bar reminds you of it; a click turns it off (the document is then built on each save).
 
-By default, labaguetex rebuilds on every save (see *Settings › Compilation*). It picks the right engine and only runs Biber, BibTeX or the index when needed.
+You can also build yourself: <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd> or the **Build** button. labaguetex picks the right engine and only runs Biber, BibTeX or the index when needed.
 
 ## 5. Fix errors
 
-Problems appear while you type (underlined) and after building, in the **Problems** panel:
+Problems appear while you type (underlined), and the top bar shows the number of errors of the last build. The console does not open by itself: click that number, or **Show problems** in the notification, to open the **Problems** panel:
 
 - each error gives the exact file and line: click to go there;
 - a plain-language explanation tells you *why*;

@@ -20,11 +20,14 @@ labaguetex (LaTeX + baguette) aide les débutants à apprendre et laisse les exp
 ## Fonctionnalités
 
 **Écrire**
+- Une barre de mise en forme comme dans un traitement de texte : annuler / rétablir, style de la ligne (titres), taille du texte, gras, italique, souligné, couleur, alignement, listes, formules, image, tableau (taille choisie sur une grille), schéma TikZ, liens et renvois ; **Tout voir** liste toutes les commandes avec leur raccourci. La barre du haut garde le projet, la compilation et un menu **Affichage** ; l'aperçu PDF et la console se ferment par une croix.
 - Autocomplétion selon le contexte : commandes et environnements du noyau LaTeX, de chaque package chargé par le document (lus dans la source du package, quel qu'il soit), de vos `\newcommand` ; étiquettes avec leur numéro, citations avec auteurs et titre, fichiers, options, couleurs.
-- Choisir une commande d'un package non chargé ajoute le `\usepackage`.
+- L'autocomplétion crée les accolades et les laisse vides, à vous de les remplir ; choisir une commande d'un package non chargé ajoute le `\usepackage`.
 - Aperçu des formules en direct (KaTeX, avec vos macros), documentation au survol, aperçu des images.
-- Extraits, raccourcis `@` en mode mathématique (`@a` → `\alpha`), macros personnelles avec déclencheurs et raccourcis clavier.
+- Raccourcis `@` en mode mathématique (`@a` → `\alpha`, `@/` → fraction), indiqués à côté des commandes dans les suggestions et dessinés dans leur propre panneau ; extraits ; macros personnelles avec déclencheurs et raccourcis clavier.
 - Aller à la définition, trouver les références, renommer étiquettes, clés de citation et commandes dans tout le projet.
+- `$` ne s'ouvre en paire que là où une formule peut commencer ; renommer un `\begin{…}` renomme son `\end{…}` ; `Ctrl/⌘ + Z` annule où que soit le focus, `Ctrl/⌘ + Maj + Z` ou `Ctrl/⌘ + Y` rétablit.
+- Les fichiers vides proposent de quoi commencer (modèle, document minimal, section, inclusion dans le document principal, entrées de bibliographie).
 - Fermeture automatique des environnements, listes qui se continuent, repli, curseurs multiples, mode Vim, correcteur orthographique.
 
 **Images, schémas et polices**
@@ -33,7 +36,8 @@ labaguetex (LaTeX + baguette) aide les débutants à apprendre et laisse les exp
 - *Polices* : n'importe quelle police de l'ordinateur ou des fichiers de police copiés dans le projet (fontspec, chaque style nommé, passage à LuaLaTeX), ou des packages de polices LaTeX qui fonctionnent aussi avec pdfLaTeX, toujours avec un aperçu compilé.
 
 **Compiler**
-- Une touche (`Ctrl/⌘ + Entrée`), ou automatiquement à l'enregistrement.
+- En direct par défaut : le document est compilé à chaque pause dans la frappe et le PDF suit ; ou une touche (`Ctrl/⌘ + Entrée`), ou à l'enregistrement.
+- La console ne s'ouvre jamais d'elle-même : les erreurs sont soulignées, comptées dans la barre du haut et annoncées après une compilation demandée.
 - Choix automatique du moteur (`% !TEX program`, `fontspec` → LuaLaTeX, Tectonic, pdfLaTeX).
 - Compilation intelligente : Biber, BibTeX, makeindex, glossaires seulement quand leurs entrées ont changé, nouvelles passes jusqu'à des renvois stables ; ou latexmk, une passe unique, ou vos propres étapes.
 - Fichiers auxiliaires dans `build/` : le projet reste propre.
@@ -53,6 +57,7 @@ labaguetex (LaTeX + baguette) aide les débutants à apprendre et laisse les exp
 - Parcours des packages installés et de tout le catalogue CTAN ; documentation `texdoc`.
 
 **Projets**
+- Les nouveaux projets commencent vides ; le panneau **Modèles** montre chaque modèle par sa première page (compilée une fois, gardée en cache) et le place dans le document en un clic, annulable.
 - 16 modèles (article, rapport, thèse, article de recherche, diaporama, poster, notes de cours, examen, fiche d'exercices, devoir, compte rendu de TP, lettre, CV, figure TikZ…), qui compilent tous sans avertissement, en français et en anglais.
 - Réglages du projet dans `labaguetex.toml`, versionné avec le projet.
 - Palette de commandes, ouverture rapide, recherche et remplacement dans le projet, plan avec les vrais numéros, liste des TODO, restauration de session.

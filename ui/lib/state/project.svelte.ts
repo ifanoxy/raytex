@@ -114,6 +114,24 @@ class ProjectStore {
     return true;
   }
 
+  /** Creates an empty project and opens it, with the templates in the sidebar. */
+  async createEmpty(dir: string, name: string): Promise<boolean> {
+    if (this.info && !(await this.close())) return false;
+    this.opening = true;
+    try {
+      await this.adopt(await ipc.createEmptyProject(dir, name));
+      ui.sidebar = "templates";
+      ui.setVisible("sidebar", true);
+      editor.focus();
+      return true;
+    } catch (e) {
+      ui.toast("error", t("project.createFailed"), { detail: String(e) });
+      return false;
+    } finally {
+      this.opening = false;
+    }
+  }
+
   async create(template: string, dir: string, values: TemplateValues): Promise<boolean> {
     if (this.info && !(await this.close())) return false;
     this.opening = true;

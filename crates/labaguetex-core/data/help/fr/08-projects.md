@@ -55,4 +55,6 @@ disabled_rules = ["nbsp-ref"]
 
 ## Modèles personnels
 
-*Fichier › Enregistrer le projet comme modèle…* ajoute votre projet à la galerie **Mes modèles** : parfait pour réutiliser votre en-tête de cours ou la mise en page imposée par votre laboratoire.
+Le panneau **Modèles** (barre de gauche) montre chaque modèle par une image de sa première page, compilée une fois avec votre distribution puis gardée en cache. Un clic remplace le texte du fichier principal par le modèle (une seule annulation le rend) ; les autres fichiers du modèle (bibliographie, chapitres) sont ajoutés sans écraser ceux qui existent, et le moteur requis (LuaLaTeX pour certains modèles) est noté dans `labaguetex.toml`.
+
+*Fichier › Enregistrer le projet comme modèle…* ajoute votre projet à la section **Mes modèles** : parfait pour réutiliser votre en-tête de cours ou la mise en page imposée par votre laboratoire. Clic droit sur un de vos modèles pour le supprimer.

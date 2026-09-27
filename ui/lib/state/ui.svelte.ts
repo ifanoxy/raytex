@@ -2,7 +2,7 @@
 
 import { uid } from "../utils";
 
-export type SidebarView = "files" | "outline" | "search" | "symbols" | "snippets" | "packages";
+export type SidebarView = "files" | "templates" | "outline" | "search" | "symbols" | "snippets" | "packages";
 export type Overlay = null | "settings" | "help" | "newProject" | "setup" | "palette" | "shortcuts" | "image" | "fonts" | "tikz";
 export type BottomTab = "problems" | "output" | "jobs";
 
@@ -65,6 +65,7 @@ interface Layout {
   bottomHeight: number;
   pdfVisible: boolean;
   pdfRatio: number;
+  formatBarVisible: boolean;
 }
 
 function loadLayout(): Partial<Layout> {
@@ -85,6 +86,8 @@ class UiStore {
   pdfVisible = $state(true);
   /** Share of the editor + PDF area taken by the PDF (0.2…0.8). */
   pdfRatio = $state(0.46);
+  /** Formatting bar under the top bar. */
+  formatBarVisible = $state(true);
   overlay = $state<Overlay>(null);
   paletteMode = $state<"commands" | "files">("commands");
   settingsSection = $state("general");
@@ -105,6 +108,7 @@ class UiStore {
       bottomHeight: l.bottomHeight ?? 230,
       pdfVisible: l.pdfVisible ?? true,
       pdfRatio: l.pdfRatio ?? 0.46,
+      formatBarVisible: l.formatBarVisible ?? true,
     });
   }
 
@@ -117,6 +121,7 @@ class UiStore {
       bottomHeight: this.bottomHeight,
       pdfVisible: this.pdfVisible,
       pdfRatio: this.pdfRatio,
+      formatBarVisible: this.formatBarVisible,
     };
     try {
       localStorage.setItem(LAYOUT_KEY, JSON.stringify(l));
@@ -144,6 +149,19 @@ class UiStore {
   toggleBottom() {
     this.bottomVisible = !this.bottomVisible;
     this.saveLayout();
+  }
+
+  /** Shows or hides a part of the window (the "View" menu, close buttons). */
+  setVisible(part: "sidebar" | "pdf" | "bottom" | "formatBar", visible: boolean) {
+    if (part === "sidebar") this.sidebarVisible = visible;
+    else if (part === "pdf") this.pdfVisible = visible;
+    else if (part === "bottom") this.bottomVisible = visible;
+    else this.formatBarVisible = visible;
+    this.saveLayout();
+  }
+
+  toggleFormatBar() {
+    this.setVisible("formatBar", !this.formatBarVisible);
   }
 
   openOverlay(o: Exclude<Overlay, null>) {

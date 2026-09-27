@@ -9,7 +9,7 @@
 // and pasted images are handled here too.
 
 import { acceptCompletion, closeBrackets, closeBracketsKeymap, snippet } from "@codemirror/autocomplete";
-import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap, indentWithTab, redo, redoDepth, undo, undoDepth } from "@codemirror/commands";
 import { bracketMatching, foldGutter, foldKeymap, indentOnInput, indentUnit } from "@codemirror/language";
 import { type Diagnostic as CmDiagnostic, lintGutter, lintKeymap, setDiagnostics } from "@codemirror/lint";
 import { highlightSelectionMatches, search, searchKeymap } from "@codemirror/search";
@@ -26,16 +26,20 @@ import {
   type KeyBinding,
   keymap,
   lineNumbers,
+  placeholder,
   rectangularSelection,
   type ViewUpdate,
 } from "@codemirror/view";
 import { editorKeymap } from "../actions";
 import { latexCompletion } from "../editor/completion";
 import { docPath, hooks } from "../editor/context";
+import { deleteDollarPair, handleDollar } from "../editor/dollar";
 import { flash, flashField } from "../editor/flash";
 import { latexHover } from "../editor/hover";
 import { bibtex, latex } from "../editor/latex";
 import { findFormula, mathPreview, refreshMacros } from "../editor/math-preview";
+import { headingOf } from "../editor/format";
+import { linkedEnvironments } from "../editor/linked-envs";
 import { navigableAt } from "../editor/navigation";
 import { frenchPhrases } from "../editor/phrases";
 import { enterKeymap, latexStructure } from "../editor/structure";
@@ -100,6 +104,7 @@ const c = {
   phrases: new Compartment(),
   completion: new Compartment(),
   path: new Compartment(),
+  placeholder: new Compartment(),
 };
 
 let vimModule: typeof import("@replit/codemirror-vim") | null = null;
@@ -221,6 +226,13 @@ class EditorStore {
   revision = $state(0);
   /** The cursor is inside a TikZ picture (the toolbar offers to edit it). */
   inTikz = $state(false);
+  /** Heading command of the cursor line (`section`), shown by the style menu. */
+  lineHeading = $state<string | null>(null);
+  /** The shown document is empty (the editor offers ways to start it). */
+  activeEmpty = $state(false);
+  /** Undo and redo are possible in the shown document. */
+  canUndo = $state(false);
+  canRedo = $state(false);
 
   view: EditorView | null = null;
   private models = new Map<string, DocModel>();
@@ -346,11 +358,25 @@ class EditorStore {
       [c.phrases, i18n.lang === "fr" ? EditorState.phrases.of(frenchPhrases) : []],
       [c.completion, s?.completion.enabled === false ? [] : latexCompletion()],
       [c.path, docPath.of(path)],
+      [c.placeholder, placeholder(t("editor.placeholder"))],
     ];
   }
 
   private extensions(path: string, kind: FileKind, readOnly: boolean): Extension[] {
-    const languageExt = kind === "tex" ? [latex(), latexStructure(), latexHover(), mathPreview()] : kind === "bib" ? [bibtex()] : [];
+    const languageExt =
+      kind === "tex"
+        ? [
+            latex(),
+            latexStructure(),
+            latexHover(),
+            mathPreview(),
+            linkedEnvironments(),
+            EditorView.inputHandler.of((view, from, to, text) => handleDollar(view, from, to, text)),
+            Prec.high(keymap.of([{ key: "Backspace", run: deleteDollarPair }])),
+          ]
+        : kind === "bib"
+          ? [bibtex()]
+          : [];
     const smart = kind === "tex" || kind === "bib";
     return [
       ...this.compartmentValues(path).map(([comp, ext]) => (comp === c.completion && !smart ? comp.of([]) : comp.of(ext))),
@@ -462,11 +488,22 @@ class EditorStore {
     requestAnimationFrame(() => this.view?.focus());
   }
 
+  /** Flags of the shown document used by the toolbar and the start card. */
+  private refreshFlags(state: EditorState) {
+    const empty = state.doc.length < 400 && !state.doc.toString().trim();
+    if (this.activeEmpty !== empty) this.activeEmpty = empty;
+    const u = undoDepth(state) > 0;
+    const r = redoDepth(state) > 0;
+    if (this.canUndo !== u) this.canUndo = u;
+    if (this.canRedo !== r) this.canRedo = r;
+  }
+
   private onViewUpdate(u: ViewUpdate) {
     const path = u.state.facet(docPath);
     const m = this.model(path);
     if (!m) return;
     if (u.docChanged) this.afterChange(m, u.state);
+    if (u.transactions.length) this.refreshFlags(u.state);
     if (u.selectionSet || u.docChanged) {
       const sel = u.state.selection;
       const head = sel.main.head;
@@ -475,6 +512,8 @@ class EditorStore {
       for (const r of sel.ranges) selected += r.to - r.from;
       this.cursor = { line: line.number, col: head - line.from + 1, selections: sel.ranges.length, selected };
       this.inTikz = m.kind === "tex" && insideTikz(u.state.doc, head);
+      const heading = m.kind === "tex" ? headingOf(line.text) : null;
+      if (this.lineHeading !== heading) this.lineHeading = heading;
     }
   }
 
@@ -669,6 +708,7 @@ class EditorStore {
       const line = view.state.doc.lineAt(head);
       this.cursor = { line: line.number, col: head - line.from + 1, selections: 1, selected: 0 };
     }
+    if (view) this.refreshFlags(view.state);
     this.revision++;
     this.sessionSoon();
     this.wordsSoon();
@@ -973,10 +1013,17 @@ class EditorStore {
   }
 
   /** Inserts a snippet at the cursor; `${SELECTION}` receives the selected text. */
-  insertSnippet(template: string, view = this.view): boolean {
+  insertSnippet(template: string, view = this.view, opts: { block?: boolean } = {}): boolean {
     if (!view || view.state.readOnly) return false;
     const sel = view.state.selection.main;
     const selected = view.state.sliceDoc(sel.from, sel.to);
+    if (opts.block) {
+      // A block (environment, heading) goes on lines of its own.
+      const first = view.state.doc.lineAt(sel.from);
+      const last = view.state.doc.lineAt(sel.to);
+      if (first.text.slice(0, sel.from - first.from).trim()) template = `\n${template}`;
+      if (last.text.slice(sel.to - last.from).trim()) template = `${template}\n`;
+    }
     // CodeMirror indents continuation lines like the current one (tabs = one level).
     // Placeholders cannot contain braces: such a selection is inserted as plain text.
     const literal = escapeSnippet(selected);
@@ -1096,6 +1143,51 @@ class EditorStore {
       }
     }
     return null;
+  }
+
+  /** Whether the cursor of the shown document is inside a formula. */
+  inMath(): boolean {
+    const view = this.view;
+    if (!view) return false;
+    const head = view.state.selection.main.head;
+    const f = findFormula(view.state.doc, head);
+    return !!f && head > f.from && head < f.to;
+  }
+
+  /** Inserts a math snippet, in `$…$` when the cursor is in text. */
+  insertMath(body: string): boolean {
+    return this.insertSnippet(this.inMath() ? body : `$${body}$`);
+  }
+
+  /** Undoes the last change of the shown document (wherever the focus is). */
+  undo(): boolean {
+    const view = this.view;
+    if (!view || !this.activeTab || this.activeTab.kind === "image" || this.activeTab.kind === "pdf") return false;
+    const done = undo(view);
+    view.focus();
+    return done;
+  }
+
+  /** Redoes the last undone change of the shown document. */
+  redo(): boolean {
+    const view = this.view;
+    if (!view || !this.activeTab || this.activeTab.kind === "image" || this.activeTab.kind === "pdf") return false;
+    const done = redo(view);
+    view.focus();
+    return done;
+  }
+
+  /** Replaces the whole text of an open document, as one undoable change. */
+  setText(path: string, text: string, cursor = 0) {
+    const m = this.model(path);
+    if (!m) return;
+    const state = this.stateOf(m.path)!;
+    this.applyTo(m, {
+      changes: { from: 0, to: state.doc.length, insert: text },
+      selection: EditorSelection.cursor(Math.min(cursor, text.length)),
+      userEvent: "input.replace",
+      scrollIntoView: true,
+    });
   }
 
   /** Replaces a range of an open document. */
