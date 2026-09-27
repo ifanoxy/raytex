@@ -43,6 +43,48 @@ pub async fn import_image(
     .await?
 }
 
+/// Converts SVG data (a pasted drawing) to a PDF in a folder of the project.
+/// The folder and the file name are in the `x-dir` and `x-name` headers;
+/// the SVG is the raw request body. Returns the new file.
+#[tauri::command]
+pub async fn import_svg_data(
+    app: AppHandle,
+    request: tauri::ipc::Request<'_>,
+) -> CmdResult<String> {
+    let header = |name: &str| {
+        request
+            .headers()
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .map(super::files::percent_decode)
+            .ok_or(format!("missing {name} header"))
+    };
+    let dir = header("x-dir")?;
+    let name = header("x-name")?;
+    let dir_path = {
+        let state = app.state::<AppState>();
+        writable_path(&state, &dir)?
+    };
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected raw bytes".into());
+    };
+    let bytes = bytes.clone();
+    blocking(&app, move |_, state| {
+        std::fs::create_dir_all(&dir_path).map_err(|e| e.to_string())?;
+        let pdf = images::svg_to_pdf(&bytes)?;
+        let stem = images::latex_file_name(&name);
+        let stem = stem
+            .rsplit_once('.')
+            .map_or(stem.as_str(), |(s, _)| s)
+            .to_owned();
+        let target = images::unique_path(&dir_path, &format!("{stem}.pdf"));
+        state.note_own_write(&target);
+        std::fs::write(&target, pdf).map_err(|e| e.to_string())?;
+        Ok(target.to_string_lossy().into_owned())
+    })
+    .await?
+}
+
 /// A LaTeX-safe version of a file name (`Mon image.PNG` → `mon-image.png`).
 #[tauri::command]
 pub async fn safe_file_name(name: String) -> CmdResult<String> {

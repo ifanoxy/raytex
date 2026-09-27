@@ -49,6 +49,7 @@ pub fn run() {
             commands::app::log_frontend,
             commands::media::import_image,
             commands::media::safe_file_name,
+            commands::media::import_svg_data,
             commands::media::system_fonts,
             commands::media::inspect_fonts,
             commands::media::font_has_math,

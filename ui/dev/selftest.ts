@@ -225,6 +225,32 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     ok = false;
   }
 
+  // ------------------------------------------------------ pasted images
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 120;
+    canvas.height = 80;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#e3a857";
+    ctx.fillRect(0, 0, 120, 80);
+    const png = await new Promise<Blob>((r) => canvas.toBlob((b) => r(b!), "image/png"));
+    const svg = new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="60" height="40"><circle cx="30" cy="20" r="15" fill="teal"/></svg>'], { type: "image/svg+xml" });
+    const v = editor.view!;
+    v.dispatch({ changes: { from: v.state.doc.length, insert: "\n\n" }, selection: { anchor: v.state.doc.length + 2 } });
+    media.openImages({ blobs: [new File([png], "capture.png", { type: "image/png" }), new File([svg], "dessin.svg", { type: "image/svg+xml" })] });
+    await until(() => document.querySelectorAll(".items .item").length === 2, 10_000, "pasted items");
+    document.querySelector<HTMLButtonElement>(".right .btn.primary")!.click();
+    await until(() => ui.overlay === null, 20_000, "pasted insertion");
+    const tree = await ipc.fileTree();
+    const figures = tree.find((n) => n.name === "figures")?.children?.map((c) => c.name) ?? [];
+    const pasted = figures.filter((n) => n.startsWith("image-"));
+    log(`pasted: ${pasted.join(", ")}`);
+    ok = pasted.some((n) => n.endsWith(".png")) && pasted.some((n) => n.endsWith(".pdf")) && ok;
+  } catch (e) {
+    log(`pasted images failed: ${e}`);
+    ok = false;
+  }
+
   // ---------------------------------------------------------------- TikZ
   try {
     const v = editor.view!;

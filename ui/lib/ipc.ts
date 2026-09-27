@@ -99,6 +99,8 @@ export const openTexdoc = (name: string) => call<boolean>("open_texdoc", { name 
 // ------------------------------------------------- images, fonts, TikZ
 export const importImage = (source: string, dir: string, name?: string) => call<string>("import_image", { source, dir, name: name ?? null });
 export const safeFileName = (name: string) => call<string>("safe_file_name", { name });
+export const importSvgData = (dir: string, name: string, svg: Uint8Array) =>
+  invoke<string>("import_svg_data", svg, { headers: { "x-dir": encodeURIComponent(dir), "x-name": encodeURIComponent(name) } });
 export const systemFonts = () => call<T.FontFamily[]>("system_fonts");
 export const inspectFonts = (paths: string[]) => call<T.FontFamily[]>("inspect_fonts", { paths });
 export const fontHasMath = (path: string, index: number) => call<boolean>("font_has_math", { path, index });

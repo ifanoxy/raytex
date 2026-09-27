@@ -246,13 +246,7 @@
     if (item.kind === "project" && item.path) return item.path;
     if (item.kind === "blob" && item.blob) {
       const direct = item.blob.type === "image/png" || item.blob.type === "image/jpeg";
-      if (item.blob.type === "image/svg+xml") {
-        const tmp = await uniqueTarget(dir, item.stem, "svg");
-        await ipc.writeBinaryFile(tmp, new Uint8Array(await item.blob.arrayBuffer()));
-        const pdf = await ipc.importImage(tmp, dir, `${item.stem}.svg`);
-        await ipc.deletePath(tmp).catch(() => {});
-        return pdf;
-      }
+      if (item.blob.type === "image/svg+xml") return ipc.importSvgData(dir, item.stem, new Uint8Array(await item.blob.arrayBuffer()));
       const target = await uniqueTarget(dir, item.stem, direct ? targetExtension(item.ext, item.blob.type) : "png");
       await ipc.writeBinaryFile(target, direct ? new Uint8Array(await item.blob.arrayBuffer()) : await toPng(item.blob));
       return target;
@@ -301,7 +295,7 @@
       await project.refreshTree();
       const copied = items.filter((i) => i.kind !== "project").length;
       ui.toast("success", copied ? t("image.inserted", { n: items.length, folder }) : t("image.insertedExisting", { n: items.length }));
-      ui.closeOverlay();
+      if (ui.overlay === "image") ui.closeOverlay();
       editor.focus();
     } catch (e) {
       ui.toast("error", t("image.failed"), { detail: String(e) });

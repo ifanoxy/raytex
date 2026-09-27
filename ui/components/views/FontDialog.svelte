@@ -185,7 +185,7 @@
     try {
       if (s.tex) await applyTex(s.tex);
       else if (s.family) await applyFamily(s.family, !!s.fromFiles);
-      ui.closeOverlay();
+      if (ui.overlay === "fonts") ui.closeOverlay();
     } catch (e) {
       ui.toast("error", t("fonts.failed"), { detail: String(e) });
     } finally {

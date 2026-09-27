@@ -118,7 +118,7 @@ pub async fn write_binary_file(
     .await?
 }
 
-fn percent_decode(s: &str) -> String {
+pub(crate) fn percent_decode(s: &str) -> String {
     let bytes = s.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
@@ -198,6 +198,20 @@ pub async fn rename_path(
     Ok(to.to_string_lossy().into_owned())
 }
 
+/// The system trash. On macOS, the file manager API is used directly: the
+/// default (asking Finder through AppleScript) needs an automation
+/// permission and can block while the permission prompt waits.
+fn trash_context() -> trash::TrashContext {
+    #[allow(unused_mut)]
+    let mut ctx = trash::TrashContext::default();
+    #[cfg(target_os = "macos")]
+    {
+        use trash::macos::{DeleteMethod, TrashContextExtMacos};
+        ctx.set_delete_method(DeleteMethod::NsFileManager);
+    }
+    ctx
+}
+
 /// Moves a file or folder to the system trash (recoverable).
 #[tauri::command]
 pub async fn delete_path(state: State<'_, AppState>, path: String) -> CmdResult<()> {
@@ -209,7 +223,7 @@ pub async fn delete_path(state: State<'_, AppState>, path: String) -> CmdResult<
     {
         return Err("the project folder itself cannot be deleted from here".into());
     }
-    trash::delete(&p).map_err(err)?;
+    trash_context().delete(&p).map_err(err)?;
     if let Some(pr) = state.project_mut().as_mut() {
         pr.ws.remove(&p);
     }

@@ -386,7 +386,7 @@
       media.tikzDraft = null;
       pristine = true;
       ui.toast("success", editing ? t("tikz.updated") : t("tikz.inserted"));
-      ui.closeOverlay();
+      if (ui.overlay === "tikz") ui.closeOverlay();
       editor.focus();
     } catch (e) {
       ui.toast("error", String(e));
