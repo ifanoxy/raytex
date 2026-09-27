@@ -237,7 +237,7 @@
     const entry: Rendered = { scale, doc: docId, task: null, text: null };
     rendered.set(i, entry);
     const failed = (why?: unknown) => {
-      if (import.meta.env.DEV) void ipc.logFrontend("info", `pdf page ${i + 1} not rendered: ${why} (current: ${rendered.get(i) === entry})`).catch(() => {});
+      if (import.meta.env.DEV && rendered.get(i) === entry) void ipc.logFrontend("info", `pdf page ${i + 1} not rendered: ${why}`).catch(() => {});
       if (rendered.get(i) === entry) rendered.delete(i);
     };
     let page;

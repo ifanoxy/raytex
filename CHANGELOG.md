@@ -6,6 +6,12 @@ All notable changes to labaguetex are documented here. The format follows [Keep 
 
 First version.
 
+### Images, drawings and fonts
+- *Insert images* dialog: files, clipboard, drag and drop or project images; folder and safe names; width, placement, caption, label; sub-figures; SVG → vector PDF, WebP/GIF/HEIC/BMP/TIFF → PNG.
+- TikZ studio: gallery of 22 bilingual drawings, element and style palette, live preview with the document's preamble, centimetre grid and click-to-insert coordinates, insertion at the cursor or in a `.tikz` file, automatic packages and libraries, in-place editing.
+- Fonts dialog: system fonts and font files through fontspec (with engine switch), LaTeX font packages for every engine, compiled previews.
+- Preview service compiling small standalone documents next to the project; preamble edits keep hyperref last.
+
 ### Engine
 - Detection of TeX Live, MacTeX, TinyTeX, MiKTeX, Tectonic, system TeX Live and custom folders; index of every installed file.
 - Analysis of any package or class source (commands, environments, options) for completion; bilingual knowledge base for common packages; CTAN catalogue.

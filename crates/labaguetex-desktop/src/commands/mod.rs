@@ -9,6 +9,7 @@ pub mod build;
 pub mod files;
 pub mod help;
 pub mod language;
+pub mod media;
 pub mod project;
 pub mod synctex;
 pub mod tex;

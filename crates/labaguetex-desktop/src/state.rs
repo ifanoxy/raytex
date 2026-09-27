@@ -148,6 +148,10 @@ pub struct AppState {
     pub session: Mutex<Session>,
     /// Files written by the application recently (ignored by the watcher).
     pub own_writes: Mutex<HashMap<PathBuf, Instant>>,
+    /// Previews run one at a time; the last result of each kind is kept.
+    pub previews: Mutex<HashMap<String, (u64, labaguetex_core::preview::PreviewOutcome)>>,
+    /// Fonts installed on the system (read once).
+    pub system_fonts: Mutex<Option<Arc<Vec<labaguetex_core::fonts::FontFamily>>>>,
 }
 
 fn recover<T>(r: Result<T, std::sync::PoisonError<T>>) -> T {
@@ -175,6 +179,8 @@ impl AppState {
             next_job: AtomicU64::new(1),
             session: Mutex::new(session),
             own_writes: Mutex::new(HashMap::new()),
+            previews: Mutex::new(HashMap::new()),
+            system_fonts: Mutex::new(None),
         }
     }
 

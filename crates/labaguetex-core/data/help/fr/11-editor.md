@@ -40,7 +40,8 @@ Survolez une commande, un environnement ou un package : sa documentation s'affic
 - Plusieurs curseurs : <kbd>⌥</kbd>/<kbd>Alt</kbd> + clic ; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>D</kbd> sélectionne l'occurrence suivante.
 - Repli des sections et environnements (flèches dans la marge).
 - <kbd>Entrée</kbd> après `\begin{…}` ferme l'environnement ; dans une liste, ajoute un `\item`.
-- Collez une image : elle est enregistrée dans `figures/` et insérée.
+- Collez ou déposez une image : la fenêtre *Insérer des images* s'ouvre (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>I</kbd>) ; voir [Figures et tableaux](04-figures-tables.md).
+- Schémas : le studio TikZ (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>T</kbd>) ; voir [Schémas TikZ](13-drawings.md).
 - Correcteur orthographique du système (*Réglages › Éditeur*).
 - Mode Vim (*Réglages › Éditeur*) : `:w` enregistre.
 

@@ -564,3 +564,71 @@ export interface SnippetView {
   math: boolean;
   package: string | null;
 }
+
+// ------------------------------------------------------- media / previews
+
+export interface PreviewOutcome {
+  pdf: string | null;
+  /** Bounding box of the first TikZ picture, in TeX points: [left, bottom, right, top]. */
+  bbox: [number, number, number, number] | null;
+  /** Border added by `standalone`, in points. */
+  border: number;
+  /** `line` is relative to the body. */
+  diagnostics: Diagnostic[];
+  durationMs: number;
+  engine: Engine;
+}
+
+export interface SnippetRequest {
+  path: string;
+  job: string;
+  classOptions: string;
+  projectPreamble: boolean;
+  packages?: string[];
+  libraries?: string[];
+  extra?: string;
+  body: string;
+  engine?: Engine | null;
+}
+
+export interface FontFace {
+  path: string;
+  index: number;
+  family: string;
+  postscript: string;
+  weight: number;
+  italic: boolean;
+  monospace: boolean;
+}
+
+export interface FontFamily {
+  name: string;
+  monospace: boolean;
+  faces: FontFace[];
+}
+
+export type FontRole = "main" | "sans" | "mono" | "math" | "command";
+
+export interface TexFont {
+  id: string;
+  name: string;
+  package: string;
+  options: string;
+  kind: "serif" | "sans" | "mono";
+  math: boolean;
+  fontspec: string | null;
+  extra: string;
+  description: string;
+  code: string;
+}
+
+export interface TikzTemplate {
+  id: string;
+  category: string;
+  name: string;
+  description: string;
+  packages: string[];
+  libraries: string[];
+  preamble: string;
+  code: string;
+}

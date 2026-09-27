@@ -40,7 +40,8 @@ Hover a command, an environment or a package: its documentation appears. On a la
 - Multiple cursors: <kbd>⌥</kbd>/<kbd>Alt</kbd> + click; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>D</kbd> selects the next occurrence.
 - Folding of sections and environments (arrows in the gutter).
 - <kbd>Enter</kbd> after `\begin{…}` closes the environment; in a list, adds an `\item`.
-- Paste an image: it is saved in `figures/` and inserted.
+- Paste or drop an image: the *Insert images* window opens (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>I</kbd>); see [Figures and tables](04-figures-tables.md).
+- Drawings: the TikZ studio (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>T</kbd>); see [TikZ drawings](13-drawings.md).
 - System spell checker (*Settings › Editor*).
 - Vim mode (*Settings › Editor*): `:w` saves.
 

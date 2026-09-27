@@ -13,7 +13,9 @@
   import { tex } from "$lib/state/tex.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import { viewer } from "$lib/state/viewer.svelte";
-  import { dirname, fileKind, relative } from "$lib/utils";
+  import { ACCEPTED, extensionOf } from "$lib/images";
+  import { media } from "$lib/state/media.svelte";
+  import { dirname, relative } from "$lib/utils";
   import ContextMenu from "./components/common/ContextMenu.svelte";
   import Resizer from "./components/common/Resizer.svelte";
   import CommandPalette from "./components/dialogs/CommandPalette.svelte";
@@ -26,10 +28,13 @@
   import Toolbar from "./components/layout/Toolbar.svelte";
   import BottomPanel from "./components/panel/BottomPanel.svelte";
   import PdfViewer from "./components/pdf/PdfViewer.svelte";
+  import FontDialog from "./components/views/FontDialog.svelte";
   import HelpCenter from "./components/views/HelpCenter.svelte";
+  import ImageDialog from "./components/views/ImageDialog.svelte";
   import NewProject from "./components/views/NewProject.svelte";
   import Settings from "./components/views/Settings.svelte";
   import SetupAssistant from "./components/views/SetupAssistant.svelte";
+  import TikzStudio from "./components/views/TikzStudio.svelte";
   import Welcome from "./components/views/Welcome.svelte";
 
   let workEl = $state<HTMLElement | null>(null);
@@ -111,6 +116,15 @@
       await project.open(e.paths[0]);
       return;
     }
+    // Dialogs that accept files take them.
+    if (ui.overlay === "image") {
+      media.imageRequest = { paths: e.paths };
+      return;
+    }
+    if (ui.overlay === "fonts") {
+      media.fontRequest = e.paths;
+      return;
+    }
     const root = project.info.root;
     const inside = (p: string) => relative(root, p) !== p.replace(/\\/g, "/");
     const dirEl = target?.closest<HTMLElement>("[data-drop-dir]");
@@ -119,10 +133,12 @@
       return;
     }
     if (target?.closest(".cm-editor") && editor.view && editor.activeTab?.kind === "tex") {
+      // Images go through the image dialog (folder, name, size, caption).
+      const images = e.paths.filter((p) => ACCEPTED.includes(extensionOf(p)));
+      if (images.length) media.openImages({ paths: images });
       const main = project.info.main ?? editor.active!;
-      for (const p of e.paths) {
-        const folder = fileKind(p) === "image" || /\.(pdf|eps)$/i.test(p) ? `${dirname(main)}/figures` : dirname(main);
-        const path = inside(p) ? p : (await project.importFiles([p], folder))[0];
+      for (const p of e.paths.filter((x) => !images.includes(x))) {
+        const path = inside(p) ? p : (await project.importFiles([p], dirname(main)))[0];
         if (path) await editor.insertFileReference(editor.view, path);
       }
       return;
@@ -202,6 +218,12 @@
   <NewProject />
 {:else if ui.overlay === "setup"}
   <SetupAssistant />
+{:else if ui.overlay === "image"}
+  <ImageDialog />
+{:else if ui.overlay === "fonts"}
+  <FontDialog />
+{:else if ui.overlay === "tikz"}
+  <TikzStudio />
 {/if}
 
 <ContextMenu />

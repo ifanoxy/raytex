@@ -2,9 +2,17 @@
 
 ## Inserting an image
 
-The easiest way: **paste an image** (a screenshot…) straight into the editor, or **drag a file** from Finder / Explorer. labaguetex saves it in `figures/`, inserts a complete figure and adds `\usepackage{graphicx}` if needed.
+Click **Image** in the toolbar (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>I</kbd>), **paste an image** (a screenshot…) into the editor, or **drag files** from Finder / Explorer. The *Insert images* window opens:
 
-You can also use *Insert › Image from a file…*, or write:
+- **the images**: chosen on the computer, pasted, dropped, or already in the project;
+- **the folder** of the project to copy them to (`figures/` by default) and **the name** of each file, made safe for LaTeX (no spaces, no accents);
+- **the layout**: a figure with a caption (numbered, with a label for `\ref`) or an image in the text;
+- **the width**, in percent of the text width, with a preview of the page;
+- **the position**: automatic (recommended), exactly here, top or bottom of a page.
+
+Several images become **sub-figures** side by side, each with its caption. Formats LaTeX cannot read are converted: an **SVG** becomes a PDF that stays vector, WebP, GIF, HEIC, BMP or TIFF become PNG. The packages needed (`graphicx`, `subcaption`, `float`) are added to the preamble, and the cursor lands on the caption, ready to type.
+
+The code produced looks like this:
 
 ```latex
 \begin{figure}[htbp]
@@ -75,6 +83,8 @@ Figure~\ref{fig:curve} and table~\ref{tab:measurements} show…
 ```
 
 ## Drawing with TikZ
+
+The **TikZ studio** (*TikZ drawing* button of the toolbar) creates a drawing with a live preview: see [TikZ drawings](13-drawings.md).
 
 ```latex
 \usepackage{tikz}

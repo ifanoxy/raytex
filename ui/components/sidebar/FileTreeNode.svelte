@@ -5,6 +5,7 @@
   import * as ipc from "$lib/ipc";
   import { diagnostics, pathKey } from "$lib/state/diagnostics.svelte";
   import { editor } from "$lib/state/editor.svelte";
+  import { media } from "$lib/state/media.svelte";
   import { project } from "$lib/state/project.svelte";
   import { type MenuItem, ui } from "$lib/state/ui.svelte";
   import type { FileNode } from "$lib/types";
@@ -44,6 +45,7 @@
 
   function menu(e: MouseEvent) {
     const root = project.info?.root ?? "";
+    const ext = node.path.split(".").pop()?.toLowerCase() ?? "";
     const items: MenuItem[] = [];
     if (node.dir) {
       items.push(
@@ -55,7 +57,14 @@
     } else {
       items.push({ label: t("files.open"), icon: "file", run: () => editor.open(node.path) });
       if (kind === "tex") items.push({ label: t("action.setMain"), icon: "star", disabled: isMain, run: () => project.setMain(node.path) });
-      if (editor.view && editor.activeTab?.kind === "tex" && !samePath(node.path, editor.active)) {
+      if (["png", "jpg", "jpeg", "pdf", "eps", "svg", "webp", "gif", "heic"].includes(ext)) {
+        items.push({ label: t("files.insertImage"), icon: "image", disabled: editor.activeTab?.kind !== "tex", run: () => media.openImages({ paths: [node.path] }) });
+      } else if (["ttf", "otf", "ttc", "otc"].includes(ext)) {
+        items.push({ label: t("files.useFont"), icon: "type", run: () => media.openFonts([node.path]) });
+      } else if (ext === "tikz") {
+        items.push({ label: t("files.editTikz"), icon: "sparkles", run: () => void ipc.readTextFile(node.path).then((f) => media.openTikz({ code: f.text.trimEnd(), file: node.path })) });
+      }
+      if (editor.view && editor.activeTab?.kind === "tex" && !samePath(node.path, editor.active) && !["ttf", "otf", "ttc", "otc"].includes(ext)) {
         items.push({ label: t("files.insertReference"), icon: "link", run: () => editor.view && editor.insertFileReference(editor.view, node.path) });
       }
       items.push({ label: t("files.openExternal"), icon: "external", run: () => ipc.openInOs(node.path) }, { separator: true });

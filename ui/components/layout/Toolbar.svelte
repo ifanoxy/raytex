@@ -65,8 +65,9 @@
       [
         "insert.section",
         "insert.subsection",
-        "insert.figure",
         "insert.image",
+        "insert.tikz",
+        "insert.figure",
         "insert.table",
         "insert.equation",
         "insert.align",
@@ -84,7 +85,11 @@
   function formatMenu(e: MouseEvent) {
     ui.openMenuBelow(
       e.currentTarget as HTMLElement,
-      ["edit.bold", "edit.italic", "edit.emph", "edit.underline", "edit.typewriter", "edit.smallcaps", "edit.math", "edit.wrapEnv", "edit.comment"].map(actionItem),
+      [
+        ...["edit.bold", "edit.italic", "edit.emph", "edit.underline", "edit.typewriter", "edit.smallcaps", "edit.math", "edit.wrapEnv", "edit.comment"].map(actionItem),
+        { separator: true },
+        actionItem("format.fonts"),
+      ],
     );
   }
 
@@ -151,6 +156,14 @@
     <button class="btn ghost small" disabled={!canEdit} onclick={formatMenu}>
       <Icon name="type" size={14} />
       {t("toolbar.format")}
+    </button>
+    <button class="btn ghost small" disabled={!canEdit} onclick={() => runAction("insert.image")} title="{t('action.insertImage')} ({prettyKey(keyFor('insert.image') ?? '')})">
+      <Icon name="image" size={14} />
+      {t("toolbar.image")}
+    </button>
+    <button class="btn ghost small tikz" class:editing={editor.inTikz} onclick={() => runAction("insert.tikz")} title="{t('action.tikzStudio')} ({prettyKey(keyFor('insert.tikz') ?? '')})">
+      <Icon name="sparkles" size={14} />
+      {editor.inTikz ? t("toolbar.editTikz") : t("toolbar.tikz")}
     </button>
   {/if}
 
@@ -276,6 +289,10 @@
   }
   .chip :global(.icon) {
     color: var(--accent);
+  }
+  .tikz.editing {
+    color: var(--accent);
+    background: var(--accent-soft);
   }
   .palette-btn {
     display: flex;

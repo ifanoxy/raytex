@@ -26,7 +26,11 @@ labaguetex (LaTeX + baguette) is a LaTeX editor that helps beginners learn and l
 - Snippets, `@` shortcuts in math mode (`@a` → `\alpha`), personal macros with triggers and keyboard shortcuts.
 - Go to definition, find references, rename labels / citation keys / commands across the project.
 - Environment auto-closing, list continuation, folding, multiple cursors, Vim mode, spell checking.
-- Paste or drop an image: it is saved in `figures/` and inserted as a figure.
+
+**Images, drawings and fonts**
+- *Insert images*: choose, paste or drop images (or pick those of the project); folder, LaTeX-safe file name, width with a page preview, placement, caption and label; several images become sub-figures. SVG is converted to vector PDF, WebP/GIF/HEIC/BMP/TIFF to PNG; `graphicx`, `subcaption`, `float` are added when needed.
+- *TikZ studio*: a gallery of 22 drawings (plots, flowchart, tree, mind map, Venn, geometry, circuit, automaton, graph, neural network, commutative diagram…), element and style buttons, a live preview compiled with the document's preamble, a centimetre grid, click-to-insert coordinates, insertion at the cursor or in its own file, packages and `\usetikzlibrary` added automatically; edit an existing drawing in place.
+- *Fonts*: any font of the computer or font files copied into the project (fontspec, each style named, engine switched to LuaLaTeX), or LaTeX font packages that also work with pdfLaTeX, all with a compiled preview.
 
 **Building**
 - One key (`Ctrl/⌘ + Enter`), or automatically on save.

@@ -110,6 +110,27 @@ Each entry explains a LaTeX, BibTeX or Biber message:
 
 `match` is a regular expression tested against the message. The explanation is Markdown and appears in the Problems panel and in *Help › Errors*. Fixes (add a package, install it, replace a misspelt command…) are computed by the engine (`log/hints.rs`).
 
+## TikZ gallery: `data/tikz.json`
+
+```json
+{ "id": "flowchart", "category": "diagrams",
+  "name": { "en": "Flowchart", "fr": "Organigramme" },
+  "description": { "en": "…", "fr": "…" },
+  "packages": ["tikz"], "libraries": ["shapes.geometric", "arrows.meta", "positioning"],
+  "preamble": "", "code": "\\begin{tikzpicture}…{{fr:Début|en:Start}}…\\end{tikzpicture}" }
+```
+
+`category` is one of `basics`, `functions`, `diagrams`, `geometry`, `science`, `cs`, `math`. Texts inside the drawing use `{{fr:…|en:…}}`. `preamble` holds extra lines (`\pgfplotsset{compat=1.18}`). Every drawing must compile in both languages: `cargo test -p labaguetex-core --release -- --ignored every_tikz_template_compiles`.
+
+## LaTeX font packages: `data/fonts.json`
+
+```json
+{ "id": "libertinus", "name": "Libertinus", "package": "libertinus", "options": "", "kind": "serif",
+  "math": true, "fontspec": "Libertinus Serif", "extra": "", "description": { "en": "…", "fr": "…" } }
+```
+
+`kind` is `serif`, `sans` or `mono`; `package` may list several packages (`newpxtext,newpxmath`); `extra` is an additional preamble line. `every_tex_font_compiles` checks them all with pdfLaTeX.
+
 ## Snippets: `data/snippets.json`
 
 ```json

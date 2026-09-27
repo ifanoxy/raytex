@@ -2,9 +2,17 @@
 
 ## Insérer une image
 
-Le plus simple : **collez une image** (capture d'écran…) directement dans l'éditeur, ou **glissez un fichier** depuis le Finder / l'Explorateur. labaguetex l'enregistre dans `figures/`, insère la figure complète et ajoute `\usepackage{graphicx}` si besoin.
+Cliquez sur **Image** dans la barre d'outils (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>I</kbd>), **collez une image** (capture d'écran…) dans l'éditeur, ou **glissez des fichiers** depuis le Finder / l'Explorateur. La fenêtre *Insérer des images* s'ouvre :
 
-Vous pouvez aussi utiliser *Insérer › Image depuis un fichier…*, ou écrire :
+- **les images** : choisies sur l'ordinateur, collées, déposées, ou déjà présentes dans le projet ;
+- **le dossier** du projet où les copier (`figures/` par défaut) et **le nom** de chaque fichier, rendu sûr pour LaTeX (sans espace ni accent) ;
+- **la disposition** : figure avec légende (numérotée, avec étiquette pour `\ref`) ou image dans le texte ;
+- **la largeur**, en pourcentage de la largeur du texte, avec un aperçu de la page ;
+- **la position** : automatique (conseillé), ici exactement, en haut ou en bas d'une page.
+
+Plusieurs images deviennent des **sous-figures** côte à côte, chacune avec sa légende. Les formats que LaTeX ne lit pas sont convertis : un **SVG** devient un PDF qui reste vectoriel, WebP, GIF, HEIC, BMP ou TIFF deviennent des PNG. Les packages nécessaires (`graphicx`, `subcaption`, `float`) sont ajoutés au préambule, et le curseur se place sur la légende, prête à être tapée.
+
+Le code produit ressemble à ceci :
 
 ```latex
 \begin{figure}[htbp]
@@ -75,6 +83,8 @@ La figure~\ref{fig:courbe} et le tableau~\ref{tab:mesures} montrent…
 ```
 
 ## Dessiner avec TikZ
+
+Le **studio TikZ** (bouton *Schéma TikZ* de la barre d'outils) crée un schéma avec un aperçu en direct : voir [Schémas TikZ](13-drawings.md).
 
 ```latex
 \usepackage{tikz}

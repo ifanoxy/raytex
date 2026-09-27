@@ -112,14 +112,14 @@ pub async fn cancel_build(state: State<'_, AppState>) -> CmdResult<()> {
 }
 
 /// Everything needed to build, gathered under the project lock.
-struct Prepared {
-    root: PathBuf,
-    settings: BuildSettings,
-    facts: DocumentFacts,
+pub(crate) struct Prepared {
+    pub(crate) root: PathBuf,
+    pub(crate) settings: BuildSettings,
+    pub(crate) facts: DocumentFacts,
     sources: HashMap<PathBuf, String>,
 }
 
-fn prepare(state: &AppState, file: &Path) -> Option<Prepared> {
+pub(crate) fn prepare(state: &AppState, file: &Path) -> Option<Prepared> {
     let base = state.settings().build.clone();
     let project = state.project();
     let ws = &project.as_ref()?.ws;

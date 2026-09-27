@@ -1,0 +1,437 @@
+[
+ {
+  "id": "axes",
+  "category": "basics",
+  "name": {
+   "en": "Axes and grid",
+   "fr": "Axes et grille"
+  },
+  "description": {
+   "en": "A grid with two labelled axes: a good start.",
+   "fr": "Une grille et deux axes nommés : un bon point de départ."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "arrows.meta"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}\n  \\draw[help lines, step=0.5] (-0.5,-0.5) grid (4.5,3.5);\n  \\draw[thick, -Stealth] (-0.5,0) -- (4.5,0) node[right] {$x$};\n  \\draw[thick, -Stealth] (0,-0.5) -- (0,3.5) node[above] {$y$};\n  \\foreach \\x in {1,...,4} \\draw (\\x,2pt) -- (\\x,-2pt) node[below] {\\x};\n  \\foreach \\y in {1,...,3} \\draw (2pt,\\y) -- (-2pt,\\y) node[left] {\\y};\n\\end{tikzpicture}"
+ },
+ {
+  "id": "shapes",
+  "category": "basics",
+  "name": {
+   "en": "Basic shapes",
+   "fr": "Formes de base"
+  },
+  "description": {
+   "en": "Lines, rectangles, circles, arcs and text.",
+   "fr": "Lignes, rectangles, cercles, arcs et texte."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}\n  \\draw[thick, blue] (0,0) rectangle (2,1.2);\n  \\node at (1,0.6) {Rectangle};\n  \\draw[thick, red, fill=red!15] (3.5,0.6) circle (0.6);\n  \\draw[thick, dashed] (5,0) -- (6.5,1.2);\n  \\draw[thick, orange] (7.5,0) arc (0:180:0.6);\n  \\node[draw, rounded corners, fill=yellow!20] at (3.5,-1) {{{fr:Nœud avec du texte|en:Node with text}}};\n\\end{tikzpicture}"
+ },
+ {
+  "id": "function-plot",
+  "category": "functions",
+  "name": {
+   "en": "Function plot (pgfplots)",
+   "fr": "Courbe de fonction (pgfplots)"
+  },
+  "description": {
+   "en": "Two functions with axes, grid and legend.",
+   "fr": "Deux fonctions avec axes, grille et légende."
+  },
+  "packages": [
+   "tikz",
+   "pgfplots"
+  ],
+  "libraries": [],
+  "preamble": "\\pgfplotsset{compat=1.18}",
+  "code": "\\begin{tikzpicture}\n  \\begin{axis}[\n    width=9cm, height=6cm,\n    axis lines=middle, grid=major,\n    xlabel={$x$}, ylabel={$y$},\n    domain=-2*pi:2*pi, samples=200,\n    legend pos=north east,\n  ]\n    \\addplot[blue, thick] {sin(deg(x))};\n    \\addplot[red, thick, dashed] {cos(deg(x))};\n    \\legend{$\\sin x$, $\\cos x$}\n  \\end{axis}\n\\end{tikzpicture}"
+ },
+ {
+  "id": "tikz-plot",
+  "category": "functions",
+  "name": {
+   "en": "Curve with TikZ only",
+   "fr": "Courbe avec TikZ seul"
+  },
+  "description": {
+   "en": "A parabola drawn with plot, without pgfplots.",
+   "fr": "Une parabole tracée avec plot, sans pgfplots."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "arrows.meta"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}[scale=1]\n  \\draw[help lines, step=0.5] (-2.2,-0.5) grid (2.2,4.2);\n  \\draw[-Stealth] (-2.4,0) -- (2.4,0) node[right] {$x$};\n  \\draw[-Stealth] (0,-0.6) -- (0,4.4) node[above] {$y$};\n  \\draw[domain=-2:2, smooth, variable=\\x, blue, very thick] plot ({\\x}, {\\x*\\x});\n  \\node[blue] at (1.6,3.2) {$y = x^2$};\n\\end{tikzpicture}"
+ },
+ {
+  "id": "bar-chart",
+  "category": "functions",
+  "name": {
+   "en": "Bar chart",
+   "fr": "Diagramme en barres"
+  },
+  "description": {
+   "en": "A bar chart with values above the bars.",
+   "fr": "Un diagramme en barres avec les valeurs au-dessus."
+  },
+  "packages": [
+   "tikz",
+   "pgfplots"
+  ],
+  "libraries": [],
+  "preamble": "\\pgfplotsset{compat=1.18}",
+  "code": "\\begin{tikzpicture}\n  \\begin{axis}[\n    ybar, bar width=18pt,\n    width=9cm, height=6cm,\n    ymin=0, ylabel={{{fr:Effectif|en:Count}}},\n    symbolic x coords={{{fr:Lun, Mar, Mer, Jeu, Ven|en:Mon, Tue, Wed, Thu, Fri}}},\n    xtick=data,\n    nodes near coords,\n    enlarge x limits=0.15,\n  ]\n    \\addplot[fill=blue!40] coordinates {{{fr:(Lun,12) (Mar,18) (Mer,9) (Jeu,15) (Ven,21)|en:(Mon,12) (Tue,18) (Wed,9) (Thu,15) (Fri,21)}}};\n  \\end{axis}\n\\end{tikzpicture}"
+ },
+ {
+  "id": "scatter",
+  "category": "functions",
+  "name": {
+   "en": "Scatter plot and trend",
+   "fr": "Nuage de points et tendance"
+  },
+  "description": {
+   "en": "Measured points and a regression line.",
+   "fr": "Des points mesurés et une droite de régression."
+  },
+  "packages": [
+   "tikz",
+   "pgfplots"
+  ],
+  "libraries": [],
+  "preamble": "\\pgfplotsset{compat=1.18}",
+  "code": "\\begin{tikzpicture}\n  \\begin{axis}[\n    width=9cm, height=6cm, grid=major,\n    xlabel={{{fr:Temps (s)|en:Time (s)}}}, ylabel={Distance (m)},\n    legend pos=north west,\n  ]\n    \\addplot[only marks, mark=*, blue] coordinates {(0,0.1) (1,1.9) (2,4.2) (3,5.8) (4,8.3) (5,9.9)};\n    \\addplot[red, thick, domain=0:5] {2*x};\n    \\legend{{{fr:Mesures|en:Measurements}}, $d = 2t$}\n  \\end{axis}\n\\end{tikzpicture}"
+ },
+ {
+  "id": "flowchart",
+  "category": "diagrams",
+  "name": {
+   "en": "Flowchart",
+   "fr": "Organigramme"
+  },
+  "description": {
+   "en": "Start, steps, a decision and arrows.",
+   "fr": "Début, étapes, une décision et des flèches."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "shapes.geometric",
+   "arrows.meta",
+   "positioning"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}[\n  node distance=1cm and 1.6cm,\n  base/.style={draw, thick, align=center, minimum height=8mm},\n  startstop/.style={base, rounded corners=4mm, fill=red!15, minimum width=2.6cm},\n  process/.style={base, fill=blue!10, minimum width=3cm},\n  decision/.style={base, diamond, aspect=2, fill=green!15, inner sep=1pt},\n  arrow/.style={thick, -Stealth},\n]\n  \\node[startstop] (start) {{{fr:Début|en:Start}}};\n  \\node[process, below=of start] (read) {{{fr:Lire|en:Read}} $n$};\n  \\node[decision, below=of read] (test) {$n > 0${{fr: ?|en:?}}};\n  \\node[process, right=of test] (neg) {{{fr:Afficher « négatif »|en:Print “negative”}}};\n  \\node[process, below=of test] (pos) {{{fr:Afficher « positif »|en:Print “positive”}}};\n  \\node[startstop, below=of pos] (stop) {{{fr:Fin|en:End}}};\n  \\draw[arrow] (start) -- (read);\n  \\draw[arrow] (read) -- (test);\n  \\draw[arrow] (test) -- node[right] {{{fr:oui|en:yes}}} (pos);\n  \\draw[arrow] (test) -- node[above] {{{fr:non|en:no}}} (neg);\n  \\draw[arrow] (pos) -- (stop);\n  \\draw[arrow] (neg) |- (stop);\n\\end{tikzpicture}"
+ },
+ {
+  "id": "tree",
+  "category": "diagrams",
+  "name": {
+   "en": "Tree",
+   "fr": "Arbre"
+  },
+  "description": {
+   "en": "A tree with levels (probabilities, hierarchy…).",
+   "fr": "Un arbre à plusieurs niveaux (probabilités, hiérarchie…)."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}[\n  level distance=1.6cm,\n  level 1/.style={sibling distance=3.2cm},\n  level 2/.style={sibling distance=1.6cm},\n  every node/.style={circle, draw, thick, minimum size=7mm},\n  edge from parent/.style={draw, thick},\n]\n  \\node {$\\Omega$}\n    child { node {$A$}\n      child { node {$B$} edge from parent node[left, draw=none, rectangle] {\\small {{fr:0,3|en:0.3}}} }\n      child { node {$\\bar B$} edge from parent node[right, draw=none, rectangle] {\\small {{fr:0,7|en:0.7}}} }\n      edge from parent node[left, draw=none, rectangle] {\\small {{fr:0,4|en:0.4}}} }\n    child { node {$\\bar A$}\n      child { node {$B$} edge from parent node[left, draw=none, rectangle] {\\small {{fr:0,5|en:0.5}}} }\n      child { node {$\\bar B$} edge from parent node[right, draw=none, rectangle] {\\small {{fr:0,5|en:0.5}}} }\n      edge from parent node[right, draw=none, rectangle] {\\small {{fr:0,6|en:0.6}}} };\n\\end{tikzpicture}"
+ },
+ {
+  "id": "mindmap",
+  "category": "diagrams",
+  "name": {
+   "en": "Mind map",
+   "fr": "Carte mentale"
+  },
+  "description": {
+   "en": "A central idea and its branches.",
+   "fr": "Une idée centrale et ses branches."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "mindmap"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}[\n  mindmap, grow cyclic, every node/.style={concept, execute at begin node=\\hskip0pt},\n  concept color=orange!60,\n  level 1/.append style={level distance=4cm, sibling angle=90},\n]\n  \\node {{{fr:Mon sujet|en:My topic}}}\n    child[concept color=blue!40] { node {{{fr:Idée|en:Idea}} 1} }\n    child[concept color=green!50] { node {{{fr:Idée|en:Idea}} 2} }\n    child[concept color=red!40] { node {{{fr:Idée|en:Idea}} 3} }\n    child[concept color=purple!40] { node {{{fr:Idée|en:Idea}} 4} };\n\\end{tikzpicture}"
+ },
+ {
+  "id": "timeline",
+  "category": "diagrams",
+  "name": {
+   "en": "Timeline",
+   "fr": "Frise chronologique"
+  },
+  "description": {
+   "en": "Dated events along an axis.",
+   "fr": "Des événements datés le long d'un axe."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "arrows.meta"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}\n  \\draw[very thick, -Stealth] (0,0) -- (11,0);\n  \\foreach \\x/\\year/\\event in {{{fr:0.5/1789/Révolution, 3/1848/Suffrage universel, 5.5/1905/Laïcité, 8/1944/Vote des femmes, 10/1958/V\\textsuperscript{e} République|en:0.5/1969/Moon landing, 3/1971/First e-mail, 5.5/1989/World Wide Web, 8/1998/Google, 10/2007/Smartphone}}} {\n    \\draw[thick] (\\x,0.15) -- (\\x,-0.15) node[below] {\\year};\n    \\node[above, align=center, text width=2cm, font=\\small] at (\\x,0.3) {\\event};\n  }\n\\end{tikzpicture}"
+ },
+ {
+  "id": "venn",
+  "category": "diagrams",
+  "name": {
+   "en": "Venn diagram",
+   "fr": "Diagramme de Venn"
+  },
+  "description": {
+   "en": "Three overlapping sets.",
+   "fr": "Trois ensembles qui se chevauchent."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}[fill opacity=0.35, text opacity=1, thick]\n  \\fill[red] (90:1.1) circle (1.6);\n  \\fill[blue] (210:1.1) circle (1.6);\n  \\fill[green!70!black] (330:1.1) circle (1.6);\n  \\draw (90:1.1) circle (1.6) (210:1.1) circle (1.6) (330:1.1) circle (1.6);\n  \\node at (90:2.1) {$A$};\n  \\node at (210:2.1) {$B$};\n  \\node at (330:2.1) {$C$};\n  \\node at (0,0) {$A \\cap B \\cap C$};\n\\end{tikzpicture}"
+ },
+ {
+  "id": "triangle",
+  "category": "geometry",
+  "name": {
+   "en": "Triangle with angles",
+   "fr": "Triangle avec angles"
+  },
+  "description": {
+   "en": "Named vertices, a right angle and a marked angle.",
+   "fr": "Des sommets nommés, un angle droit et un angle marqué."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "angles",
+   "quotes"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}[thick]\n  \\coordinate[label=below left:$A$] (A) at (0,0);\n  \\coordinate[label=below right:$B$] (B) at (4,0);\n  \\coordinate[label=above:$C$] (C) at (0,3);\n  \\draw (A) -- node[below] {$4$} (B) -- node[above right] {$5$} (C) -- node[left] {$3$} cycle;\n  \\pic[draw, angle radius=3mm] {right angle = B--A--C};\n  \\pic[draw, \"$\\alpha$\", angle eccentricity=1.6, angle radius=7mm] {angle = C--B--A};\n\\end{tikzpicture}"
+ },
+ {
+  "id": "unit-circle",
+  "category": "geometry",
+  "name": {
+   "en": "Unit circle",
+   "fr": "Cercle trigonométrique"
+  },
+  "description": {
+   "en": "Angle, cosine and sine on the unit circle.",
+   "fr": "Angle, cosinus et sinus sur le cercle unité."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "arrows.meta"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}[scale=2.2]\n  \\draw[-Stealth] (-1.25,0) -- (1.3,0) node[right] {$x$};\n  \\draw[-Stealth] (0,-1.25) -- (0,1.3) node[above] {$y$};\n  \\draw[thick] (0,0) circle (1);\n  \\coordinate (M) at (40:1);\n  \\draw[very thick, blue] (0,0) -- (M) node[above right] {$M$};\n  \\draw[dashed] (M) -- (M |- 0,0) node[below] {$\\cos\\theta$};\n  \\draw[dashed] (M) -- (M -| 0,0) node[left] {$\\sin\\theta$};\n  \\draw[red, thick] (0.3,0) arc (0:40:0.3) node[midway, right] {$\\theta$};\n\\end{tikzpicture}"
+ },
+ {
+  "id": "vectors",
+  "category": "geometry",
+  "name": {
+   "en": "Vectors",
+   "fr": "Vecteurs"
+  },
+  "description": {
+   "en": "Two vectors and their sum.",
+   "fr": "Deux vecteurs et leur somme."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "arrows.meta"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}[thick, >=Stealth]\n  \\draw[help lines, step=1] (-0.5,-0.5) grid (5.5,3.5);\n  \\draw[->, blue] (0,0) -- (3,1) node[midway, below right] {$\\vec u$};\n  \\draw[->, red] (3,1) -- (4.5,3) node[midway, right] {$\\vec v$};\n  \\draw[->, violet, very thick] (0,0) -- (4.5,3) node[midway, above left] {$\\vec u + \\vec v$};\n\\end{tikzpicture}"
+ },
+ {
+  "id": "circuit",
+  "category": "science",
+  "name": {
+   "en": "Electric circuit",
+   "fr": "Circuit électrique"
+  },
+  "description": {
+   "en": "A source, a resistor and a capacitor (circuitikz).",
+   "fr": "Une source, une résistance et un condensateur (circuitikz)."
+  },
+  "packages": [
+   "tikz",
+   "circuitikz"
+  ],
+  "libraries": [],
+  "preamble": "",
+  "code": "\\begin{circuitikz}[european]\n  \\draw (0,0) to[V, v=$E$] (0,3)\n        to[R, l=$R$, i=$i$] (4,3)\n        to[C, l=$C$, v^=$u_C$] (4,0)\n        -- (0,0);\n\\end{circuitikz}"
+ },
+ {
+  "id": "inclined-plane",
+  "category": "science",
+  "name": {
+   "en": "Forces on a slope",
+   "fr": "Forces sur un plan incliné"
+  },
+  "description": {
+   "en": "A block on a slope with its weight, the reaction and friction.",
+   "fr": "Un solide sur un plan incliné avec son poids, la réaction et le frottement."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "arrows.meta"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}[thick, >=Stealth]\n  \\draw (0,0) -- (6,0) -- (6,3) -- cycle;\n  \\draw (1,0) arc (0:26.57:1) node[midway, right] {$\\alpha$};\n  \\begin{scope}[shift={(3.2,1.6)}, rotate=26.57]\n    \\draw[fill=blue!15] (-0.6,0) rectangle (0.6,0.8);\n    \\coordinate (G) at (0,0.4);\n    \\draw[->, red] (G) -- ++(0,1.3) node[above] {$\\vec R$};\n    \\draw[->, orange] (G) -- ++(-1.3,0) node[left] {$\\vec f$};\n  \\end{scope}\n  \\draw[->, blue] (G) -- ++(0,-1.6) node[below] {$\\vec P$};\n  \\fill (G) circle (1.5pt);\n\\end{tikzpicture}"
+ },
+ {
+  "id": "automaton",
+  "category": "cs",
+  "name": {
+   "en": "Automaton",
+   "fr": "Automate"
+  },
+  "description": {
+   "en": "A finite-state machine with initial and accepting states.",
+   "fr": "Un automate fini avec état initial et état final."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "automata",
+   "positioning",
+   "arrows.meta"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}[shorten >=1pt, node distance=2.5cm, on grid, auto, >=Stealth, thick]\n  \\node[state, initial] (q0) {$q_0$};\n  \\node[state] (q1) [right=of q0] {$q_1$};\n  \\node[state, accepting] (q2) [right=of q1] {$q_2$};\n  \\path[->]\n    (q0) edge node {$a$} (q1)\n         edge[loop above] node {$b$} ()\n    (q1) edge node {$b$} (q2)\n         edge[bend left] node {$a$} (q0)\n    (q2) edge[loop above] node {$a,b$} ();\n\\end{tikzpicture}"
+ },
+ {
+  "id": "graph",
+  "category": "cs",
+  "name": {
+   "en": "Weighted graph",
+   "fr": "Graphe pondéré"
+  },
+  "description": {
+   "en": "Vertices and weighted edges.",
+   "fr": "Des sommets et des arêtes pondérées."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "quotes"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}[\n  vertex/.style={circle, draw, thick, fill=blue!10, minimum size=8mm},\n  every edge quotes/.style={auto, font=\\small},\n]\n  \\node[vertex] (A) at (0,0) {A};\n  \\node[vertex] (B) at (2.5,1.5) {B};\n  \\node[vertex] (C) at (2.5,-1.5) {C};\n  \\node[vertex] (D) at (5,0) {D};\n  \\draw[thick] (A) edge[\"4\"] (B)\n               (A) edge[\"2\", swap] (C)\n               (B) edge[\"1\"] (C)\n               (B) edge[\"5\"] (D)\n               (C) edge[\"8\", swap] (D);\n\\end{tikzpicture}"
+ },
+ {
+  "id": "neural-network",
+  "category": "cs",
+  "name": {
+   "en": "Neural network",
+   "fr": "Réseau de neurones"
+  },
+  "description": {
+   "en": "Fully connected layers drawn with loops.",
+   "fr": "Des couches entièrement connectées, dessinées avec des boucles."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "arrows.meta"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}[\n  neuron/.style={circle, draw, thick, minimum size=6mm},\n  x=2.2cm, y=0.9cm,\n]\n  \\foreach \\i in {1,...,3} \\node[neuron, fill=green!20] (I\\i) at (0,-\\i) {};\n  \\foreach \\i in {1,...,4} \\node[neuron, fill=blue!20] (H\\i) at (1,-\\i+0.5) {};\n  \\foreach \\i in {1,...,2} \\node[neuron, fill=red!20] (O\\i) at (2,-\\i-0.5) {};\n  \\foreach \\i in {1,...,3} \\foreach \\j in {1,...,4} \\draw[-Stealth, gray] (I\\i) -- (H\\j);\n  \\foreach \\i in {1,...,4} \\foreach \\j in {1,...,2} \\draw[-Stealth, gray] (H\\i) -- (O\\j);\n  \\node[above] at (0,-0.4) {{{fr:Entrées|en:Inputs}}};\n  \\node[above] at (1,0.1) {{{fr:Couche cachée|en:Hidden layer}}};\n  \\node[above] at (2,-0.9) {{{fr:Sorties|en:Outputs}}};\n\\end{tikzpicture}"
+ },
+ {
+  "id": "commutative",
+  "category": "math",
+  "name": {
+   "en": "Commutative diagram",
+   "fr": "Diagramme commutatif"
+  },
+  "description": {
+   "en": "Objects and arrows with tikz-cd.",
+   "fr": "Des objets et des flèches avec tikz-cd."
+  },
+  "packages": [
+   "tikz",
+   "tikz-cd"
+  ],
+  "libraries": [],
+  "preamble": "",
+  "code": "\\begin{tikzcd}\n  A \\arrow[r, \"f\"] \\arrow[d, \"g\"'] & B \\arrow[d, \"h\"] \\\\\n  C \\arrow[r, \"k\"'] & D\n\\end{tikzcd}"
+ },
+ {
+  "id": "number-line",
+  "category": "math",
+  "name": {
+   "en": "Number line",
+   "fr": "Droite graduée"
+  },
+  "description": {
+   "en": "Ticks, points and an interval.",
+   "fr": "Des graduations, des points et un intervalle."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "arrows.meta"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}\n  \\draw[thick, -Stealth] (-3.5,0) -- (4.5,0);\n  \\foreach \\x in {-3,...,4} \\draw (\\x,0.1) -- (\\x,-0.1) node[below] {$\\x$};\n  \\draw[very thick, blue] (-1,0) -- (2,0);\n  \\node[blue, font=\\large] at (-1,0) {[};\n  \\node[blue, font=\\large] at (2,0) {{{fr:[|en:)}}};\n  \\node[above, blue] at (0.5,0.1) {{{fr:$[-1\\,;\\,2[$|en:$[-1, 2)$}}};\n\\end{tikzpicture}"
+ },
+ {
+  "id": "matrix",
+  "category": "math",
+  "name": {
+   "en": "Matrix with annotations",
+   "fr": "Matrice annotée"
+  },
+  "description": {
+   "en": "A matrix of nodes with highlighted entries.",
+   "fr": "Une matrice de nœuds avec des coefficients mis en évidence."
+  },
+  "packages": [
+   "tikz"
+  ],
+  "libraries": [
+   "matrix",
+   "positioning"
+  ],
+  "preamble": "",
+  "code": "\\begin{tikzpicture}\n  \\matrix (m) [matrix of math nodes, left delimiter=(, right delimiter=), row sep=2mm, column sep=4mm] {\n    1 & 2 & 3 \\\\\n    0 & 4 & 5 \\\\\n    0 & 0 & 6 \\\\\n  };\n  \\draw[red, thick, rounded corners] (m-1-1.north west) -- (m-3-3.south east);\n  \\node[right=5mm of m, align=left, red] {{{fr:diagonale|en:diagonal}}};\n\\end{tikzpicture}"
+ }
+]

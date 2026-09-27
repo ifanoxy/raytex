@@ -11,7 +11,8 @@
     "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "tauri": "tauri",
     "app:dev": "tauri dev",
-    "app:build": "tauri build"
+    "app:build": "tauri build",
+    "test": "node --test \"ui/**/*.test.ts\""
   },
   "engines": {
     "node": ">=20"

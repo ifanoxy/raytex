@@ -1,0 +1,296 @@
+[
+ {
+  "id": "lmodern",
+  "name": "Latin Modern",
+  "package": "lmodern",
+  "options": "",
+  "kind": "serif",
+  "math": true,
+  "fontspec": "Latin Modern Roman",
+  "extra": "",
+  "description": {
+   "en": "The classic Computer Modern look, in a complete modern version.",
+   "fr": "L'apparence classique de LaTeX (Computer Modern), en version complète et moderne."
+  }
+ },
+ {
+  "id": "libertinus",
+  "name": "Libertinus",
+  "package": "libertinus",
+  "options": "",
+  "kind": "serif",
+  "math": true,
+  "fontspec": "Libertinus Serif",
+  "extra": "",
+  "description": {
+   "en": "Elegant and readable, with matching sans, mono and maths.",
+   "fr": "Élégante et lisible, avec sans empattement, chasse fixe et maths assorties."
+  }
+ },
+ {
+  "id": "newpx",
+  "name": "Palatino (newpx)",
+  "package": "newpxtext,newpxmath",
+  "options": "",
+  "kind": "serif",
+  "math": true,
+  "fontspec": "TeX Gyre Pagella",
+  "extra": "",
+  "description": {
+   "en": "Palatino-like text and matching maths.",
+   "fr": "Texte façon Palatino et mathématiques assorties."
+  }
+ },
+ {
+  "id": "newtx",
+  "name": "Times (newtx)",
+  "package": "newtxtext,newtxmath",
+  "options": "",
+  "kind": "serif",
+  "math": true,
+  "fontspec": "TeX Gyre Termes",
+  "extra": "",
+  "description": {
+   "en": "Times-like text and maths, compact.",
+   "fr": "Texte et maths façon Times, compacts."
+  }
+ },
+ {
+  "id": "ebgaramond",
+  "name": "EB Garamond",
+  "package": "ebgaramond",
+  "options": "",
+  "kind": "serif",
+  "math": false,
+  "fontspec": "EB Garamond",
+  "extra": "",
+  "description": {
+   "en": "A Garamond revival, classical and refined.",
+   "fr": "Un Garamond classique et raffiné."
+  }
+ },
+ {
+  "id": "xcharter",
+  "name": "Charter (XCharter)",
+  "package": "XCharter",
+  "options": "",
+  "kind": "serif",
+  "math": false,
+  "fontspec": "XCharter",
+  "extra": "",
+  "description": {
+   "en": "Sturdy and very readable, good on screen and paper.",
+   "fr": "Robuste et très lisible, à l'écran comme sur papier."
+  }
+ },
+ {
+  "id": "fourier",
+  "name": "Utopia (Fourier)",
+  "package": "fourier",
+  "options": "",
+  "kind": "serif",
+  "math": true,
+  "fontspec": null,
+  "extra": "",
+  "description": {
+   "en": "Utopia text with Fourier maths.",
+   "fr": "Texte Utopia avec les maths Fourier."
+  }
+ },
+ {
+  "id": "kpfonts",
+  "name": "Kp-Fonts",
+  "package": "kpfonts",
+  "options": "",
+  "kind": "serif",
+  "math": true,
+  "fontspec": null,
+  "extra": "",
+  "description": {
+   "en": "A complete family (text and maths) with a light touch.",
+   "fr": "Une famille complète (texte et maths), légère."
+  }
+ },
+ {
+  "id": "crimson",
+  "name": "Crimson Pro",
+  "package": "CrimsonPro",
+  "options": "",
+  "kind": "serif",
+  "math": false,
+  "fontspec": "Crimson Pro",
+  "extra": "",
+  "description": {
+   "en": "A book face inspired by old-style types.",
+   "fr": "Une police de livre inspirée des caractères anciens."
+  }
+ },
+ {
+  "id": "cochineal",
+  "name": "Cochineal",
+  "package": "cochineal",
+  "options": "",
+  "kind": "serif",
+  "math": false,
+  "fontspec": null,
+  "extra": "",
+  "description": {
+   "en": "A warm old-style face derived from Crimson.",
+   "fr": "Une police ancienne et chaleureuse, dérivée de Crimson."
+  }
+ },
+ {
+  "id": "stix2",
+  "name": "STIX Two",
+  "package": "stix2",
+  "options": "",
+  "kind": "serif",
+  "math": true,
+  "fontspec": "STIX Two Text",
+  "extra": "",
+  "description": {
+   "en": "Times-like text with a very complete math set (scientific publishing).",
+   "fr": "Texte façon Times avec des maths très complètes (édition scientifique)."
+  }
+ },
+ {
+  "id": "sourcesans",
+  "name": "Source Sans",
+  "package": "sourcesanspro",
+  "options": "default",
+  "kind": "sans",
+  "math": false,
+  "fontspec": "Source Sans Pro",
+  "extra": "",
+  "description": {
+   "en": "Adobe's clean sans serif.",
+   "fr": "La sans empattement épurée d'Adobe."
+  }
+ },
+ {
+  "id": "firasans",
+  "name": "Fira Sans",
+  "package": "FiraSans",
+  "options": "sfdefault",
+  "kind": "sans",
+  "math": false,
+  "fontspec": "Fira Sans",
+  "extra": "",
+  "description": {
+   "en": "A humanist sans serif, great for slides.",
+   "fr": "Une sans empattement humaniste, idéale pour les diaporamas."
+  }
+ },
+ {
+  "id": "opensans",
+  "name": "Open Sans",
+  "package": "opensans",
+  "options": "default",
+  "kind": "sans",
+  "math": false,
+  "fontspec": "Open Sans",
+  "extra": "",
+  "description": {
+   "en": "A neutral and friendly sans serif.",
+   "fr": "Une sans empattement neutre et accueillante."
+  }
+ },
+ {
+  "id": "roboto",
+  "name": "Roboto",
+  "package": "roboto",
+  "options": "sfdefault",
+  "kind": "sans",
+  "math": false,
+  "fontspec": "Roboto",
+  "extra": "",
+  "description": {
+   "en": "Google's modern sans serif.",
+   "fr": "La sans empattement moderne de Google."
+  }
+ },
+ {
+  "id": "helvet",
+  "name": "Helvetica (TeX Gyre Heros)",
+  "package": "tgheros",
+  "options": "",
+  "kind": "sans",
+  "math": false,
+  "fontspec": "TeX Gyre Heros",
+  "extra": "\\renewcommand{\\familydefault}{\\sfdefault}",
+  "description": {
+   "en": "The Swiss classic, via TeX Gyre Heros.",
+   "fr": "Le classique suisse, via TeX Gyre Heros."
+  }
+ },
+ {
+  "id": "cmbright",
+  "name": "CM Bright",
+  "package": "cmbright",
+  "options": "",
+  "kind": "sans",
+  "math": true,
+  "fontspec": null,
+  "extra": "",
+  "description": {
+   "en": "A sans serif Computer Modern with matching maths.",
+   "fr": "Un Computer Modern sans empattement, avec maths assorties."
+  }
+ },
+ {
+  "id": "inconsolata",
+  "name": "Inconsolata",
+  "package": "inconsolata",
+  "options": "varqu",
+  "kind": "mono",
+  "math": false,
+  "fontspec": "Inconsolata",
+  "extra": "",
+  "description": {
+   "en": "A clear monospaced font for code.",
+   "fr": "Une chasse fixe claire pour le code."
+  }
+ },
+ {
+  "id": "firamono",
+  "name": "Fira Mono",
+  "package": "FiraMono",
+  "options": "",
+  "kind": "mono",
+  "math": false,
+  "fontspec": "Fira Mono",
+  "extra": "",
+  "description": {
+   "en": "Monospaced companion of Fira Sans.",
+   "fr": "La chasse fixe assortie à Fira Sans."
+  }
+ },
+ {
+  "id": "sourcecode",
+  "name": "Source Code Pro",
+  "package": "sourcecodepro",
+  "options": "",
+  "kind": "mono",
+  "math": false,
+  "fontspec": "Source Code Pro",
+  "extra": "",
+  "description": {
+   "en": "Adobe's monospaced font for code.",
+   "fr": "La chasse fixe d'Adobe pour le code."
+  }
+ },
+ {
+  "id": "beramono",
+  "name": "Bera Mono",
+  "package": "beramono",
+  "options": "scaled=0.85",
+  "kind": "mono",
+  "math": false,
+  "fontspec": null,
+  "extra": "",
+  "description": {
+   "en": "A robust monospaced font, good for listings.",
+   "fr": "Une chasse fixe robuste, adaptée aux listings."
+  }
+ }
+]

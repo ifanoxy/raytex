@@ -581,6 +581,39 @@ export function installMocks() {
           ];
         case "template_preview":
           return "\\documentclass{article}\n\\title{" + (a.values as T.TemplateValues).title + "}\n\\begin{document}\n\\maketitle\n\\end{document}\n";
+        case "tikz_templates":
+          return [
+            { id: "axes", category: "basics", name: "Axes et grille", description: "Une grille et deux axes.", packages: ["tikz"], libraries: ["arrows.meta"], preamble: "", code: "\\begin{tikzpicture}\n  \\draw[help lines] (0,0) grid (3,2);\n  \\draw[-Stealth] (0,0) -- (3.2,0);\n\\end{tikzpicture}" },
+            { id: "flowchart", category: "diagrams", name: "Organigramme", description: "Début, étapes, décision.", packages: ["tikz"], libraries: ["positioning"], preamble: "", code: "\\begin{tikzpicture}\n  \\node[draw] (a) {Début};\n  \\node[draw, below=of a] (b) {Fin};\n  \\draw[->] (a) -- (b);\n\\end{tikzpicture}" },
+          ];
+        case "tikz_libraries":
+          return ["arrows.meta", "positioning", "calc", "shapes.geometric", "angles", "quotes", "babel"];
+        case "preview_snippet":
+          await new Promise((r) => setTimeout(r, 300));
+          return { pdf: p("build/preview.pdf"), bbox: [0, 0, 113.8, 85.4], border: 6, diagnostics: [], durationMs: 420, engine: "pdflatex" };
+        case "system_fonts":
+          return ["Georgia", "Helvetica Neue", "Menlo", "Palatino", "Avenir Next"].map((name) => ({
+            name,
+            monospace: name === "Menlo",
+            faces: [{ path: `/System/Library/Fonts/${name}.ttc`, index: 0, family: name, postscript: name.replace(/ /g, ""), weight: 400, italic: false, monospace: name === "Menlo" }],
+          }));
+        case "inspect_fonts":
+          return [];
+        case "font_has_math":
+          return false;
+        case "fontspec_code":
+          return `\\setmainfont{${(a.family as T.FontFamily).name}}`;
+        case "tex_fonts":
+          return [
+            { id: "libertinus", name: "Libertinus", package: "libertinus", options: "", kind: "serif", math: true, fontspec: "Libertinus Serif", extra: "", description: "Élégante et lisible.", code: "\\usepackage{libertinus}" },
+            { id: "firasans", name: "Fira Sans", package: "FiraSans", options: "sfdefault", kind: "sans", math: false, fontspec: "Fira Sans", extra: "", description: "Humaniste.", code: "\\usepackage[sfdefault]{FiraSans}" },
+          ];
+        case "import_image":
+          return `${a.dir}/${String(a.name ?? "image.png")}`;
+        case "import_fonts":
+          return a.sources;
+        case "safe_file_name":
+          return String(a.name).toLowerCase().replace(/[^a-z0-9.]+/g, "-");
         case "log_frontend":
           console.error("[ui]", a.message);
           return null;

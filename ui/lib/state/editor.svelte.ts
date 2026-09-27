@@ -38,16 +38,18 @@ import { bibtex, latex } from "../editor/latex";
 import { findFormula, mathPreview, refreshMacros } from "../editor/math-preview";
 import { navigableAt } from "../editor/navigation";
 import { frenchPhrases } from "../editor/phrases";
-import { enterKeymap, latexStructure, loadsPackage, preambleInsertOffset } from "../editor/structure";
+import { enterKeymap, latexStructure } from "../editor/structure";
 import { editorTheme } from "../editor/theme";
 import { fixLabel, runFix } from "../fixes";
 import { i18n, t } from "../i18n.svelte";
 import * as ipc from "../ipc";
+import { addPackages, hasPackage, insertionPoint } from "../preamble";
 import type { Diagnostic, Location, Macro, Position, Range, Settings, TextEdit } from "../types";
 import { basename, debounce, dirname, escapeSnippet, fileKind, type FileKind, inlineMarkdown, isMac, join, relative, samePath } from "../utils";
 import { app } from "./app.svelte";
 import { build } from "./build.svelte";
 import { diagnostics, pathKey } from "./diagnostics.svelte";
+import { media, type TikzRequest } from "./media.svelte";
 import { project } from "./project.svelte";
 import { searchStore } from "./search.svelte";
 import { ui } from "./ui.svelte";
@@ -184,6 +186,14 @@ function toCmDiagnostics(doc: Text, list: Diagnostic[]): CmDiagnostic[] {
   return out;
 }
 
+/** Whether `pos` is inside a `tikzpicture` (or `tikzcd`, `circuitikz`), looking back a little. */
+function insideTikz(doc: Text, pos: number): boolean {
+  const before = doc.sliceString(Math.max(0, pos - 30000), pos);
+  const begin = Math.max(before.lastIndexOf("\\begin{tikzpicture}"), before.lastIndexOf("\\begin{tikzcd}"), before.lastIndexOf("\\begin{circuitikz}"));
+  if (begin < 0) return false;
+  return !/\\end\{(tikzpicture|tikzcd|circuitikz)\}/.test(before.slice(begin));
+}
+
 /** Word (or label/key) at `pos`, for rename. */
 function symbolAt(state: EditorState, pos: number): { from: number; to: number; text: string } | null {
   const line = state.doc.lineAt(pos);
@@ -198,12 +208,6 @@ function symbolAt(state: EditorState, pos: number): { from: number; to: number; 
   return null;
 }
 
-function nowStamp(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-}
-
 // ---------------------------------------------------------------- store
 
 type Listener = (path: string) => void;
@@ -215,6 +219,8 @@ class EditorStore {
   words = $state<{ file: number; project: number } | null>(null);
   /** Increments when the active document changes (for panels following it). */
   revision = $state(0);
+  /** The cursor is inside a TikZ picture (the toolbar offers to edit it). */
+  inTikz = $state(false);
 
   view: EditorView | null = null;
   private models = new Map<string, DocModel>();
@@ -468,6 +474,7 @@ class EditorStore {
       let selected = 0;
       for (const r of sel.ranges) selected += r.to - r.from;
       this.cursor = { line: line.number, col: head - line.from + 1, selections: sel.ranges.length, selected };
+      this.inTikz = m.kind === "tex" && insideTikz(u.state.doc, head);
     }
   }
 
@@ -1014,25 +1021,88 @@ class EditorStore {
     return false;
   }
 
-  /** Adds `\usepackage{pkg}` to the preamble of the root document. */
-  async addPackage(pkg: string, view: EditorView | null = this.view, quiet = false): Promise<boolean> {
-    const current = view?.state.facet(docPath) ?? this.active;
-    if (!current) return false;
-    const root = (await ipc.rootOf(current).catch(() => null)) ?? project.info?.main ?? current;
-    if (!this.model(root)) {
-      if (!(await this.open(root, { background: true, focus: false }))) return false;
-    }
+  /** Root document of `path` (or of the active file). */
+  async rootOf(path: string | null = this.active): Promise<string | null> {
+    if (!path) return project.info?.main ?? null;
+    return (await ipc.rootOf(path).catch(() => null)) ?? project.info?.main ?? path;
+  }
+
+  /**
+   * Rewrites the root document with `transform` (preamble edits) as one
+   * undoable change. The root is opened in a background tab if needed.
+   * Returns the root path, or null when nothing could be done.
+   */
+  async transformRoot(transform: (text: string) => string, from: string | null = this.active): Promise<string | null> {
+    const root = await this.rootOf(from);
+    if (!root) return null;
+    if (!this.model(root) && !(await this.open(root, { background: true, focus: false }))) return null;
     const m = this.model(root)!;
-    const state = this.stateOf(root)!;
-    if (loadsPackage(state, pkg)) return true;
-    const at = preambleInsertOffset(state.doc);
-    if (at === null) {
+    const before = this.stateOf(root)!.doc.toString();
+    const after = transform(before);
+    if (after !== before) this.applyTo(m, { changes: minimalChange(before, after), userEvent: "input.preamble" });
+    return root;
+  }
+
+  /** Adds `\usepackage[options]{pkg}` to the preamble of the root document. */
+  async addPackage(pkg: string, view: EditorView | null = this.view, quiet = false, options?: string): Promise<boolean> {
+    const current = view?.state.facet(docPath) ?? this.active;
+    let added = false;
+    let missingPreamble = false;
+    const root = await this.transformRoot((text) => {
+      if (hasPackage(text, pkg)) return text;
+      if (insertionPoint(text) === null) {
+        missingPreamble = true;
+        return text;
+      }
+      added = true;
+      return addPackages(text, [{ name: pkg, options }]);
+    }, current);
+    if (!root || missingPreamble) {
       ui.toast("warning", t("editor.noPreamble", { pkg }));
       return false;
     }
-    this.applyTo(m, { changes: { from: at, insert: `\n\\usepackage{${pkg}}` }, userEvent: "input.addPackage" });
-    if (!quiet) ui.toast("success", t("editor.packageAdded", { pkg, file: basename(root) }));
+    if (added && !quiet) ui.toast("success", t("editor.packageAdded", { pkg, file: basename(root) }));
     return true;
+  }
+
+  /** The TikZ picture under the cursor (or the picture file of an `\input` line). */
+  async tikzAt(): Promise<TikzRequest | null> {
+    const view = this.view;
+    const path = this.active;
+    if (!view || !path || fileKind(path) !== "tex") return null;
+    const doc = view.state.doc;
+    const pos = view.state.selection.main.head;
+    const text = doc.toString();
+    const envRe = /\\begin\{(tikzpicture|tikzcd|circuitikz)\}/g;
+    let m: RegExpExecArray | null;
+    while ((m = envRe.exec(text))) {
+      const close = `\\end{${m[1]}}`;
+      const end = text.indexOf(close, m.index);
+      if (end < 0) break;
+      const to = end + close.length;
+      if (m.index <= pos && pos <= to) return { code: text.slice(m.index, to), range: { path, from: m.index, to } };
+      if (m.index > pos) break;
+    }
+    // `\input{figures/schema.tikz}` on the current line.
+    const line = doc.lineAt(pos).text;
+    const input = /\\(?:input|include)\{([^}]+)\}/.exec(line);
+    if (input) {
+      const root = await this.rootOf(path);
+      const base = root ? dirname(root) : dirname(path);
+      for (const candidate of [input[1], `${input[1]}.tex`]) {
+        const file = join(base, candidate);
+        const content = this.textOf(file) ?? (await ipc.readTextFile(file).then((f) => f.text).catch(() => null));
+        if (content && /\\begin\{(tikzpicture|tikzcd|circuitikz)\}/.test(content)) return { code: content.trimEnd(), file };
+      }
+    }
+    return null;
+  }
+
+  /** Replaces a range of an open document. */
+  replaceRange(path: string, from: number, to: number, text: string) {
+    const m = this.model(path);
+    if (!m) return;
+    this.applyTo(m, { changes: { from, to, insert: text }, userEvent: "input.replace", scrollIntoView: true });
   }
 
   /** Inserts or replaces the `% !TEX program = …` magic comment of the root document. */
@@ -1147,40 +1217,11 @@ class EditorStore {
     return true;
   }
 
-  /** Saves a pasted image in the project's figures folder and inserts it. */
-  async pasteImage(view: EditorView, file: File): Promise<boolean> {
-    const path = view.state.facet(docPath);
+  /** A pasted image: the image dialog opens with it (folder, name, size, caption). */
+  async pasteImage(_view: EditorView, file: File): Promise<boolean> {
     if (!project.info) return false;
-    const root = (await ipc.rootOf(path).catch(() => null)) ?? project.info.main ?? path;
-    const rootDir = dirname(root);
-    const folder = (await ipc.pathExists(join(rootDir, "images")).catch(() => false)) ? "images" : "figures";
-    const ext = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : (file.type.split("/")[1] ?? "png");
-    const target = join(rootDir, folder, `image-${nowStamp()}.${ext === "svg+xml" ? "svg" : ext}`);
-    try {
-      await ipc.writeBinaryFile(target, new Uint8Array(await file.arrayBuffer()));
-    } catch (e) {
-      ui.toast("error", t("editor.imageFailed"), { detail: String(e) });
-      return false;
-    }
-    await this.insertGraphics(view, relative(rootDir, target));
+    media.openImages({ blobs: [file] });
     return true;
-  }
-
-  /** Inserts an image: a whole figure on an empty line, `\includegraphics` otherwise. */
-  async insertGraphics(view: EditorView, relPath: string) {
-    const name = relPath.replace(/\.(png|jpe?g|pdf|eps)$/i, "");
-    const label = basename(name).replace(/[^A-Za-z0-9:-]+/g, "-").toLowerCase();
-    const line = view.state.doc.lineAt(view.state.selection.main.head);
-    const graphics = `\\includegraphics[width=0.8\\linewidth]{${escapeSnippet(name)}}`;
-    if (line.text.trim() === "") {
-      this.insertSnippet(
-        `\\begin{figure}[htbp]\n\t\\centering\n\t${graphics}\n\t\\caption{\${1:${t("editor.captionPlaceholder")}}}\n\t\\label{fig:\${2:${label}}}\n\\end{figure}\${0}`,
-        view,
-      );
-    } else {
-      this.insertSnippet(`${graphics}\${0}`, view);
-    }
-    await this.addPackage("graphicx", view, true);
   }
 
   /** Inserts the right command for a project file dropped into the editor. */
@@ -1190,7 +1231,7 @@ class EditorStore {
     const root = (await ipc.rootOf(current).catch(() => null)) ?? project.info?.main ?? current;
     const rel = relative(dirname(root), path);
     if (kind === "image" || /\.(pdf|eps)$/i.test(path)) {
-      await this.insertGraphics(view, rel);
+      media.openImages({ paths: [path] });
     } else if (kind === "tex") {
       this.insertText(`\\input{${rel.replace(/\.tex$/, "")}}`, view);
     } else if (kind === "bib") {

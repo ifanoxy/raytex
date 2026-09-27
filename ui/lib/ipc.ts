@@ -96,6 +96,20 @@ export const ctanCatalog = () => call<T.CatalogEntry[]>("ctan_catalog");
 export const ctanPackage = (name: string) => call<T.CtanDetails>("ctan_package", { name });
 export const openTexdoc = (name: string) => call<boolean>("open_texdoc", { name });
 
+// ------------------------------------------------- images, fonts, TikZ
+export const importImage = (source: string, dir: string, name?: string) => call<string>("import_image", { source, dir, name: name ?? null });
+export const safeFileName = (name: string) => call<string>("safe_file_name", { name });
+export const systemFonts = () => call<T.FontFamily[]>("system_fonts");
+export const inspectFonts = (paths: string[]) => call<T.FontFamily[]>("inspect_fonts", { paths });
+export const fontHasMath = (path: string, index: number) => call<boolean>("font_has_math", { path, index });
+export const importFonts = (sources: string[], dir: string) => call<string[]>("import_fonts", { sources, dir });
+export const fontspecCode = (family: T.FontFamily, role: T.FontRole, dir: string | null, command: string) =>
+  call<string>("fontspec_code", { family, role, dir, command });
+export const texFonts = () => call<T.TexFont[]>("tex_fonts");
+export const tikzTemplates = () => call<T.TikzTemplate[]>("tikz_templates");
+export const tikzLibraries = () => call<string[]>("tikz_libraries");
+export const previewSnippet = (request: T.SnippetRequest) => call<T.PreviewOutcome>("preview_snippet", { request });
+
 // ---------------------------------------------------------------- help
 export const helpPages = () => call<T.PageInfo[]>("help_pages");
 export const helpPage = (id: string) => call<string | null>("help_page", { id });

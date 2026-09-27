@@ -16,5 +16,6 @@
     "types": ["svelte", "vite/client"],
     "paths": { "$lib/*": ["./ui/lib/*"] }
   },
-  "include": ["ui/**/*.ts", "ui/**/*.svelte"]
+  "include": ["ui/**/*.ts", "ui/**/*.svelte"],
+  "exclude": ["ui/**/*.test.ts"]
 }

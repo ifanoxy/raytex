@@ -8,7 +8,6 @@
 import { toggleComment } from "@codemirror/commands";
 import { gotoLine, openSearchPanel } from "@codemirror/search";
 import { EditorView, type KeyBinding } from "@codemirror/view";
-import { open } from "@tauri-apps/plugin-dialog";
 import { REPOSITORY_URL } from "./constants";
 import { wrapCommand, wrapEnvironment, wrapMath } from "./editor/structure";
 import { type MessageKey, t } from "./i18n.svelte";
@@ -17,6 +16,7 @@ import * as ipc from "./ipc";
 import { app } from "./state/app.svelte";
 import { build } from "./state/build.svelte";
 import { editor } from "./state/editor.svelte";
+import { media } from "./state/media.svelte";
 import { project } from "./state/project.svelte";
 import { searchStore } from "./state/search.svelte";
 import { tex } from "./state/tex.svelte";
@@ -174,22 +174,9 @@ export const actions: Action[] = [
   snippetAction("insert.cite", "action.insertCitation", () => `\\cite{\${1}}\${0}`),
   snippetAction("insert.ref", "action.insertReference", () => `\\ref{\${1}}\${0}`),
   snippetAction("insert.link", "action.insertLink", () => `\\href{\${1:https://}}{\${2:\${SELECTION}}}\${0}`),
-  {
-    id: "insert.image",
-    title: "action.insertImage",
-    category: "insert",
-    icon: "image",
-    when: hasTex,
-    run: async () => {
-      const view = editor.view;
-      if (!view || !project.root) return;
-      const file = await open({ title: t("action.insertImage"), filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "pdf", "eps", "svg"] }] });
-      if (typeof file !== "string") return;
-      const inside = file.replace(/\\/g, "/").startsWith(project.root.replace(/\\/g, "/") + "/");
-      const path = inside ? file : (await project.importFiles([file], `${project.root}/figures`))[0];
-      if (path) await editor.insertFileReference(view, path);
-    },
-  },
+  { id: "insert.image", title: "action.insertImage", category: "insert", keys: "Mod-Alt-i", icon: "image", when: hasTex, run: () => media.openImages() },
+  { id: "insert.tikz", title: "action.tikzStudio", category: "insert", keys: "Mod-Alt-t", icon: "sparkles", when: hasProject, run: () => openTikz() },
+  { id: "format.fonts", title: "action.fonts", category: "edit", icon: "type", when: hasProject, run: () => media.openFonts() },
 
   // -------------------------------------------------------------- TeX
   { id: "tex.setup", title: "action.texSetup", category: "tex", icon: "wand", run: () => ui.openOverlay("setup") },
@@ -215,6 +202,11 @@ const byId = new Map(actions.map((a) => [a.id, a]));
 
 export function getAction(id: string): Action | undefined {
   return byId.get(id);
+}
+
+/** Opens the TikZ studio, on the picture under the cursor if there is one. */
+export async function openTikz() {
+  media.openTikz(await editor.tikzAt());
 }
 
 function openPalette(mode: "commands" | "files") {

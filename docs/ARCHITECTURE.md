@@ -36,6 +36,8 @@ Pure Rust, synchronous, no global state: every function receives what it needs. 
 | `log` | TeX log parser (file stack, `file:line:error` and classic formats, warnings, bad boxes, missing files, rerun requests) and BibTeX / Biber logs; `hints` turns messages into explanations and fixes using `data/errors.json`. |
 | `synctex` | Native SyncTeX parser (`.synctex.gz`), forward and inverse search. |
 | `aux` | Label numbers, citations and the table of contents written by the last build. |
+| `preview` | Small `standalone` documents compiled next to the project (TikZ drawings, font samples): the project's preamble without what breaks previews, errors mapped to the lines of the snippet, bounding box of the first TikZ picture (for the coordinate grid). |
+| `tikz`, `images`, `fonts` | Gallery of TikZ drawings (`data/tikz.json`); LaTeX-safe file names and SVG → PDF conversion (svg2pdf, pure Rust); system fonts and font files (fontdb), OpenType `MATH` detection, fontspec code, LaTeX font packages (`data/fonts.json`). |
 | `templates`, `help`, `settings`, `i18n`, `process`, `wordcount`, `bib` | Templates, help centre, settings files, messages, process spawning (streaming, process-tree kill, elevation), word count, BibTeX parsing. |
 
 ### Data (`crates/labaguetex-core/data`)
@@ -52,6 +54,7 @@ A thin Tauri 2 shell around the engine.
 - **Builds** are coalesced: a build requested while another runs is queued, only the latest request runs next.
 - **Installations** use typed requests (`JobRequest`); the interface never sends shell commands. Plans are shown to the user before running.
 - **Security**: strict CSP, minimal capabilities, asset protocol limited to the open project and built PDFs.
+- **Background**: the web view is never throttled or unloaded when the window is hidden (`backgroundThrottling: disabled`), so unsaved work and running builds are never interrupted.
 
 ## ui/
 
@@ -60,6 +63,8 @@ Svelte 5 (runes) + TypeScript, built by Vite.
 - `lib/ipc.ts` and `lib/types.ts`: typed access to every command and event; keep them in sync with the Rust structures.
 - `lib/state/*.svelte.ts`: stores. `editor` owns **one** CodeMirror `EditorView` and one `EditorState` per open file (switching tabs swaps states: memory stays low and switching is instant). It syncs changes to the engine (debounced), applies diagnostics, saves, reloads external changes and handles navigation and pasted images. `project`, `build`, `viewer`, `search`, `tex`, `diagnostics`, `ui`, `app` hold the rest.
 - `lib/editor/*`: CodeMirror extensions (LaTeX/BibTeX highlighting, structure and folding, completion, hover, math preview, theme, navigation).
+- `lib/preamble.ts`: pure functions editing the preamble (add packages before hyperref, merge `\usetikzlibrary`, replace font commands, comment out packages), applied by `editor.transformRoot` as one undoable change; tested with `npm test`.
+- `components/views/{ImageDialog,TikzStudio,FontDialog}.svelte`: the image, drawing and font tools; `components/common/PdfPreview.svelte` shows their compiled previews.
 - `lib/actions.ts`: the registry of every command, used by the palette, menus and customisable shortcuts.
 - `lib/locales/{en,fr}.ts`: interface texts; TypeScript checks that both have the same keys.
 - `components/`: layout, sidebar views, editor area, PDF viewer, bottom panel, dialogs and full-screen views.

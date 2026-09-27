@@ -26,7 +26,11 @@ labaguetex (LaTeX + baguette) aide les débutants à apprendre et laisse les exp
 - Extraits, raccourcis `@` en mode mathématique (`@a` → `\alpha`), macros personnelles avec déclencheurs et raccourcis clavier.
 - Aller à la définition, trouver les références, renommer étiquettes, clés de citation et commandes dans tout le projet.
 - Fermeture automatique des environnements, listes qui se continuent, repli, curseurs multiples, mode Vim, correcteur orthographique.
-- Collez ou déposez une image : elle est enregistrée dans `figures/` et insérée dans une figure.
+
+**Images, schémas et polices**
+- *Insérer des images* : choisissez, collez ou déposez des images (ou prenez celles du projet) ; dossier, nom de fichier sûr pour LaTeX, largeur avec aperçu de la page, position, légende et étiquette ; plusieurs images deviennent des sous-figures. Les SVG sont convertis en PDF vectoriel, WebP/GIF/HEIC/BMP/TIFF en PNG ; `graphicx`, `subcaption`, `float` sont ajoutés si besoin.
+- *Studio TikZ* : une galerie de 22 schémas (courbes, organigramme, arbre, carte mentale, Venn, géométrie, circuit, automate, graphe, réseau de neurones, diagramme commutatif…), des boutons d'éléments et de styles, un aperçu compilé en direct avec le préambule du document, une grille en centimètres, les coordonnées insérées d'un clic, l'insertion au curseur ou dans un fichier séparé, les packages et `\usetikzlibrary` ajoutés automatiquement ; modification d'un schéma existant sur place.
+- *Polices* : n'importe quelle police de l'ordinateur ou des fichiers de police copiés dans le projet (fontspec, chaque style nommé, passage à LuaLaTeX), ou des packages de polices LaTeX qui fonctionnent aussi avec pdfLaTeX, toujours avec un aperçu compilé.
 
 **Compiler**
 - Une touche (`Ctrl/⌘ + Entrée`), ou automatiquement à l'enregistrement.

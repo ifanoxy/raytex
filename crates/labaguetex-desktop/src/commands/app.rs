@@ -169,10 +169,18 @@ pub async fn selftest_target() -> CmdResult<Option<String>> {
     })
 }
 
-/// Development only: whether the self-test should also walk through the main screens.
+/// Development only: which screens the self-test walks through
+/// (`LABAGUETEX_SELFTEST_SCENES=all|media`), and a folder of test files
+/// (`LABAGUETEX_SELFTEST_ASSETS`).
 #[tauri::command]
-pub async fn selftest_scenes() -> CmdResult<bool> {
-    Ok(cfg!(debug_assertions) && std::env::var_os("LABAGUETEX_SELFTEST_SCENES").is_some())
+pub async fn selftest_scenes() -> CmdResult<(Option<String>, Option<String>)> {
+    if !cfg!(debug_assertions) {
+        return Ok((None, None));
+    }
+    Ok((
+        std::env::var("LABAGUETEX_SELFTEST_SCENES").ok(),
+        std::env::var("LABAGUETEX_SELFTEST_ASSETS").ok(),
+    ))
 }
 
 /// Development only: ends the self-test with an exit code.
