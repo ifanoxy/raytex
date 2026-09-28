@@ -122,10 +122,10 @@
     }
   });
 
-  // Window title: file — project — LaBagueTex.
+  // Window title: file — project — RayTeX.
   $effect(() => {
     // A file opened on its own has no project name besides its own.
-    const parts = [editor.activeTab?.name, project.info?.light ? null : project.info?.name, "LaBagueTex"].filter(Boolean);
+    const parts = [editor.activeTab?.name, project.info?.light ? null : project.info?.name, "RayTeX"].filter(Boolean);
     const title = (editor.activeTab?.dirty ? "● " : "") + parts.join(" — ");
     document.title = title;
     void getCurrentWindow()

@@ -7,12 +7,12 @@
 *.tsbuildinfo
 
 # Tauri generated schemas
-/crates/labaguetex-desktop/gen/
+/crates/raytex-desktop/gen/
 
 # LaTeX build artifacts (tests, templates smoke builds)
 build/
 # …but not the engine's `build` module.
-!crates/labaguetex-core/src/build/
+!crates/raytex-core/src/build/
 *.aux
 *.fdb_latexmk
 *.fls

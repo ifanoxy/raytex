@@ -9,7 +9,7 @@
   import PanelHeader from "../common/PanelHeader.svelte";
   import FileTreeNode from "./FileTreeNode.svelte";
 
-  const KEY = "labaguetex.expanded.";
+  const KEY = "raytex.expanded.";
 
   let expanded = $state<Set<string>>(new Set());
   let dragOverRoot = $state(false);
@@ -92,12 +92,12 @@
 
   function dropOnRoot(e: DragEvent) {
     dragOverRoot = false;
-    const from = e.dataTransfer?.getData("application/x-labaguetex-path");
+    const from = e.dataTransfer?.getData("application/x-raytex-path");
     if (!from || !project.info) return;
     e.preventDefault();
     let paths = [from];
     try {
-      paths = JSON.parse(e.dataTransfer?.getData("application/x-labaguetex-paths") || "null") ?? paths;
+      paths = JSON.parse(e.dataTransfer?.getData("application/x-raytex-paths") || "null") ?? paths;
     } catch {
       /* one file */
     }
@@ -131,7 +131,7 @@
   tabindex="-1"
   data-drop-dir={project.info?.root}
   ondragover={(e) => {
-    if (e.dataTransfer?.types.includes("application/x-labaguetex-path") && e.target === e.currentTarget) {
+    if (e.dataTransfer?.types.includes("application/x-raytex-path") && e.target === e.currentTarget) {
       e.preventDefault();
       dragOverRoot = true;
     }

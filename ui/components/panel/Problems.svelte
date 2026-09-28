@@ -22,7 +22,7 @@
 
   const ICON = { error: "alert-circle", warning: "alert-triangle", info: "info", hint: "lightbulb" } as const;
   const SEVERITY = { error: "problems.severity.error", warning: "problems.severity.warning", info: "problems.severity.info", hint: "problems.severity.hint" } as const;
-  const SOURCE: Record<string, string> = { latex: "LaTeX", bibtex: "BibTeX", biber: "Biber", index: "Index", syntax: "LaBagueTex", lint: "LaBagueTex", build: "Build" };
+  const SOURCE: Record<string, string> = { latex: "LaTeX", bibtex: "BibTeX", biber: "Biber", index: "Index", syntax: "RayTeX", lint: "RayTeX", build: "Build" };
 
   const q = $derived(filter.trim().toLowerCase());
   const showBadboxes = $derived(app.settings?.build.showBadboxes ?? false);

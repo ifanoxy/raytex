@@ -1,5 +1,5 @@
 // Typed access to the Rust side. Every function maps to one IPC command
-// (see crates/labaguetex-desktop/src/commands).
+// (see crates/raytex-desktop/src/commands).
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";

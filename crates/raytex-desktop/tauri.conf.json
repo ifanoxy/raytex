@@ -1,0 +1,100 @@
+{
+  "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "RayTeX",
+  "mainBinaryName": "RayTeX",
+  "version": "0.1.0",
+  "identifier": "org.raytex.app",
+  "build": {
+    "frontendDist": "../../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": {
+      "script": "npm run dev",
+      "cwd": "../.."
+    },
+    "beforeBuildCommand": {
+      "script": "npm run build",
+      "cwd": "../.."
+    }
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "RayTeX",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 900,
+        "minHeight": 560,
+        "center": true,
+        "dragDropEnabled": true,
+        "titleBarStyle": "Visible",
+        "backgroundThrottling": "disabled"
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self' 'wasm-unsafe-eval'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' asset: http://asset.localhost data: blob:",
+        "font-src": "'self' data:",
+        "worker-src": "'self' blob:",
+        "connect-src": "'self' ipc: http://ipc.localhost asset: http://asset.localhost"
+      },
+      "assetProtocol": {
+        "enable": true,
+        "scope": []
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Education",
+    "shortDescription": "A modern LaTeX IDE for students, teachers and researchers",
+    "longDescription": "RayTeX is a fast, modern and open-source LaTeX editor: live preview, smart completion learned from every installed package, precise error console, SyncTeX, templates, macros and a guided setup of any TeX distribution.",
+    "copyright": "The RayTeX contributors",
+    "license": "MIT OR Apache-2.0",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": [
+          "tex",
+          "ltx"
+        ],
+        "name": "LaTeX document",
+        "role": "Editor",
+        "mimeType": "text/x-tex"
+      },
+      {
+        "ext": [
+          "bib"
+        ],
+        "name": "BibTeX database",
+        "role": "Editor",
+        "mimeType": "text/x-bibtex"
+      }
+    ],
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "signingIdentity": "-"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
+    }
+  }
+}

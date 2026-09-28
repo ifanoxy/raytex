@@ -95,7 +95,7 @@
     { id: "text", icon: "type", label: "tikz.tool.text", key: "T" },
   ];
   const EMPTY = "\\begin{tikzpicture}\n\\end{tikzpicture}";
-  const GRID_KEY = "labaguetex.tikz.grid";
+  const GRID_KEY = "raytex.tikz.grid";
   const savedGrid: { step?: number; show?: boolean; snap?: boolean; axes?: boolean } = (() => {
     try {
       return JSON.parse(localStorage.getItem(GRID_KEY) ?? "{}");

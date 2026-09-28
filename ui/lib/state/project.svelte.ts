@@ -94,11 +94,14 @@ class ProjectStore {
   /** Opens a `.tex` file on its own (light mode): nothing is created next to it. */
   /**
    * Files the system asked to open: a folder opens as a project; a file of
-   * the open project opens in the editor; a file of a LaBagueTex project
+   * the open project opens in the editor; a file of a RayTeX project
    * opens that project; any other LaTeX file opens on its own (light mode),
    * any other file with its folder.
    */
   async openFiles(paths: string[]): Promise<void> {
+    // A RayTeX project (or one of the versions named LaBagueTex).
+    const isProjectDir = async (dir: string) =>
+      (await ipc.pathExists(join(dir, "raytex.toml")).catch(() => false)) || (await ipc.pathExists(join(dir, "labaguetex.toml")).catch(() => false));
     for (const path of paths) {
       const inside = this.info && !this.info.light && pathKey(path).startsWith(pathKey(this.info.root) + "/");
       if (inside) {
@@ -107,13 +110,13 @@ class ProjectStore {
       }
       if (!extension(path)) {
         // A folder (a file without extension is rare, and opens with its folder anyway).
-        if (await ipc.pathExists(join(path, "labaguetex.toml")).catch(() => false)) {
+        if (await isProjectDir(path)) {
           await this.open(path);
           continue;
         }
       }
       const dir = dirname(path);
-      const isProject = await ipc.pathExists(join(dir, "labaguetex.toml")).catch(() => false);
+      const isProject = await isProjectDir(dir);
       if (/\.(tex|ltx)$/i.test(path) && !isProject) {
         await this.openLight(path);
       } else if (!extension(path) && !isProject) {

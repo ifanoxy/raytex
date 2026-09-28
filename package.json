@@ -1,8 +1,8 @@
 {
-  "name": "labaguetex",
+  "name": "raytex",
   "private": true,
   "version": "0.1.0",
-  "description": "labaguetex — a modern LaTeX IDE (user interface)",
+  "description": "RayTeX — a modern LaTeX IDE (user interface)",
   "license": "MIT OR Apache-2.0",
   "type": "module",
   "scripts": {

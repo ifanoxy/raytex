@@ -2238,56 +2238,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "labaguetex-cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "directories",
- "labaguetex-core",
- "serde_json",
-]
-
-[[package]]
-name = "labaguetex-core"
-version = "0.1.0"
-dependencies = [
- "directories",
- "flate2",
- "ignore",
- "libc",
- "memchr",
- "pulldown-cmark",
- "regex",
- "serde",
- "serde_json",
- "svg2pdf",
- "tempfile",
- "thiserror 2.0.21",
- "toml 0.9.12+spec-1.1.0",
- "tracing",
- "ureq",
-]
-
-[[package]]
-name = "labaguetex-desktop"
-version = "0.1.0"
-dependencies = [
- "directories",
- "labaguetex-core",
- "notify",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-opener",
- "tauri-plugin-window-state",
- "tracing",
- "tracing-subscriber",
- "trash",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3199,6 +3149,56 @@ name = "raw-window-handle"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
+
+[[package]]
+name = "raytex-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "directories",
+ "raytex-core",
+ "serde_json",
+]
+
+[[package]]
+name = "raytex-core"
+version = "0.1.0"
+dependencies = [
+ "directories",
+ "flate2",
+ "ignore",
+ "libc",
+ "memchr",
+ "pulldown-cmark",
+ "regex",
+ "serde",
+ "serde_json",
+ "svg2pdf",
+ "tempfile",
+ "thiserror 2.0.21",
+ "toml 0.9.12+spec-1.1.0",
+ "tracing",
+ "ureq",
+]
+
+[[package]]
+name = "raytex-desktop"
+version = "0.1.0"
+dependencies = [
+ "directories",
+ "notify",
+ "raytex-core",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-opener",
+ "tauri-plugin-window-state",
+ "tracing",
+ "tracing-subscriber",
+ "trash",
+]
 
 [[package]]
 name = "read-fonts"

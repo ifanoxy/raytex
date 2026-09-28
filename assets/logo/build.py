@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Builds the LaBagueTex logos from letters typeset by LaTeX.
+"""Builds the RayTeX logos from letters typeset by LaTeX.
 
 1. `latex letters.tex && dvisvgm --no-fonts --exact-bbox --precision=3 letters.dvi -o letters.svg`
-   (the letters L, A, T, E, X of the \\LaTeX logo, in Latin Modern Bold, with
-   the exact kerning of the \\LaTeX command);
+   (R, raised small caps AY, T, lowered E and X in Latin Modern, in the
+   style of the \\LaTeX command);
 2. `python3 build.py letters.svg` writes ../logo.svg (app icon),
    logo-mark-dark.svg and logo-mark-light.svg (transparent wordmarks),
-   replacing the X by two crossed baguettes.
+   replacing the X by two crossed rays of light with a flare where they meet.
 """
 
 import math
@@ -60,38 +60,64 @@ def bbox(d: str):
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def baguette(cx: float, cy: float, length: float, angle: float, idx: int) -> str:
-    """A baguette centred at (cx, cy); geometry defined for length 800."""
+def ray(cx: float, cy: float, length: float, angle: float, glow: bool) -> str:
+    """A ray of light centred at (cx, cy); geometry defined for length 800."""
     s = length / 800
+    halo = '<path d="M-420 0 Q 0 -120 420 0 Q 0 120 -420 0 Z" fill="url(#beam)" filter="url(#blur)" opacity="0.8"/>' if glow else ""
+    core = '<path d="M-330 0 Q 0 -22 330 0 Q 0 22 -330 0 Z" fill="url(#core)"/>' if glow else ""
     return f"""<g transform="translate({cx:.2f} {cy:.2f}) rotate({angle:.1f}) scale({s:.4f})">
-    <rect x="-400" y="-62" width="800" height="124" rx="62" fill="url(#crust{idx})" stroke="#7d4712" stroke-width="12"/>
-    <rect x="-356" y="-51" width="712" height="40" rx="20" fill="url(#shine)"/>
-    <g fill="none" stroke="#fde6b8" stroke-width="22" stroke-linecap="round">
-      <path d="M-215 30 C -192 -6, -168 -24, -136 -36"/>
-      <path d="M-40 30 C -17 -6, 7 -24, 39 -36"/>
-      <path d="M135 30 C 158 -6, 182 -24, 214 -36"/>
-    </g>
+    {halo}
+    <path d="M-400 0 Q 0 -64 400 0 Q 0 64 -400 0 Z" fill="url(#beam)"/>
+    {core}
   </g>"""
 
 
-DEFS = """<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+def flare(cx: float, cy: float, length: float, glow: bool) -> str:
+    """The spark where the rays cross: a glow and a small four-pointed star."""
+    r = length * 0.2
+    star = length * 0.26
+    w = length * 0.03
+    return f"""<g transform="translate({cx:.2f} {cy:.2f})">
+    {f'<circle r="{r:.2f}" fill="url(#spark)"/>' if glow else ""}
+    <path d="M{-star:.2f} 0 Q 0 {-w:.2f} {star:.2f} 0 Q 0 {w:.2f} {-star:.2f} 0 Z" fill="url(#star)"/>
+    <path d="M0 {-star:.2f} Q {-w:.2f} 0 0 {star:.2f} Q {w:.2f} 0 0 {-star:.2f} Z" fill="url(#star)"/>
+  </g>"""
+
+
+def defs(dark: bool) -> str:
+    """Gradients: bright light on the night background, amber on a light one."""
+    if dark:
+        edge, mid, centre, star = "#ffae3b", "#ffcf6e", "#fff4d8", "#ffffff"
+    else:
+        edge, mid, centre, star = "#e07b00", "#f29a12", "#f7b733", "#f7b733"
+    return f"""<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#26335f"/>
       <stop offset="1" stop-color="#111831"/>
     </linearGradient>
-    <linearGradient id="crust0" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f7d28c"/>
-      <stop offset="0.55" stop-color="#e0a04a"/>
-      <stop offset="1" stop-color="#b06a20"/>
+    <linearGradient id="beam" gradientUnits="userSpaceOnUse" x1="-400" y1="0" x2="400" y2="0">
+      <stop offset="0" stop-color="{edge}" stop-opacity="0"/>
+      <stop offset="0.14" stop-color="{mid}" stop-opacity="0.95"/>
+      <stop offset="0.5" stop-color="{centre}"/>
+      <stop offset="0.86" stop-color="{mid}" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="{edge}" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="crust1" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f3c878"/>
-      <stop offset="0.55" stop-color="#d69038"/>
-      <stop offset="1" stop-color="#a55f18"/>
+    <linearGradient id="core" gradientUnits="userSpaceOnUse" x1="-310" y1="0" x2="310" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fff5de" stop-opacity="0.8"/>
-      <stop offset="1" stop-color="#fff5de" stop-opacity="0"/>
-    </linearGradient>
+    <radialGradient id="spark">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="0.25" stop-color="#fff0c4" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#ffb347" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="star">
+      <stop offset="0" stop-color="{star}"/>
+      <stop offset="1" stop-color="{mid}" stop-opacity="0.2"/>
+    </radialGradient>
+    <filter id="blur" x="-20%" y="-300%" width="140%" height="700%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
       <feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#000" flood-opacity="0.35"/>
     </filter>"""
@@ -112,22 +138,24 @@ def compose(letters_svg: str):
     cx, cy = (x_box[0] + x_box[2]) / 2, (x_box[1] + x_box[3]) / 2
     w, h = x_box[2] - x_box[0], x_box[3] - x_box[1]
     angle = math.degrees(math.atan2(h, w))
-    length = math.hypot(w, h) * 1.02
+    length = math.hypot(w, h) * 1.12
     minx = min(b[0] for *_, b in glyphs)
     miny = min(min(b[1] for *_, b in glyphs), x_box[1])
     maxx = x_box[2] + 2
     maxy = max(max(b[3] for *_, b in glyphs), x_box[3])
     used = {g for _, _, g, _ in glyphs}
-    defs = "\n    ".join(f'<path id="{g}" d="{paths[g]}"/>' for g in sorted(used))
+    glyph_defs = "\n    ".join(f'<path id="{g}" d="{paths[g]}"/>' for g in sorted(used))
     letters = "\n    ".join(f'<use href="#{g}" x="{x}" y="{y}"/>' for x, y, g, _ in glyphs)
-    content = f"""<g filter="url(#shadow)">
+    def content(glow: bool) -> str:
+        return f"""<g filter="url(#shadow)">
     <g fill="LETTERS" stroke="LETTERS" stroke-width="1.7" stroke-linejoin="round">
     {letters}
     </g>
-  {baguette(cx, cy, length, angle, 0)}
-  {baguette(cx, cy, length, -angle, 1)}
-  </g>"""
-    return defs, content, (minx, miny, maxx, maxy)
+  </g>
+  {ray(cx, cy, length, angle, glow)}
+  {ray(cx, cy, length, -angle, glow)}
+  {flare(cx, cy, length, glow)}"""
+    return glyph_defs, content, (minx, miny, maxx, maxy)
 
 
 def main():
@@ -142,13 +170,13 @@ def main():
     ty = size / 2 - scale * (miny + maxy) / 2 + 8
     icon = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}" width="{size}" height="{size}">
   <defs>
-    {DEFS}
+    {defs(True)}
     {glyph_defs}
   </defs>
   <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#bg)"/>
   <rect x="32" y="32" width="960" height="960" rx="216" fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="4"/>
   <g transform="translate({tx:.2f} {ty:.2f}) scale({scale:.4f})">
-  {content.replace("LETTERS", "#f6ead3")}
+  {content(True).replace("LETTERS", "#f6ead3")}
   </g>
 </svg>
 """
@@ -156,13 +184,13 @@ def main():
 
     # Wordmarks with transparent background.
     pad = 6
-    for name, color in [("logo-mark-dark.svg", "#f6ead3"), ("logo-mark-light.svg", "#1d2233")]:
+    for name, color, dark in [("logo-mark-dark.svg", "#f6ead3", True), ("logo-mark-light.svg", "#1d2233", False)]:
         mark = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="{minx - pad:.2f} {miny - pad:.2f} {w + 2 * pad:.2f} {h + 2 * pad:.2f}" width="{(w + 2 * pad) * 2:.0f}" height="{(h + 2 * pad) * 2:.0f}">
   <defs>
-    {DEFS}
+    {defs(dark)}
     {glyph_defs}
   </defs>
-  {content.replace("LETTERS", color)}
+  {content(dark).replace("LETTERS", color)}
 </svg>
 """
         (HERE / name).write_text(mark)

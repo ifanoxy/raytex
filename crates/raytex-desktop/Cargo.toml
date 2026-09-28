@@ -1,0 +1,38 @@
+[package]
+name = "raytex-desktop"
+description = "RayTeX desktop application (Tauri shell around raytex-core)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+default-run = "raytex-app"
+
+[[bin]]
+name = "raytex-app"
+path = "src/main.rs"
+
+[lib]
+name = "raytex_desktop"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+raytex-core.workspace = true
+tauri.workspace = true
+tauri-plugin-dialog.workspace = true
+tauri-plugin-opener.workspace = true
+tauri-plugin-window-state.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+notify.workspace = true
+trash.workspace = true
+directories.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

@@ -186,14 +186,14 @@
     // Dragging a selected row drags the whole selection.
     if (!selected) fileSelection.only(node.path);
     const paths = fileSelection.count > 1 ? fileSelection.roots() : [node.path];
-    e.dataTransfer.setData("application/x-labaguetex-path", node.path);
-    e.dataTransfer.setData("application/x-labaguetex-paths", JSON.stringify(paths));
+    e.dataTransfer.setData("application/x-raytex-path", node.path);
+    e.dataTransfer.setData("application/x-raytex-paths", JSON.stringify(paths));
     e.dataTransfer.setData("text/plain", paths.map((p) => relative(project.info?.root ?? "", p)).join("\n"));
     e.dataTransfer.effectAllowed = "copyMove";
   }
 
   function dragOverDir(e: DragEvent) {
-    if (!node.dir || !e.dataTransfer?.types.includes("application/x-labaguetex-path")) return;
+    if (!node.dir || !e.dataTransfer?.types.includes("application/x-raytex-path")) return;
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
@@ -202,13 +202,13 @@
 
   function drop(e: DragEvent) {
     dragOver = false;
-    const from = e.dataTransfer?.getData("application/x-labaguetex-path");
+    const from = e.dataTransfer?.getData("application/x-raytex-path");
     if (!node.dir || !from) return;
     e.preventDefault();
     e.stopPropagation();
     let paths = [from];
     try {
-      paths = JSON.parse(e.dataTransfer?.getData("application/x-labaguetex-paths") || "null") ?? paths;
+      paths = JSON.parse(e.dataTransfer?.getData("application/x-raytex-paths") || "null") ?? paths;
     } catch {
       /* one file */
     }

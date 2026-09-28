@@ -55,7 +55,7 @@ export interface DialogState {
   resolve: (v: string | boolean | null) => void;
 }
 
-const LAYOUT_KEY = "labaguetex.layout.v1";
+const LAYOUT_KEY = "raytex.layout.v1";
 
 interface Layout {
   sidebar: SidebarView;

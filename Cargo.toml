@@ -1,19 +1,19 @@
 [workspace]
 resolver = "3"
-members = ["crates/labaguetex-core", "crates/labaguetex-cli", "crates/labaguetex-desktop"]
-default-members = ["crates/labaguetex-core", "crates/labaguetex-cli", "crates/labaguetex-desktop"]
+members = ["crates/raytex-core", "crates/raytex-cli", "crates/raytex-desktop"]
+default-members = ["crates/raytex-core", "crates/raytex-cli", "crates/raytex-desktop"]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/labaguetex/labaguetex"
-homepage = "https://github.com/labaguetex/labaguetex"
-authors = ["The LaBagueTex contributors"]
+repository = "https://github.com/raytex/raytex"
+homepage = "https://github.com/raytex/raytex"
+authors = ["The RayTeX contributors"]
 
 [workspace.dependencies]
-labaguetex-core = { path = "crates/labaguetex-core" }
+raytex-core = { path = "crates/raytex-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.9"

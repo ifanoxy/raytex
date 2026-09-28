@@ -1,0 +1,22 @@
+[package]
+name = "raytex-cli"
+description = "raytex: the RayTeX command line (doctor, build, lint, new, install…)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "raytex"
+path = "src/main.rs"
+
+[dependencies]
+raytex-core.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+directories.workspace = true
+
+[lints]
+workspace = true

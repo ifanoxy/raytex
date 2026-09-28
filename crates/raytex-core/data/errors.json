@@ -1,0 +1,1346 @@
+[
+  {
+    "id": "summary",
+    "match": "^There were (undefined references|multiply-defined labels|undefined citations)",
+    "title": {
+      "en": "Build summary",
+      "fr": "Résumé de la compilation"
+    },
+    "explanation": {
+      "en": "LaTeX reminds at the end of the build that references or labels need fixing: see the detailed warnings in the list.",
+      "fr": "LaTeX rappelle à la fin de la compilation qu'il reste des références ou des labels à corriger : voyez les avertissements détaillés de la liste."
+    }
+  },
+  {
+    "id": "rerun",
+    "match": "Label\\(s\\) may have changed|Rerun to get|[Pp]lease rerun LaTeX|Rerun LaTeX",
+    "title": {
+      "en": "One more build is needed",
+      "fr": "Une compilation de plus est nécessaire"
+    },
+    "explanation": {
+      "en": "Numbers (references, table of contents, pages…) changed during this build. RayTeX runs LaTeX again automatically; if the warning stays, compile again.",
+      "fr": "Des numéros (références, table des matières, pages…) ont changé pendant cette compilation. RayTeX relance LaTeX automatiquement ; si l'avertissement reste, recompilez."
+    }
+  },
+  {
+    "id": "no-end-document",
+    "match": "no legal \\\\end found",
+    "title": {
+      "en": "Missing \\end{document}",
+      "fr": "\\end{document} manquant"
+    },
+    "explanation": {
+      "en": "LaTeX reached the end of the file without finding `\\end{document}`. Add it at the end; if a brace or an environment is not closed, close it first.",
+      "fr": "LaTeX a atteint la fin du fichier sans trouver `\\end{document}`. Ajoutez-le à la fin ; si une accolade ou un environnement n'est pas fermé, fermez-le d'abord."
+    }
+  },
+  {
+    "id": "undefined-control-sequence",
+    "match": "^Undefined control sequence",
+    "title": {
+      "en": "Unknown command",
+      "fr": "Commande inconnue"
+    },
+    "explanation": {
+      "en": "The command at the end of the highlighted text does not exist. Check its spelling, or load the package that defines it with `\\usepackage`.",
+      "fr": "La commande à la fin du texte signalé n'existe pas. Vérifiez son orthographe, ou chargez le package qui la définit avec `\\usepackage`."
+    }
+  },
+  {
+    "id": "missing-dollar",
+    "match": "^Missing \\$ inserted",
+    "title": {
+      "en": "Math outside math mode",
+      "fr": "Mathématiques hors du mode mathématique"
+    },
+    "explanation": {
+      "en": "A math-only symbol (`^`, `_`, `\\alpha`, `\\frac`…) is used in text, or a `$` is missing or a formula contains a blank line. Wrap the formula in `$…$` or `\\[…\\]`.",
+      "fr": "Un symbole réservé aux maths (`^`, `_`, `\\alpha`, `\\frac`…) est utilisé dans le texte, ou il manque un `$`, ou une formule contient une ligne vide. Entourez la formule de `$…$` ou `\\[…\\]`."
+    }
+  },
+  {
+    "id": "double-subscript",
+    "match": "^Double (subscript|superscript)",
+    "title": {
+      "en": "Double subscript or superscript",
+      "fr": "Double indice ou exposant"
+    },
+    "explanation": {
+      "en": "`x_1_2` is ambiguous. Group with braces: `x_{1_2}` or `x_{12}`.",
+      "fr": "`x_1_2` est ambigu. Groupez avec des accolades : `x_{1_2}` ou `x_{12}`."
+    }
+  },
+  {
+    "id": "file-ended",
+    "match": "^File ended while scanning",
+    "title": {
+      "en": "A brace is never closed",
+      "fr": "Une accolade n'est jamais fermée"
+    },
+    "explanation": {
+      "en": "An argument opened with `{` is not closed before the end of the file. Look at the command named in the message, usually a few lines before the reported position.",
+      "fr": "Un argument ouvert par `{` n'est pas fermé avant la fin du fichier. Regardez la commande citée dans le message, généralement quelques lignes avant la position indiquée."
+    }
+  },
+  {
+    "id": "paragraph-ended",
+    "match": "^Paragraph ended before",
+    "title": {
+      "en": "Missing closing brace",
+      "fr": "Accolade fermante manquante"
+    },
+    "explanation": {
+      "en": "A blank line appears inside the argument of a command: a `}` is probably missing before it.",
+      "fr": "Une ligne vide apparaît dans l'argument d'une commande : il manque probablement une `}` avant."
+    }
+  },
+  {
+    "id": "extra-brace",
+    "match": "^(Too many \\}'s|Extra \\}, or forgotten)",
+    "title": {
+      "en": "Unbalanced braces",
+      "fr": "Accolades déséquilibrées"
+    },
+    "explanation": {
+      "en": "There is a `}` without matching `{` (or a `$`/`\\right` is missing before it).",
+      "fr": "Il y a une `}` sans `{` correspondante (ou il manque un `$`/`\\right` avant)."
+    }
+  },
+  {
+    "id": "missing-brace",
+    "match": "^Missing \\} inserted",
+    "title": {
+      "en": "Missing closing brace",
+      "fr": "Accolade fermante manquante"
+    },
+    "explanation": {
+      "en": "TeX expected a `}` here, often because of a mismatched `\\left`/`\\right` or a brace missing in a formula.",
+      "fr": "TeX attendait une `}` ici, souvent à cause d'un `\\left`/`\\right` mal apparié ou d'une accolade manquante dans une formule."
+    }
+  },
+  {
+    "id": "missing-begin-document",
+    "match": "Missing \\\\begin\\{document\\}",
+    "title": {
+      "en": "Text before \\begin{document}",
+      "fr": "Du texte avant \\begin{document}"
+    },
+    "explanation": {
+      "en": "Only commands may appear in the preamble. Move the text after `\\begin{document}`, or check for a stray character in the preamble (or a file compiled on its own that should be \\input).",
+      "fr": "Seules des commandes peuvent figurer dans le préambule. Déplacez le texte après `\\begin{document}`, ou cherchez un caractère égaré dans le préambule (ou un fichier compilé seul qui devrait être inclus par \\input)."
+    }
+  },
+  {
+    "id": "env-mismatch",
+    "match": "\\\\begin\\{.*\\} on input line \\d+ ended by \\\\end|\\\\begin\\{document\\} ended by \\\\end",
+    "title": {
+      "en": "Environments closed in the wrong order",
+      "fr": "Environnements fermés dans le mauvais ordre"
+    },
+    "explanation": {
+      "en": "Each `\\begin{x}` must be closed by `\\end{x}`, innermost first.",
+      "fr": "Chaque `\\begin{x}` doit être fermé par `\\end{x}`, le plus intérieur d'abord."
+    }
+  },
+  {
+    "id": "env-undefined",
+    "match": "Environment .* undefined",
+    "title": {
+      "en": "Unknown environment",
+      "fr": "Environnement inconnu"
+    },
+    "explanation": {
+      "en": "This environment does not exist: check its spelling, or load the package that defines it.",
+      "fr": "Cet environnement n'existe pas : vérifiez son orthographe, ou chargez le package qui le définit."
+    }
+  },
+  {
+    "id": "file-not-found",
+    "match": "File `[^']+' not found|I can't find file",
+    "title": {
+      "en": "File not found",
+      "fr": "Fichier introuvable"
+    },
+    "explanation": {
+      "en": "A package, image or included file cannot be found. For a package (`.sty`, `.cls`), install it with your TeX distribution; for your own files, check the path (relative to the main file) and the extension.",
+      "fr": "Un package, une image ou un fichier inclus est introuvable. Pour un package (`.sty`, `.cls`), installez-le avec votre distribution TeX ; pour vos fichiers, vérifiez le chemin (relatif au fichier principal) et l'extension."
+    }
+  },
+  {
+    "id": "extra-alignment-tab",
+    "match": "^Extra alignment tab",
+    "title": {
+      "en": "Too many columns",
+      "fr": "Trop de colonnes"
+    },
+    "explanation": {
+      "en": "A row has more `&` than the table has columns. Add a column to the specification (e.g. `{ccc}`) or remove a `&`.",
+      "fr": "Une ligne a plus de `&` que le tableau n'a de colonnes. Ajoutez une colonne à la spécification (ex. `{ccc}`) ou retirez un `&`."
+    }
+  },
+  {
+    "id": "misplaced-alignment-tab",
+    "match": "^Misplaced alignment tab",
+    "title": {
+      "en": "& outside a table",
+      "fr": "& en dehors d'un tableau"
+    },
+    "explanation": {
+      "en": "`&` separates table cells. To print an ampersand, write `\\&`.",
+      "fr": "`&` sépare les cellules d'un tableau. Pour afficher une esperluette, écrivez `\\&`."
+    }
+  },
+  {
+    "id": "no-line-to-end",
+    "match": "There's no line here to end",
+    "title": {
+      "en": "\\\\ with nothing to end",
+      "fr": "\\\\ sans ligne à terminer"
+    },
+    "explanation": {
+      "en": "`\\\\` is used at the start of a paragraph or after a blank line. To separate paragraphs, just leave a blank line; for space, use `\\vspace`.",
+      "fr": "`\\\\` est utilisé en début de paragraphe ou après une ligne vide. Pour séparer des paragraphes, laissez simplement une ligne vide ; pour de l'espace, utilisez `\\vspace`."
+    }
+  },
+  {
+    "id": "missing-item",
+    "match": "Something's wrong--perhaps a missing \\\\item",
+    "title": {
+      "en": "List without \\item",
+      "fr": "Liste sans \\item"
+    },
+    "explanation": {
+      "en": "Text appears in a list before the first `\\item`, or `\\item` is used outside `itemize`/`enumerate`.",
+      "fr": "Du texte apparaît dans une liste avant le premier `\\item`, ou `\\item` est utilisé hors d'un `itemize`/`enumerate`."
+    }
+  },
+  {
+    "id": "missing-number",
+    "match": "^Missing number, treated as zero",
+    "title": {
+      "en": "A number was expected",
+      "fr": "Un nombre était attendu"
+    },
+    "explanation": {
+      "en": "A command expecting a number or a length received text. Often a `[` right after `\\\\` (write `\\\\ {}[…]`) or a missing unit.",
+      "fr": "Une commande attendant un nombre ou une longueur a reçu du texte. Souvent un `[` juste après `\\\\` (écrivez `\\\\ {}[…]`) ou une unité manquante."
+    }
+  },
+  {
+    "id": "illegal-unit",
+    "match": "^Illegal unit of measure",
+    "title": {
+      "en": "Missing or invalid unit",
+      "fr": "Unité manquante ou invalide"
+    },
+    "explanation": {
+      "en": "Lengths need a unit: `pt`, `cm`, `mm`, `em`, `ex`, `in` or a length like `\\linewidth`.",
+      "fr": "Les longueurs ont besoin d'une unité : `pt`, `cm`, `mm`, `em`, `ex`, `in` ou une longueur comme `\\linewidth`."
+    }
+  },
+  {
+    "id": "option-clash",
+    "match": "Option clash for package",
+    "title": {
+      "en": "Package loaded twice with different options",
+      "fr": "Package chargé deux fois avec des options différentes"
+    },
+    "explanation": {
+      "en": "The package is loaded twice (possibly by another package or the class) with different options. Load it once with all options, before the package that loads it, or use `\\PassOptionsToPackage` before `\\documentclass`.",
+      "fr": "Le package est chargé deux fois (peut-être par un autre package ou la classe) avec des options différentes. Chargez-le une seule fois avec toutes les options, avant le package qui le charge, ou utilisez `\\PassOptionsToPackage` avant `\\documentclass`."
+    }
+  },
+  {
+    "id": "preamble-only",
+    "match": "Can be used only in preamble",
+    "title": {
+      "en": "Command reserved for the preamble",
+      "fr": "Commande réservée au préambule"
+    },
+    "explanation": {
+      "en": "Move this command (e.g. `\\usepackage`) before `\\begin{document}`.",
+      "fr": "Déplacez cette commande (ex. `\\usepackage`) avant `\\begin{document}`."
+    }
+  },
+  {
+    "id": "already-defined",
+    "match": "Command .* already defined",
+    "title": {
+      "en": "Command already exists",
+      "fr": "La commande existe déjà"
+    },
+    "explanation": {
+      "en": "`\\newcommand` refuses to overwrite an existing command. Choose another name, or use `\\renewcommand` if you really want to replace it.",
+      "fr": "`\\newcommand` refuse d'écraser une commande existante. Choisissez un autre nom, ou utilisez `\\renewcommand` si vous voulez vraiment la remplacer."
+    }
+  },
+  {
+    "id": "not-in-outer-par",
+    "match": "^Not in outer par mode",
+    "title": {
+      "en": "Float in a box",
+      "fr": "Flottant dans une boîte"
+    },
+    "explanation": {
+      "en": "A `figure` or `table` is placed inside a box, minipage or another float. Floats must be in the main text; use `\\captionof` inside a minipage instead.",
+      "fr": "Une `figure` ou un `table` est placé dans une boîte, une minipage ou un autre flottant. Les flottants doivent être dans le texte principal ; utilisez plutôt `\\captionof` dans une minipage."
+    }
+  },
+  {
+    "id": "too-many-floats",
+    "match": "Too many unprocessed floats",
+    "title": {
+      "en": "Too many pending figures",
+      "fr": "Trop de figures en attente"
+    },
+    "explanation": {
+      "en": "LaTeX could not place the figures and tables fast enough. Add `\\clearpage` from time to time, relax the placement (`[htbp]`), or use `\\FloatBarrier` (placeins).",
+      "fr": "LaTeX n'a pas pu placer les figures et tableaux assez vite. Ajoutez `\\clearpage` de temps en temps, assouplissez le placement (`[htbp]`), ou utilisez `\\FloatBarrier` (placeins)."
+    }
+  },
+  {
+    "id": "float-lost",
+    "match": "Float\\(s\\) lost",
+    "title": {
+      "en": "Figures lost",
+      "fr": "Figures perdues"
+    },
+    "explanation": {
+      "en": "A float was placed where it cannot exist (inside a minipage, a footnote or a margin note).",
+      "fr": "Un flottant a été placé où il ne peut pas exister (dans une minipage, une note de bas de page ou une note en marge)."
+    }
+  },
+  {
+    "id": "unicode-not-set-up",
+    "match": "Unicode character .* not set up for use with LaTeX|Invalid UTF-8 byte",
+    "title": {
+      "en": "Character not supported by pdfLaTeX",
+      "fr": "Caractère non supporté par pdfLaTeX"
+    },
+    "explanation": {
+      "en": "pdfLaTeX only knows a limited set of Unicode characters (emoji, some symbols and scripts are missing). Use XeLaTeX or LuaLaTeX, or replace the character by a LaTeX command.",
+      "fr": "pdfLaTeX ne connaît qu'une partie des caractères Unicode (émojis, certains symboles et écritures manquent). Utilisez XeLaTeX ou LuaLaTeX, ou remplacez le caractère par une commande LaTeX."
+    }
+  },
+  {
+    "id": "fontspec-engine",
+    "match": "fontspec package requires either XeTeX or LuaTeX|requires either XeTeX or LuaTeX",
+    "title": {
+      "en": "This package needs XeLaTeX or LuaLaTeX",
+      "fr": "Ce package nécessite XeLaTeX ou LuaLaTeX"
+    },
+    "explanation": {
+      "en": "Switch the compiler of the project to XeLaTeX or LuaLaTeX (or add `% !TEX program = lualatex` at the top of the main file).",
+      "fr": "Passez le compilateur du projet à XeLaTeX ou LuaLaTeX (ou ajoutez `% !TEX program = lualatex` en haut du fichier principal)."
+    }
+  },
+  {
+    "id": "shell-escape",
+    "match": "shell-escape|shell escape|write18",
+    "title": {
+      "en": "Shell escape required",
+      "fr": "Shell escape requis"
+    },
+    "explanation": {
+      "en": "This package runs external programs (Pygments, Inkscape…). Enable shell escape in the project's build settings — only for documents you trust.",
+      "fr": "Ce package lance des programmes externes (Pygments, Inkscape…). Activez shell escape dans les réglages de compilation du projet — uniquement pour des documents de confiance."
+    }
+  },
+  {
+    "id": "undefined-reference",
+    "match": "(^|: )Reference `.*' on page .* undefined",
+    "title": {
+      "en": "Undefined reference",
+      "fr": "Référence non définie"
+    },
+    "explanation": {
+      "en": "No `\\label` with this key exists, or the document must be compiled again. Check the spelling of the key.",
+      "fr": "Aucun `\\label` n'a cette clé, ou le document doit être recompilé. Vérifiez l'orthographe de la clé."
+    }
+  },
+  {
+    "id": "undefined-citation",
+    "match": "(^|: )Citation [`'][^']*' on page .* undefined|(^|: )Citation [`'][^']*' undefined",
+    "title": {
+      "en": "Undefined citation",
+      "fr": "Citation non définie"
+    },
+    "explanation": {
+      "en": "The key is not in your `.bib` file, or BibTeX/Biber has not run yet. RayTeX runs them automatically; check the key and the bibliography file.",
+      "fr": "La clé n'est pas dans votre fichier `.bib`, ou BibTeX/Biber n'a pas encore tourné. RayTeX les lance automatiquement ; vérifiez la clé et le fichier de bibliographie."
+    }
+  },
+  {
+    "id": "multiply-defined",
+    "match": "Label `.*' multiply defined",
+    "title": {
+      "en": "Label defined twice",
+      "fr": "Label défini deux fois"
+    },
+    "explanation": {
+      "en": "Two `\\label` commands use the same key; references will point to one of them only.",
+      "fr": "Deux commandes `\\label` utilisent la même clé ; les références ne pointeront que vers l'une d'elles."
+    }
+  },
+  {
+    "id": "overfull-box",
+    "match": "^Overfull \\\\hbox",
+    "title": {
+      "en": "Line too long",
+      "fr": "Ligne trop longue"
+    },
+    "explanation": {
+      "en": "Some text sticks out into the margin (a long word, URL or image). Rephrase, allow hyphenation (`\\-`), reduce the image width, or load `microtype`.",
+      "fr": "Du texte dépasse dans la marge (un mot long, une URL ou une image). Reformulez, autorisez la césure (`\\-`), réduisez la largeur de l'image, ou chargez `microtype`."
+    }
+  },
+  {
+    "id": "overfull-vbox",
+    "match": "^Overfull \\\\vbox",
+    "title": {
+      "en": "Page too full",
+      "fr": "Page trop pleine"
+    },
+    "explanation": {
+      "en": "Content is taller than the page or box.",
+      "fr": "Le contenu est plus haut que la page ou la boîte."
+    }
+  },
+  {
+    "id": "underfull-box",
+    "match": "^Underfull \\\\[hv]box",
+    "title": {
+      "en": "Loose spacing",
+      "fr": "Espacement trop lâche"
+    },
+    "explanation": {
+      "en": "A line or page has too much white space, often because of `\\\\` or `\\newline` in justified text. Usually harmless.",
+      "fr": "Une ligne ou une page contient trop d'espace blanc, souvent à cause de `\\\\` ou `\\newline` dans du texte justifié. Généralement sans gravité."
+    }
+  },
+  {
+    "id": "font-shape",
+    "match": "Font shape .* undefined",
+    "title": {
+      "en": "Font variant not available",
+      "fr": "Variante de police indisponible"
+    },
+    "explanation": {
+      "en": "The requested combination (e.g. bold small caps) does not exist in the font; a substitute is used. `\\usepackage[T1]{fontenc}` and `lmodern` often help.",
+      "fr": "La combinaison demandée (ex. petites capitales grasses) n'existe pas dans la police ; une autre est utilisée. `\\usepackage[T1]{fontenc}` et `lmodern` aident souvent."
+    }
+  },
+  {
+    "id": "capacity-exceeded",
+    "match": "TeX capacity exceeded",
+    "title": {
+      "en": "Infinite loop or huge input",
+      "fr": "Boucle infinie ou entrée énorme"
+    },
+    "explanation": {
+      "en": "Usually a command that calls itself (e.g. `\\renewcommand{\\x}{\\x…}`) or a fragile command in a moving argument (use `\\protect`).",
+      "fr": "Généralement une commande qui s'appelle elle-même (ex. `\\renewcommand{\\x}{\\x…}`) ou une commande fragile dans un argument mobile (utilisez `\\protect`)."
+    }
+  },
+  {
+    "id": "dimension-too-large",
+    "match": "Dimension too large",
+    "title": {
+      "en": "Dimension too large",
+      "fr": "Dimension trop grande"
+    },
+    "explanation": {
+      "en": "A length exceeds TeX's maximum (about 5.75 m). Often a plot with extreme values or a division by zero.",
+      "fr": "Une longueur dépasse le maximum de TeX (environ 5,75 m). Souvent un graphique avec des valeurs extrêmes ou une division par zéro."
+    }
+  },
+  {
+    "id": "runaway-argument",
+    "match": "Runaway argument",
+    "title": {
+      "en": "Argument never closed",
+      "fr": "Argument jamais fermé"
+    },
+    "explanation": {
+      "en": "An argument is missing its closing `}`.",
+      "fr": "Il manque la `}` fermante d'un argument."
+    }
+  },
+  {
+    "id": "illegal-parameter",
+    "match": "Illegal parameter number in definition",
+    "title": {
+      "en": "Wrong # in a definition",
+      "fr": "# incorrect dans une définition"
+    },
+    "explanation": {
+      "en": "`#1`… can only be used in a definition with enough arguments (`\\newcommand{\\x}[1]{…#1…}`). To print #, write `\\#`.",
+      "fr": "`#1`… ne s'utilise que dans une définition ayant assez d'arguments (`\\newcommand{\\x}[1]{…#1…}`). Pour afficher #, écrivez `\\#`."
+    }
+  },
+  {
+    "id": "bad-math-delimiter",
+    "match": "Bad math environment delimiter",
+    "title": {
+      "en": "Nested math",
+      "fr": "Maths imbriquées"
+    },
+    "explanation": {
+      "en": "`\\[` or `\\(` is used inside math mode, or a `\\]` / `\\)` has no opening.",
+      "fr": "`\\[` ou `\\(` est utilisé dans le mode mathématique, ou un `\\]` / `\\)` n'a pas d'ouverture."
+    }
+  },
+  {
+    "id": "display-math-end",
+    "match": "Display math should end with \\$\\$",
+    "title": {
+      "en": "Unbalanced $$",
+      "fr": "$$ déséquilibré"
+    },
+    "explanation": {
+      "en": "A `$$` formula contains a single `$`. Prefer `\\[ … \\]` for display math.",
+      "fr": "Une formule `$$` contient un `$` seul. Préférez `\\[ … \\]` pour les formules centrées."
+    }
+  },
+  {
+    "id": "missing-right",
+    "match": "Missing \\\\right\\. inserted|Extra \\\\right",
+    "title": {
+      "en": "\\left without \\right",
+      "fr": "\\left sans \\right"
+    },
+    "explanation": {
+      "en": "Every `\\left` needs a `\\right` in the same formula (use `\\right.` for an invisible one). They cannot be split across `&` or `\\\\` in align.",
+      "fr": "Chaque `\\left` a besoin d'un `\\right` dans la même formule (utilisez `\\right.` pour un délimiteur invisible). Ils ne peuvent pas être séparés par `&` ou `\\\\` dans align."
+    }
+  },
+  {
+    "id": "command-invalid-math",
+    "match": "invalid in math mode",
+    "title": {
+      "en": "Text command in math",
+      "fr": "Commande de texte dans des maths"
+    },
+    "explanation": {
+      "en": "This command only works in text. In math, use `\\text{…}` or the math version (e.g. `\\mathrm`).",
+      "fr": "Cette commande ne fonctionne qu'en texte. En maths, utilisez `\\text{…}` ou la version mathématique (ex. `\\mathrm`)."
+    }
+  },
+  {
+    "id": "unknown-graphics-extension",
+    "match": "Unknown graphics extension|Cannot determine size of graphic",
+    "title": {
+      "en": "Unsupported image format",
+      "fr": "Format d'image non supporté"
+    },
+    "explanation": {
+      "en": "pdfLaTeX accepts PDF, PNG and JPG. Convert the image (EPS: `epstopdf`; SVG: use the `svg` package or export to PDF).",
+      "fr": "pdfLaTeX accepte PDF, PNG et JPG. Convertissez l'image (EPS : `epstopdf` ; SVG : utilisez le package `svg` ou exportez en PDF)."
+    }
+  },
+  {
+    "id": "undefined-color",
+    "match": "Undefined color",
+    "title": {
+      "en": "Unknown color",
+      "fr": "Couleur inconnue"
+    },
+    "explanation": {
+      "en": "Define it with `\\definecolor`, or load xcolor with `dvipsnames`/`svgnames` to get more names.",
+      "fr": "Définissez-la avec `\\definecolor`, ou chargez xcolor avec `dvipsnames`/`svgnames` pour plus de noms."
+    }
+  },
+  {
+    "id": "babel-unknown",
+    "match": "Package babel Error: Unknown option|You haven't defined the language",
+    "title": {
+      "en": "Unknown language for babel",
+      "fr": "Langue inconnue pour babel"
+    },
+    "explanation": {
+      "en": "Check the language name (french, english, ngerman…) or install the corresponding babel language package.",
+      "fr": "Vérifiez le nom de la langue (french, english, ngerman…) ou installez le package de langue babel correspondant."
+    }
+  },
+  {
+    "id": "biber-rerun",
+    "match": "Please \\(re\\)run Biber",
+    "title": {
+      "en": "Biber must run",
+      "fr": "Biber doit être lancé"
+    },
+    "explanation": {
+      "en": "biblatex needs Biber to process the bibliography. RayTeX runs it automatically when possible.",
+      "fr": "biblatex a besoin de Biber pour traiter la bibliographie. RayTeX le lance automatiquement quand c'est possible."
+    }
+  },
+  {
+    "id": "nullfont",
+    "match": "in font nullfont",
+    "title": {
+      "en": "Invisible text",
+      "fr": "Texte invisible"
+    },
+    "explanation": {
+      "en": "Some characters were typeset where no font is active, so they do not appear. In a `tikzpicture`, text must be inside a `node`; otherwise it is usually a harmless package artefact.",
+      "fr": "Des caractères ont été composés là où aucune police n'est active : ils n'apparaissent pas. Dans un `tikzpicture`, le texte doit être dans un `node` ; sinon c'est généralement un artefact sans gravité d'un package."
+    }
+  },
+  {
+    "id": "missing-character",
+    "match": "^Missing character: There is no",
+    "title": {
+      "en": "Character missing from the font",
+      "fr": "Caractère absent de la police"
+    },
+    "explanation": {
+      "en": "The current font has no glyph for this character, so it is not printed. Choose a font that covers it (e.g. with fontspec) or use a LaTeX command.",
+      "fr": "La police courante ne contient pas ce caractère : il n'est pas imprimé. Choisissez une police qui le contient (ex. avec fontspec) ou utilisez une commande LaTeX."
+    }
+  },
+  {
+    "id": "lonely-item",
+    "match": "Lonely \\\\item",
+    "title": {
+      "en": "\\item outside a list",
+      "fr": "\\item hors d'une liste"
+    },
+    "explanation": {
+      "en": "`\\item` is only used in a list (`itemize`, `enumerate`, `description`). Surround the points with `\\begin{itemize}` … `\\end{itemize}`.",
+      "fr": "`\\item` ne s'emploie que dans une liste (`itemize`, `enumerate`, `description`). Entourez les points de `\\begin{itemize}` … `\\end{itemize}`."
+    }
+  },
+  {
+    "id": "hash-in-text",
+    "match": "You can't use .macro parameter character #.",
+    "title": {
+      "en": "Misused # character",
+      "fr": "Caractère # mal employé"
+    },
+    "explanation": {
+      "en": "`#` is for the arguments of commands (`#1`). To print a hash sign, write `\\#`. In a definition, declare the number of arguments: `\\newcommand{\\cmd}[1]{… #1 …}`.",
+      "fr": "`#` sert aux arguments des commandes (`#1`). Pour afficher un dièse, écrivez `\\#`. Dans une définition, déclarez le nombre d'arguments : `\\newcommand{\\cmd}[1]{… #1 …}`."
+    }
+  },
+  {
+    "id": "misplaced-noalign",
+    "match": "^Misplaced \\\\noalign|You can't use .\\\\hrule. here",
+    "title": {
+      "en": "Misplaced rule in a table",
+      "fr": "Filet mal placé dans un tableau"
+    },
+    "explanation": {
+      "en": "`\\hline` (or `\\toprule`, `\\midrule`…) must follow the end of a row: end the previous row with `\\\\`.",
+      "fr": "`\\hline` (ou `\\toprule`, `\\midrule`…) doit suivre la fin d'une ligne du tableau : terminez la ligne précédente par `\\\\`."
+    }
+  },
+  {
+    "id": "illegal-column",
+    "match": "Illegal character in array arg|Illegal pream-token|Unknown column type",
+    "title": {
+      "en": "Unknown column type",
+      "fr": "Type de colonne inconnu"
+    },
+    "explanation": {
+      "en": "The column specification (`{lcr}`) contains a letter LaTeX does not know. The basic types are `l`, `c`, `r` and `p{width}`; `m` and `b` need the `array` package, `X` the `tabularx` environment, `S` the `siunitx` package.",
+      "fr": "La description des colonnes (`{lcr}`) contient une lettre que LaTeX ne connaît pas. Les types de base sont `l`, `c`, `r` et `p{largeur}` ; `m` et `b` demandent le package `array`, `X` l'environnement `tabularx`, `S` le package `siunitx`."
+    }
+  },
+  {
+    "id": "float-h",
+    "match": "float specifier changed to",
+    "title": {
+      "en": "[h] placement not possible",
+      "fr": "Placement [h] impossible"
+    },
+    "explanation": {
+      "en": "The figure or table did not fit \"here\" (`[h]`): LaTeX put it at the top of a page. Give it more choices with `[htbp]`; to force it exactly here, use `[H]` from the `float` package.",
+      "fr": "La figure ou le tableau ne tenait pas « ici » (`[h]`) : LaTeX l'a placé en haut de page. Donnez-lui plus de choix avec `[htbp]` ; pour le forcer exactement ici, utilisez `[H]` du package `float`."
+    }
+  },
+  {
+    "id": "float-option",
+    "match": "Unknown float option",
+    "title": {
+      "en": "Unknown placement option",
+      "fr": "Option de placement inconnue"
+    },
+    "explanation": {
+      "en": "Placement options are `h`, `t`, `b`, `p` and `!`. `H` (exactly here) needs the `float` package.",
+      "fr": "Les options de placement sont `h`, `t`, `b`, `p` et `!`. `H` (exactement ici) demande le package `float`."
+    }
+  },
+  {
+    "id": "float-too-large",
+    "match": "Float too large for page",
+    "title": {
+      "en": "Figure or table too large for the page",
+      "fr": "Figure ou tableau trop grand pour la page"
+    },
+    "explanation": {
+      "en": "The content is taller than the page and overflows at the bottom. Shrink the image (`height=0.8\\textheight,keepaspectratio`) or split the table over several pages (`longtable`).",
+      "fr": "Le contenu dépasse la hauteur de la page et déborde en bas. Réduisez l'image (`height=0.8\\textheight,keepaspectratio`) ou coupez le tableau sur plusieurs pages (`longtable`)."
+    }
+  },
+  {
+    "id": "caption-outside-float",
+    "match": "\\\\caption outside float",
+    "title": {
+      "en": "\\caption outside a float",
+      "fr": "\\caption hors d'une figure"
+    },
+    "explanation": {
+      "en": "`\\caption` numbers a figure or table: put it inside `figure` or `table`, or use `\\captionof{figure}{…}` (`caption` package) elsewhere.",
+      "fr": "`\\caption` numérote une figure ou un tableau : placez-le dans `figure` ou `table`, ou utilisez `\\captionof{figure}{…}` (package `caption`) ailleurs."
+    }
+  },
+  {
+    "id": "keyval-undefined",
+    "match": "keyval Error: .* undefined",
+    "title": {
+      "en": "Unknown option",
+      "fr": "Option inconnue"
+    },
+    "explanation": {
+      "en": "The name of a `key=value` option is misspelled or does not exist for this command. Check its spelling (`width`, `height`, `margin`…).",
+      "fr": "Le nom d'une option `clé=valeur` est mal écrit ou n'existe pas pour cette commande. Vérifiez son orthographe (`width`, `height`, `margin`…)."
+    }
+  },
+  {
+    "id": "renew-undefined",
+    "match": "LaTeX Error: Command \\\\\\S+ undefined",
+    "title": {
+      "en": "Redefining a command that does not exist",
+      "fr": "Redéfinition d'une commande inexistante"
+    },
+    "explanation": {
+      "en": "`\\renewcommand` only redefines an existing command. To create a new one, use `\\newcommand`.",
+      "fr": "`\\renewcommand` ne redéfinit qu'une commande qui existe déjà. Pour en créer une nouvelle, utilisez `\\newcommand`."
+    }
+  },
+  {
+    "id": "missing-control-sequence",
+    "match": "Missing control sequence inserted",
+    "title": {
+      "en": "Command name without backslash",
+      "fr": "Nom de commande sans barre oblique"
+    },
+    "explanation": {
+      "en": "The name of a new command starts with a backslash: `\\newcommand{\\square}{…}`, not `\\newcommand{square}{…}`.",
+      "fr": "Le nom d'une nouvelle commande commence par une barre oblique : `\\newcommand{\\carre}{…}`, pas `\\newcommand{carre}{…}`."
+    }
+  },
+  {
+    "id": "before-documentclass",
+    "match": "before \\\\documentclass",
+    "title": {
+      "en": "Command before \\documentclass",
+      "fr": "Commande avant \\documentclass"
+    },
+    "explanation": {
+      "en": "A document starts with `\\documentclass{…}`; the `\\usepackage` lines come right after it.",
+      "fr": "Un document commence par `\\documentclass{…}` ; les `\\usepackage` viennent juste après."
+    }
+  },
+  {
+    "id": "align-in-math",
+    "match": "Erroneous nesting of equation structures|allowed only in paragraph mode",
+    "title": {
+      "en": "Math environment inside a formula",
+      "fr": "Environnement mathématique dans une formule"
+    },
+    "explanation": {
+      "en": "`align`, `gather`, `equation`… already start math mode: do not put them inside `\\[ … \\]` or `$$ … $$`. To align inside a formula, use `aligned`.",
+      "fr": "`align`, `gather`, `equation`… ouvrent déjà le mode mathématique : ne les mettez pas dans `\\[ … \\]` ou `$$ … $$`. Pour aligner à l'intérieur d'une formule, utilisez `aligned`."
+    }
+  },
+  {
+    "id": "babel-option",
+    "match": "for Babel is \\*deprecated\\*|should no longer be used",
+    "title": {
+      "en": "Obsolete language name",
+      "fr": "Nom de langue obsolète"
+    },
+    "explanation": {
+      "en": "Babel no longer recommends this language name: use the current one (for instance `french` instead of `francais`).",
+      "fr": "Ce nom de langue n'est plus recommandé par babel : utilisez le nom actuel (par exemple `french` au lieu de `francais`)."
+    }
+  },
+  {
+    "id": "french-fontenc",
+    "match": "OT1 encoding should not be used for French",
+    "title": {
+      "en": "Font encoding to change for French",
+      "fr": "Encodage de police à changer pour le français"
+    },
+    "explanation": {
+      "en": "French is better typeset with the T1 encoding: proper accents, hyphenation of accented words, faithful copy and paste from the PDF. Add `\\usepackage[T1]{fontenc}`.",
+      "fr": "Le français s'écrit mieux avec l'encodage T1 : accents corrects, césure des mots accentués, copier-coller fidèle depuis le PDF. Ajoutez `\\usepackage[T1]{fontenc}`."
+    }
+  },
+  {
+    "id": "unknown-option",
+    "match": "LaTeX Error: Unknown option",
+    "title": {
+      "en": "Unknown package option",
+      "fr": "Option inconnue du package"
+    },
+    "explanation": {
+      "en": "This package does not know this option. Check its spelling or remove it; the package documentation lists its options.",
+      "fr": "Ce package ne connaît pas cette option. Vérifiez son orthographe ou retirez-la ; la documentation du package liste ses options."
+    }
+  },
+  {
+    "id": "tikz-semicolon",
+    "match": "Did you forget a semicolon",
+    "title": {
+      "en": "Missing semicolon (TikZ)",
+      "fr": "Point-virgule manquant (TikZ)"
+    },
+    "explanation": {
+      "en": "Every TikZ path (`\\draw`, `\\node`, `\\fill`…) ends with `;`. It is probably missing at the end of the previous command.",
+      "fr": "Chaque tracé TikZ (`\\draw`, `\\node`, `\\fill`…) se termine par `;`. Il manque sans doute à la fin de la commande précédente."
+    }
+  },
+  {
+    "id": "tikz-library",
+    "match": "Unknown arrow tip kind|Unknown function .of.|No shape named .of |I do not know the decoration|Cannot parse this coordinate",
+    "title": {
+      "en": "Missing TikZ library",
+      "fr": "Bibliothèque TikZ manquante"
+    },
+    "explanation": {
+      "en": "This syntax comes from a TikZ library to load with `\\usetikzlibrary{…}`: `positioning` for `right=of`, `arrows.meta` for `Stealth` arrows, `calc` for `($(a)!0.5!(b)$)`…",
+      "fr": "Cette syntaxe vient d'une bibliothèque TikZ à charger avec `\\usetikzlibrary{…}` : `positioning` pour `right=of`, `arrows.meta` pour les flèches `Stealth`, `calc` pour `($(a)!0.5!(b)$)`…"
+    }
+  },
+  {
+    "id": "tikz-unknown-key",
+    "match": "I do not know the key '/tikz/",
+    "title": {
+      "en": "Unknown TikZ option",
+      "fr": "Option TikZ inconnue"
+    },
+    "explanation": {
+      "en": "This option does not exist: it is misspelled, or it comes from a TikZ library to load (`shapes.geometric` for `diamond`, `patterns` for `pattern`…).",
+      "fr": "Cette option n'existe pas : elle est mal écrite, ou elle vient d'une bibliothèque TikZ à charger (`shapes.geometric` pour `diamond`, `patterns` pour `pattern`…)."
+    }
+  },
+  {
+    "id": "pgfplots-compat",
+    "match": "running in backwards compatibility mode",
+    "title": {
+      "en": "pgfplots version to set",
+      "fr": "Version de pgfplots à préciser"
+    },
+    "explanation": {
+      "en": "pgfplots runs in compatibility mode with its old versions. Set the version with `\\pgfplotsset{compat=…}` to get the current plots and labels.",
+      "fr": "pgfplots fonctionne en mode de compatibilité avec ses anciennes versions. Indiquez la version à utiliser avec `\\pgfplotsset{compat=…}` pour avoir les graphiques et étiquettes actuels."
+    }
+  },
+  {
+    "id": "natbib-author",
+    "match": "Author undefined for citation|Bibliography not compatible with author-year",
+    "title": {
+      "en": "Bibliography style not made for natbib",
+      "fr": "Style de bibliographie incompatible avec natbib"
+    },
+    "explanation": {
+      "en": "`\\citet`, `\\citep`… need an author-year style (`plainnat`, `abbrvnat`, `unsrtnat`); with `plain`, load natbib with the `numbers` option.",
+      "fr": "`\\citet`, `\\citep`… ont besoin d'un style auteur-année (`plainnat`, `abbrvnat`, `unsrtnat`) ; avec `plain`, chargez natbib avec l'option `numbers`."
+    }
+  },
+  {
+    "id": "headheight",
+    "match": "\\\\headheight is too small|\\\\headheight to low",
+    "title": {
+      "en": "Header too tall",
+      "fr": "En-tête trop haut"
+    },
+    "explanation": {
+      "en": "The page header is taller than the space reserved for it. Increase `\\headheight` as the message suggests.",
+      "fr": "L'en-tête de page est plus haut que la place prévue. Agrandissez `\\headheight` comme le propose le message."
+    }
+  },
+  {
+    "id": "pdf-string",
+    "match": "Token not allowed in a PDF string",
+    "title": {
+      "en": "Formula in a title (PDF bookmarks)",
+      "fr": "Formule dans un titre (signets PDF)"
+    },
+    "explanation": {
+      "en": "PDF bookmarks cannot contain math. Give a text version with `\\texorpdfstring{$f$}{f}`.",
+      "fr": "Les signets du PDF ne peuvent pas contenir de mathématiques. Donnez une version texte avec `\\texorpdfstring{$f$}{f}`."
+    }
+  },
+  {
+    "id": "verb-in-argument",
+    "match": "\\\\verb illegal in",
+    "title": {
+      "en": "\\verb in an argument",
+      "fr": "\\verb dans un argument"
+    },
+    "explanation": {
+      "en": "`\\verb` does not work in the argument of a command (title, footnote…). Use `\\texttt{…}`, escaping `_`, `#`, `%`…",
+      "fr": "`\\verb` ne fonctionne pas dans l'argument d'une commande (titre, note…). Utilisez `\\texttt{…}` en protégeant `_`, `#`, `%`…"
+    }
+  },
+  {
+    "id": "no-citation",
+    "match": "I found no \\\\citation commands",
+    "title": {
+      "en": "No citation",
+      "fr": "Aucune citation"
+    },
+    "explanation": {
+      "en": "A bibliography is requested but the document cites nothing: add `\\cite{…}`, or `\\nocite{*}` to list every reference of the file.",
+      "fr": "La bibliographie est demandée mais le document ne cite rien : ajoutez des `\\cite{…}`, ou `\\nocite{*}` pour lister toutes les références du fichier."
+    }
+  },
+  {
+    "id": "no-bibdata",
+    "match": "I found no \\\\bibdata command",
+    "title": {
+      "en": "Bibliography file not given",
+      "fr": "Fichier de bibliographie non indiqué"
+    },
+    "explanation": {
+      "en": "`\\bibliography{file}` (without `.bib`) is missing at the end of the document.",
+      "fr": "Il manque `\\bibliography{fichier}` (sans `.bib`) à la fin du document."
+    }
+  },
+  {
+    "id": "no-bibstyle",
+    "match": "I found no \\\\bibstyle command",
+    "title": {
+      "en": "Missing bibliography style",
+      "fr": "Style de bibliographie manquant"
+    },
+    "explanation": {
+      "en": "`\\bibliographystyle{plain}` (or another style) is missing before `\\bibliography{…}`.",
+      "fr": "Il manque `\\bibliographystyle{plain}` (ou un autre style) avant `\\bibliography{…}`."
+    }
+  },
+  {
+    "id": "bib-missing-entry",
+    "match": "I didn't find a database entry for",
+    "title": {
+      "en": "Reference missing from the .bib file",
+      "fr": "Référence absente du fichier .bib"
+    },
+    "explanation": {
+      "en": "This key is cited but no entry of the `.bib` file has this name. Check the spelling of the key or add the entry.",
+      "fr": "Cette clé est citée mais aucune entrée du fichier `.bib` ne porte ce nom. Vérifiez l'orthographe de la clé ou ajoutez l'entrée."
+    }
+  },
+  {
+    "id": "bib-syntax",
+    "match": "I was expecting a|syntax error: found|syntax error",
+    "title": {
+      "en": "Syntax error in the .bib file",
+      "fr": "Erreur de syntaxe dans le fichier .bib"
+    },
+    "explanation": {
+      "en": "An entry of the `.bib` file is malformed: every field ends with a comma, and braces must be balanced.",
+      "fr": "Une entrée du fichier `.bib` est mal formée : chaque champ se termine par une virgule, et les accolades doivent être équilibrées."
+    }
+  },
+  {
+    "id": "bib-empty",
+    "match": "Empty .thebibliography. environment|Empty bibliography",
+    "title": {
+      "en": "Empty bibliography",
+      "fr": "Bibliographie vide"
+    },
+    "explanation": {
+      "en": "The bibliography has no entry: no citation was found in the `.bib` file. Fix the reported citations first.",
+      "fr": "La bibliographie ne contient aucune entrée : aucune citation n'a été trouvée dans le fichier `.bib`. Corrigez d'abord les citations signalées."
+    }
+  },
+  {
+    "id": "bib-file-missing",
+    "match": "I couldn't open database file|Cannot find .*\\.bib",
+    "title": {
+      "en": ".bib file not found",
+      "fr": "Fichier .bib introuvable"
+    },
+    "explanation": {
+      "en": "The bibliography file does not exist. Check its name (without the `.bib` extension in `\\bibliography{…}`) and its folder.",
+      "fr": "Le fichier de bibliographie indiqué n'existe pas. Vérifiez son nom (sans l'extension `.bib` dans `\\bibliography{…}`) et son dossier."
+    }
+  },
+  {
+    "id": "bib-field-empty",
+    "match": "^empty \\w+ in |Missing mandatory field",
+    "title": {
+      "en": "Missing field in a reference",
+      "fr": "Champ manquant dans une référence"
+    },
+    "explanation": {
+      "en": "A bibliography entry lacks an expected field (author, year, publisher…): the reference will be incomplete. Complete the entry.",
+      "fr": "Une entrée de la bibliographie n'a pas un champ attendu (auteur, année, éditeur…) : la référence s'affichera incomplète. Complétez l'entrée."
+    }
+  },
+  {
+    "id": "bib-duplicate",
+    "match": "Repeated entry|Duplicate entry",
+    "title": {
+      "en": "Duplicate reference",
+      "fr": "Référence en double"
+    },
+    "explanation": {
+      "en": "Two entries of the `.bib` file have the same key: only the first one is used. Rename or delete the other.",
+      "fr": "Deux entrées du `.bib` ont la même clé : seule la première est utilisée. Renommez ou supprimez l'autre."
+    }
+  },
+  {
+    "id": "extra-endgroup",
+    "match": "^Extra \\\\endgroup|^Extra \\\\else|^Extra \\\\fi|^Extra \\\\or",
+    "title": {
+      "en": "Extra end of group",
+      "fr": "Fin de groupe en trop"
+    },
+    "explanation": {
+      "en": "An `\\end{…}` or end of group has no matching start. It is often the consequence of an earlier error: fix the first one.",
+      "fr": "Un `\\end{…}` ou une fin de groupe n'a pas de début correspondant. C'est souvent la conséquence d'une erreur précédente : corrigez d'abord la première."
+    }
+  },
+  {
+    "id": "endcsname",
+    "match": "Missing \\\\endcsname inserted|Extra \\\\endcsname|has an extra \\}",
+    "title": {
+      "en": "Fragile command in an argument",
+      "fr": "Commande fragile dans un argument"
+    },
+    "explanation": {
+      "en": "A command is not accepted here (in a title, a label, a reference…). Simplify the argument or protect the command with `\\protect`. With French babel, “:” is an active character: `\\cref{sec:intro}` fails unless `\\AtBeginDocument{\\shorthandoff{:}}` is in the preamble.",
+      "fr": "Une commande n'est pas acceptée à cet endroit (dans un titre, un label, une référence…). Simplifiez l'argument ou protégez la commande avec `\\protect`. Avec babel en français, « : » est un caractère actif : `\\cref{sec:intro}` échoue tant que `\\AtBeginDocument{\\shorthandoff{:}}` n'est pas dans le préambule."
+    }
+  },
+  {
+    "id": "encoding-command",
+    "match": "unavailable in encoding",
+    "title": {
+      "en": "Symbol missing from the font encoding",
+      "fr": "Symbole absent de l'encodage de police"
+    },
+    "explanation": {
+      "en": "This symbol does not exist in the default font encoding (OT1). Add `\\usepackage[T1]{fontenc}`.",
+      "fr": "Ce symbole n'existe pas dans l'encodage de police par défaut (OT1). Ajoutez `\\usepackage[T1]{fontenc}`."
+    }
+  },
+  {
+    "id": "font-size",
+    "match": "in size <[\\d.]+> not available|Size substitutions with differences",
+    "title": {
+      "en": "Font size substituted",
+      "fr": "Taille de police remplacée"
+    },
+    "explanation": {
+      "en": "The font does not exist in this size: LaTeX uses a close one. Load `lmodern` (scalable fonts in every size).",
+      "fr": "La police n'existe pas dans cette taille : LaTeX utilise une taille voisine. Chargez `lmodern` (polices vectorielles de toutes tailles)."
+    }
+  },
+  {
+    "id": "font-shapes",
+    "match": "Some font shapes were not available",
+    "title": {
+      "en": "Font shapes substituted",
+      "fr": "Variantes de police remplacées"
+    },
+    "explanation": {
+      "en": "Some shapes (bold, italic, small caps…) do not exist for this font: LaTeX used others. See the detailed font warnings.",
+      "fr": "Certaines variantes (gras, italique, petites capitales…) n'existent pas pour cette police : LaTeX en a utilisé d'autres. Voyez les avertissements de police détaillés."
+    }
+  },
+  {
+    "id": "no-output",
+    "match": "No pages of output",
+    "title": {
+      "en": "Empty document",
+      "fr": "Document vide"
+    },
+    "explanation": {
+      "en": "LaTeX produced no page: the document has no text between `\\begin{document}` and `\\end{document}`.",
+      "fr": "LaTeX n'a produit aucune page : le document ne contient pas de texte entre `\\begin{document}` et `\\end{document}`."
+    }
+  },
+  {
+    "id": "marginpar-moved",
+    "match": "Marginpar on page \\d+ moved",
+    "title": {
+      "en": "Margin note moved",
+      "fr": "Note en marge déplacée"
+    },
+    "explanation": {
+      "en": "A margin note was moved so that it does not overlap another. Nothing to do unless its position matters.",
+      "fr": "Une note en marge a été déplacée pour ne pas en chevaucher une autre. Rien à faire, sauf si sa position importe."
+    }
+  },
+  {
+    "id": "only-floats",
+    "match": "contains only floats",
+    "title": {
+      "en": "Page of floats only",
+      "fr": "Page de figures seulement"
+    },
+    "explanation": {
+      "en": "A page contains only figures or tables. Add text between them, or let them go to the top of pages with `[htbp]`.",
+      "fr": "Une page ne contient que des figures ou des tableaux. Ajoutez du texte entre eux, ou laissez-les se placer en haut de page avec `[htbp]`."
+    }
+  },
+  {
+    "id": "unused-option",
+    "match": "Unused global option",
+    "title": {
+      "en": "Unused class option",
+      "fr": "Option de classe inutilisée"
+    },
+    "explanation": {
+      "en": "An option of `\\documentclass[…]` is used neither by the class nor by the packages: it is probably misspelled.",
+      "fr": "Une option de `\\documentclass[…]` n'est utilisée ni par la classe ni par les packages : elle est probablement mal écrite."
+    }
+  },
+  {
+    "id": "package-provides",
+    "match": "You have requested package .* but the package provides",
+    "title": {
+      "en": "Different package name",
+      "fr": "Nom de package différent"
+    },
+    "explanation": {
+      "en": "The loaded file declares another package name: check the name in `\\usepackage{…}` and the installed version.",
+      "fr": "Le fichier chargé déclare un autre nom de package : vérifiez le nom dans `\\usepackage{…}` et la version installée."
+    }
+  },
+  {
+    "id": "include-nested",
+    "match": "\\\\include cannot be nested",
+    "title": {
+      "en": "Nested \\include",
+      "fr": "\\include imbriqué"
+    },
+    "explanation": {
+      "en": "`\\include` cannot be used in a file already included with `\\include`: use `\\input`.",
+      "fr": "`\\include` ne peut pas être utilisé dans un fichier déjà inclus avec `\\include` : utilisez `\\input`."
+    }
+  },
+  {
+    "id": "no-hyphenation",
+    "match": "No hyphenation patterns were preloaded",
+    "title": {
+      "en": "No hyphenation for this language",
+      "fr": "Césure non disponible pour cette langue"
+    },
+    "explanation": {
+      "en": "The distribution does not know the hyphenation of this language: words will not be split at line ends. Install the language package (for instance `hyphen-french`).",
+      "fr": "La distribution ne connaît pas la césure de cette langue : les mots ne seront pas coupés en fin de ligne. Installez le package de langue (par exemple `hyphen-french`)."
+    }
+  },
+  {
+    "id": "empty-link",
+    "match": "Suppressing link with empty target",
+    "title": {
+      "en": "Link without target",
+      "fr": "Lien sans cible"
+    },
+    "explanation": {
+      "en": "A link (`\\ref`, `\\cite`, `\\href`…) points to an empty target. Check the key or the address.",
+      "fr": "Un lien (`\\ref`, `\\cite`, `\\href`…) pointe vers une cible vide. Vérifiez la clé ou l'adresse."
+    }
+  },
+  {
+    "id": "pdf-destination",
+    "match": "destination with the same identifier",
+    "title": {
+      "en": "Duplicate PDF anchor",
+      "fr": "Ancre PDF en double"
+    },
+    "explanation": {
+      "en": "Two items have the same number (often because of a title page or a numbering reset): links may point to the wrong place. `\\hypersetup{hypertexnames=false}` avoids it.",
+      "fr": "Deux éléments ont le même numéro (souvent à cause d'une page de titre ou d'une numérotation remise à zéro) : des liens peuvent pointer au mauvais endroit. `\\hypersetup{hypertexnames=false}` évite le problème."
+    }
+  },
+  {
+    "id": "label-without-caption",
+    "match": "\\\\label without proper reference",
+    "title": {
+      "en": "Misplaced \\label",
+      "fr": "\\label mal placé"
+    },
+    "explanation": {
+      "en": "The `\\label` must follow the `\\caption` of the figure or table to point to its number.",
+      "fr": "Le `\\label` doit suivre le `\\caption` de la figure ou du tableau pour pointer vers son numéro."
+    }
+  },
+  {
+    "id": "multiple-labels",
+    "match": "Multiple \\\\label's",
+    "title": {
+      "en": "Several \\labels for one equation",
+      "fr": "Plusieurs \\label pour une équation"
+    },
+    "explanation": {
+      "en": "An equation line can only have one `\\label`.",
+      "fr": "Une ligne d'équation ne peut avoir qu'un `\\label`."
+    }
+  },
+  {
+    "id": "limits",
+    "match": "Limit controls must follow a math operator",
+    "title": {
+      "en": "Misplaced \\limits",
+      "fr": "\\limits mal placé"
+    },
+    "explanation": {
+      "en": "`\\limits` follows an operator (`\\sum`, `\\int`, `\\lim`…). Remove it, or declare the operator with `\\DeclareMathOperator*`.",
+      "fr": "`\\limits` suit un opérateur (`\\sum`, `\\int`, `\\lim`…). Retirez-le, ou déclarez l'opérateur avec `\\DeclareMathOperator*`."
+    }
+  },
+  {
+    "id": "math-accent",
+    "match": "Please use \\\\mathaccent for accents in math mode",
+    "title": {
+      "en": "Text accent in a formula",
+      "fr": "Accent de texte dans une formule"
+    },
+    "explanation": {
+      "en": "Text accents (`\\'`, `\\^`…) do not work in math mode: use `\\acute{e}`, `\\hat{x}`… or `\\text{é}`.",
+      "fr": "Les accents de texte (`\\'`, `\\^`…) ne marchent pas en mode mathématique : utilisez `\\acute{e}`, `\\hat{x}`… ou `\\text{é}`."
+    }
+  },
+  {
+    "id": "font-not-found",
+    "match": "The font .* cannot be found",
+    "title": {
+      "en": "Font not found",
+      "fr": "Police introuvable"
+    },
+    "explanation": {
+      "en": "The font requested from `fontspec` is not installed on this computer. Check its exact name, or pick another one in the Fonts window.",
+      "fr": "La police demandée à `fontspec` n'est pas installée sur cet ordinateur. Vérifiez son nom exact, ou choisissez-en une autre dans la fenêtre Polices."
+    }
+  },
+  {
+    "id": "counter-too-large",
+    "match": "Counter too large",
+    "title": {
+      "en": "Counter too large",
+      "fr": "Compteur trop grand"
+    },
+    "explanation": {
+      "en": "A number exceeds what its style can show (for instance more than 26 with letters). Change the numbering style.",
+      "fr": "Un numéro dépasse ce que son style peut afficher (par exemple plus de 26 avec des lettres). Changez le style de numérotation."
+    }
+  },
+  {
+    "id": "too-deep",
+    "match": "Too deeply nested",
+    "title": {
+      "en": "Lists nested too deeply",
+      "fr": "Trop de listes imbriquées"
+    },
+    "explanation": {
+      "en": "LaTeX accepts four levels of nested lists. Reduce the nesting, or use `enumitem` to allow more.",
+      "fr": "LaTeX accepte quatre niveaux de listes imbriquées. Réduisez l'imbrication, ou utilisez `enumitem` pour en autoriser plus."
+    }
+  },
+  {
+    "id": "no-counter",
+    "match": "No counter '.*' defined",
+    "title": {
+      "en": "Unknown counter",
+      "fr": "Compteur inconnu"
+    },
+    "explanation": {
+      "en": "This counter does not exist: create it with `\\newcounter{…}` or check its name.",
+      "fr": "Ce compteur n'existe pas : créez-le avec `\\newcounter{…}` ou vérifiez son nom."
+    }
+  },
+  {
+    "id": "not-lr-mode",
+    "match": "Not allowed in LR mode",
+    "title": {
+      "en": "Not possible in a text box",
+      "fr": "Impossible dans une boîte de texte"
+    },
+    "explanation": {
+      "en": "This command (figure, list…) cannot be in a one-line box (`\\mbox`, `\\textbf`…). Move it out of the box, or use a `minipage`.",
+      "fr": "Cette commande (figure, liste…) ne peut pas être dans une boîte d'une ligne (`\\mbox`, `\\textbf`…). Sortez-la de la boîte, ou utilisez une `minipage`."
+    }
+  },
+  {
+    "id": "use-mismatch",
+    "match": "Use of \\\\\\S+ doesn't match its definition",
+    "title": {
+      "en": "Command used the wrong way",
+      "fr": "Commande mal utilisée"
+    },
+    "explanation": {
+      "en": "The command is not written the way its definition expects (arguments, delimiters). Check its syntax.",
+      "fr": "La commande n'est pas écrite comme sa définition l'attend (arguments, délimiteurs). Vérifiez sa syntaxe."
+    }
+  },
+  {
+    "id": "table-structure",
+    "match": "Missing \\\\cr inserted|Misplaced \\\\cr|Misplaced \\\\omit|Misplaced \\\\span",
+    "title": {
+      "en": "Wrong table structure",
+      "fr": "Structure de tableau incorrecte"
+    },
+    "explanation": {
+      "en": "A row or cell of the table is malformed: `\\multicolumn` must start a cell, and every row ends with `\\\\`.",
+      "fr": "Une ligne ou une cellule de tableau est mal formée : `\\multicolumn` doit commencer une cellule, et chaque ligne se termine par `\\\\`."
+    }
+  },
+  {
+    "id": "infinite-shrink",
+    "match": "Infinite glue shrinkage",
+    "title": {
+      "en": "Infinite glue shrinkage",
+      "fr": "Espace élastique infini"
+    },
+    "explanation": {
+      "en": "A space that can shrink infinitely prevents LaTeX from setting the paragraph. Use fixed lengths (`\\hspace{1cm}`).",
+      "fr": "Un espace qui peut rétrécir à l'infini empêche LaTeX de composer le paragraphe. Utilisez des longueurs fixes (`\\hspace{1cm}`)."
+    }
+  },
+  {
+    "id": "invalid-number",
+    "match": "Invalid number|Invalid numerical input",
+    "title": {
+      "en": "Invalid number (siunitx)",
+      "fr": "Nombre invalide (siunitx)"
+    },
+    "explanation": {
+      "en": "`siunitx` did not understand this number: write it with a decimal point or comma, without spaces or units.",
+      "fr": "`siunitx` n'a pas compris ce nombre : écrivez-le avec un point ou une virgule décimale, sans espace ni unité."
+    }
+  },
+  {
+    "id": "mhchem-version",
+    "match": "did not specify a 'version' option for the mhchem",
+    "title": {
+      "en": "mhchem version to set",
+      "fr": "Version de mhchem à préciser"
+    },
+    "explanation": {
+      "en": "mhchem asks which version of its syntax to use, so that documents keep the same output in the future. Load it with `\\usepackage[version=4]{mhchem}`.",
+      "fr": "mhchem demande quelle version de sa syntaxe utiliser, pour que le document garde le même rendu à l'avenir. Chargez-le avec `\\usepackage[version=4]{mhchem}`."
+    }
+  },
+  {
+    "id": "emergency-stop",
+    "match": "Emergency stop|Fatal error occurred|job aborted",
+    "title": {
+      "en": "Compilation aborted",
+      "fr": "Compilation interrompue"
+    },
+    "explanation": {
+      "en": "TeX stopped after the previous error (often a missing file or `\\end{document}`).",
+      "fr": "TeX s'est arrêté après l'erreur précédente (souvent un fichier manquant ou `\\end{document}`)."
+    }
+  }
+]

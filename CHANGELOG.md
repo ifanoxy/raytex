@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to LaBagueTex are documented here. The format follows [Keep a Changelog](https://keepachangelog.com), and versions follow [Semantic Versioning](https://semver.org).
+All notable changes to RayTeX are documented here. The format follows [Keep a Changelog](https://keepachangelog.com), and versions follow [Semantic Versioning](https://semver.org).
 
 ## [0.1.0] — Unreleased
 
@@ -10,14 +10,14 @@ First version.
 - Every error and warning gets a suggestion (a catalogue of about 110 LaTeX, package, BibTeX and Biber messages, in French and English, plus an explanation for the others) and, for the common ones, a fix computed from the sources: misspelt commands, environments, labels, citation keys and option keys; missing packages and TikZ libraries; unclosed braces, formulas and environments; `_`, `^`, `&`, `#` in text; table columns and rows; float placement and oversized images; `\newcommand` arguments; misplaced `\usepackage`; option clashes; babel, fancyhdr, pgfplots, natbib and hyperref warnings; cleveref with French babel.
 - **Fix all** in the Problems panel (first suggested fix of each problem shown, duplicates and conflicting edits skipped, then a build) and **Alt+Enter** in the editor for the fixes at the cursor. Diagnostics and fixes follow the edits made since the build.
 - Errors reported inside a package (`geometry.sty:1005`) are moved to the `\usepackage` line and option that cause them.
-- Tested with the local TeX distribution on about 110 documents made of common commands and common mistakes: each one is reported, explained and fixed, and a document using the most common commands and environments compiles without any warning (`crates/labaguetex-core/tests/common_mistakes.rs`).
-- The application is now called **LaBagueTex**; the projects folder `Documents/labaguetex` is renamed `Documents/LaBagueTex` on first start.
+- Tested with the local TeX distribution on about 110 documents made of common commands and common mistakes: each one is reported, explained and fixed, and a document using the most common commands and environments compiles without any warning (`crates/raytex-core/tests/common_mistakes.rs`).
+- The application is now called **RayTeX**, with a new logo (the letters of the \\LaTeX logo, whose X is two crossed rays of light); the command line is `raytex`. The folders and files of the versions named LaBagueTex follow on first start: projects folder (`Documents/RayTeX`), settings, session and cache, and each project's `labaguetex.toml` (renamed `raytex.toml` when the project opens).
 
 ### Writing and layout
 - Several files selected in the project tree (Shift + click for a range, Ctrl / ⌘ + click to add or remove, Shift + arrows, Ctrl / ⌘ + A), dragged into a folder or the text, opened, inserted or moved to the trash together (one confirmation).
 - Files opened from the Finder (double click, *Open with*, dropped on the icon) or passed on the command line: a `.tex` opens in light mode, or in its project when it belongs to one; at start-up it takes the place of the last session. Quitting with ⌘Q asks about unsaved files like closing the window. The macOS bundle is signed ad hoc (it opens on another Mac instead of being reported as damaged).
 - Formatting bar: a narrower font box, and the texts of **Image**, **Table** and **Diagram** stay visible (alignment and link buttons go first when the window is narrow).
-- Projects folder (`Documents/LaBagueTex` by default, set in the settings) where new projects go; the start screen and a **My projects** window list them with a preview of their PDF, search, order, rename and trash, plus recent projects and files.
+- Projects folder (`Documents/RayTeX` by default, set in the settings) where new projects go; the start screen and a **My projects** window list them with a preview of their PDF, search, order, rename and trash, plus recent projects and files.
 - Light mode: a `.tex` file opened on its own is edited and built without creating anything next to it (builds in the cache, PDF exported where you like); features that need a folder offer to make a project (name and place), copying the file and what it uses.
 - Fonts from the formatting bar: a font box showing the document's font and a **Document fonts** menu (main, sans-serif, code, maths — change or reset each), fonts for passages applied to the selection (`\newfontfamily\fontName`), a clearer role chooser in the font window.
 - Colours follow the document: with xcolor, its 19 colours, the 68 `dvipsnames` and the SVG colours (the option added without clashing with TikZ or Beamer), search, the document's `\definecolor` colours and a custom colour.
@@ -44,7 +44,7 @@ First version.
 - Smart build driver (engine choice, bibliography / index / glossary tools only when needed, reruns until stable), latexmk, single pass and custom steps.
 - Log parsers for TeX, BibTeX and Biber with exact positions, explanations and fixes; lint while typing.
 - Native SyncTeX, navigation (definition, references, rename), word count, 16 templates in English and French.
-- `baguette` command-line tool.
+- `raytex` command-line tool.
 
 ### Application
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.

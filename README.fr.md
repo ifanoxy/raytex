@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/logo.svg" width="112" alt="logo de LaBagueTex" />
+  <img src="assets/logo.svg" width="112" alt="logo de RayTeX" />
 </p>
 
-<h1 align="center">LaBagueTex</h1>
+<h1 align="center">RayTeX</h1>
 
 <p align="center">
   <strong>L'éditeur LaTeX moderne pour les étudiants, les enseignants et les chercheurs.</strong><br />
@@ -15,7 +15,7 @@
 
 ---
 
-LaBagueTex (LaTeX + baguette) aide les débutants à apprendre et laisse les experts aller vite : aperçu en direct, autocomplétion apprise de **tous** les packages installés, console d'erreurs précise qui explique chaque problème et corrige les plus courants en un clic (ou tous à la fois), SyncTeX, modèles, macros et configuration guidée de **n'importe quelle** distribution TeX.
+RayTeX aide les débutants à apprendre et laisse les experts aller vite : aperçu en direct, autocomplétion apprise de **tous** les packages installés, console d'erreurs précise qui explique chaque problème et corrige les plus courants en un clic (ou tous à la fois), SyncTeX, modèles, macros et configuration guidée de **n'importe quelle** distribution TeX.
 
 ## Fonctionnalités
 
@@ -60,11 +60,11 @@ LaBagueTex (LaTeX + baguette) aide les débutants à apprendre et laisse les exp
 - Parcours des packages installés et de tout le catalogue CTAN ; documentation `texdoc`.
 
 **Projets**
-- Un dossier des projets (`Documents/LaBagueTex` par défaut) et un navigateur **Mes projets** avec l'aperçu de chaque PDF, une recherche, les projets et fichiers récents.
+- Un dossier des projets (`Documents/RayTeX` par défaut) et un navigateur **Mes projets** avec l'aperçu de chaque PDF, une recherche, les projets et fichiers récents.
 - Mode léger : ouvrir un seul fichier `.tex`, le modifier et exporter son PDF sans créer aucun fichier à côté ; en faire un projet en une étape quand il faut des images ou d'autres fichiers.
 - Les nouveaux projets commencent vides ; le panneau **Modèles** montre chaque modèle par sa première page (compilée une fois, gardée en cache) et le place dans le document en un clic, annulable.
 - 16 modèles (article, rapport, thèse, article de recherche, diaporama, poster, notes de cours, examen, fiche d'exercices, devoir, compte rendu de TP, lettre, CV, figure TikZ…), qui compilent tous sans avertissement, en français et en anglais.
-- Réglages du projet dans `labaguetex.toml`, versionné avec le projet.
+- Réglages du projet dans `raytex.toml`, versionné avec le projet.
 - Palette de commandes, ouverture rapide, recherche et remplacement dans le projet, plan avec les vrais numéros, liste des TODO, restauration de session.
 - Centre d'aide : guides, référence des commandes, palette de symboles, erreurs courantes expliquées, raccourcis.
 
@@ -72,7 +72,7 @@ L'interface est disponible en français et en anglais.
 
 ## Installation
 
-Téléchargez l'installateur de votre système sur la page des versions, puis ouvrez LaBagueTex : si aucune distribution TeX n'est trouvée, l'assistant vous aide à en installer une.
+Téléchargez l'installateur de votre système sur la page des versions, puis ouvrez RayTeX : si aucune distribution TeX n'est trouvée, l'assistant vous aide à en installer une.
 
 ## Compiler depuis les sources
 
@@ -88,21 +88,21 @@ Autres commandes utiles :
 
 ```bash
 cargo test --workspace                       # tests du moteur
-cargo test -p labaguetex-core -- --ignored   # tests qui demandent une distribution TeX ou le réseau
+cargo test -p raytex-core -- --ignored   # tests qui demandent une distribution TeX ou le réseau
 npm run check                                # vérification des types de l'interface
 npm run dev                                  # interface seule dans un navigateur, moteur simulé
 ```
 
 ## En ligne de commande
 
-Le moteur existe aussi en outil en ligne de commande, `baguette` :
+Le moteur existe aussi en outil en ligne de commande, `raytex` :
 
 ```bash
-cargo run -p labaguetex-cli -- doctor            # distributions, outils et conseils
-cargo run -p labaguetex-cli -- build main.tex    # compilation intelligente
-cargo run -p labaguetex-cli -- lint chapitre.tex # vérification sans compiler
-cargo run -p labaguetex-cli -- new thesis ma-these --title "Ma thèse"
-cargo run -p labaguetex-cli -- install siunitx
+cargo run -p raytex-cli -- doctor            # distributions, outils et conseils
+cargo run -p raytex-cli -- build main.tex    # compilation intelligente
+cargo run -p raytex-cli -- lint chapitre.tex # vérification sans compiler
+cargo run -p raytex-cli -- new thesis ma-these --title "Ma thèse"
+cargo run -p raytex-cli -- install siunitx
 ```
 
 Toutes les commandes acceptent `--lang fr|en` et `--json`.
@@ -111,10 +111,10 @@ Toutes les commandes acceptent `--lang fr|en` et `--json`.
 
 ```
 crates/
-  labaguetex-core/     le moteur, sans interface (Rust pur)
+  raytex-core/     le moteur, sans interface (Rust pur)
     data/              base de connaissances, modèles, guides d'aide, explications d'erreurs
-  labaguetex-cli/      l'outil en ligne de commande `baguette`
-  labaguetex-desktop/  l'application de bureau (Tauri 2) : commandes IPC, événements, surveillance des fichiers
+  raytex-cli/      l'outil en ligne de commande `raytex`
+  raytex-desktop/  l'application de bureau (Tauri 2) : commandes IPC, événements, surveillance des fichiers
 ui/                    l'interface (Svelte 5 + TypeScript + CodeMirror 6 + pdf.js)
 assets/                sources du logo
 docs/                  documentation de l'architecture et des formats de données
@@ -124,4 +124,4 @@ Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (en anglais) pour l'architectu
 
 ## Licence
 
-LaBagueTex est un logiciel libre, sous double licence [MIT](LICENSE-MIT) et [Apache 2.0](LICENSE-APACHE), au choix.
+RayTeX est un logiciel libre, sous double licence [MIT](LICENSE-MIT) et [Apache 2.0](LICENSE-APACHE), au choix.

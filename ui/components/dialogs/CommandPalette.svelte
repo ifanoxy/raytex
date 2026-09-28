@@ -22,7 +22,7 @@
     run: () => unknown;
   }
 
-  const RECENT_KEY = "labaguetex.recentCommands";
+  const RECENT_KEY = "raytex.recentCommands";
   let recent: string[] = [];
   try {
     recent = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");

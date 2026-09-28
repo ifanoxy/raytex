@@ -1,55 +1,64 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="75.79 46.82 250.88 101.49" width="502" height="203">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="75.89 46.82 327.53 101.49" width="655" height="203">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#26335f"/>
       <stop offset="1" stop-color="#111831"/>
     </linearGradient>
-    <linearGradient id="crust0" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f7d28c"/>
-      <stop offset="0.55" stop-color="#e0a04a"/>
-      <stop offset="1" stop-color="#b06a20"/>
+    <linearGradient id="beam" gradientUnits="userSpaceOnUse" x1="-400" y1="0" x2="400" y2="0">
+      <stop offset="0" stop-color="#ffae3b" stop-opacity="0"/>
+      <stop offset="0.14" stop-color="#ffcf6e" stop-opacity="0.95"/>
+      <stop offset="0.5" stop-color="#fff4d8"/>
+      <stop offset="0.86" stop-color="#ffcf6e" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#ffae3b" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="crust1" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f3c878"/>
-      <stop offset="0.55" stop-color="#d69038"/>
-      <stop offset="1" stop-color="#a55f18"/>
+    <linearGradient id="core" gradientUnits="userSpaceOnUse" x1="-310" y1="0" x2="310" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fff5de" stop-opacity="0.8"/>
-      <stop offset="1" stop-color="#fff5de" stop-opacity="0"/>
-    </linearGradient>
+    <radialGradient id="spark">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="0.25" stop-color="#fff0c4" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#ffb347" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="star">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#ffcf6e" stop-opacity="0.2"/>
+    </radialGradient>
+    <filter id="blur" x="-20%" y="-300%" width="140%" height="700%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
       <feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#000" flood-opacity="0.35"/>
     </filter>
+    <path id="g0-121" d="M59.178-48.717V-51.208C57.086-51.009 54.296-50.909 52.204-50.909C49.514-50.909 46.725-51.009 44.035-51.208V-48.717C46.227-48.518 46.924-47.323 46.924-45.729C46.924-44.234 46.127-43.039 45.43-41.943L33.176-23.811L19.427-44.035C18.929-44.732 18.232-45.729 18.232-46.725C18.232-48.717 21.121-48.717 22.316-48.717V-51.208L11.557-50.909C8.867-50.909 4.882-51.009 1.893-51.208V-48.717C7.073-48.717 8.269-48.12 10.062-45.529L27.098-20.523V-7.173C27.098-3.088 26.6-2.491 19.925-2.491V0L30.486-.299L41.146 0V-2.491C34.371-2.491 33.973-3.088 33.973-7.472V-20.423L48.418-41.743C52.005-47.123 55.293-48.518 59.178-48.717Z"/>
     <path id="g0-97" d="M57.684 0V-2.491C52.105-2.491 51.208-2.989 49.913-6.476L32.777-50.71C32.179-52.304 31.681-52.902 30.585-52.902C29.191-52.902 28.991-52.304 28.493-51.009L12.453-9.863C11.357-7.173 9.664-2.69 3.387-2.491V0C5.579-.199 8.468-.299 10.66-.299L18.929 0V-2.491C14.745-2.69 14.446-6.077 14.446-6.974C14.446-7.771 14.446-7.97 17.833-16.837H38.456L40.648-11.258C41.445-9.265 42.74-5.878 42.74-5.28C42.74-2.491 39.153-2.491 37.46-2.491V0L48.02-.299C51.407-.299 55.293-.1 57.684 0ZM37.46-19.328H18.829L28.194-43.337L37.46-19.328Z"/>
     <path id="g1-69" d="M60.473-25.205H58.68C56.488-10.56 55.193-2.59 37.659-2.59H23.811C19.826-2.59 19.626-3.088 19.626-6.476V-33.973H28.991C38.356-33.973 39.253-30.585 39.253-22.316H41.046V-48.219H39.253C39.253-39.95 38.356-36.563 28.991-36.563H19.626V-61.37C19.626-64.757 19.826-65.255 23.811-65.255H37.46C52.902-65.255 54.695-59.078 56.09-45.828H57.883L55.492-67.846H5.081V-65.255C11.955-65.255 13.051-65.255 13.051-60.772V-7.073C13.051-2.59 11.955-2.59 5.081-2.59V0H56.887L60.473-25.205Z"/>
-    <path id="g1-76" d="M53.998-25.205H52.204C51.407-15.342 50.112-2.59 33.076-2.59H23.811C19.826-2.59 19.626-3.088 19.626-6.476V-60.872C19.626-64.458 19.826-65.455 27.397-65.455H29.589V-68.045C25.504-67.846 20.722-67.846 16.638-67.846C13.549-67.846 7.97-67.846 5.081-68.045V-65.455C11.955-65.455 13.051-65.455 13.051-60.971V-7.073C13.051-2.59 11.955-2.59 5.081-2.59V0H51.606L53.998-25.205Z"/>
+    <path id="g1-82" d="M67.945-8.369C67.945-8.966 67.945-9.664 67.049-9.664C66.252-9.664 66.152-9.066 66.152-8.667C65.654-2.192 62.765 0 59.676 0C54.197 0 53.599-6.276 53.001-12.354C52.702-14.446 52.503-15.94 52.304-18.132C51.706-23.113 50.909-30.386 39.054-33.973C48.518-35.866 56.488-42.242 56.488-50.212C56.488-59.577 45.928-68.045 31.98-68.045H5.181V-65.455C12.055-65.455 13.151-65.455 13.151-60.971V-7.073C13.151-2.59 12.055-2.59 5.181-2.59V0C8.07-.199 13.25-.199 16.339-.199S24.608-.199 27.497 0V-2.59C20.623-2.59 19.527-2.59 19.527-7.073V-33.275H31.183C36.862-33.275 40.05-30.984 41.445-29.689C45.43-25.803 45.43-23.113 45.43-16.339C45.43-9.664 45.43-6.276 48.418-2.889C52.204 1.196 57.285 1.594 59.477 1.594C66.849 1.594 67.945-6.675 67.945-8.369ZM48.917-50.212C48.917-37.36 38.356-34.869 30.884-34.869H19.527V-61.569C19.527-64.956 19.726-65.455 23.711-65.455H30.984C39.253-65.455 48.917-62.565 48.917-50.212Z"/>
     <path id="g1-84" d="M63.661-45.729L61.968-67.746H4.483L2.79-45.729H4.583C5.878-62.267 7.273-65.156 22.615-65.156C24.408-65.156 27.298-65.156 28.095-65.056C29.988-64.757 29.988-63.562 29.988-61.27V-7.273C29.988-3.686 29.689-2.59 21.42-2.59H18.63V0L33.275-.199L47.92 0V-2.59H45.131C36.862-2.59 36.563-3.686 36.563-7.273V-61.27C36.563-63.462 36.563-64.658 38.356-65.056C39.153-65.156 42.042-65.156 43.836-65.156C59.078-65.156 60.573-62.267 61.868-45.729H63.661Z"/>
   </defs>
   <g filter="url(#shadow)">
     <g fill="#f6ead3" stroke="#f6ead3" stroke-width="1.7" stroke-linejoin="round">
-    <use href="#g1-76" x="76.712" y="120.869"/>
-    <use href="#g0-97" x="101.198" y="108.002"/>
-    <use href="#g1-84" x="148.593" y="120.869"/>
-    <use href="#g1-69" x="199.869" y="142.313"/>
-    </g>
-  <g transform="translate(285.50 86.85) rotate(45.7) scale(0.1212)">
-    <rect x="-400" y="-62" width="800" height="124" rx="62" fill="url(#crust0)" stroke="#7d4712" stroke-width="12"/>
-    <rect x="-356" y="-51" width="712" height="40" rx="20" fill="url(#shine)"/>
-    <g fill="none" stroke="#fde6b8" stroke-width="22" stroke-linecap="round">
-      <path d="M-215 30 C -192 -6, -168 -24, -136 -36"/>
-      <path d="M-40 30 C -17 -6, 7 -24, 39 -36"/>
-      <path d="M135 30 C 158 -6, 182 -24, 214 -36"/>
+    <use href="#g1-82" x="76.712" y="120.869"/>
+    <use href="#g0-97" x="120.744" y="108.002"/>
+    <use href="#g0-121" x="175.203" y="108.002"/>
+    <use href="#g1-84" x="225.338" y="120.869"/>
+    <use href="#g1-69" x="276.614" y="142.313"/>
     </g>
   </g>
-  <g transform="translate(285.50 86.85) rotate(-45.7) scale(0.1212)">
-    <rect x="-400" y="-62" width="800" height="124" rx="62" fill="url(#crust1)" stroke="#7d4712" stroke-width="12"/>
-    <rect x="-356" y="-51" width="712" height="40" rx="20" fill="url(#shine)"/>
-    <g fill="none" stroke="#fde6b8" stroke-width="22" stroke-linecap="round">
-      <path d="M-215 30 C -192 -6, -168 -24, -136 -36"/>
-      <path d="M-40 30 C -17 -6, 7 -24, 39 -36"/>
-      <path d="M135 30 C 158 -6, 182 -24, 214 -36"/>
-    </g>
+  <g transform="translate(362.25 86.85) rotate(45.7) scale(0.1331)">
+    <path d="M-420 0 Q 0 -120 420 0 Q 0 120 -420 0 Z" fill="url(#beam)" filter="url(#blur)" opacity="0.8"/>
+    <path d="M-400 0 Q 0 -64 400 0 Q 0 64 -400 0 Z" fill="url(#beam)"/>
+    <path d="M-330 0 Q 0 -22 330 0 Q 0 22 -330 0 Z" fill="url(#core)"/>
   </g>
+  <g transform="translate(362.25 86.85) rotate(-45.7) scale(0.1331)">
+    <path d="M-420 0 Q 0 -120 420 0 Q 0 120 -420 0 Z" fill="url(#beam)" filter="url(#blur)" opacity="0.8"/>
+    <path d="M-400 0 Q 0 -64 400 0 Q 0 64 -400 0 Z" fill="url(#beam)"/>
+    <path d="M-330 0 Q 0 -22 330 0 Q 0 22 -330 0 Z" fill="url(#core)"/>
+  </g>
+  <g transform="translate(362.25 86.85)">
+    <circle r="21.29" fill="url(#spark)"/>
+    <path d="M-27.68 0 Q 0 -3.19 27.68 0 Q 0 3.19 -27.68 0 Z" fill="url(#star)"/>
+    <path d="M0 -27.68 Q -3.19 0 0 27.68 Q 3.19 0 0 -27.68 Z" fill="url(#star)"/>
   </g>
 </svg>

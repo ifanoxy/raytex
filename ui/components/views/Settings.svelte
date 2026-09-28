@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Settings: application-wide ones, and the open project's labaguetex.toml.
+  // Settings: application-wide ones, and the open project's raytex.toml.
   import { actions, keyFor } from "$lib/actions";
   import { REPOSITORY_URL } from "$lib/constants";
   import { type MessageKey, t } from "$lib/i18n.svelte";
@@ -136,9 +136,9 @@
     return other ? t(other.title) : null;
   }
 
-  /** Opens labaguetex.toml in the editor (writing it first if it does not exist yet). */
+  /** Opens raytex.toml in the editor (writing it first if it does not exist yet). */
   async function editToml(root: string) {
-    const path = `${root}/labaguetex.toml`;
+    const path = `${root}/raytex.toml`;
     if (!(await ipc.pathExists(path))) await project.updateConfig(() => {});
     ui.closeOverlay();
     await editor.open(path);
@@ -502,7 +502,7 @@
       {:else if ui.settingsSection === "about"}
         <div class="about">
           <img src="/assets/logo.svg" alt="" width="88" height="88" />
-          <h3>LaBagueTex {app.info?.version}</h3>
+          <h3>RayTeX {app.info?.version}</h3>
           <p>{t("welcome.tagline")}</p>
           <p class="faint">{app.info?.os} · {app.info?.arch}</p>
           <p class="faint small">{t("settings.license")}</p>

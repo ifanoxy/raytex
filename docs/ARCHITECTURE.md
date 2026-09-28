@@ -1,38 +1,38 @@
 # Architecture
 
-LaBagueTex is split into an **engine** that knows everything about LaTeX and has no user interface, and **front ends** that use it: a desktop application and a command-line tool.
+RayTeX is split into an **engine** that knows everything about LaTeX and has no user interface, and **front ends** that use it: a desktop application and a command-line tool.
 
 ```
 ┌────────────────────────── ui/ (Svelte 5, TypeScript) ──────────────────────────┐
 │ CodeMirror 6 editor · pdf.js viewer · panels · stores (ui/lib/state)           │
 └───────────────▲──────────────────────────────────────────────┬─────────────────┘
                 │ events (build:*, tex:status, job:*, fs:changed)│ typed IPC (ui/lib/ipc.ts)
-┌───────────────┴──────────────── labaguetex-desktop (Tauri 2) ▼─────────────────┐
+┌───────────────┴──────────────── raytex-desktop (Tauri 2) ▼─────────────────┐
 │ commands/* (async, run on the blocking pool) · AppState · file watcher          │
 └───────────────────────────────────────▲──────────────────────────────────────────┘
                                         │ plain Rust calls
-┌─────────────────────────────── labaguetex-core ─────────────────────────────────┐
+┌─────────────────────────────── raytex-core ─────────────────────────────────┐
 │ workspace · syntax · completion · lint · navigation · build · log · synctex      │
 │ tex (distributions, texmf index, package analysis, managers, CTAN) · kb · help   │
 └──────────────────────────────────────────────────────────────────────────────────┘
-                     ▲ also used by labaguetex-cli (`baguette`)
+                     ▲ also used by raytex-cli (`raytex`)
 ```
 
-## labaguetex-core
+## raytex-core
 
-Pure Rust, synchronous, no global state: every function receives what it needs. It is tested on its own (`cargo test -p labaguetex-core`); tests that need a TeX installation or the network are marked `#[ignore]`.
+Pure Rust, synchronous, no global state: every function receives what it needs. It is tested on its own (`cargo test -p raytex-core`); tests that need a TeX installation or the network are marked `#[ignore]`.
 
 | Module | Role |
 |---|---|
 | `text` | Line index and conversions between byte offsets and positions. Positions exchanged with the interface are **0-based line + UTF-16 column**, like LSP and CodeMirror. |
 | `syntax` | Fast scanner producing a document index: commands, environments, sections, labels, references, citations, includes, packages, definitions, math spans, magic comments. `context` finds what the cursor is in (command name, argument of `\ref`, option list…). |
-| `workspace` | Open documents (editor text overrides disk), project root detection (`% !TEX root`, `\input` graph, `labaguetex.toml`), outline, labels, citations, project search, aux data from the last build. |
+| `workspace` | Open documents (editor text overrides disk), project root detection (`% !TEX root`, `\input` graph, `raytex.toml`), outline, labels, citations, project search, aux data from the last build. |
 | `kb` | Knowledge base embedded at compile time from `data/packages/*.json`: bilingual documentation of common commands, environments, symbols and options. |
 | `tex` | `discovery` finds distributions (TeX Live, MacTeX, TinyTeX, MiKTeX, Tectonic, system TeX Live, custom folders, login-shell `PATH`). `texmf` indexes every installed file (`ls-R`, TEXMFHOME, MiKTeX roots, Tectonic bundles). `packages` analyses **any** `.sty`/`.cls` source to extract commands, environments and options (with a cache). `manager` builds install/update plans (tlmgr, MiKTeX, dnf/zypper) with user-mode or elevation. `ctan` reads the CTAN catalogue. |
 | `completion` | Completion lists for every context, merging the kernel, the knowledge base, analysed packages and the project. Items are narrowed to what is typed before crossing the IPC bridge. |
 | `lint` | Checks that do not need a build (references, duplicates, missing files/packages, engine requirements, typography…). Each rule has an id and can be disabled. |
 | `navigation` | Hover, go to definition (including package sources), references, rename, formula under the cursor. |
-| `build` | Build plans and the smart driver (with `build::preamble`: pdfLaTeX preambles dumped into formats with mylatexformat in the background, keyed by the preamble, the local files it reads and the distribution; unsafe preambles skipped, failed passes redone without the format): engine choice, bibliography / index / glossary tools run only when their inputs changed (hashes in `build/.labaguetex-build.json`), reruns until stable, latexmk / single pass / custom steps, cancellation. `refine` locates the exact token of an error, then adds its fixes and explanation. |
+| `build` | Build plans and the smart driver (with `build::preamble`: pdfLaTeX preambles dumped into formats with mylatexformat in the background, keyed by the preamble, the local files it reads and the distribution; unsafe preambles skipped, failed passes redone without the format): engine choice, bibliography / index / glossary tools run only when their inputs changed (hashes in `build/.raytex-build.json`), reruns until stable, latexmk / single pass / custom steps, cancellation. `refine` locates the exact token of an error, then adds its fixes and explanation. |
 | `log` | TeX log parser (file stack, `file:line:error` and classic formats, warnings, bad boxes, missing files, rerun requests) and BibTeX / Biber logs; `hints` turns messages into explanations and fixes using `data/errors.json`. |
 | `fixes` | Quick fixes: `latex` finds, in the sources of the project (scanned like the editor does), the fix of each compiler error or warning (misspelt names, missing packages and TikZ libraries, braces, environments, tables, floats, definitions, preamble, bibliography…) and moves errors reported inside a package to the `\usepackage` that causes them; `text` edits the preamble like `ui/lib/preamble.ts`; `apply` applies a fix to files (tests, command line). |
 | `synctex` | Native SyncTeX parser (`.synctex.gz`), forward and inverse search. |
@@ -42,11 +42,11 @@ Pure Rust, synchronous, no global state: every function receives what it needs. 
 | `projects` | The projects folder (its projects, with their PDF for previews) and projects made from a file opened on its own (the file and every file it uses copied into a new folder). `Workspace::single_file` indexes such a file and what it reads, never the rest of its folder. |
 | `templates`, `help`, `settings`, `i18n`, `process`, `wordcount`, `bib` | Templates (empty projects, templates applied to an open project, example values for thumbnails compiled by `preview::compile_document`), help centre, settings files (versioned and migrated), messages, process spawning (streaming, process-tree kill, elevation), word count, BibTeX parsing. |
 
-### Data (`crates/labaguetex-core/data`)
+### Data (`crates/raytex-core/data`)
 
 Everything under `data/` is embedded by `build.rs`; adding a file never requires touching Rust code. See [knowledge-base.md](knowledge-base.md).
 
-## labaguetex-desktop
+## raytex-desktop
 
 A thin Tauri 2 shell around the engine.
 
@@ -75,7 +75,7 @@ Svelte 5 (runes) + TypeScript, built by Vite.
 - `lib/actions.ts`: the registry of every command, used by the palette, menus and customisable shortcuts.
 - `lib/locales/{en,fr}.ts`: interface texts; TypeScript checks that both have the same keys.
 - `components/`: layout, sidebar views, editor area, PDF viewer, bottom panel, dialogs and full-screen views.
-- `dev/mocks.ts` (browser development with a simulated engine) and `dev/selftest.ts` (end-to-end check of the real application, `LABAGUETEX_SELFTEST=<project> npm run app:dev`) are development-only and never bundled.
+- `dev/mocks.ts` (browser development with a simulated engine) and `dev/selftest.ts` (end-to-end check of the real application, `RAYTEX_SELFTEST=<project> npm run app:dev`) are development-only and never bundled.
 
 ## Design principles
 

@@ -12,7 +12,7 @@ import { project } from "./project.svelte";
 import { tex } from "./tex.svelte";
 import { ui } from "./ui.svelte";
 
-const AUTHOR_KEY = "labaguetex.author";
+const AUTHOR_KEY = "raytex.author";
 /** Thumbnails compiled at the same time (the engine allows as many). */
 const THUMB_WORKERS = 3;
 /** Width of the rendered thumbnails, in CSS pixels. */

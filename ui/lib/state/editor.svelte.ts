@@ -149,7 +149,7 @@ function positionMap(from: Text, to: Text, changes: ChangeSet): PositionMap {
 }
 
 function sourceLabel(d: Diagnostic): string {
-  const names: Record<string, string> = { latex: "LaTeX", bibtex: "BibTeX", biber: "Biber", index: "Index", syntax: "LaBagueTex", lint: "LaBagueTex", build: "build" };
+  const names: Record<string, string> = { latex: "LaTeX", bibtex: "BibTeX", biber: "Biber", index: "Index", syntax: "RayTeX", lint: "RayTeX", build: "build" };
   return d.code && (d.source === "lint" || d.source === "syntax") ? `${names[d.source]} · ${d.code}` : names[d.source];
 }
 
@@ -995,7 +995,7 @@ class EditorStore {
     }
   }
 
-  /** Files changed outside labaguetex (reported by the watcher). */
+  /** Files changed outside RayTeX (reported by the watcher). */
   async externalChanges(paths: string[]) {
     for (const p of paths) {
       const m = this.model(p);
@@ -1350,7 +1350,7 @@ class EditorStore {
 
   /** A file dragged from the project tree: insert the matching command where it is dropped. */
   private onDrop(e: DragEvent, view: EditorView): boolean {
-    const path = e.dataTransfer?.getData("application/x-labaguetex-path");
+    const path = e.dataTransfer?.getData("application/x-raytex-path");
     if (!path || view.state.readOnly) return false;
     e.preventDefault();
     const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
@@ -1358,7 +1358,7 @@ class EditorStore {
     view.focus();
     let paths = [path];
     try {
-      paths = JSON.parse(e.dataTransfer?.getData("application/x-labaguetex-paths") || "null") ?? paths;
+      paths = JSON.parse(e.dataTransfer?.getData("application/x-raytex-paths") || "null") ?? paths;
     } catch {
       /* one file */
     }

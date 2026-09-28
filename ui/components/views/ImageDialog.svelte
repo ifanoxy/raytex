@@ -362,7 +362,7 @@
       ondrop={(e) => {
         e.preventDefault();
         dragOver = false;
-        const path = e.dataTransfer?.getData("application/x-labaguetex-path");
+        const path = e.dataTransfer?.getData("application/x-raytex-path");
         if (path) void addPath(path);
         for (const f of e.dataTransfer?.files ?? []) if (f.type.startsWith("image/")) void addBlob(f);
       }}

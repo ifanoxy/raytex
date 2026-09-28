@@ -56,7 +56,7 @@
 
   function dragStart(e: DragEvent, i: number) {
     dragIndex = i;
-    e.dataTransfer?.setData("application/x-labaguetex-tab", String(i));
+    e.dataTransfer?.setData("application/x-raytex-tab", String(i));
     if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
   }
 

@@ -1,5 +1,5 @@
 // Types mirroring the Rust structures exchanged over IPC.
-// Keep in sync with crates/labaguetex-core and crates/labaguetex-desktop.
+// Keep in sync with crates/raytex-core and crates/raytex-desktop.
 
 export type Lang = "fr" | "en";
 
@@ -49,7 +49,7 @@ export interface Settings {
     restoreSession: boolean;
     beginnerTips: boolean;
     hideAuxFiles: boolean;
-    /** Folder of the projects (null: `labaguetex` in the documents folder). */
+    /** Folder of the projects (null: `RayTeX` in the documents folder). */
     projectsDir: string | null;
   };
   editor: {
@@ -115,7 +115,7 @@ export interface Settings {
   keybindings: Record<string, string>;
 }
 
-/** labaguetex.toml (snake_case, as written in the file). */
+/** raytex.toml (snake_case, as written in the file). */
 export interface ProjectConfig {
   project: { name?: string | null; main?: string | null; language?: string | null };
   build: {

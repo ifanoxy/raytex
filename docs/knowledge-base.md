@@ -1,12 +1,12 @@
 # Data files: knowledge base, templates, help, errors
 
-Everything in `crates/labaguetex-core/data/` is embedded in the binaries at compile time by `crates/labaguetex-core/build.rs`. Adding or editing a file never requires touching Rust code: rebuild and it is there.
+Everything in `crates/raytex-core/data/` is embedded in the binaries at compile time by `crates/raytex-core/build.rs`. Adding or editing a file never requires touching Rust code: rebuild and it is there.
 
 Every user-facing text is bilingual: `{ "en": "…", "fr": "…" }`. A missing language falls back to the other one, but please provide both.
 
 ## Knowledge base: `data/packages/<name>.json`
 
-LaBagueTex supports **every** package: the commands, environments and options of any installed package are read from its source code when a document loads it. The knowledge base only **adds** what a source file cannot tell: clear documentation, argument names, snippets, symbols with their glyph. Document a package here when it is widely used or its commands deserve an explanation.
+RayTeX supports **every** package: the commands, environments and options of any installed package are read from its source code when a document loads it. The knowledge base only **adds** what a source file cannot tell: clear documentation, argument names, snippets, symbols with their glyph. Document a package here when it is widely used or its commands deserve an explanation.
 
 ```json
 {
@@ -53,7 +53,7 @@ LaBagueTex supports **every** package: the commands, environments and options of
 | `symbols` | Groups of `[command, glyph]` pairs for the symbol palette, with a `category` (see `latex.json` for existing ones). |
 | `example` | Optional usage example shown in documentation. |
 
-The kernel lives in `latex.json`. Tests (`cargo test -p labaguetex-core kb`) check that every file parses.
+The kernel lives in `latex.json`. Tests (`cargo test -p raytex-core kb`) check that every file parses.
 
 ## Templates: `data/templates/<id>/`
 
@@ -87,7 +87,7 @@ Placeholders replaced in every text file when a project is created:
 
 `{{{title}}}` is a LaTeX brace followed by a placeholder: `\title{{{title}}}` becomes `\title{My title}`.
 
-Every template must build **without errors or warnings** in both languages: `cargo test -p labaguetex-core --release -- --ignored every_template_compiles` checks it with the installed distribution. Users can also save their own projects as templates from the application.
+Every template must build **without errors or warnings** in both languages: `cargo test -p raytex-core --release -- --ignored every_template_compiles` checks it with the installed distribution. Users can also save their own projects as templates from the application.
 
 ## Help guides: `data/help/<lang>/NN-id.md`
 
@@ -120,7 +120,7 @@ Each entry explains a LaTeX, BibTeX or Biber message:
   "preamble": "", "code": "\\begin{tikzpicture}…{{fr:Début|en:Start}}…\\end{tikzpicture}" }
 ```
 
-`category` is one of `basics`, `functions`, `diagrams`, `geometry`, `science`, `cs`, `math`. Texts inside the drawing use `{{fr:…|en:…}}`. `preamble` holds extra lines (`\pgfplotsset{compat=1.18}`). Every drawing must compile in both languages: `cargo test -p labaguetex-core --release -- --ignored every_tikz_template_compiles`.
+`category` is one of `basics`, `functions`, `diagrams`, `geometry`, `science`, `cs`, `math`. Texts inside the drawing use `{{fr:…|en:…}}`. `preamble` holds extra lines (`\pgfplotsset{compat=1.18}`). Every drawing must compile in both languages: `cargo test -p raytex-core --release -- --ignored every_tikz_template_compiles`.
 
 ## LaTeX font packages: `data/fonts.json`
 

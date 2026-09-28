@@ -1,6 +1,6 @@
 // End-to-end check of the real application (development builds only).
 //
-//   LABAGUETEX_SELFTEST=/path/to/project npm run app:dev
+//   RAYTEX_SELFTEST=/path/to/project npm run app:dev
 //
 // Opens the project, the main file, builds it with the real TeX
 // distribution, waits for the PDF to be drawn by pdf.js, exercises
@@ -694,7 +694,7 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     check("light tree", project.tree.length === 2 && project.tree[0].name === "devoir.tex", project.tree.map((n) => n.name).join(","));
     check("badge", !!document.querySelector(".toolbar .light-badge"));
     check("light build", await buildOk(log, "light"));
-    check("nothing written next to the file", !(await ipc.pathExists(`${loose}/build`)) && !(await ipc.pathExists(`${loose}/labaguetex.toml`)) && !(await ipc.pathExists(`${loose}/devoir.aux`)));
+    check("nothing written next to the file", !(await ipc.pathExists(`${loose}/build`)) && !(await ipc.pathExists(`${loose}/raytex.toml`)) && !(await ipc.pathExists(`${loose}/devoir.aux`)));
     check("pdf in the cache", !!viewer.pdf && !viewer.pdf.startsWith(loose), viewer.pdf);
     await scene("light-mode");
 
@@ -709,7 +709,7 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     await until(() => ui.overlay === "image", 20_000, "image dialog after conversion");
     check("converted", !project.info?.light && project.info?.root === `${projectsDir}/devoir-de-maths`, project.info?.root);
     check("files copied", (await ipc.pathExists(`${projectsDir}/devoir-de-maths/partie.tex`)) && (await ipc.pathExists(`${projectsDir}/devoir-de-maths/devoir.tex`)));
-    check("original untouched", !(await ipc.pathExists(`${loose}/labaguetex.toml`)));
+    check("original untouched", !(await ipc.pathExists(`${loose}/raytex.toml`)));
     ui.closeOverlay();
     check("converted build", await buildOk(log, "converted"));
 

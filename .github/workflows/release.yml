@@ -47,9 +47,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          projectPath: crates/labaguetex-desktop
+          projectPath: crates/raytex-desktop
           tagName: ${{ github.ref_name }}
-          releaseName: LaBagueTex ${{ github.ref_name }}
+          releaseName: RayTeX ${{ github.ref_name }}
           releaseBody: See CHANGELOG.md for the changes of this version.
           releaseDraft: true
           prerelease: false

@@ -92,7 +92,7 @@ On discrétise $u_i^n \\approx u(i h, n \\tau)$ :
   year    = {1947},
 }
 `,
-  [p("labaguetex.toml")]: `[project]\nname = "Mémoire"\nmain = "main.tex"\n`,
+  [p("raytex.toml")]: `[project]\nname = "Mémoire"\nmain = "main.tex"\n`,
 };
 
 const tree: T.FileNode[] = [
@@ -106,7 +106,7 @@ const tree: T.FileNode[] = [
     ],
   },
   { name: "figures", path: p("figures"), dir: true, children: [{ name: "courbe.png", path: p("figures/courbe.png"), dir: false, children: [] }] },
-  { name: "labaguetex.toml", path: p("labaguetex.toml"), dir: false, children: [] },
+  { name: "raytex.toml", path: p("raytex.toml"), dir: false, children: [] },
   { name: "main.tex", path: p("main.tex"), dir: false, children: [] },
   { name: "refs.bib", path: p("refs.bib"), dir: false, children: [] },
 ];
@@ -438,7 +438,7 @@ export function installMocks() {
       const a = (args ?? {}) as Record<string, unknown>;
       switch (cmd) {
         case "app_info":
-          return { version: "0.1.0-dev", os: "macos", arch: "aarch64", settingsPath: "/Users/demo/Library/Application Support/org.labaguetex.app/settings.toml", templatesPath: "/Users/demo/Library/Application Support/org.labaguetex.app/templates" };
+          return { version: "0.1.0-dev", os: "macos", arch: "aarch64", settingsPath: "/Users/demo/Library/Application Support/org.raytex.app/settings.toml", templatesPath: "/Users/demo/Library/Application Support/org.raytex.app/templates" };
         case "take_open_requests":
           return [];
         case "quit_app":
@@ -552,7 +552,7 @@ export function installMocks() {
             { id: "latex-basics", title: "Les bases de LaTeX" },
           ];
         case "help_page":
-          return `<h1>Premiers pas</h1><p>Bienvenue dans <strong>LaBagueTex</strong> !</p><pre><code>\\documentclass{article}\n\\begin{document}\nBonjour !\n\\end{document}\n</code></pre>`;
+          return `<h1>Premiers pas</h1><p>Bienvenue dans <strong>RayTeX</strong> !</p><pre><code>\\documentclass{article}\n\\begin{document}\nBonjour !\n\\end{document}\n</code></pre>`;
         case "reference_search":
           return [{ label: "\\frac", environment: false, package: null, args: "{num}{den}", doc: "Une fraction.", glyph: "½", insert: "\\frac{${1}}{${2}}" }];
         case "symbol_palette":
@@ -588,14 +588,14 @@ export function installMocks() {
             { id: "exam", name: { fr: "Examen", en: "Exam" }, description: { fr: "Sujet avec barème et corrigé.", en: "Exam." }, category: "teacher", order: 9, main: "main.tex", engine: null, tags: ["exam"], user: false },
           ];
         case "projects_dir":
-          return "/Users/demo/Documents/LaBagueTex";
+          return "/Users/demo/Documents/RayTeX";
         case "list_projects":
           return {
-            dir: "/Users/demo/Documents/LaBagueTex",
+            dir: "/Users/demo/Documents/RayTeX",
             projects: [
               { path: ROOT, name: "Mémoire", main: p("main.tex"), modified: Date.now() / 1000 - 3600, pdf: p("build/main.pdf") },
-              { path: "/Users/demo/Documents/LaBagueTex/td-analyse", name: "TD d'analyse", main: "/Users/demo/Documents/LaBagueTex/td-analyse/main.tex", modified: Date.now() / 1000 - 86400 * 2, pdf: null },
-              { path: "/Users/demo/Documents/LaBagueTex/cours-physique", name: "Cours de physique", main: "/Users/demo/Documents/LaBagueTex/cours-physique/main.tex", modified: Date.now() / 1000 - 86400 * 9, pdf: null },
+              { path: "/Users/demo/Documents/RayTeX/td-analyse", name: "TD d'analyse", main: "/Users/demo/Documents/RayTeX/td-analyse/main.tex", modified: Date.now() / 1000 - 86400 * 2, pdf: null },
+              { path: "/Users/demo/Documents/RayTeX/cours-physique", name: "Cours de physique", main: "/Users/demo/Documents/RayTeX/cours-physique/main.tex", modified: Date.now() / 1000 - 86400 * 9, pdf: null },
             ],
             recent: session.recent,
           };

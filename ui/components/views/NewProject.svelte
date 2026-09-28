@@ -10,7 +10,7 @@
   import Icon from "../common/Icon.svelte";
   import Modal from "../common/Modal.svelte";
 
-  const AUTHOR_KEY = "labaguetex.author";
+  const AUTHOR_KEY = "raytex.author";
 
   function remembered(key: string): string {
     try {
