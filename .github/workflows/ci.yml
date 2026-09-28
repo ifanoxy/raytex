@@ -109,6 +109,21 @@ jobs:
           Write-Output "exit code: $LASTEXITCODE"
           if (Test-Path smoke.log) { Get-Content smoke.log -Tail 40 } else { Write-Output "no log" }
           if (Test-Path smoke.pdf) { Write-Output "PDF written" } else { Write-Output "no PDF" }
+      # The same command line and environment as a build of RayTeX, in the
+      # temporary folder the tests use.
+      - name: Compilation as RayTeX runs it
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:TEMP "raytex-smoke"
+          New-Item -ItemType Directory -Force (Join-Path $dir "build") | Out-Null
+          Copy-Item smoke.tex $dir
+          Set-Location $dir
+          $env:TEXINPUTS = "$dir;"
+          $env:BIBINPUTS = "$dir;"
+          pdflatex --enable-installer -synctex=1 -interaction=nonstopmode -file-line-error "-output-directory=$dir\build" smoke.tex
+          Write-Output "exit code: $LASTEXITCODE"
+          Get-ChildItem build | Format-Table Name, Length
+          if (Test-Path build\smoke.log) { Get-Content build\smoke.log -Tail 20 } else { Write-Output "no log" }
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Engine tests needing TeX

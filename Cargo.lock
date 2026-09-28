@@ -3156,6 +3156,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "directories",
+ "dunce",
  "raytex-core",
  "serde_json",
 ]
@@ -3165,6 +3166,7 @@ name = "raytex-core"
 version = "0.1.0"
 dependencies = [
  "directories",
+ "dunce",
  "flate2",
  "ignore",
  "libc",

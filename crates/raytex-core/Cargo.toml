@@ -19,6 +19,7 @@ regex.workspace = true
 memchr.workspace = true
 ignore.workspace = true
 directories.workspace = true
+dunce.workspace = true
 pulldown-cmark.workspace = true
 tracing.workspace = true
 ureq.workspace = true

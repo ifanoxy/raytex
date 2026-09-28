@@ -333,7 +333,7 @@ fn resolve_file(file: Option<PathBuf>) -> Result<PathBuf, String> {
                 .ok_or("no .tex document found here")?
         }
     };
-    std::fs::canonicalize(&file).map_err(|e| format!("{}: {e}", file.display()))
+    dunce::canonicalize(&file).map_err(|e| format!("{}: {e}", file.display()))
 }
 
 fn doctor(settings: &Settings, lang: Lang, json: bool) -> Result<ExitCode, String> {

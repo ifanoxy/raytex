@@ -60,6 +60,7 @@ pub const RULES: &[(&str, Severity)] = &[
     ("paragraph-break", Severity::Hint),
     ("bib-fields", Severity::Hint),
     ("cleveref-babel-french", Severity::Warning),
+    ("tikz-semicolon", Severity::Warning),
 ];
 
 struct Linter<'a> {
@@ -90,6 +91,7 @@ pub fn lint(ws: &Workspace, file: &Path, opts: &LintOptions<'_>) -> Vec<Diagnost
         DocKind::Tex => {
             l.excluded = excluded_spans(doc);
             l.structure(false);
+            l.tikz_paths();
             l.references();
             l.files();
             l.packages();
@@ -202,6 +204,101 @@ impl Linter<'_> {
                 explanation: hint.to_owned(),
             });
             d.fixes = fixes;
+        }
+    }
+
+    /// TikZ paths not ended by `;` before the next one starts (TeX gives up
+    /// on the path, or older versions silently draw something else).
+    fn tikz_paths(&mut self) {
+        const STARTERS: &[&str] = &[
+            "draw",
+            "fill",
+            "filldraw",
+            "path",
+            "node",
+            "shade",
+            "shadedraw",
+            "clip",
+            "coordinate",
+            "pattern",
+            "pic",
+            "graph",
+            "matrix",
+            "addplot",
+            "addplot3",
+        ];
+        let text = self.doc.text.clone();
+        let masked = crate::fixes::text::mask(&text);
+        let pictures: Vec<(usize, usize)> = self
+            .doc
+            .index
+            .environments
+            .iter()
+            .filter(|e| e.name == "tikzpicture")
+            .filter_map(|e| e.end.as_ref().map(|end| (e.begin.end, end.start)))
+            .collect();
+        let mut missing: Vec<(usize, Span)> = Vec::new();
+        for (from, to) in pictures {
+            let b = masked.as_bytes();
+            let (mut depth, mut open, mut last) = (0i32, false, from);
+            let mut i = from;
+            while i < to {
+                match b[i] {
+                    b'{' | b'[' => depth += 1,
+                    b'}' | b']' => depth -= 1,
+                    b';' if depth == 0 => open = false,
+                    b'\\' => {
+                        let name: String = masked[i + 1..to]
+                            .chars()
+                            .take_while(char::is_ascii_alphanumeric)
+                            .collect();
+                        if depth == 0 && !name.is_empty() {
+                            let starts = STARTERS.contains(&name.as_str());
+                            let boundary = matches!(name.as_str(), "begin" | "end");
+                            if open && (starts || boundary) {
+                                missing.push((last, i..i + 1 + name.len()));
+                                open = false;
+                            }
+                            if starts {
+                                open = true;
+                            }
+                        }
+                        i += 1 + name.len().max(1);
+                        last = i;
+                        continue;
+                    }
+                    _ => {}
+                }
+                if !b[i].is_ascii_whitespace() {
+                    last = i + 1;
+                }
+                i += 1;
+            }
+        }
+        for (at, span) in missing {
+            let msg = self
+                .t(
+                    "Il manque « ; » à la fin du tracé TikZ précédent",
+                    "“;” is missing at the end of the previous TikZ path",
+                )
+                .to_owned();
+            let fix = Fix::Edits {
+                title: self
+                    .t(
+                        "Ajouter le ; qui termine le tracé",
+                        "Add the ; that ends the path",
+                    )
+                    .into(),
+                edits: vec![self.edit(at..at, ";")],
+            };
+            let d = self.push(
+                Severity::Warning,
+                Source::Lint,
+                "tikz-semicolon",
+                &span,
+                msg,
+            );
+            d.fixes.push(fix);
         }
     }
 
@@ -1601,6 +1698,10 @@ fn explanation(code: &str, lang: Lang) -> Option<&'static str> {
             "Une entrée sans titre s'affichera incomplète dans la bibliographie.",
             "An entry without a title will be incomplete in the bibliography.",
         ),
+        "tikz-semicolon" => (
+            "Chaque tracé TikZ (`\\draw`, `\\node`, `\\fill`…) se termine par `;`. Sans lui, le tracé suivant est lu comme la suite du précédent.",
+            "Every TikZ path (`\\draw`, `\\node`, `\\fill`…) ends with `;`. Without it, the next path is read as the rest of the previous one.",
+        ),
         "cleveref-babel-french" => (
             "Avec babel en français, « : » devient un caractère actif : les labels comme `sec:intro` font échouer `\\cref`. `\\AtBeginDocument{\\shorthandoff{:}}` le désactive.",
             "With French babel, “:” becomes an active character: labels like `sec:intro` make `\\cref` fail. `\\AtBeginDocument{\\shorthandoff{:}}` turns it off.",
@@ -1688,6 +1789,14 @@ mod tests {
             .into_iter()
             .map(|d| (d.code.unwrap_or_default(), d.message))
             .collect()
+    }
+
+    #[test]
+    fn tikz_paths_without_semicolon() {
+        let main = "\\documentclass{article}\n\\usepackage{tikz}\n\\begin{document}\n\\begin{tikzpicture}\n\\draw (0,0) -- (1,1) % trait\n\\draw (1,0) -- (0,1);\n\\node[draw] at (0,0) {$\\alpha; \\beta$};\n\\draw (0,0) node[above] {A} -- (1,0);\n\\foreach \\x in {1,2} { \\draw (\\x,0) circle (1pt); }\n\\end{tikzpicture}\n\\end{document}\n";
+        let d = lint_text(&[("main.tex", main)], "main.tex", LintOptions::default());
+        let found: Vec<_> = d.iter().filter(|(c, _)| c == "tikz-semicolon").collect();
+        assert_eq!(found.len(), 1, "{d:?}");
     }
 
     #[test]

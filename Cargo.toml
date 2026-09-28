@@ -23,6 +23,7 @@ regex = "1"
 memchr = "2"
 ignore = "0.4"
 directories = "6"
+dunce = "1"
 pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
 libc = "0.2"
 tracing = "0.1"

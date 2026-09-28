@@ -1129,7 +1129,7 @@
   },
   {
     "id": "no-hyphenation",
-    "match": "No hyphenation patterns were preloaded",
+    "match": "No hyphenation patterns were preloaded|Hyphenation patterns for '.*' will be used instead",
     "title": {
       "en": "No hyphenation for this language",
       "fr": "Césure non disponible pour cette langue"

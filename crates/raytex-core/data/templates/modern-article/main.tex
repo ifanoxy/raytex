@@ -5,9 +5,12 @@
 \usepackage[{{babel}}]{babel}
 \usepackage{unicode-math}
 % {{fr:Libertinus : belles polices libres avec lettres grecques|en:Libertinus: nice free fonts with Greek letters}}
-\setmainfont{Libertinus Serif}
-\setsansfont{Libertinus Sans}
-\setmathfont{Libertinus Math}
+% {{fr:Chargées par nom de fichier : trouvées par toutes les distributions (MiKTeX compris)|en:Loaded by file name: found by every distribution (MiKTeX included)}}
+\setmainfont{LibertinusSerif}[Extension=.otf, UprightFont=*-Regular,
+  BoldFont=*-Bold, ItalicFont=*-Italic, BoldItalicFont=*-BoldItalic]
+\setsansfont{LibertinusSans}[Extension=.otf, UprightFont=*-Regular,
+  BoldFont=*-Bold, ItalicFont=*-Italic]
+\setmathfont{LibertinusMath-Regular.otf}
 \usepackage{microtype}
 \usepackage[margin=2.5cm]{geometry}
 \usepackage{amsmath}

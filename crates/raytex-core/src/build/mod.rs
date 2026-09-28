@@ -681,7 +681,15 @@ impl Runner<'_, '_> {
             .last_output
             .iter()
             .rev()
-            .find(|l| !l.starts_with("This is ") && !l.trim_start().starts_with('('))
+            .find(|l| {
+                // Not the banner, the files read, nor MiKTeX's reminders
+                // ("major issue: … checked for updates", "security risk").
+                !l.starts_with("This is ")
+                    && !l.trim_start().starts_with('(')
+                    && !l.contains("major issue")
+                    && !l.contains("minor issue")
+                    && !l.contains("security risk")
+            })
             .cloned()
             .unwrap_or_default();
         let mut d = Diagnostic::new(

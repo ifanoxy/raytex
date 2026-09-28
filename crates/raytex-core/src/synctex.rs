@@ -218,7 +218,7 @@ impl SyncTex {
 
     fn tags_for(&self, file: &Path) -> Vec<u32> {
         let want = crate::log::normalize(file);
-        let canonical = std::fs::canonicalize(file).ok();
+        let canonical = dunce::canonicalize(file).ok();
         let mut tags: Vec<u32> = self
             .inputs
             .iter()
@@ -226,7 +226,7 @@ impl SyncTex {
                 *p == want
                     || canonical
                         .as_ref()
-                        .is_some_and(|c| std::fs::canonicalize(p).ok().as_ref() == Some(c))
+                        .is_some_and(|c| dunce::canonicalize(p).ok().as_ref() == Some(c))
             })
             .map(|(t, _)| *t)
             .collect();

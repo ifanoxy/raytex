@@ -492,6 +492,8 @@ impl Parser<'_> {
         let severity = if lower.contains("rerun")
             || lower.starts_with("there were")
             || lower.starts_with("marginpar on page")
+            // lipsum without Latin hyphenation: only the dummy text is concerned.
+            || lower.contains("hyphenation patterns for")
             || stale_language
         {
             Severity::Info

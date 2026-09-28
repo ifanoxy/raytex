@@ -2479,7 +2479,8 @@ fn option_clash(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
 }
 
 static BABEL_DEPRECATED: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"Option '(\w+)' for Babel is \*deprecated\*.*use '(\w+)'").unwrap()
+    // Quoted 'francais' (recent babel) or `francais' (older ones).
+    Regex::new(r"Option [`'](\w+)' for Babel is \*deprecated\*.*use [`'](\w+)'").unwrap()
 });
 static BABEL_UNKNOWN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"Unknown option '([^']+)'|haven't defined the language '([^']+)'").unwrap()

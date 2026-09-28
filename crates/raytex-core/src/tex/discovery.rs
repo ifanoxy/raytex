@@ -377,17 +377,18 @@ pub fn detect(extra: &[PathBuf]) -> Vec<Distribution> {
     found
 }
 
+/// Without the `\\?\` prefix of Windows, which MiKTeX and many tools refuse.
 fn canonical_bin_dir(dir: &Path) -> PathBuf {
     for engine in ["pdflatex", "xelatex", "lualatex", "tectonic", "latex"] {
         let exe = dir.join(exe_name(engine));
-        if let Ok(real) = std::fs::canonicalize(&exe)
+        if let Ok(real) = dunce::canonicalize(&exe)
             && let Some(parent) = real.parent()
         {
             // pdflatex is often a link to pdftex in the same directory.
             return parent.to_path_buf();
         }
     }
-    std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf())
+    dunce::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf())
 }
 
 /// Builds a [`Distribution`] from a binary directory.
