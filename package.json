@@ -12,10 +12,10 @@
     "tauri": "tauri",
     "app:dev": "tauri dev",
     "app:build": "tauri build",
-    "test": "node --test \"ui/**/*.test.ts\""
+    "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --test \"ui/**/*.test.ts\""
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
