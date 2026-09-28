@@ -393,7 +393,11 @@ pub fn parse_tlmgr_info_data(out: &str) -> Vec<RepositoryPackage> {
 
 /// Command opening the documentation of a package (`texdoc pkg`).
 pub fn texdoc(dist: &Distribution, package: &str) -> Option<Cmd> {
-    dist.tool("texdoc").map(|_| dist.cmd("texdoc").arg(package))
+    if dist.tool("texdoc").is_some() {
+        return Some(dist.cmd("texdoc").arg(package));
+    }
+    // MiKTeX's own viewer when its texdoc is not installed.
+    dist.tool("mthelp").map(|_| dist.cmd("mthelp").arg(package))
 }
 
 // ------------------------------------------------------------ distributions

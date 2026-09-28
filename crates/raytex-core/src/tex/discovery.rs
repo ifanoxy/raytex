@@ -147,6 +147,7 @@ pub const TOOLS: &[&str] = &[
     "mpm",
     "initexmf",
     "texdoc",
+    "mthelp",
     "chktex",
     "latexindent",
     "texcount",

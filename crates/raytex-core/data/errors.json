@@ -1332,6 +1332,18 @@
     }
   },
   {
+    "id": "biber-missing",
+    "match": "Biber (est nécessaire|is required)",
+    "title": {
+      "en": "Biber is not installed",
+      "fr": "Biber n'est pas installé"
+    },
+    "explanation": {
+      "en": "biblatex sorts the bibliography with the Biber program, which this distribution does not have yet (a basic MiKTeX installation does not include it). Install it in one click, or load biblatex with `backend=bibtex`.",
+      "fr": "biblatex trie la bibliographie avec le programme Biber, que cette distribution n'a pas encore (une installation de base de MiKTeX ne le contient pas). Installez-le en un clic, ou chargez biblatex avec `backend=bibtex`."
+    }
+  },
+  {
     "id": "emergency-stop",
     "match": "Emergency stop|Fatal error occurred|job aborted",
     "title": {

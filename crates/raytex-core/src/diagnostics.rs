@@ -210,6 +210,12 @@ impl Diagnostic {
         self
     }
 
+    /// Adds a fix.
+    pub fn with_fix(mut self, fix: Fix) -> Self {
+        self.fixes.push(fix);
+        self
+    }
+
     /// Sets file and range.
     pub fn at(mut self, file: Option<PathBuf>, range: Range) -> Self {
         self.file = file;

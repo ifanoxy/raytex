@@ -24,7 +24,7 @@ use std::time::{Duration, Instant, SystemTime};
 
 use serde::{Deserialize, Serialize};
 
-use crate::diagnostics::{Diagnostic, Severity, Source};
+use crate::diagnostics::{Diagnostic, Fix, Severity, Source};
 use crate::i18n::Lang;
 use crate::log::{self, LogReport, bibtex};
 use crate::process::{self, Cmd, Stream};
@@ -714,7 +714,10 @@ impl Runner<'_, '_> {
                                     "Biber is required (biblatex) but not installed.",
                                 ),
                             )
-                            .with_code("biber-missing"),
+                            .with_code("biber-missing")
+                            .with_fix(Fix::InstallPackage {
+                                file: "biber".into(),
+                            }),
                         );
                     } else {
                         let cmd = self
