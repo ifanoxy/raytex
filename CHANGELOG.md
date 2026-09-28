@@ -13,6 +13,12 @@ First version.
 - Tested with the local TeX distribution on about 110 documents made of common commands and common mistakes: each one is reported, explained and fixed, and a document using the most common commands and environments compiles without any warning (`crates/raytex-core/tests/common_mistakes.rs`).
 - The application is now called **RayTeX**, with a new logo (the letters of the \\LaTeX logo, whose X is two crossed rays of light); the command line is `raytex`. The folders and files of the versions named LaBagueTex follow on first start: projects folder (`Documents/RayTeX`), settings, session and cache, and each project's `labaguetex.toml` (renamed `raytex.toml` when the project opens).
 
+### Windows
+- The repository can be checked out on Windows: the module `aux.rs` (AUX is a name Windows reserves) is now `auxfile.rs`, and the CI checks that every file name is valid on Windows; line endings are kept by `.gitattributes`.
+- Characters typed with AltGr (Ctrl + Alt for the page: `{ [ @ \\ €` on AZERTY) are never taken for Ctrl + Alt shortcuts.
+- A file opened from Explorer while RayTeX runs goes to the running window (single instance, Windows and Linux).
+- CI: integration tests with MiKTeX on Windows (packages installed on the fly), next to TeX Live on Linux; [docs/WINDOWS.md](docs/WINDOWS.md) explains how to build, test and check MiKTeX on Windows.
+
 ### Writing and layout
 - Several files selected in the project tree (Shift + click for a range, Ctrl / ⌘ + click to add or remove, Shift + arrows, Ctrl / ⌘ + A), dragged into a folder or the text, opened, inserted or moved to the trash together (one confirmation).
 - Files opened from the Finder (double click, *Open with*, dropped on the icon) or passed on the command line: a `.tex` opens in light mode, or in its project when it belongs to one; at start-up it takes the place of the last session. Quitting with ⌘Q asks about unsaved files like closing the window. The macOS bundle is signed ad hoc (it opens on another Mac instead of being reported as damaged).

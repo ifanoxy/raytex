@@ -18,6 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Windows cannot create files named CON, PRN, AUX, NUL, COM1…, LPT1…
+      # (even with an extension), nor names with < > : " | ? * or a final dot.
+      - name: File names valid on Windows
+        run: |
+          bad=$(git ls-files | tr '/' '\n' | grep -iE '^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$|[<>:"|?*]|[. ]$' || true)
+          if [ -n "$bad" ]; then echo "Names Windows refuses: $bad"; exit 1; fi
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -68,9 +74,34 @@ jobs:
       - name: TeX Live and Linux dependencies of Tauri
         run: |
           sudo apt-get update
-          sudo apt-get install -y texlive-latex-extra texlive-lang-french texlive-science texlive-pictures texlive-bibtex-extra texlive-fonts-extra biber latexmk lmodern \
+          sudo apt-get install -y texlive-latex-extra texlive-lang-french texlive-lang-cyrillic texlive-science texlive-pictures texlive-bibtex-extra texlive-fonts-extra texlive-luatex texlive-xetex fonts-lmodern biber latexmk lmodern \
             libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libgtk-3-dev
+          # LuaLaTeX finds the OpenType fonts through its own database.
+          luaotfload-tool --update --force
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Engine tests needing TeX
         run: cargo test -p raytex-core --release -- --ignored --skip ctan
+
+  miktex:
+    name: Integration tests with MiKTeX (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: MiKTeX (packages installed on the fly)
+        shell: pwsh
+        run: |
+          choco install miktex --no-progress -y
+          $bin = "C:\Program Files\MiKTeX\miktex\bin\x64"
+          if (-not (Test-Path "$bin\pdflatex.exe")) { Get-ChildItem -Recurse -Filter pdflatex.exe "C:\Program Files" | Select-Object -First 3 | Format-List FullName; exit 1 }
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          & "$bin\initexmf.exe" --admin --set-config-value="[MPM]AutoInstall=1"
+          & "$bin\initexmf.exe" --set-config-value="[MPM]AutoInstall=1"
+          & "$bin\miktex.exe" --admin packages update-package-database
+          & "$bin\initexmf.exe" --admin --update-fndb
+          & "$bin\pdflatex.exe" --version
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Engine tests needing TeX
+        run: cargo test -p raytex-core --release -- --ignored --skip ctan --nocapture

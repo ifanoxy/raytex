@@ -260,7 +260,7 @@ fn compile(dist: &Distribution, index: &TexmfIndex, main: &Path, badboxes: bool)
     let mut diagnostics = outcome.diagnostics;
     // Live checks, with the auxiliary data of the build (labels, citations).
     let mut ws = Workspace::open(dir);
-    let aux = raytex_core::aux::read(
+    let aux = raytex_core::auxfile::read(
         &plan.out_dir,
         &plan.out_dir.join(format!("{}.aux", plan.job)),
     );

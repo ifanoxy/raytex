@@ -40,3 +40,16 @@ test("modifiers and Shift", () => {
   // Punctuation: Shift is not checked (it may be needed to type it).
   assert.equal(matchesKey(ev(".", "Period", { meta: true, shift: true }), "Mod-.", true), true);
 });
+
+test("Windows and Linux: characters typed with AltGr (Ctrl + Alt) are never shortcuts", () => {
+  // AZERTY: AltGr+4 gives {, AltGr+E gives €; Polish: AltGr+S gives ś.
+  assert.equal(matchesKey(ev("{", "Digit4", { ctrl: true, alt: true }), "Mod-Alt-4", false), false);
+  assert.equal(matchesKey(ev("€", "KeyE", { ctrl: true, alt: true }), "Mod-Alt-e", false), false);
+  assert.equal(matchesKey(ev("ś", "KeyS", { ctrl: true, alt: true }), "Mod-Alt-s", false), false);
+  assert.equal(matchesKey(ev("Dead", "Digit7", { ctrl: true, alt: true }), "Mod-Alt-7", false), false);
+  // Real Ctrl + Alt shortcuts still work.
+  assert.equal(matchesKey(ev("s", "KeyS", { ctrl: true, alt: true }), "Mod-Alt-s", false), true);
+  assert.equal(matchesKey(ev("p", "KeyP", { ctrl: true, alt: true }), "Mod-Alt-p", false), true);
+  // macOS: ⌥ characters with ⌘ keep their physical key.
+  assert.equal(matchesKey(ev("π", "KeyP", { meta: true, alt: true }), "Mod-Alt-p", true), true);
+});

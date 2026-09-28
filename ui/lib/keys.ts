@@ -54,8 +54,19 @@ export function eventKeys(e: KeyEventLike): string[] {
   return names;
 }
 
+/**
+ * On Windows and Linux, AltGr reaches the page as Ctrl + Alt: a character
+ * typed that way (`{`, `[`, `@`, `€` on AZERTY, `ś` on Polish keyboards…)
+ * is text, never a shortcut.
+ */
+export function isAltGrText(e: KeyEventLike, mac: boolean): boolean {
+  if (mac || !e.ctrlKey || !e.altKey) return false;
+  return e.key === "Dead" || (e.key.length === 1 && !/^[a-z0-9]$/i.test(e.key));
+}
+
 /** Whether `e` is the shortcut `spec` (`Mod` is ⌘ on macOS, Ctrl elsewhere). */
 export function matchesKey(e: KeyEventLike, spec: string, mac: boolean): boolean {
+  if (isAltGrText(e, mac)) return false;
   const k = parseKey(spec, mac);
   if (e.ctrlKey !== k.ctrl || e.metaKey !== k.meta || e.altKey !== k.alt) return false;
   if (!eventKeys(e).includes(k.key)) return false;

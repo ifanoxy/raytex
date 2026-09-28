@@ -1,0 +1,13 @@
+# The same line endings on every system (tests compare texts, TeX files
+# and scripts are read as they are in the repository).
+* text=auto eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.png binary
+*.icns binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary

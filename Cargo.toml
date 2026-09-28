@@ -34,6 +34,7 @@ tauri-build = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-window-state = "2"
+tauri-plugin-single-instance = "2"
 notify = "8"
 trash = "5"
 clap = { version = "4", features = ["derive"] }

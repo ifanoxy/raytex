@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use serde::Serialize;
 
-use crate::aux::{AuxData, LabelInfo};
+use crate::auxfile::{AuxData, LabelInfo};
 use crate::bib::{self, BibDatabase};
 use crate::log::normalize;
 use crate::settings::ProjectConfig;
@@ -960,7 +960,7 @@ impl Workspace {
 /// Numbers headings with the table of contents of the last build: the
 /// n-th numbered `\section` gets the n-th section number of the TOC (exact
 /// even with `\appendix`, custom counters or classes).
-fn number_from_toc(items: &mut [OutlineItem], toc: &[crate::aux::TocEntry]) {
+fn number_from_toc(items: &mut [OutlineItem], toc: &[crate::auxfile::TocEntry]) {
     let mut next: HashMap<&str, usize> = HashMap::new();
     for item in items.iter_mut() {
         if item.starred {

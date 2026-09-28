@@ -29,7 +29,7 @@
 
 #![warn(missing_docs)]
 
-pub mod aux;
+pub mod auxfile;
 pub mod bib;
 pub mod build;
 pub mod completion;

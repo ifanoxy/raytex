@@ -242,7 +242,7 @@ fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBo
     let _ = forwarder.join();
 
     // Real label numbers for completion and the outline.
-    let aux = raytex_core::aux::read(
+    let aux = raytex_core::auxfile::read(
         &plan.out_dir,
         &plan.out_dir.join(format!("{}.aux", plan.job)),
     );

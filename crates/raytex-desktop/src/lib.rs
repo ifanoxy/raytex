@@ -23,7 +23,33 @@ pub fn run() {
         )
         .init();
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // Windows and Linux start a new process for each file opened from the
+    // file manager: it hands its files to the running window and quits
+    // (macOS sends them to the running application by itself).
+    #[cfg(any(windows, target_os = "linux"))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+        let files = argv
+            .iter()
+            .skip(1)
+            .filter(|a| !a.starts_with('-'))
+            .map(|a| {
+                let p = PathBuf::from(a);
+                if p.is_absolute() {
+                    p
+                } else {
+                    PathBuf::from(&cwd).join(p)
+                }
+            })
+            .filter(|p| p.exists())
+            .collect();
+        request_open(app, files);
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+    }));
+    builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
