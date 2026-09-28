@@ -124,7 +124,7 @@
       <div class="row">
         <button class="btn small" onclick={() => confirmAndRun({ kind: "updateAll" }, t("action.texUpdate"))}><Icon name="refresh" size={13} />{t("action.texUpdate")}</button>
         {#if active.kind === "miktex"}
-          <label class="inline">
+          <label class="inline" title={t("setup.miktexAutoHint")}>
             <span class="switch">
               <input type="checkbox" checked={app.settings?.build.miktexAutoInstall} onchange={(e) => app.update((s) => (s.build.miktexAutoInstall = e.currentTarget.checked))} />
               <span></span>

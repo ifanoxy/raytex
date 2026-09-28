@@ -7,6 +7,8 @@
   import { handleGlobalKey } from "$lib/actions";
   import { i18n, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
+  import { afterBuild, offerMissingPackages } from "$lib/install";
+  import { diagnostics } from "$lib/state/diagnostics.svelte";
   import { app } from "$lib/state/app.svelte";
   import { build } from "$lib/state/build.svelte";
   import { editor } from "$lib/state/editor.svelte";
@@ -16,7 +18,7 @@
   import { viewer } from "$lib/state/viewer.svelte";
   import { ACCEPTED, extensionOf } from "$lib/images";
   import { media } from "$lib/state/media.svelte";
-  import { dirname, relative } from "$lib/utils";
+  import { debounce, dirname, relative } from "$lib/utils";
   import ContextMenu from "./components/common/ContextMenu.svelte";
   import Resizer from "./components/common/Resizer.svelte";
   import CommandPalette from "./components/dialogs/CommandPalette.svelte";
@@ -80,6 +82,10 @@
         failed = String(e);
       }
       unlisten.push(await getCurrentWebview().onDragDropEvent((e) => void onDrop(e.payload)));
+      // Packages loaded but not installed: installed by MiKTeX during the
+      // build, or offered by RayTeX (never MiKTeX's window per file).
+      diagnostics.onChange(debounce(() => offerMissingPackages(), 1200));
+      unlisten.push(await ipc.on("build:finished", () => afterBuild()));
       // Files opened from the Finder while the application runs.
       unlisten.push(await ipc.on("app:open-files", () => void ipc.takeOpenRequests().then((paths) => project.openFiles(paths ?? []))));
       // Prepare the other windows while nothing happens.

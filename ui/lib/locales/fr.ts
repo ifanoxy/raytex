@@ -1084,6 +1084,9 @@ const fr: Record<keyof typeof en, string> = {
   "files.moveTo": "Déplacer vers…",
   "files.moveMany": "Déplacer les {n} éléments vers…",
   "files.noOtherFolder": "Aucun autre dossier dans le projet",
+  "install.missingPackages": "Packages utilisés mais non installés : {names}",
+  "install.installThem": "Installer",
+  "setup.miktexAutoHint": "Activé : MiKTeX télécharge les packages manquants pendant la compilation, sans rien demander. Désactivé : RayTeX les liste et propose de les installer. La fenêtre de MiKTeX n'apparaît jamais.",
 };
 
 export default fr;

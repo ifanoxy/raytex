@@ -332,6 +332,7 @@ pub async fn preview_snippet(app: AppHandle, request: SnippetRequest) -> CmdResu
                 job: &job,
                 timeout: Duration::from_secs(60),
                 lang,
+                install_missing: state.settings().build.miktex_auto_install,
             },
         );
         previews.insert(request.job.clone(), (key, outcome.clone()));

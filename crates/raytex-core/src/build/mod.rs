@@ -386,6 +386,8 @@ struct Runner<'a, 'b> {
     deadline: Instant,
     /// Precompiled preamble in use (format without extension, its key).
     format: Option<(PathBuf, u64)>,
+    /// Last lines printed by the last step (to explain a silent failure).
+    last_output: Vec<String>,
 }
 
 /// Runs a build.
@@ -435,6 +437,7 @@ pub fn run(
         ran_bib: None,
         deadline: start + Duration::from_secs(ctx.settings.timeout_s.max(10) as u64),
         format: preamble_key.and_then(|k| preamble::ready(plan, k).map(|f| (f, k))),
+        last_output: Vec::new(),
     };
     let mut report = match (plan.engine, plan.tool) {
         (Engine::Tectonic, _) => r.tectonic(),
@@ -556,8 +559,16 @@ impl Runner<'_, '_> {
             .saturating_duration_since(Instant::now())
             .max(Duration::from_secs(5));
         let events = &mut self.events;
+        let tail = &mut self.last_output;
+        tail.clear();
         let result =
             process::run_streaming(&cmd, self.ctx.cancel, Some(remaining), |stream, line| {
+                if !line.trim().is_empty() {
+                    if tail.len() == 30 {
+                        tail.remove(0);
+                    }
+                    tail.push(line.to_owned());
+                }
                 (events)(BuildEvent::Output {
                     stream,
                     line: line.to_owned(),
@@ -590,7 +601,9 @@ impl Runner<'_, '_> {
         let plan = self.plan;
         let s = self.ctx.settings;
         let dist = self.ctx.dist;
-        let mut cmd = dist.cmd(plan.engine.program()).cwd(&plan.root_dir);
+        let mut cmd = dist
+            .engine_cmd(plan.engine, s.miktex_auto_install)
+            .cwd(&plan.root_dir);
         for (k, v) in plan.env(dist) {
             cmd = cmd.env(k, v);
         }
@@ -605,9 +618,6 @@ impl Runner<'_, '_> {
         // (safe, needed by epstopdf); `-no-shell-escape` would disable it.
         if s.shell_escape {
             cmd = cmd.arg("-shell-escape");
-        }
-        if dist.kind == DistroKind::MikTex && s.miktex_auto_install {
-            cmd = cmd.arg("-enable-installer");
         }
         if plan.engine == Engine::Latex {
             cmd = cmd.arg("-output-format=dvi");
@@ -634,7 +644,8 @@ impl Runner<'_, '_> {
             self.plan.engine.label().to_owned()
         };
         let code = self.step(name.clone(), self.engine_cmd());
-        let report = self.read_log();
+        let mut report = self.read_log();
+        self.explain_silent_failure(code, &mut report);
         // A pass that stops with a precompiled preamble is redone without it;
         // when that works, the format is abandoned for this preamble.
         if let Some((_, key)) = self.format
@@ -651,6 +662,46 @@ impl Runner<'_, '_> {
             return (code, report);
         }
         (code, report)
+    }
+
+    /// An engine that stops without a word in its log (it did not even read
+    /// the document: distribution to finish or update, format missing…):
+    /// what it printed becomes the error.
+    fn explain_silent_failure(&self, code: Option<i32>, report: &mut LogReport) {
+        if self.cancelled()
+            || code == Some(0)
+            || report
+                .diagnostics
+                .iter()
+                .any(|d| d.severity == Severity::Error)
+        {
+            return;
+        }
+        let last = self
+            .last_output
+            .iter()
+            .rev()
+            .find(|l| !l.starts_with("This is ") && !l.trim_start().starts_with('('))
+            .cloned()
+            .unwrap_or_default();
+        let mut d = Diagnostic::new(
+            Severity::Error,
+            Source::Build,
+            format!(
+                "{} {} {last}",
+                self.plan.engine.label(),
+                self.t(
+                    "s'est arrêté sans rien écrire dans son journal :",
+                    "stopped without writing anything in its log:"
+                )
+            )
+            .trim_end_matches([' ', ':'])
+            .to_owned(),
+        )
+        .with_code("engine-no-log");
+        d.raw = Some(self.last_output.join("\n"));
+        report.diagnostics.push(d);
+        report.fatal = true;
     }
 
     fn read_log(&self) -> LogReport {

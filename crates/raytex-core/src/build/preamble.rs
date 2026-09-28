@@ -304,7 +304,7 @@ pub fn build_format(
     // Written under a temporary name, renamed once complete.
     let tmp = format!("{name}-tmp");
     let mut cmd = dist
-        .cmd(Engine::Pdflatex.program())
+        .engine_cmd(Engine::Pdflatex, false)
         .cwd(&plan.root_dir)
         .args(["-ini", "-interaction=nonstopmode", "-halt-on-error"])
         .arg(format!("-jobname={tmp}"))

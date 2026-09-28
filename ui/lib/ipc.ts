@@ -9,6 +9,8 @@ const call = <R>(cmd: string, args?: Record<string, unknown>) => invoke<R>(cmd, 
 
 // ----------------------------------------------------------------- app
 export const appInfo = () => call<T.AppInfo>("app_info");
+/** Reads again the files installed in the distribution. */
+export const reindexTex = () => call<void>("reindex_tex");
 /** Files the system asked to open (Finder, "Open with…", command line), each given once. */
 export const takeOpenRequests = () => call<string[]>("take_open_requests");
 /** Quits the application (after the unsaved files were dealt with). */

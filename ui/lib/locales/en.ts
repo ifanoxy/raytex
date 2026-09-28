@@ -1082,6 +1082,9 @@ const en = {
   "files.moveTo": "Move to…",
   "files.moveMany": "Move the {n} items to…",
   "files.noOtherFolder": "No other folder in the project",
+  "install.missingPackages": "Packages used but not installed: {names}",
+  "install.installThem": "Install",
+  "setup.miktexAutoHint": "On: MiKTeX downloads the missing packages during the build, without asking. Off: RayTeX lists them and offers to install them. MiKTeX's own window never appears.",
 };
 
 export default en;

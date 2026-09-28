@@ -187,6 +187,22 @@ impl Distribution {
         self.engines.contains(&engine)
     }
 
+    /// A command running a TeX engine. MiKTeX is always told whether to
+    /// install missing packages (silently) or not: left to its settings, it
+    /// opens a window for every missing file.
+    pub fn engine_cmd(&self, engine: Engine, install_missing: bool) -> Cmd {
+        let cmd = self.cmd(engine.program());
+        if self.kind == DistroKind::MikTex && engine != Engine::Tectonic {
+            cmd.arg(if install_missing {
+                "--enable-installer"
+            } else {
+                "--disable-installer"
+            })
+        } else {
+            cmd
+        }
+    }
+
     /// A command running `tool` of this distribution, with its `bin` directory on `PATH`.
     pub fn cmd(&self, tool: &str) -> Cmd {
         let program = self
@@ -437,6 +453,17 @@ fn version_line(program: &Path, flag: &str) -> Option<String> {
         .map(str::to_owned)
 }
 
+/// Version of MiKTeX in the banner of its engines:
+/// `MiKTeX-pdfTeX 4.23 (MiKTeX 25.12)` → `25.12` (not the pdfTeX version).
+fn miktex_version(banner: &str) -> Option<String> {
+    let v = banner
+        .rsplit("MiKTeX")
+        .next()?
+        .trim_matches(|c: char| c == ')' || c == '(' || c.is_whitespace());
+    v.starts_with(|c: char| c.is_ascii_digit())
+        .then(|| v.to_owned())
+}
+
 fn identify(
     dir: &Path,
     canonical: &Path,
@@ -450,14 +477,7 @@ fn identify(
         .unwrap_or_default();
     let lower_path = canonical.to_string_lossy().to_lowercase();
     if banner.contains("MiKTeX") || tools.contains_key("miktex") || tools.contains_key("initexmf") {
-        let version = banner
-            .split("MiKTeX")
-            .nth(1)
-            .map(|v| {
-                v.trim_matches(|c: char| c == ')' || c == '(' || c.is_whitespace())
-                    .to_owned()
-            })
-            .filter(|v| !v.is_empty());
+        let version = miktex_version(&banner);
         let name = format!("MiKTeX {}", version.clone().unwrap_or_default())
             .trim()
             .to_owned();
@@ -558,6 +578,20 @@ fn is_writable(dir: &Path) -> bool {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn miktex_versions() {
+        assert_eq!(
+            miktex_version("MiKTeX-pdfTeX 4.23 (MiKTeX 25.12)").as_deref(),
+            Some("25.12")
+        );
+        assert_eq!(
+            miktex_version("MiKTeX-pdfTeX 4.27 (MiKTeX 26.5)").as_deref(),
+            Some("26.5")
+        );
+        assert_eq!(miktex_version("MiKTeX-pdfTeX 4.27"), None);
+    }
+
     use super::*;
 
     #[test]

@@ -38,6 +38,8 @@ pub struct PreviewRequest<'a> {
     pub timeout: Duration,
     /// Language of the explanations.
     pub lang: Lang,
+    /// MiKTeX may install the missing packages (silently).
+    pub install_missing: bool,
 }
 
 /// Result of a preview.
@@ -160,7 +162,7 @@ pub fn compile(dist: &Distribution, req: &PreviewRequest<'_>) -> PreviewOutcome 
     } else {
         let sep = if cfg!(windows) { ";" } else { ":" };
         let workdir = req.workdir.to_string_lossy();
-        dist.cmd(req.engine.program())
+        dist.engine_cmd(req.engine, req.install_missing)
             .env("max_print_line", "10000")
             .env("TEXINPUTS", format!("{workdir}{sep}"))
             .args([
@@ -290,7 +292,9 @@ pub fn compile_document(
                 .args(["--keep-logs", "--outdir", &out])
                 .arg(file.clone())
         } else {
-            dist.cmd(engine.program())
+            // Thumbnails never install anything (all the packages of every
+            // template for pictures).
+            dist.engine_cmd(engine, false)
                 .env("max_print_line", "10000")
                 .args(["-interaction=nonstopmode", "-file-line-error"])
                 .arg(format!("-output-directory={out}"))
@@ -470,6 +474,7 @@ mod tests {
             job: "t",
             timeout: Duration::from_secs(1),
             lang: Lang::En,
+            install_missing: false,
         };
         let (src, line) = document(&req);
         assert_eq!(src.lines().nth(line - 1).unwrap(), req.body);
@@ -505,6 +510,7 @@ mod tests {
                 job,
                 timeout: Duration::from_secs(120),
                 lang: Lang::En,
+                install_missing: false,
             },
         )
     }

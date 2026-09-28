@@ -101,6 +101,14 @@ jobs:
           & "$bin\miktex.exe" --admin packages update-package-database
           & "$bin\initexmf.exe" --admin --update-fndb
           & "$bin\pdflatex.exe" --version
+      - name: First compilation with MiKTeX, shown in full
+        shell: pwsh
+        run: |
+          Set-Content -Path smoke.tex -Value '\documentclass{article}\begin{document}Hello\end{document}'
+          pdflatex -interaction=nonstopmode --enable-installer smoke.tex
+          Write-Output "exit code: $LASTEXITCODE"
+          if (Test-Path smoke.log) { Get-Content smoke.log -Tail 40 } else { Write-Output "no log" }
+          if (Test-Path smoke.pdf) { Write-Output "PDF written" } else { Write-Output "no PDF" }
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Engine tests needing TeX

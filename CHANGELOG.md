@@ -17,6 +17,9 @@ First version.
 - The repository can be checked out on Windows: the module `aux.rs` (AUX is a name Windows reserves) is now `auxfile.rs`, and the CI checks that every file name is valid on Windows; line endings are kept by `.gitattributes`.
 - Characters typed with AltGr (Ctrl + Alt for the page: `{ [ @ \\ €` on AZERTY) are never taken for Ctrl + Alt shortcuts.
 - A file opened from Explorer while RayTeX runs goes to the running window (single instance, Windows and Linux).
+- MiKTeX's own window asking to install each missing file never appears: every engine run tells MiKTeX what to do. Builds and the previews of formulas, TikZ and fonts install missing packages silently when *Install missing packages automatically* is on (the default); template thumbnails never install anything. When MiKTeX cannot install by itself (setting off, TeX Live), RayTeX lists the packages a document loads but the distribution lacks, in one notice with an **Install** button; the installed files are read again after MiKTeX installed some.
+- MiKTeX is named after its version (`MiKTeX 25.12`, not the version of pdfTeX); TeX Live's `tlmgr.bat` is found; package documentation falls back on `mthelp`; a missing Biber comes with an Install button; an engine that stops without writing its log (a distribution to finish setting up or to update) shows its own message.
+- `npm test` works from Node 22.12 (Node 23.5 needed an option to run TypeScript).
 - CI: integration tests with MiKTeX on Windows (packages installed on the fly), next to TeX Live on Linux; [docs/WINDOWS.md](docs/WINDOWS.md) explains how to build, test and check MiKTeX on Windows.
 
 ### Writing and layout

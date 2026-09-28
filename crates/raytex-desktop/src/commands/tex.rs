@@ -132,6 +132,13 @@ pub fn start_indexing(app: AppHandle) {
     });
 }
 
+/// Reads again the files installed in the distribution (MiKTeX installed
+/// packages during a build).
+#[tauri::command]
+pub fn reindex_tex(app: AppHandle) {
+    start_indexing(app);
+}
+
 /// Current TeX status.
 #[tauri::command]
 pub async fn tex_status(state: State<'_, AppState>) -> CmdResult<TexStatus> {

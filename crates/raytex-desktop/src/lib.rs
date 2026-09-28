@@ -165,6 +165,7 @@ pub fn run() {
             commands::tex::start_job,
             commands::tex::cancel_job,
             commands::tex::installed_packages,
+            commands::tex::reindex_tex,
             commands::tex::installed_classes,
             commands::tex::repository_packages,
             commands::tex::package_details,

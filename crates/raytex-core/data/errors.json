@@ -1344,6 +1344,18 @@
     }
   },
   {
+    "id": "engine-no-log",
+    "match": "(s'est arrêté sans rien écrire dans son journal|stopped without writing anything in its log)",
+    "title": {
+      "en": "The compiler did not start",
+      "fr": "Le compilateur n'a pas démarré"
+    },
+    "explanation": {
+      "en": "The program stopped before reading the document, without writing its log. Its own message is in the details and in the Output tab: it is usually a matter of the distribution (MiKTeX to update or to finish setting up in MiKTeX Console, a format to rebuild, administrator rights).",
+      "fr": "Le programme s'est arrêté avant de lire le document, sans écrire son journal. Son propre message figure dans les détails et dans l'onglet Sortie : c'est en général une question de distribution (MiKTeX à mettre à jour ou à finir de configurer dans MiKTeX Console, un format à reconstruire, des droits d'administrateur)."
+    }
+  },
+  {
     "id": "emergency-stop",
     "match": "Emergency stop|Fatal error occurred|job aborted",
     "title": {
