@@ -9,7 +9,9 @@ pub mod commands;
 pub mod state;
 pub mod watcher;
 
-use tauri::Manager;
+use std::path::PathBuf;
+
+use tauri::{Emitter, Manager};
 
 use crate::state::AppState;
 
@@ -26,18 +28,33 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(AppState::new())
+        // The last window is gone: the application quits (the unsaved files
+        // were dealt with when it was closed).
+        .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Destroyed) {
+                window
+                    .state::<AppState>()
+                    .quitting
+                    .store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+        })
         .setup(|app| {
             commands::tex::start_detection(app.handle().clone());
-            // Files passed on the command line (or "Open with…").
-            if let Some(arg) = std::env::args().skip(1).find(|a| !a.starts_with('-')) {
-                let state = app.state::<AppState>();
-                state.session().last_project = Some(commands::abs(&arg));
-            }
+            // Files passed on the command line ("Open with…" on Windows and Linux).
+            let files: Vec<PathBuf> = std::env::args()
+                .skip(1)
+                .filter(|a| !a.starts_with('-'))
+                .map(|a| commands::abs(&a))
+                .filter(|p| p.exists())
+                .collect();
+            request_open(app.handle(), files);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::app::app_info,
             commands::app::get_settings,
+            commands::app::take_open_requests,
+            commands::app::quit_app,
             commands::app::save_settings,
             commands::app::set_language,
             commands::app::get_session,
@@ -137,6 +154,43 @@ pub fn run() {
             commands::help::at_shortcuts,
             commands::help::lint_rules,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running labaguetex");
+        .build(tauri::generate_context!())
+        .expect("error while building LaBagueTex")
+        .run(|app, event| {
+            // Files opened from the Finder (double click, "Open with…", dropped on the icon).
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = &event {
+                let files = urls.iter().filter_map(|u| u.to_file_path().ok()).collect();
+                request_open(app, files);
+            }
+            // Quitting (⌘Q, the menu) with a window open: the interface first
+            // offers to save the unsaved files, then calls `quit_app`.
+            if let tauri::RunEvent::ExitRequested {
+                api, code: None, ..
+            } = &event
+            {
+                let state = app.state::<AppState>();
+                if !state.quitting.load(std::sync::atomic::Ordering::SeqCst)
+                    && !app.webview_windows().is_empty()
+                {
+                    api.prevent_exit();
+                    let _ = app.emit("app:quit-requested", ());
+                }
+            }
+        });
+}
+
+/// Queues files to open and tells the interface (which takes them when it
+/// is ready, so none is lost at start-up).
+fn request_open(app: &tauri::AppHandle, files: Vec<PathBuf>) {
+    if files.is_empty() {
+        return;
+    }
+    let state = app.state::<AppState>();
+    state
+        .open_requests
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .extend(files);
+    let _ = app.emit("app:open-files", ());
 }

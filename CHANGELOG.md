@@ -14,6 +14,9 @@ First version.
 - The application is now called **LaBagueTex**; the projects folder `Documents/labaguetex` is renamed `Documents/LaBagueTex` on first start.
 
 ### Writing and layout
+- Several files selected in the project tree (Shift + click for a range, Ctrl / ⌘ + click to add or remove, Shift + arrows, Ctrl / ⌘ + A), dragged into a folder or the text, opened, inserted or moved to the trash together (one confirmation).
+- Files opened from the Finder (double click, *Open with*, dropped on the icon) or passed on the command line: a `.tex` opens in light mode, or in its project when it belongs to one; at start-up it takes the place of the last session. Quitting with ⌘Q asks about unsaved files like closing the window. The macOS bundle is signed ad hoc (it opens on another Mac instead of being reported as damaged).
+- Formatting bar: a narrower font box, and the texts of **Image**, **Table** and **Diagram** stay visible (alignment and link buttons go first when the window is narrow).
 - Projects folder (`Documents/LaBagueTex` by default, set in the settings) where new projects go; the start screen and a **My projects** window list them with a preview of their PDF, search, order, rename and trash, plus recent projects and files.
 - Light mode: a `.tex` file opened on its own is edited and built without creating anything next to it (builds in the cache, PDF exported where you like); features that need a folder offer to make a project (name and place), copying the file and what it uses.
 - Fonts from the formatting bar: a font box showing the document's font and a **Document fonts** menu (main, sans-serif, code, maths — change or reset each), fonts for passages applied to the selection (`\newfontfamily\fontName`), a clearer role chooser in the font window.

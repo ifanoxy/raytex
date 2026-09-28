@@ -1,7 +1,10 @@
 <script lang="ts">
-  // Project files: tree, context menus, drag and drop, file operations.
+  // Project files: tree, selection (Shift / Ctrl / Cmd), context menus,
+  // drag and drop, file operations.
   import { t } from "$lib/i18n.svelte";
   import { project } from "$lib/state/project.svelte";
+  import { fileSelection } from "$lib/state/selection.svelte";
+  import type { FileNode } from "$lib/types";
   import Icon from "../common/Icon.svelte";
   import PanelHeader from "../common/PanelHeader.svelte";
   import FileTreeNode from "./FileTreeNode.svelte";
@@ -33,6 +36,51 @@
     }
   }
 
+  // A new project starts with nothing selected.
+  $effect(() => {
+    void project.info?.root;
+    fileSelection.clear();
+  });
+
+  /** Rows shown, top to bottom (for Shift ranges and the arrow keys). */
+  function order(): string[] {
+    const out: string[] = [];
+    const walk = (nodes: FileNode[]) => {
+      for (const n of nodes) {
+        out.push(n.path);
+        if (n.dir && expanded.has(n.path)) walk(n.children ?? []);
+      }
+    };
+    walk(project.tree);
+    return out;
+  }
+
+  function focusRow(path: string) {
+    const row = [...document.querySelectorAll<HTMLElement>(".tree .row")].find((r) => r.dataset.path === path);
+    row?.focus();
+    row?.scrollIntoView({ block: "nearest" });
+  }
+
+  function treeKey(e: KeyboardEvent) {
+    const current = (document.activeElement as HTMLElement | null)?.dataset?.path;
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
+      fileSelection.all(order());
+    } else if (e.key === "Escape" && fileSelection.count) {
+      fileSelection.clear();
+    } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && current) {
+      const rows = order();
+      const i = rows.indexOf(current) + (e.key === "ArrowDown" ? 1 : -1);
+      if (i < 0 || i >= rows.length) return;
+      if (e.shiftKey) fileSelection.range(rows[i], rows, false);
+      else fileSelection.only(rows[i]);
+      focusRow(rows[i]);
+    } else {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
   function collapseAll() {
     expanded = new Set();
     try {
@@ -47,8 +95,13 @@
     const from = e.dataTransfer?.getData("application/x-labaguetex-path");
     if (!from || !project.info) return;
     e.preventDefault();
-    const name = from.split(/[\\/]/).pop()!;
-    void project.move(from, `${project.info.root}/${name}`);
+    let paths = [from];
+    try {
+      paths = JSON.parse(e.dataTransfer?.getData("application/x-labaguetex-paths") || "null") ?? paths;
+    } catch {
+      /* one file */
+    }
+    void project.moveMany(paths, project.info.root);
   }
 </script>
 
@@ -85,14 +138,24 @@
   }}
   ondragleave={() => (dragOverRoot = false)}
   ondrop={dropOnRoot}
+  onkeydown={treeKey}
 >
   {#each project.tree as node (node.path)}
-    <FileTreeNode {node} depth={0} {expanded} {toggle} />
+    <FileTreeNode {node} depth={0} {expanded} {toggle} {order} />
   {:else}
     <div class="empty">{t("files.empty")}</div>
   {/each}
   {#if !project.light}<div class="drop-hint faint">{t("files.dropHint")}</div>{/if}
 </div>
+
+<!-- Below the tree, so that selecting does not move the rows. -->
+{#if fileSelection.count > 1}
+  <div class="selection">
+    <span>{t("files.selected", { n: fileSelection.count })}</span>
+    <button class="icon-btn" title={t("files.deleteMany", { n: fileSelection.roots().length })} onclick={() => project.removeMany(fileSelection.roots())}><Icon name="trash" size={14} /></button>
+    <button class="icon-btn" title={t("files.clearSelection")} onclick={() => fileSelection.clear()}><Icon name="x" size={14} /></button>
+  </div>
+{/if}
 
 <style>
   .tree {
@@ -103,6 +166,25 @@
   }
   .tree.drag-over {
     background: var(--accent-soft);
+  }
+  .selection {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    margin: 6px 8px 8px;
+    padding: 2px 4px 2px 10px;
+    border-radius: var(--radius);
+    background: var(--accent-soft);
+    font-size: 12px;
+    color: var(--text);
+  }
+  .selection span {
+    flex: 1;
+  }
+  .selection .icon-btn {
+    width: 24px;
+    height: 24px;
   }
   .light {
     margin: 2px 10px 10px;

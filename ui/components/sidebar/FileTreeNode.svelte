@@ -1,5 +1,7 @@
 <script lang="ts">
-  // One file or folder of the project tree (recursive).
+  // One file or folder of the project tree (recursive). A click selects it
+  // (and opens a file); Shift + click selects a range, Ctrl / Cmd + click
+  // adds or removes it; menus, deleting and dragging apply to the selection.
   import FileTreeNode from "./FileTreeNode.svelte";
   import { t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
@@ -7,12 +9,19 @@
   import { editor } from "$lib/state/editor.svelte";
   import { media } from "$lib/state/media.svelte";
   import { project } from "$lib/state/project.svelte";
+  import { fileSelection } from "$lib/state/selection.svelte";
   import { type MenuItem, ui } from "$lib/state/ui.svelte";
   import type { FileNode } from "$lib/types";
-  import { basename, fileKind, join, relative, samePath } from "$lib/utils";
+  import { basename, fileKind, isMac, join, relative, samePath } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
 
-  let { node, depth, expanded, toggle }: { node: FileNode; depth: number; expanded: Set<string>; toggle: (path: string) => void } = $props();
+  let {
+    node,
+    depth,
+    expanded,
+    toggle,
+    order,
+  }: { node: FileNode; depth: number; expanded: Set<string>; toggle: (path: string) => void; order: () => string[] } = $props();
 
   let dragOver = $state(false);
 
@@ -20,6 +29,7 @@
   const open = $derived(node.dir && expanded.has(node.path));
   const isMain = $derived(samePath(node.path, project.info?.main));
   const isActive = $derived(samePath(node.path, editor.active));
+  const selected = $derived(fileSelection.has(node.path));
   const tab = $derived(editor.tabs.find((tb) => samePath(tb.path, node.path)));
   const problems = $derived.by(() => {
     if (node.dir) return 0;
@@ -34,9 +44,32 @@
   const ICONS: Record<string, string> = { dir: "folder", tex: "file-tex", bib: "file-bib", image: "image", pdf: "pdf" };
   const icon = $derived(node.dir ? (open ? "folder-open" : "folder") : (ICONS[kind] ?? "file"));
 
-  function click() {
+  /** Shift / Ctrl / Cmd + click: changes the selection only. */
+  function selectWith(e: MouseEvent): boolean {
+    const add = e.metaKey || e.ctrlKey;
+    if (e.shiftKey) {
+      fileSelection.range(node.path, order(), add);
+      return true;
+    }
+    if (add) {
+      fileSelection.toggle(node.path);
+      return true;
+    }
+    fileSelection.only(node.path);
+    return false;
+  }
+
+  function click(e: MouseEvent) {
+    if (selectWith(e)) return;
     if (node.dir) toggle(node.path);
     else void editor.open(node.path);
+  }
+
+  // On a Mac, Ctrl + click is a right click for the system: it selects here too
+  // (the menu stays on the right click and the two-finger tap).
+  let ctrlClick = false;
+  function down(e: MouseEvent) {
+    ctrlClick = isMac() && e.ctrlKey && e.button === 0;
   }
 
   function copy(text: string) {
@@ -44,6 +77,17 @@
   }
 
   function menu(e: MouseEvent) {
+    if (ctrlClick) {
+      ctrlClick = false;
+      e.preventDefault();
+      fileSelection.toggle(node.path);
+      return;
+    }
+    if (!selected) fileSelection.only(node.path);
+    if (fileSelection.count > 1) {
+      manyMenu(e);
+      return;
+    }
     const root = project.info?.root ?? "";
     const ext = node.path.split(".").pop()?.toLowerCase() ?? "";
     const items: MenuItem[] = [];
@@ -80,9 +124,39 @@
     ui.openMenu(e, items);
   }
 
+  /** Menu of several selected files and folders. */
+  function manyMenu(e: MouseEvent) {
+    const root = project.info?.root ?? "";
+    const paths = fileSelection.roots();
+    const files = paths.filter((p) => !project.findNode(p)?.dir);
+    const images = files.filter((p) => /\.(png|jpe?g|pdf|eps|svg|webp|gif|heic)$/i.test(p));
+    const items: MenuItem[] = [];
+    if (files.length) items.push({ label: t("files.openMany", { n: files.length }), icon: "file", run: () => files.forEach((f) => void editor.open(f)) });
+    if (images.length && images.length === files.length) {
+      items.push({ label: t("files.insertImages", { n: images.length }), icon: "image", disabled: editor.activeTab?.kind !== "tex", run: () => media.openImages({ paths: images }) });
+    } else if (files.length && editor.view && editor.activeTab?.kind === "tex") {
+      items.push({ label: t("files.insertReferences", { n: files.length }), icon: "link", run: () => editor.view && editor.insertFileReferences(editor.view, files) });
+    }
+    items.push(
+      { separator: true },
+      { label: t("files.deleteMany", { n: paths.length }), icon: "trash", danger: true, run: () => project.removeMany(paths) },
+      { separator: true },
+      { label: t("files.copyPaths"), icon: "copy", run: () => copy(paths.join("\n")) },
+      { label: t("files.copyRelativePaths"), icon: "copy", run: () => copy(paths.map((p) => relative(root, p)).join("\n")) },
+      { label: t("action.revealInOs"), icon: "folder-open", run: () => ipc.revealInOs(paths[0]) },
+      { separator: true },
+      { label: t("files.clearSelection"), icon: "x", run: () => fileSelection.clear() },
+    );
+    ui.openMenu(e, items);
+  }
+
   function key(e: KeyboardEvent) {
-    if (e.key === "F2") project.rename(node.path);
-    else if (e.key === "Delete" || (e.key === "Backspace" && (e.metaKey || e.ctrlKey))) project.remove(node.path, node.dir);
+    const many = selected && fileSelection.count > 1;
+    if (e.key === "F2" && !many) project.rename(node.path);
+    else if (e.key === "Delete" || (e.key === "Backspace" && (e.metaKey || e.ctrlKey))) {
+      if (many) void project.removeMany(fileSelection.roots());
+      else project.remove(node.path, node.dir);
+    }
     else if (e.key === "ArrowRight" && node.dir && !open) toggle(node.path);
     else if (e.key === "ArrowLeft" && node.dir && open) toggle(node.path);
     else return;
@@ -91,8 +165,12 @@
 
   function dragStart(e: DragEvent) {
     if (!e.dataTransfer) return;
+    // Dragging a selected row drags the whole selection.
+    if (!selected) fileSelection.only(node.path);
+    const paths = fileSelection.count > 1 ? fileSelection.roots() : [node.path];
     e.dataTransfer.setData("application/x-labaguetex-path", node.path);
-    e.dataTransfer.setData("text/plain", relative(project.info?.root ?? "", node.path));
+    e.dataTransfer.setData("application/x-labaguetex-paths", JSON.stringify(paths));
+    e.dataTransfer.setData("text/plain", paths.map((p) => relative(project.info?.root ?? "", p)).join("\n"));
     e.dataTransfer.effectAllowed = "copyMove";
   }
 
@@ -110,21 +188,34 @@
     if (!node.dir || !from) return;
     e.preventDefault();
     e.stopPropagation();
+    let paths = [from];
+    try {
+      paths = JSON.parse(e.dataTransfer?.getData("application/x-labaguetex-paths") || "null") ?? paths;
+    } catch {
+      /* one file */
+    }
+    if (paths.length > 1) {
+      void project.moveMany(paths, node.path);
+      return;
+    }
     if (samePath(from, node.path) || pathKey(node.path).startsWith(pathKey(from) + "/")) return;
     void project.move(from, join(node.path, basename(from)));
   }
 </script>
 
-<div class="node" role="treeitem" aria-selected={isActive} aria-expanded={node.dir ? open : undefined}>
+<div class="node" role="treeitem" aria-selected={selected || isActive} aria-expanded={node.dir ? open : undefined}>
   <button
     class="row"
     class:active={isActive}
+    class:selected
+    data-path={node.path}
     class:drag-over={dragOver}
     style:padding-left="{8 + depth * 14}px"
     title={node.path}
     draggable="true"
     data-drop-dir={node.dir ? node.path : undefined}
     onclick={click}
+    onmousedown={down}
     oncontextmenu={menu}
     onkeydown={key}
     ondragstart={dragStart}
@@ -143,7 +234,7 @@
   </button>
   {#if open}
     {#each node.children ?? [] as child (child.path)}
-      <FileTreeNode node={child} depth={depth + 1} {expanded} {toggle} />
+      <FileTreeNode node={child} depth={depth + 1} {expanded} {toggle} {order} />
     {/each}
   {/if}
 </div>
@@ -170,6 +261,13 @@
   .row.active {
     background: var(--accent-soft);
     color: var(--text);
+  }
+  .row.selected {
+    background: color-mix(in srgb, var(--accent) 24%, transparent);
+    color: var(--text);
+  }
+  .row.selected:hover {
+    background: color-mix(in srgb, var(--accent) 30%, transparent);
   }
   .row.drag-over {
     outline: 1.5px dashed var(--accent);

@@ -92,6 +92,38 @@ class ProjectStore {
   }
 
   /** Opens a `.tex` file on its own (light mode): nothing is created next to it. */
+  /**
+   * Files the system asked to open: a folder opens as a project; a file of
+   * the open project opens in the editor; a file of a LaBagueTex project
+   * opens that project; any other LaTeX file opens on its own (light mode),
+   * any other file with its folder.
+   */
+  async openFiles(paths: string[]): Promise<void> {
+    for (const path of paths) {
+      const inside = this.info && !this.info.light && pathKey(path).startsWith(pathKey(this.info.root) + "/");
+      if (inside) {
+        await editor.open(path);
+        continue;
+      }
+      if (!extension(path)) {
+        // A folder (a file without extension is rare, and opens with its folder anyway).
+        if (await ipc.pathExists(join(path, "labaguetex.toml")).catch(() => false)) {
+          await this.open(path);
+          continue;
+        }
+      }
+      const dir = dirname(path);
+      const isProject = await ipc.pathExists(join(dir, "labaguetex.toml")).catch(() => false);
+      if (/\.(tex|ltx)$/i.test(path) && !isProject) {
+        await this.openLight(path);
+      } else if (!extension(path) && !isProject) {
+        await this.open(path);
+      } else if (await this.open(dir)) {
+        await editor.open(path);
+      }
+    }
+  }
+
   async openLight(file: string): Promise<boolean> {
     if (this.info && samePath(this.info.main, file) && this.info.light) return true;
     if (this.info && !(await this.close())) return false;
@@ -346,7 +378,7 @@ class ProjectStore {
     await this.move(path, join(dirname(path), name));
   }
 
-  async move(from: string, to: string) {
+  async move(from: string, to: string, refresh = true) {
     if (samePath(from, to)) return;
     try {
       const target = await ipc.renamePath(from, to);
@@ -355,10 +387,17 @@ class ProjectStore {
         const main = target + this.info.main.slice(from.length);
         await this.setMain(main);
       }
-      await this.refreshTree();
+      if (refresh) await this.refreshTree();
     } catch (e) {
       ui.toast("error", String(e));
     }
+  }
+
+  /** Moves files and folders into `dir` (those already there, and `dir` itself, stay). */
+  async moveMany(paths: string[], dir: string) {
+    const moved = paths.filter((p) => !samePath(dirname(p), dir) && !samePath(p, dir) && !pathKey(dir).startsWith(pathKey(p) + "/"));
+    for (const p of moved) await this.move(p, join(dir, basename(p)), false);
+    if (moved.length) await this.refreshTree();
   }
 
   async remove(path: string, isDir: boolean) {
@@ -376,6 +415,42 @@ class ProjectStore {
     } catch (e) {
       ui.toast("error", String(e));
     }
+  }
+
+  /** Deletes several files and folders after one confirmation. */
+  async removeMany(paths: string[]) {
+    if (paths.length === 1) {
+      const node = this.findNode(paths[0]);
+      return this.remove(paths[0], !!node?.dir);
+    }
+    const names = paths.slice(0, 8).map((p) => `• ${basename(p)}`);
+    if (paths.length > 8) names.push(t("project.andMore", { n: paths.length - 8 }));
+    const ok = await ui.confirm({
+      title: t("project.deleteManyTitle", { n: paths.length }),
+      message: `${names.join("\n")}\n\n${t("project.deleteMessage")}`,
+      okLabel: t("common.delete"),
+      danger: true,
+    });
+    if (!ok) return;
+    for (const p of paths) {
+      try {
+        await editor.deleted(p);
+        await ipc.deletePath(p);
+      } catch (e) {
+        ui.toast("error", String(e));
+      }
+    }
+    await this.refreshTree();
+  }
+
+  /** The node of `path` in the tree. */
+  findNode(path: string, nodes: FileNode[] = this.tree): FileNode | null {
+    for (const n of nodes) {
+      if (samePath(n.path, path)) return n;
+      const inner = n.children ? this.findNode(path, n.children) : null;
+      if (inner) return inner;
+    }
+    return null;
   }
 
   async importDialog(dir = this.root) {

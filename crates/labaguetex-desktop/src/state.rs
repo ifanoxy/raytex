@@ -206,6 +206,11 @@ pub struct AppState {
     pub thumbnail_dirs: Mutex<HashMap<PathBuf, Arc<Mutex<()>>>>,
     /// Fonts installed on the system (read once).
     pub system_fonts: Mutex<Option<Arc<Vec<labaguetex_core::fonts::FontFamily>>>>,
+    /// Files the system asked to open (Finder, "Open with…", command line),
+    /// taken by the interface.
+    pub open_requests: Mutex<Vec<PathBuf>>,
+    /// The interface agreed to quit (unsaved files handled).
+    pub quitting: AtomicBool,
 }
 
 fn recover<T>(r: Result<T, std::sync::PoisonError<T>>) -> T {
@@ -289,6 +294,8 @@ impl AppState {
             thumbnails: Slots::new(3),
             thumbnail_dirs: Mutex::new(HashMap::new()),
             system_fonts: Mutex::new(None),
+            open_requests: Mutex::new(Vec::new()),
+            quitting: AtomicBool::new(false),
         }
     }
 

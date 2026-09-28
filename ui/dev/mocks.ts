@@ -439,6 +439,10 @@ export function installMocks() {
       switch (cmd) {
         case "app_info":
           return { version: "0.1.0-dev", os: "macos", arch: "aarch64", settingsPath: "/Users/demo/Library/Application Support/org.labaguetex.app/settings.toml", templatesPath: "/Users/demo/Library/Application Support/org.labaguetex.app/templates" };
+        case "take_open_requests":
+          return [];
+        case "quit_app":
+          return null;
         case "get_settings":
           return structuredClone(settings);
         case "save_settings":

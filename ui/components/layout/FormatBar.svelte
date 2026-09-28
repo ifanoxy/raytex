@@ -205,7 +205,7 @@
       <Icon name="table" size={16} /><span>{t("format.table")}</span>
     </button>
     <button class="text-btn tikz" class:editing={editor.inTikz} disabled={!project.info} onmousedown={keep} onclick={() => run("insert.tikz")} title={title("insert.tikz")}>
-      <Icon name="sparkles" size={16} /><span>{editor.inTikz ? t("toolbar.editTikz") : t("toolbar.tikz")}</span>
+      <Icon name="sparkles" size={16} /><span>{editor.inTikz ? t("toolbar.editTikz") : t("format.tikz")}</span>
     </button>
   </div>
 
@@ -314,7 +314,9 @@
     cursor: default;
   }
   .select-btn.font {
-    width: 168px;
+    width: 118px;
+    gap: 4px;
+    padding: 0 6px;
     border: 1px solid var(--border);
     background: var(--bg-input);
     color: var(--text);
@@ -323,7 +325,7 @@
     flex: 1;
     min-width: 0;
     text-align: left;
-    font-size: 13px;
+    font-size: 12px;
   }
   .select-btn.style {
     width: 136px;
@@ -379,18 +381,27 @@
     background: var(--accent-soft);
     border-color: var(--accent);
   }
-  @media (max-width: 1560px) {
-    .text-btn:not(.all):not(.macros) span {
+  /* When space runs out: alignment and links first, then the name of the
+     macros, the texts of image / table / diagram last. */
+  @media (max-width: 1439px) {
+    .wide-only {
       display: none;
     }
   }
-  @media (max-width: 1320px) {
-    .wide-only,
+  @media (max-width: 1220px) {
     .macros span {
       display: none;
     }
+    .select-btn.style {
+      width: 112px;
+    }
+  }
+  @media (max-width: 1080px) {
+    .text-btn:not(.all):not(.macros) span {
+      display: none;
+    }
     .select-btn.font {
-      width: 132px;
+      width: 92px;
     }
   }
 </style>

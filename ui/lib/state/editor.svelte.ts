@@ -1356,7 +1356,13 @@ class EditorStore {
     const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
     if (pos !== null) view.dispatch({ selection: { anchor: pos } });
     view.focus();
-    void this.insertFileReference(view, path);
+    let paths = [path];
+    try {
+      paths = JSON.parse(e.dataTransfer?.getData("application/x-labaguetex-paths") || "null") ?? paths;
+    } catch {
+      /* one file */
+    }
+    void this.insertFileReferences(view, paths);
     return true;
   }
 
@@ -1377,19 +1383,26 @@ class EditorStore {
 
   /** Inserts the right command for a project file dropped into the editor. */
   async insertFileReference(view: EditorView, path: string) {
-    const kind = fileKind(path);
+    return this.insertFileReferences(view, [path]);
+  }
+
+  /** Images go to the image window (together); other files become `\\input`, `\\addbibresource` or paths. */
+  async insertFileReferences(view: EditorView, paths: string[]) {
+    const isImage = (p: string) => fileKind(p) === "image" || /\.(pdf|eps)$/i.test(p);
     const current = view.state.facet(docPath);
     const root = (await ipc.rootOf(current).catch(() => null)) ?? project.info?.main ?? current;
-    const rel = relative(dirname(root), path);
-    if (kind === "image" || /\.(pdf|eps)$/i.test(path)) {
-      media.openImages({ paths: [path] });
-    } else if (kind === "tex") {
-      this.insertText(`\\input{${rel.replace(/\.tex$/, "")}}`, view);
-    } else if (kind === "bib") {
-      this.insertText(`\\addbibresource{${rel}}`, view);
-    } else {
-      this.insertText(rel, view);
-    }
+    const lines = paths
+      .filter((p) => !isImage(p))
+      .map((path) => {
+        const rel = relative(dirname(root), path);
+        const kind = fileKind(path);
+        if (kind === "tex") return `\\input{${rel.replace(/\.tex$/, "")}}`;
+        if (kind === "bib") return `\\addbibresource{${rel}}`;
+        return rel;
+      });
+    if (lines.length) this.insertText(lines.join("\n"), view);
+    const images = paths.filter(isImage);
+    if (images.length) media.openImages({ paths: images });
   }
 }
 

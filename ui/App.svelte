@@ -6,6 +6,7 @@
   import { onMount } from "svelte";
   import { handleGlobalKey } from "$lib/actions";
   import { i18n, t } from "$lib/i18n.svelte";
+  import * as ipc from "$lib/ipc";
   import { app } from "$lib/state/app.svelte";
   import { build } from "$lib/state/build.svelte";
   import { editor } from "$lib/state/editor.svelte";
@@ -70,15 +71,26 @@
         await Promise.all([tex.init(), build.init(), project.init()]);
         viewer.setDefaultZoom(app.settings?.viewer.defaultZoom);
         await editor.reconfigure();
+        // Opened from the Finder or with a file: that file, else the last session.
+        const requested = (await ipc.takeOpenRequests().catch(() => null)) ?? [];
         const last = app.session?.lastProject;
-        if (app.settings?.general.restoreSession && last) await (app.session?.lastLight ? project.openLight(last) : project.open(last));
+        if (requested.length) await project.openFiles(requested);
+        else if (app.settings?.general.restoreSession && last) await (app.session?.lastLight ? project.openLight(last) : project.open(last));
       } catch (e) {
         failed = String(e);
       }
       unlisten.push(await getCurrentWebview().onDragDropEvent((e) => void onDrop(e.payload)));
+      // Files opened from the Finder while the application runs.
+      unlisten.push(await ipc.on("app:open-files", () => void ipc.takeOpenRequests().then((paths) => project.openFiles(paths ?? []))));
       // Prepare the other windows while nothing happens.
       const idle = window.requestIdleCallback ?? ((fn: () => void) => setTimeout(fn, 1500));
       idle(() => Object.values(VIEWS).forEach((load) => void load().catch(() => {})));
+      // ⌘Q or the menu: the same question as when closing the window.
+      unlisten.push(
+        await ipc.on("app:quit-requested", async () => {
+          if (!editor.dirtyTabs.length || (await editor.closeAll())) await ipc.quitApp();
+        }),
+      );
       unlisten.push(
         await getCurrentWindow().onCloseRequested(async (event) => {
           if (!editor.dirtyTabs.length) return;

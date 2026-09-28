@@ -174,6 +174,26 @@ pub async fn selftest_target() -> CmdResult<Option<String>> {
 /// Development only: which screens the self-test walks through
 /// (`LABAGUETEX_SELFTEST_SCENES=all|media`), and a folder of test files
 /// (`LABAGUETEX_SELFTEST_ASSETS`).
+/// Quits once the interface has dealt with the unsaved files.
+#[tauri::command]
+pub fn quit_app(app: AppHandle, state: State<'_, AppState>) {
+    state
+        .quitting
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    app.exit(0);
+}
+
+/// Files the system asked to open since the last call (each is given once).
+#[tauri::command]
+pub fn take_open_requests(state: State<'_, AppState>) -> Vec<PathBuf> {
+    std::mem::take(
+        &mut *state
+            .open_requests
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()),
+    )
+}
+
 #[tauri::command]
 pub async fn selftest_scenes() -> CmdResult<(Option<String>, Option<String>)> {
     if !cfg!(debug_assertions) {

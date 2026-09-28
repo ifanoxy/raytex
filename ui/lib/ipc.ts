@@ -9,6 +9,10 @@ const call = <R>(cmd: string, args?: Record<string, unknown>) => invoke<R>(cmd, 
 
 // ----------------------------------------------------------------- app
 export const appInfo = () => call<T.AppInfo>("app_info");
+/** Files the system asked to open (Finder, "Open with…", command line), each given once. */
+export const takeOpenRequests = () => call<string[]>("take_open_requests");
+/** Quits the application (after the unsaved files were dealt with). */
+export const quitApp = () => call<void>("quit_app");
 export const getSettings = () => call<T.Settings>("get_settings");
 export const saveSettings = (settings: T.Settings) => call<boolean>("save_settings", { settings });
 export const setLanguage = (lang: T.Lang) => call<void>("set_language", { lang });
@@ -139,6 +143,8 @@ export interface Events {
   "job:output": { id: number; lines: string[] };
   "job:finished": { id: number; success: boolean; cancelled: boolean; code: number | null };
   "fs:changed": { paths: string[]; structure: boolean };
+  "app:open-files": null;
+  "app:quit-requested": null;
 }
 
 export function on<K extends keyof Events>(event: K, handler: (payload: Events[K]) => void): Promise<UnlistenFn> {

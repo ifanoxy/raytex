@@ -15,7 +15,7 @@ Un projet situé ailleurs s'ouvre avec **Ouvrir un dossier…** ; il apparaît e
 
 ## Mode léger : un fichier seul
 
-**Ouvrir un fichier .tex** (ou déposer un `.tex` sur la fenêtre) l'ouvre **sans créer de projet** : vous le modifiez et le compilez normalement, mais **rien n'est créé à côté de lui**. Les fichiers de compilation vont dans le cache de l'application, et **Exporter le PDF** l'enregistre où vous voulez (à côté du `.tex` par défaut). Le badge *Mode léger* le rappelle dans la barre du haut.
+**Ouvrir un fichier .tex** (ou déposer un `.tex` sur la fenêtre, ou double-cliquer dessus dans le Finder ou l'Explorateur, ou *Ouvrir avec › LaBagueTex*) l'ouvre **sans créer de projet** : vous le modifiez et le compilez normalement, mais **rien n'est créé à côté de lui**. Les fichiers de compilation vont dans le cache de l'application, et **Exporter le PDF** l'enregistre où vous voulez (à côté du `.tex` par défaut). Le badge *Mode léger* le rappelle dans la barre du haut.
 
 Les fichiers qu'il inclut (`\input`) et sa bibliographie sont lus et modifiables. Ce qui a besoin d'un dossier — ajouter des images, des fichiers de police, des fichiers ou des dossiers, un modèle, un schéma dans un fichier séparé — propose d'abord de **créer un projet** : un nom et un emplacement (le dossier des projets par défaut). Le projet reçoit une copie du fichier et de tout ce qu'il utilise (fichiers inclus, bibliographie, images) ; le fichier d'origine n'est pas modifié. L'action demandée continue ensuite dans le nouveau projet.
 
@@ -44,6 +44,10 @@ Dans l'arborescence :
 - clic droit : nouveau fichier ou dossier, renommer, mettre à la corbeille, copier le chemin, insérer une référence au fichier dans le document ;
 - glisser-déposer pour déplacer ; déposer des fichiers du système pour les importer ;
 - <kbd>F2</kbd> renomme l'élément sélectionné.
+
+**Sélectionner plusieurs fichiers** : <kbd>⇧</kbd>/<kbd>Maj</kbd> + clic sélectionne tout jusqu'au fichier cliqué, <kbd>⌘</kbd> (Mac) ou <kbd>Ctrl</kbd> + clic ajoute ou retire un fichier ; au clavier, <kbd>⇧</kbd> + flèches étend la sélection et <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>A</kbd> sélectionne tout (<kbd>Échap</kbd> désélectionne). La sélection se glisse d'un bloc dans un dossier ou dans le texte ; son menu (clic droit) ouvre les fichiers, insère les images ou les fichiers dans le document, les met à la corbeille après une seule confirmation (aussi avec <kbd>Suppr</kbd>) et copie leurs chemins. Le bandeau sous l'arborescence indique combien d'éléments sont sélectionnés.
+
+Un fichier `.tex` d'un projet LaBagueTex ouvert depuis le Finder ou l'Explorateur ouvre ce projet ; un dossier s'ouvre comme projet.
 
 Les modifications faites par d'autres programmes (git, synchronisation, autre éditeur) sont détectées : les fichiers ouverts sont rechargés, ou vous êtes prévenu s'ils avaient des modifications non enregistrées.
 

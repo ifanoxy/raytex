@@ -17,6 +17,7 @@ import { project } from "../lib/state/project.svelte";
 import { distLabel, tex } from "../lib/state/tex.svelte";
 import { diagnostics } from "../lib/state/diagnostics.svelte";
 import { fixable, quickFix } from "../lib/fixes";
+import { fileSelection } from "../lib/state/selection.svelte";
 import { media } from "../lib/state/media.svelte";
 import { colors } from "../lib/state/colors.svelte";
 import { fonts } from "../lib/state/fonts.svelte";
@@ -92,6 +93,7 @@ export async function runSelfTest() {
   if (ok && which === "workflow" && assets) ok = await workflowScenes(log, assets);
   else if (ok && which === "projects" && assets) ok = await projectsScenes(log, assets);
   else if (ok && which === "fixes" && assets) ok = await fixesScenes(log, assets);
+  else if (ok && which === "files" && assets) ok = await filesScenes(log, assets);
   else {
     if (ok && which && which !== "media") await scenes(log);
     if (ok && which && (which === "media" || which === "all") && assets) ok = await mediaScenes(log, assets);
@@ -850,5 +852,109 @@ async function fixesScenes(log: (msg: string) => void, dir: string): Promise<boo
   log(JSON.stringify(results, null, 2));
   const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));
   log(`fixes scenes ${ok ? "PASSED" : "FAILED"}`);
+  return ok;
+}
+
+/** Several files selected in the tree (Shift, Ctrl / Cmd, keyboard), moved and deleted together; the formatting bar. */
+async function filesScenes(log: (msg: string) => void, dir: string): Promise<boolean> {
+  const scene = async (name: string, holdMs = 2000) => {
+    await pause(700);
+    log(`scene: ${name}`);
+    await pause(holdMs);
+  };
+  const results: Record<string, unknown> = {};
+  const check = (name: string, value: boolean, detail: unknown = "") => {
+    results[name] = value ? "ok" : `FAILED ${detail}`;
+  };
+  const mac = navigator.platform.toLowerCase().includes("mac");
+  const row = (name: string) => [...document.querySelectorAll<HTMLElement>(".tree .row")].find((r) => r.dataset.path?.endsWith(`/${name}`))!;
+  const click = (name: string, mods: { shift?: boolean; add?: boolean } = {}) =>
+    row(name).dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: !!mods.shift, metaKey: !!mods.add && mac, ctrlKey: !!mods.add && !mac }));
+  const names = () => fileSelection.paths.map((p) => p.split("/").pop()).join(",");
+  try {
+    ui.setVisible("sidebar", true);
+    ui.showSidebar("files");
+    const root = `${dir}/fichiers-${Date.now()}`;
+    check("created", await project.createEmpty(root, "Fichiers"));
+    for (const f of ["chap1.tex", "chap2.tex", "chap3.tex", "notes.txt"]) await ipc.createFile(`${root}/${f}`, `% ${f}\n`);
+    await ipc.createDir(`${root}/annexes`);
+    await project.refreshTree();
+    // A new empty project shows the templates: back to the files.
+    ui.showSidebar("files");
+    await until(() => !!row("notes.txt") && !!row("annexes"), 5_000, "tree rows");
+
+    click("chap1.tex");
+    check("click selects one", fileSelection.count === 1 && names() === "chap1.tex", names());
+    click("chap3.tex", { shift: true });
+    check("shift range", names() === "chap1.tex,chap2.tex,chap3.tex", names());
+    click("notes.txt", { add: true });
+    check("ctrl/cmd adds", fileSelection.count === 4, names());
+    click("chap2.tex", { add: true });
+    check("ctrl/cmd removes", names() === "chap1.tex,chap3.tex,notes.txt", names());
+    // Ctrl + click on a Mac (a right click for the system).
+    if (mac) {
+      row("chap2.tex").dispatchEvent(new MouseEvent("mousedown", { bubbles: true, ctrlKey: true, button: 0 }));
+      row("chap2.tex").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, ctrlKey: true, button: 0 }));
+      check("mac ctrl click", fileSelection.count === 4 && !ui.menu, names());
+    }
+    await until(() => !!document.querySelector(".selection"), 2_000, "selection bar");
+    check("selection bar", document.querySelector(".selection")?.textContent?.includes(String(fileSelection.count)) ?? false);
+    row("chap1.tex").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, button: 2 }));
+    await until(() => !!ui.menu, 2_000, "menu");
+    const labels = ui.menu!.items.map((i) => i.label ?? "");
+    check("menu of the selection", labels.some((l) => /4/.test(l) && /Supprimer|Delete/.test(l)), labels.join(" | "));
+    await scene("multi-select", 2500);
+    ui.closeMenu();
+
+    // Drag the selection onto a folder.
+    const dt = new DataTransfer();
+    row("chap1.tex").dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
+    row("annexes").dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt }));
+    await until(() => project.findNode(`${root}/annexes/chap1.tex`) !== null, 5_000, "moved");
+    const moved = await Promise.all(["chap1.tex", "chap2.tex", "chap3.tex", "notes.txt"].map((f) => ipc.pathExists(`${root}/annexes/${f}`)));
+    check("moved together", moved.every(Boolean), moved.join(","));
+
+    // Keyboard: the arrows move, Shift extends, Cmd/Ctrl + A selects everything.
+    await project.refreshTree();
+    click("annexes");
+    await until(() => !!row("chap2.tex"), 3_000, "folder open");
+    click("chap1.tex");
+    row("chap1.tex").focus();
+    row("chap1.tex").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", shiftKey: true, bubbles: true }));
+    check("shift arrow", names() === "chap1.tex,chap2.tex", names());
+    row("chap2.tex").dispatchEvent(new KeyboardEvent("keydown", { key: "a", metaKey: mac, ctrlKey: !mac, bubbles: true }));
+    check("select all", fileSelection.count >= 6, fileSelection.count);
+
+    // Deleting two files after one confirmation.
+    click("chap1.tex");
+    click("chap2.tex", { add: true });
+    row("chap2.tex").dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
+    await until(() => !!document.querySelector(".dialog .btn.primary"), 3_000, "confirmation");
+    check("one confirmation", /2/.test(document.querySelector(".dialog")?.textContent ?? ""));
+    await scene("delete-confirm", 1500);
+    document.querySelector<HTMLButtonElement>(".dialog .btn.primary")!.click();
+    await until(() => project.findNode(`${root}/annexes/chap1.tex`) === null, 5_000, "deleted");
+    check("deleted together", !(await ipc.pathExists(`${root}/annexes/chap1.tex`)) && !(await ipc.pathExists(`${root}/annexes/chap2.tex`)));
+
+    // The formatting bar at the size of the window.
+    await editor.open(project.info!.main!);
+    await pause(500);
+    const shown = (sel: string) => [...document.querySelectorAll<HTMLElement>(sel)].filter((e) => e.offsetWidth > 0).map((e) => e.textContent?.trim());
+    const texts = shown(".format-bar .text-btn span");
+    results.window = `${window.innerWidth}px`;
+    results.barTexts = texts.join(" | ");
+    check("image, table, diagram texts", ["Image", "Tableau", "Schéma"].every((x) => texts.some((s) => s?.startsWith(x))) || ["Image", "Table", "Diagram"].every((x) => texts.some((s) => s?.startsWith(x))), texts.join(","));
+    const font = document.querySelector<HTMLElement>(".format-bar .select-btn.font");
+    results.fontButton = `${font?.offsetWidth}px`;
+    check("small font button", !!font && font.offsetWidth <= 120, font?.offsetWidth);
+    const bar = document.querySelector<HTMLElement>(".format-bar .groups");
+    check("bar fits", !!bar && bar.scrollWidth <= bar.clientWidth + 1, `${bar?.scrollWidth} > ${bar?.clientWidth}`);
+    await scene("format-bar", 2000);
+  } catch (e) {
+    results.failure = String(e);
+  }
+  log(JSON.stringify(results, null, 2));
+  const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));
+  log(`files scenes ${ok ? "PASSED" : "FAILED"}`);
   return ok;
 }

@@ -1068,6 +1068,17 @@ const en = {
   "problems.mainFix": "The fix applied by “Fix all”",
   "action.quickFix": "Fix the problem at the cursor",
   "action.fixAll": "Fix all problems",
+  "format.tikz": "Diagram",
+  "files.selected": "{n} selected",
+  "files.openMany": "Open the {n} files",
+  "files.insertImages": "Insert the {n} images",
+  "files.insertReferences": "Insert references to the {n} files",
+  "files.deleteMany": "Delete {n} items",
+  "files.copyPaths": "Copy the paths",
+  "files.copyRelativePaths": "Copy the relative paths",
+  "files.clearSelection": "Clear the selection",
+  "project.deleteManyTitle": "Delete {n} items?",
+  "project.andMore": "… and {n} more",
 };
 
 export default en;

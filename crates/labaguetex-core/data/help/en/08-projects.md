@@ -15,7 +15,7 @@ A project located elsewhere opens with **Open folder…**; it then shows among t
 
 ## Light mode: a file on its own
 
-**Open a .tex file** (or drop a `.tex` on the window) opens it **without making a project**: you edit and build it as usual, but **nothing is created next to it**. Build files go to the application's cache, and **Export PDF** saves the PDF wherever you like (next to the `.tex` by default). The *Light mode* badge reminds you of it in the top bar.
+**Open a .tex file** (or drop a `.tex` on the window, double-click it in the Finder or Explorer, or *Open with › LaBagueTex*) opens it **without making a project**: you edit and build it as usual, but **nothing is created next to it**. Build files go to the application's cache, and **Export PDF** saves the PDF wherever you like (next to the `.tex` by default). The *Light mode* badge reminds you of it in the top bar.
 
 The files it includes (`\input`) and its bibliography are read and can be edited. What needs a folder — adding images, font files, files or folders, a template, a drawing in its own file — first offers to **make a project**: a name and a place (the projects folder by default). The project gets a copy of the file and of everything it uses (included files, bibliography, images); the original file is not changed. The requested action then goes on in the new project.
 
@@ -44,6 +44,10 @@ In the file tree:
 - right-click: new file or folder, rename, move to trash, copy the path, insert a reference to the file in the document;
 - drag and drop to move; drop files from your system to import them;
 - <kbd>F2</kbd> renames the selected item.
+
+**Selecting several files**: <kbd>⇧</kbd>/<kbd>Shift</kbd> + click selects everything up to the clicked file, <kbd>⌘</kbd> (Mac) or <kbd>Ctrl</kbd> + click adds or removes a file; with the keyboard, <kbd>⇧</kbd> + arrows extends the selection and <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>A</kbd> selects everything (<kbd>Esc</kbd> clears it). The selection is dragged as one into a folder or into the text; its menu (right-click) opens the files, inserts the images or files into the document, moves them to the trash after a single confirmation (also with <kbd>Delete</kbd>) and copies their paths. The bar below the tree says how many items are selected.
+
+A `.tex` file of a LaBagueTex project opened from the Finder or Explorer opens that project; a folder opens as a project.
 
 Changes made by other programs (git, sync, another editor) are detected: open files are reloaded, or you are warned if they had unsaved changes.
 

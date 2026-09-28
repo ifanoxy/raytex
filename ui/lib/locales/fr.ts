@@ -1070,6 +1070,17 @@ const fr: Record<keyof typeof en, string> = {
   "problems.mainFix": "La correction appliquée par « Tout corriger »",
   "action.quickFix": "Corriger le problème sous le curseur",
   "action.fixAll": "Corriger tous les problèmes",
+  "format.tikz": "Schéma",
+  "files.selected": "{n} sélectionnés",
+  "files.openMany": "Ouvrir les {n} fichiers",
+  "files.insertImages": "Insérer les {n} images",
+  "files.insertReferences": "Insérer les {n} fichiers dans le document",
+  "files.deleteMany": "Supprimer {n} éléments",
+  "files.copyPaths": "Copier les chemins",
+  "files.copyRelativePaths": "Copier les chemins relatifs",
+  "files.clearSelection": "Désélectionner",
+  "project.deleteManyTitle": "Supprimer {n} éléments ?",
+  "project.andMore": "… et {n} autres",
 };
 
 export default fr;
