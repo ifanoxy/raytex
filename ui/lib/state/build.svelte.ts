@@ -46,6 +46,7 @@ class BuildStore {
     await ipc.on("build:started", ({ plan, manual }) => {
       // The engine tells which builds the user asked for (queued requests are coalesced).
       this.manual = manual;
+      editor.buildStarted();
       this.running = true;
       this.plan = plan;
       this.step = null;
@@ -148,6 +149,8 @@ class BuildStore {
     if (!outcome) return;
     this.outcome = outcome;
     this.error = null;
+    // Typed during the build: the diagnostics move to the current text.
+    editor.mapBuildDiagnostics(outcome.diagnostics);
     diagnostics.setBuild(outcome.diagnostics);
     if (outcome.pdf && (outcome.pdfUpdated || !viewer.pdf)) viewer.load(outcome.pdf);
     if (outcome.cancelled) {

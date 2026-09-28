@@ -2,7 +2,7 @@
 
 ## Les distributions
 
-labaguetex fonctionne avec **toutes** les distributions :
+LaBagueTex fonctionne avec **toutes** les distributions :
 
 | Distribution | Systèmes | Particularité |
 |---|---|---|
@@ -22,7 +22,7 @@ L'**assistant** (*Distribution TeX* dans les réglages, ou clic sur la barre d'�
 
 ## Tous les packages sont pris en charge
 
-labaguetex **lit la source** des packages que charge votre document, quels qu'ils soient : leurs commandes, environnements et options apparaissent dans l'autocomplétion, même pour un package rare ou le vôtre. Les packages les plus courants bénéficient en plus d'une documentation détaillée en français et en anglais.
+LaBagueTex **lit la source** des packages que charge votre document, quels qu'ils soient : leurs commandes, environnements et options apparaissent dans l'autocomplétion, même pour un package rare ou le vôtre. Les packages les plus courants bénéficient en plus d'une documentation détaillée en français et en anglais.
 
 ## La vue Packages
 
@@ -34,7 +34,7 @@ Pour chaque package : ses commandes (un clic les insère), ses environnements, s
 
 ## Installer un package manquant
 
-Quand la compilation échoue sur un fichier introuvable (`File 'xyz.sty' not found`), le panneau **Problèmes** propose **Installer**. labaguetex :
+Quand la compilation échoue sur un fichier introuvable (`File 'xyz.sty' not found`), le panneau **Problèmes** propose **Installer**. LaBagueTex :
 
 1. trouve le package qui fournit ce fichier ;
 2. vous montre la commande (tlmgr, MiKTeX, ou votre gestionnaire de paquets Linux) ;

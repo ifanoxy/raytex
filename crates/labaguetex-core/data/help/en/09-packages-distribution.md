@@ -2,7 +2,7 @@
 
 ## Distributions
 
-labaguetex works with **every** distribution:
+LaBagueTex works with **every** distribution:
 
 | Distribution | Systems | Notes |
 |---|---|---|
@@ -22,7 +22,7 @@ The **assistant** (*TeX distribution* in the settings, or click the status bar):
 
 ## Every package is supported
 
-labaguetex **reads the source** of the packages your document loads, whatever they are: their commands, environments and options appear in completion, even for a rare package or your own. The most common packages also come with detailed documentation in English and French.
+LaBagueTex **reads the source** of the packages your document loads, whatever they are: their commands, environments and options appear in completion, even for a rare package or your own. The most common packages also come with detailed documentation in English and French.
 
 ## The Packages view
 

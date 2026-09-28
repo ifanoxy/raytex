@@ -49,7 +49,7 @@ jobs:
         with:
           projectPath: crates/labaguetex-desktop
           tagName: ${{ github.ref_name }}
-          releaseName: labaguetex ${{ github.ref_name }}
+          releaseName: LaBagueTex ${{ github.ref_name }}
           releaseBody: See CHANGELOG.md for the changes of this version.
           releaseDraft: true
           prerelease: false

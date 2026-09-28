@@ -1,7 +1,8 @@
 <script lang="ts">
   // Precise error console: every diagnostic with its location, the TeX
-  // context, a plain-language explanation and one-click fixes.
-  import { fixLabel, runFix } from "$lib/fixes";
+  // context, a plain-language suggestion and one-click fixes, one by one or
+  // all at once.
+  import { autoFix, fixable, fixAllAndReport, fixIcon, fixLabel, runFix } from "$lib/fixes";
   import { t } from "$lib/i18n.svelte";
   import { app } from "$lib/state/app.svelte";
   import { build } from "$lib/state/build.svelte";
@@ -21,7 +22,7 @@
 
   const ICON = { error: "alert-circle", warning: "alert-triangle", info: "info", hint: "lightbulb" } as const;
   const SEVERITY = { error: "problems.severity.error", warning: "problems.severity.warning", info: "problems.severity.info", hint: "problems.severity.hint" } as const;
-  const SOURCE: Record<string, string> = { latex: "LaTeX", bibtex: "BibTeX", biber: "Biber", index: "Index", syntax: "labaguetex", lint: "labaguetex", build: "Build" };
+  const SOURCE: Record<string, string> = { latex: "LaTeX", bibtex: "BibTeX", biber: "Biber", index: "Index", syntax: "LaBagueTex", lint: "LaBagueTex", build: "Build" };
 
   const q = $derived(filter.trim().toLowerCase());
   const showBadboxes = $derived(app.settings?.build.showBadboxes ?? false);
@@ -37,6 +38,18 @@
 
   const groups = $derived(diagnostics.grouped.map((g) => ({ ...g, items: g.items.filter(keep) })).filter((g) => g.items.length));
   const counts = $derived(diagnostics.counts);
+  const visible = $derived(groups.flatMap((g) => g.items));
+  const fixableCount = $derived(fixable(visible).length);
+  let fixing = $state(false);
+
+  async function fixEverything() {
+    fixing = true;
+    try {
+      await fixAllAndReport(visible);
+    } finally {
+      fixing = false;
+    }
+  }
 
   function open(d: Diagnostic) {
     if (!d.file) {
@@ -120,6 +133,9 @@
   {#if build.outcome}
     <span class="faint small">{t("problems.lastBuild", { engine: build.outcome.engine, pages: build.outcome.pages ?? "?" })}</span>
   {/if}
+  <button class="btn small fix-all" disabled={!fixableCount || fixing} onclick={fixEverything} title={t("problems.fixAllHint")}>
+    {#if fixing}<span class="spinner"></span>{:else}<Icon name="wand" size={13} />{/if}{t("problems.fixAll", { n: fixableCount })}
+  </button>
   <button class="btn ghost small" disabled={!groups.length} onclick={copyAll} title={t("problems.copyAllHint")}><Icon name="copy" size={13} />{t("problems.copyAll")}</button>
   <button class="btn ghost small" onclick={() => project.lintAll()}><Icon name="refresh" size={13} />{t("problems.recheck")}</button>
 </div>
@@ -147,10 +163,20 @@
           <span class="src">{SOURCE[d.source]}{d.code && (d.source === "lint" || d.source === "syntax") ? ` · ${d.code}` : ""}</span>
           {#if location(d)}<button class="loc mono" onclick={() => open(d)}>{location(d)}</button>{/if}
         </div>
+        {#if d.hint && !open_}
+          <!-- The suggestion; a click shows the details. -->
+          <div class="suggestion selectable" role="button" tabindex="-1" onclick={() => !selection() && toggle(d)} onkeydown={(e) => e.key === "Enter" && toggle(d)}>
+            <Icon name="lightbulb" size={12} />
+            <span>{@html inlineMarkdown(d.hint.explanation)}</span>
+          </div>
+        {/if}
         {#if d.fixes.length}
+          {@const main = autoFix(d)}
           <div class="fixes">
             {#each d.fixes as fix}
-              <button class="btn small fix" onclick={() => runFix(fix, d)}><Icon name="wand" size={12} />{fixLabel(fix)}</button>
+              <button class="btn small fix" class:main={fix === main} onclick={() => runFix(fix, d)} title={fix === main ? t("problems.mainFix") : undefined}>
+                <Icon name={fixIcon(fix)} size={12} />{fixLabel(fix)}
+              </button>
             {/each}
           </div>
         {/if}
@@ -329,6 +355,42 @@
   .fix {
     color: var(--accent);
     border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+  .fix.main {
+    background: var(--accent-soft);
+  }
+  .fix-all {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    background: var(--accent-soft);
+    font-weight: 600;
+  }
+  .fix-all:disabled {
+    color: var(--text-faint);
+    background: none;
+    border-color: var(--border);
+    font-weight: normal;
+  }
+  .suggestion {
+    display: flex;
+    gap: 6px;
+    padding: 0 12px 4px 50px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .suggestion :global(.icon) {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--warning);
+  }
+  .suggestion span {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .details {
     padding: 0 12px 10px 50px;

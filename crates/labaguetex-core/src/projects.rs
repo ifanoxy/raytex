@@ -25,9 +25,32 @@ pub struct ProjectEntry {
     pub pdf: Option<PathBuf>,
 }
 
-/// The default projects folder: `labaguetex` in the documents folder.
+/// Name of the default projects folder.
+pub const FOLDER: &str = "LaBagueTex";
+/// Its name before the application was renamed.
+const LEGACY_FOLDER: &str = "labaguetex";
+
+/// The default projects folder: `LaBagueTex` in the documents folder.
 pub fn default_dir(documents: Option<&Path>, home: &Path) -> PathBuf {
-    documents.unwrap_or(home).join("labaguetex")
+    documents.unwrap_or(home).join(FOLDER)
+}
+
+/// Renames the projects folder of an earlier version (`labaguetex`) in
+/// `parent` to its current name. Returns the old and new paths when it did.
+pub fn migrate_legacy_dir(parent: &Path) -> Option<(PathBuf, PathBuf)> {
+    // Names as stored: on case-insensitive file systems `LaBagueTex`
+    // "exists" as soon as `labaguetex` does.
+    let names: Vec<String> = std::fs::read_dir(parent)
+        .ok()?
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    if !names.iter().any(|n| n == LEGACY_FOLDER) || names.iter().any(|n| n == FOLDER) {
+        return None;
+    }
+    let (old, new) = (parent.join(LEGACY_FOLDER), parent.join(FOLDER));
+    std::fs::rename(&old, &new).ok()?;
+    Some((old, new))
 }
 
 fn modified(path: &Path) -> u64 {
@@ -171,6 +194,23 @@ pub fn from_file(
 mod tests {
     use super::*;
     use crate::workspace::Workspace;
+
+    #[test]
+    fn renames_the_legacy_projects_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("labaguetex/td")).unwrap();
+        let (old, new) = migrate_legacy_dir(dir.path()).unwrap();
+        assert_eq!(old, dir.path().join("labaguetex"));
+        assert_eq!(new, default_dir(Some(dir.path()), dir.path()));
+        assert!(new.join("td").is_dir());
+        let names: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name())
+            .collect();
+        assert_eq!(names, ["LaBagueTex"]);
+        assert!(migrate_legacy_dir(dir.path()).is_none());
+    }
 
     #[test]
     fn lists_projects_and_makes_one_from_a_file() {

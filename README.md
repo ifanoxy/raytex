@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/logo.svg" width="112" alt="labaguetex logo" />
+  <img src="assets/logo.svg" width="112" alt="LaBagueTex logo" />
 </p>
 
-<h1 align="center">labaguetex</h1>
+<h1 align="center">LaBagueTex</h1>
 
 <p align="center">
   <strong>A modern LaTeX IDE for students, teachers and researchers.</strong><br />
@@ -15,7 +15,7 @@
 
 ---
 
-labaguetex (LaTeX + baguette) is a LaTeX editor that helps beginners learn and lets experts go fast: live preview, completion learned from **every** installed package, a precise error console with one-click fixes, SyncTeX, templates, macros and a guided setup of **any** TeX distribution.
+LaBagueTex (LaTeX + baguette) is a LaTeX editor that helps beginners learn and lets experts go fast: live preview, completion learned from **every** installed package, a precise error console that explains every problem and fixes the common ones in one click (or all at once), SyncTeX, templates, macros and a guided setup of **any** TeX distribution.
 
 ## Features
 
@@ -60,7 +60,7 @@ labaguetex (LaTeX + baguette) is a LaTeX editor that helps beginners learn and l
 - Browse installed packages and the whole CTAN catalogue; `texdoc` documentation.
 
 **Projects**
-- A projects folder (`Documents/labaguetex` by default) and a **My projects** browser with previews of each PDF, search, recent projects and files.
+- A projects folder (`Documents/LaBagueTex` by default) and a **My projects** browser with previews of each PDF, search, recent projects and files.
 - Light mode: open a single `.tex` file, edit it and export its PDF without creating any file next to it; make it a project in one step when images or other files are needed.
 - New projects start empty; the **Templates** panel shows each template by its first page (compiled once, cached) and puts it in the document in one undoable click.
 - 16 templates (article, report, thesis, research article, slides, poster, course notes, exam, exercise sheet, homework, lab report, letter, CV, TikZ figure…), all building without warnings, in English and French.
@@ -72,7 +72,7 @@ The interface is available in English and French.
 
 ## Install
 
-Download the installer for your system from the releases page, then open labaguetex: if no TeX distribution is found, the setup assistant helps you install one.
+Download the installer for your system from the releases page, then open LaBagueTex: if no TeX distribution is found, the setup assistant helps you install one.
 
 ## Build from source
 
@@ -124,4 +124,4 @@ Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit togethe
 
 ## License
 
-labaguetex is free software, dual-licensed under the [MIT](LICENSE-MIT) and [Apache 2.0](LICENSE-APACHE) licenses, at your option.
+LaBagueTex is free software, dual-licensed under the [MIT](LICENSE-MIT) and [Apache 2.0](LICENSE-APACHE) licenses, at your option.

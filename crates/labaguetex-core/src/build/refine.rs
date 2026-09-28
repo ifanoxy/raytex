@@ -2,44 +2,48 @@
 //!
 //! TeX only reports a line and a fragment of text around the error point.
 //! Using the current text of the file, the fragment is found in the line to
-//! highlight exactly the offending token (e.g. `\textbff`), and some errors
-//! get extra quick fixes ("did you mean `\textbf`?").
+//! highlight exactly the offending token (e.g. `\textbff`). Errors reported
+//! inside a package are moved to the `\usepackage` that causes them, then
+//! every diagnostic gets its fixes ([`crate::fixes`]) and an explanation.
 
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::LazyLock;
 
 use regex::Regex;
 
-use crate::diagnostics::{Diagnostic, Fix, Source};
+use crate::diagnostics::{Diagnostic, Fix};
+use crate::fixes::{self, Sources};
 use crate::i18n::Lang;
-use crate::log::hints::{closest_command, undefined_command};
+use crate::log::hints;
 use crate::text::{LineIndex, Span};
 
 static QUOTED: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"`([^']+)'").unwrap());
 static SPACE_AFTER_CS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\\[A-Za-z@]+) ").unwrap());
 
-/// Refines the ranges of every diagnostic that has a file and a line.
-pub fn refine_all(diags: &mut [Diagnostic], source: &dyn Fn(&Path) -> Option<String>, lang: Lang) {
-    let mut cache: HashMap<PathBuf, Option<(String, LineIndex)>> = HashMap::new();
+/// Locates every diagnostic precisely, then adds fixes and explanations.
+/// `root` is the main file of the project.
+pub fn refine_all(
+    diags: &mut [Diagnostic],
+    root: &Path,
+    source: &dyn Fn(&Path) -> Option<String>,
+    lang: Lang,
+) {
+    let mut sources = Sources::new(root, source);
     for d in diags.iter_mut() {
-        if d.range.is_some() {
-            continue;
+        fixes::relocate(d, &mut sources);
+        if d.range.is_none()
+            && let Some(file) = d.file.clone()
+            && let Some(text) = source(&file)
+        {
+            let lines = LineIndex::new(&text);
+            refine(d, &text, &lines);
         }
-        let Some(file) = d.file.clone() else { continue };
-        let entry = cache.entry(file.clone()).or_insert_with(|| {
-            source(&file).map(|t| {
-                let lines = LineIndex::new(&t);
-                (t, lines)
-            })
-        });
-        if let Some((text, lines)) = entry {
-            refine(d, text, lines, lang);
-        }
+        fixes::suggest(d, &mut sources, lang);
+        hints::fallback(d, lang);
     }
 }
 
-fn refine(d: &mut Diagnostic, text: &str, lines: &LineIndex, lang: Lang) {
+fn refine(d: &mut Diagnostic, text: &str, lines: &LineIndex) {
     // Missing packages have no line: find the \usepackage.
     if d.line.is_none() {
         let wanted = d.fixes.iter().find_map(|f| match f {
@@ -126,23 +130,7 @@ fn refine(d: &mut Diagnostic, text: &str, lines: &LineIndex, lang: Lang) {
         }
     }
     let token = span.start + start..span.start + point;
-    d.range = Some(lines.range(text, token.clone()));
-
-    if d.source == Source::Latex
-        && d.code.as_deref() == Some("undefined-control-sequence")
-        && let Some(cmd) = undefined_command(d)
-        && let Some(best) = closest_command(cmd.trim_start_matches('\\'))
-    {
-        let title = format!("{} \\{best}", lang.pick("Remplacer par", "Replace with"));
-        let fix = Fix::Replace {
-            title,
-            range: lines.range(text, token),
-            text: format!("\\{best}"),
-        };
-        if !d.fixes.contains(&fix) {
-            d.fixes.insert(0, fix);
-        }
-    }
+    d.range = Some(lines.range(text, token));
 }
 
 /// Byte offset in `line` where TeX's context fragment `before` ends.
@@ -206,7 +194,8 @@ fn find_package_name(text: &str, name: &str) -> Option<Span> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::diagnostics::Severity;
+    use crate::diagnostics::{Severity, Source};
+    use std::path::PathBuf;
 
     fn diag(message: &str, line: u32, before: Option<&str>) -> Diagnostic {
         let mut d = Diagnostic::new(Severity::Error, Source::Latex, message);
@@ -239,13 +228,17 @@ mod tests {
                 d
             },
         ];
-        refine_all(&mut ds, &source, Lang::En);
+        refine_all(&mut ds, Path::new("/p/main.tex"), &source, Lang::En);
         let r = ds[0].range.unwrap();
         assert_eq!(
             (r.start.line, r.start.character, r.end.character),
             (2, 28, 36)
         );
-        assert!(matches!(&ds[0].fixes[0], Fix::Replace { text, .. } if text == "\\textbf"));
+        assert!(
+            matches!(&ds[0].fixes[0], Fix::Edits { edits, .. } if edits[0].text == "\\textbf"),
+            "{:?}",
+            ds[0].fixes
+        );
         let r = ds[1].range.unwrap();
         assert_eq!((r.start.line, r.end.character), (3, 11));
         let r = ds[2].range.unwrap();

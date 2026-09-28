@@ -1,4 +1,4 @@
-# Contributing to labaguetex
+# Contributing to LaBagueTex
 
 Thank you for helping! Contributions of every kind are welcome: bug reports, documentation of packages, templates, translations, code.
 
@@ -30,10 +30,12 @@ cargo test -p labaguetex-core --release -- --ignored
 LABAGUETEX_SELFTEST=/path/to/a/project npm run app:dev   # prints PASSED or FAILED and quits
 ```
 
+`tests/common_mistakes.rs` compiles about 110 documents made of common commands, each with a common mistake: every one must be reported with an explanation and an automatic fix, and the document must compile without error or warning once the fix is applied. Add a case there when you add a fix. `LBT_PROBE=1` prints the diagnostics instead of checking (to write a new case), `LBT_CASE=<text>` runs only the matching cases.
+
 Optional variables of the end-to-end check (development builds only):
 
-- `LABAGUETEX_SELFTEST_SCENES=workflow` with `LABAGUETEX_SELFTEST_ASSETS=<folder>`: creates an empty project in that folder, then checks templates and their thumbnails, live compilation, undo / redo, the formatting bar, `$` typing, linked environments and the panels; `=media` (assets: test images) checks the image, TikZ and font tools; `=1` walks through the main screens for screenshots (each logs `scene: <name>`).
-- `LABAGUETEX_CONFIG_DIR=<folder>`: settings, session and cache in that folder, so the check never touches those of an installed labaguetex.
+- `LABAGUETEX_SELFTEST_SCENES=workflow` with `LABAGUETEX_SELFTEST_ASSETS=<folder>`: creates an empty project in that folder, then checks templates and their thumbnails, live compilation, undo / redo, the formatting bar, `$` typing, linked environments and the panels; `=media` (assets: test images) checks the image, TikZ and font tools; `=fixes` writes a document full of mistakes, checks the suggestions, Alt+Enter and **Fix all** until it compiles; `=1` walks through the main screens for screenshots (each logs `scene: <name>`).
+- `LABAGUETEX_CONFIG_DIR=<folder>`: settings, session and cache in that folder, so the check never touches those of an installed LaBagueTex.
 - `LABAGUETEX_SELFTEST_KEEP=1`: leaves the window open at the end.
 
 The continuous integration runs the same checks on Linux, macOS and Windows.

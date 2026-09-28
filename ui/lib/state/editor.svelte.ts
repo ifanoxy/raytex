@@ -13,7 +13,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab, redo, redoDepth, 
 import { bracketMatching, foldGutter, foldKeymap, indentOnInput, indentUnit } from "@codemirror/language";
 import { type Diagnostic as CmDiagnostic, lintGutter, lintKeymap, setDiagnostics } from "@codemirror/lint";
 import { highlightSelectionMatches, search, searchKeymap } from "@codemirror/search";
-import { Compartment, EditorSelection, EditorState, type Extension, Prec, type StateEffect, type Text, type TransactionSpec } from "@codemirror/state";
+import { ChangeSet, Compartment, EditorSelection, EditorState, type Extension, Prec, type StateEffect, type Text, type TransactionSpec } from "@codemirror/state";
 import {
   crosshairCursor,
   drawSelection,
@@ -49,10 +49,10 @@ import { i18n, t } from "../i18n.svelte";
 import * as ipc from "../ipc";
 import { addPackages, hasPackage, insertionPoint } from "../preamble";
 import type { Diagnostic, Location, Macro, Position, Range, Settings, TextEdit } from "../types";
-import { basename, debounce, dirname, escapeSnippet, fileKind, type FileKind, inlineMarkdown, isMac, join, relative, samePath } from "../utils";
+import { basename, debounce, dirname, escapeSnippet, fileKind, type FileKind, inlineMarkdown, isMac, join, prettyKey, relative, samePath } from "../utils";
 import { app } from "./app.svelte";
 import { build } from "./build.svelte";
-import { diagnostics, pathKey } from "./diagnostics.svelte";
+import { diagnostics, mapDiagnostic, pathKey, type PositionMap } from "./diagnostics.svelte";
 import { media, type TikzRequest } from "./media.svelte";
 import { project } from "./project.svelte";
 import { searchStore } from "./search.svelte";
@@ -139,8 +139,17 @@ function minimalChange(a: string, b: string) {
   return { from: start, to: endA, insert: b.slice(start, endB) };
 }
 
+/** How positions of `from` move to `to` through `changes`. */
+function positionMap(from: Text, to: Text, changes: ChangeSet): PositionMap {
+  return (p, assoc) => {
+    const n = changes.mapPos(toOffset(from, p), assoc);
+    const line = to.lineAt(Math.min(n, to.length));
+    return { line: line.number - 1, character: n - line.from };
+  };
+}
+
 function sourceLabel(d: Diagnostic): string {
-  const names: Record<string, string> = { latex: "LaTeX", bibtex: "BibTeX", biber: "Biber", index: "Index", syntax: "labaguetex", lint: "labaguetex", build: "build" };
+  const names: Record<string, string> = { latex: "LaTeX", bibtex: "BibTeX", biber: "Biber", index: "Index", syntax: "LaBagueTex", lint: "LaBagueTex", build: "build" };
   return d.code && (d.source === "lint" || d.source === "syntax") ? `${names[d.source]} · ${d.code}` : names[d.source];
 }
 
@@ -156,6 +165,12 @@ function renderDiagnostic(d: Diagnostic): HTMLElement {
     hint.className = "lbt-diag-hint";
     hint.innerHTML = `<strong>${inlineMarkdown(d.hint.title)}</strong> ${inlineMarkdown(d.hint.explanation)}`;
     root.appendChild(hint);
+  }
+  if (d.fixes.length) {
+    const keys = document.createElement("div");
+    keys.className = "lbt-diag-keys";
+    keys.textContent = t("fix.quickFixHint", { keys: prettyKey("Alt-Enter") });
+    root.appendChild(keys);
   }
   return root;
 }
@@ -502,7 +517,10 @@ class EditorStore {
     const path = u.state.facet(docPath);
     const m = this.model(path);
     if (!m) return;
-    if (u.docChanged) this.afterChange(m, u.state);
+    if (u.docChanged) {
+      this.track(m, u.changes, u.startState.doc, u.state.doc);
+      this.afterChange(m, u.state);
+    }
     if (u.transactions.length) this.refreshFlags(u.state);
     if (u.selectionSet || u.docChanged) {
       const sel = u.state.selection;
@@ -546,9 +564,50 @@ class EditorStore {
       this.view!.dispatch(spec);
     } else {
       const tr = m.state.update(spec);
+      const old = m.state.doc;
       m.state = tr.state;
-      if (tr.docChanged) this.afterChange(m, m.state);
+      if (tr.docChanged) {
+        this.track(m, tr.changes, old, tr.state.doc);
+        this.afterChange(m, m.state);
+      }
     }
+  }
+
+  // ------------------------------------------- diagnostics on their text
+
+  /** Changes of each open document since the running build read it. */
+  private sinceBuild = new Map<string, { doc: Text; changes: ChangeSet }>();
+
+  /** A change: the diagnostics and their fixes follow the text. */
+  private track(m: DocModel, changes: ChangeSet, old: Text, now: Text) {
+    const key = pathKey(m.path);
+    const since = this.sinceBuild.get(key);
+    if (since) since.changes = since.changes.compose(changes);
+    diagnostics.mapFile(key, positionMap(old, now, changes));
+  }
+
+  /** A build started: it reads the saved files. */
+  buildStarted() {
+    this.sinceBuild.clear();
+    for (const [key, m] of this.models) {
+      const now = this.stateOf(m.path)?.doc;
+      if (!now) continue;
+      const change = minimalChange(m.saved.toString(), now.toString());
+      const same = change.from === change.to && !change.insert;
+      this.sinceBuild.set(key, { doc: m.saved, changes: ChangeSet.of(same ? [] : [change], m.saved.length) });
+    }
+  }
+
+  /** Moves the diagnostics of a finished build (found in the saved text) to the current text. */
+  mapBuildDiagnostics(list: Diagnostic[]) {
+    for (const [key, since] of this.sinceBuild) {
+      const m = this.models.get(key);
+      const now = m && this.stateOf(m.path)?.doc;
+      if (!now || since.changes.empty) continue;
+      const map = positionMap(since.doc, now, since.changes);
+      for (const d of list) mapDiagnostic(d, key, map);
+    }
+    this.sinceBuild.clear();
   }
 
   // ----------------------------------------------------- engine sync

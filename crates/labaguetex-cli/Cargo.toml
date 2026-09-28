@@ -1,6 +1,6 @@
 [package]
 name = "labaguetex-cli"
-description = "baguette: the labaguetex command line (doctor, build, lint, new, install…)."
+description = "baguette: the LaBagueTex command line (doctor, build, lint, new, install…)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

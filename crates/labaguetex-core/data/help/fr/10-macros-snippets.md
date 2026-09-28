@@ -62,7 +62,7 @@ Pour ce qui doit apparaître dans le document, préférez une commande LaTeX dan
 \newcommand{\R}{\mathbb{R}}
 ```
 
-labaguetex les reconnaît aussitôt : autocomplétion avec le bon nombre d'arguments, aperçu mathématique, <kbd>F12</kbd> pour aller à leur définition, <kbd>F2</kbd> pour les renommer dans tout le projet.
+LaBagueTex les reconnaît aussitôt : autocomplétion avec le bon nombre d'arguments, aperçu mathématique, <kbd>F12</kbd> pour aller à leur définition, <kbd>F2</kbd> pour les renommer dans tout le projet.
 
 ## Raccourcis de mise en forme
 

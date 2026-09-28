@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "labaguetex",
+  "productName": "LaBagueTex",
   "mainBinaryName": "labaguetex",
   "version": "0.1.0",
   "identifier": "org.labaguetex.app",
@@ -21,7 +21,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "labaguetex",
+        "title": "LaBagueTex",
         "width": 1440,
         "height": 900,
         "minWidth": 900,
@@ -53,8 +53,8 @@
     "targets": "all",
     "category": "Education",
     "shortDescription": "A modern LaTeX IDE for students, teachers and researchers",
-    "longDescription": "labaguetex is a fast, modern and open-source LaTeX editor: live preview, smart completion learned from every installed package, precise error console, SyncTeX, templates, macros and a guided setup of any TeX distribution.",
-    "copyright": "The labaguetex contributors",
+    "longDescription": "LaBagueTex is a fast, modern and open-source LaTeX editor: live preview, smart completion learned from every installed package, precise error console, SyncTeX, templates, macros and a guided setup of any TeX distribution.",
+    "copyright": "The LaBagueTex contributors",
     "license": "MIT OR Apache-2.0",
     "icon": [
       "icons/32x32.png",

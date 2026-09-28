@@ -18,7 +18,7 @@ Quand un **raccourci @** existe, il est affiché à côté de la commande : `\al
 
 ## Vérification pendant la frappe
 
-Sans compiler, labaguetex signale : accolades et environnements mal fermés, renvois et citations inconnus, étiquettes en double, fichiers et images introuvables, packages manquants ou mal ordonnés, commandes obsolètes, petites fautes typographiques (espace insécable avant `\ref`, points de suspension…). Les règles se choisissent dans *Réglages › Vérifications*.
+Sans compiler, LaBagueTex signale : accolades et environnements mal fermés, renvois et citations inconnus, étiquettes en double, fichiers et images introuvables, packages manquants ou mal ordonnés, commandes obsolètes, petites fautes typographiques (espace insécable avant `\ref`, points de suspension…). Les règles se choisissent dans *Réglages › Vérifications*.
 
 ## Documentation au survol
 
@@ -75,4 +75,4 @@ Le menu **Affichage** (en haut à droite) montre ou masque cette barre, le panne
 
 ## Enregistrement
 
-L'enregistrement automatique est activé par défaut. Un point dans l'onglet signale des modifications non enregistrées ; à la fermeture, labaguetex propose d'enregistrer. Les fichiers qui ne sont pas en UTF-8 sont convertis à l'enregistrement.
+L'enregistrement automatique est activé par défaut. Un point dans l'onglet signale des modifications non enregistrées ; à la fermeture, LaBagueTex propose d'enregistrer. Les fichiers qui ne sont pas en UTF-8 sont convertis à l'enregistrement.

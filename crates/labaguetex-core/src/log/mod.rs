@@ -203,6 +203,21 @@ impl Parser<'_> {
                 self.i += 1;
                 continue;
             }
+            if line.starts_with("*** (job aborted, no legal \\end found)") {
+                // The end of the file came before `\end{document}`.
+                let errors = self
+                    .report
+                    .diagnostics
+                    .iter()
+                    .filter(|d| d.severity == Severity::Error)
+                    .count();
+                if let Some(d) = self.report.diagnostics.last_mut()
+                    && d.message.starts_with("Emergency stop")
+                    && errors == 1
+                {
+                    d.message = "Emergency stop: no legal \\end found.".into();
+                }
+            }
             if line.starts_with("No pages of output") {
                 let d = Diagnostic::new(Severity::Warning, Source::Latex, line.clone())
                     .with_code("no-output");
@@ -309,13 +324,19 @@ impl Parser<'_> {
         let start = self.i;
         let mut message = first.trim_end().to_owned();
         self.i += 1;
-        // Continuation of the message (package errors use "(pkg)   text").
+        // Continuation of the message (package errors use "(pkg)   text",
+        // LaTeX errors indent the rest of a long message).
+        let latex_error = message.contains("LaTeX Error:") || message.contains(" Error:");
         while let Some(next) = self.lines.get(self.i) {
             let t = next.trim_start();
             if t.starts_with('(') && t.contains(')') && next.starts_with('(') {
                 let cont = t.split_once(')').map(|(_, r)| r.trim()).unwrap_or("");
                 message.push(' ');
                 message.push_str(cont);
+                self.i += 1;
+            } else if latex_error && next.starts_with("    ") && !t.is_empty() {
+                message.push(' ');
+                message.push_str(t);
                 self.i += 1;
             } else {
                 break;
@@ -457,7 +478,9 @@ impl Parser<'_> {
             .captures(&message)
             .and_then(|m| m[1].parse().ok());
         let lower = message.to_ascii_lowercase();
-        if lower.contains("rerun") || lower.contains("please rerun latex") {
+        // babel reads the languages of the last build from the .aux file.
+        let stale_language = lower.contains("undefined language") && lower.contains("in aux");
+        if lower.contains("rerun") || lower.contains("please rerun latex") || stale_language {
             self.report.rerun_needed = true;
         }
         if lower.contains("(re)run biber") || lower.contains("rerun biber") {
@@ -466,7 +489,11 @@ impl Parser<'_> {
         if message.starts_with("Citation") && message.contains("undefined") {
             self.report.undefined_citations = true;
         }
-        let severity = if lower.contains("rerun") || lower.contains("there were undefined") {
+        let severity = if lower.contains("rerun")
+            || lower.starts_with("there were")
+            || lower.starts_with("marginpar on page")
+            || stale_language
+        {
             Severity::Info
         } else {
             Severity::Warning

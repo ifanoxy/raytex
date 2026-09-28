@@ -244,13 +244,26 @@ export interface TextFile {
 export type Severity = "error" | "warning" | "info" | "hint";
 export type DiagnosticSource = "latex" | "bibtex" | "biber" | "index" | "syntax" | "lint" | "build";
 
+/** One change of a multi-place fix (absolute path). */
+export interface FileEdit {
+  file: string;
+  range: Range;
+  text: string;
+}
+
 export type Fix =
-  | { kind: "addPackage"; package: string }
+  | { kind: "addPackage"; package: string; options?: string }
+  | { kind: "addPackageOption"; package: string; option: string }
+  | { kind: "addToPreamble"; title: string; code: string; after?: string }
+  | { kind: "addTikzLibrary"; library: string }
   | { kind: "installPackage"; file: string }
   | { kind: "replace"; title: string; range: Range; text: string }
+  | { kind: "edits"; title: string; edits: FileEdit[] }
   | { kind: "useEngine"; engine: string }
   | { kind: "enableShellEscape" }
-  | { kind: "createFile"; path: string };
+  | { kind: "createFile"; path: string }
+  | { kind: "rebuild" }
+  | { kind: "openDoc"; package: string };
 
 export interface Diagnostic {
   severity: Severity;

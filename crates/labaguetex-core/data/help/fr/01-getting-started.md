@@ -1,10 +1,10 @@
 # Premiers pas
 
-Bienvenue dans **labaguetex**, l'éditeur LaTeX pensé pour apprendre comme pour travailler vite. Ce guide vous emmène de l'installation à votre premier PDF en cinq minutes.
+Bienvenue dans **LaBagueTex**, l'éditeur LaTeX pensé pour apprendre comme pour travailler vite. Ce guide vous emmène de l'installation à votre premier PDF en cinq minutes.
 
 ## 1. Une distribution TeX
 
-LaTeX transforme vos fichiers `.tex` en PDF grâce à une *distribution TeX* (TeX Live, MacTeX, MiKTeX, TinyTeX, Tectonic…). labaguetex les détecte toutes automatiquement.
+LaTeX transforme vos fichiers `.tex` en PDF grâce à une *distribution TeX* (TeX Live, MacTeX, MiKTeX, TinyTeX, Tectonic…). LaBagueTex les détecte toutes automatiquement.
 
 - La barre d'état, en bas à gauche, indique la distribution utilisée.
 - Si aucune n'est trouvée, l'**assistant d'installation** s'ouvre : il propose la distribution adaptée à votre système, affiche les commandes exactes et les lance pour vous.
@@ -25,7 +25,7 @@ Pour démarrer :
 
 Chaque modèle compile sans erreur dès le départ.
 
-Vous avez déjà des fichiers ? **Ouvrir un dossier** suffit : labaguetex trouve seul le fichier principal (celui qui contient `\documentclass`).
+Vous avez déjà des fichiers ? **Ouvrir un dossier** suffit : LaBagueTex trouve seul le fichier principal (celui qui contient `\documentclass`).
 
 ## 3. Écrire
 
@@ -42,7 +42,7 @@ L'éditeur vous aide aussi à chaque frappe :
 
 Rien à faire : la compilation est **en direct**. Dès que vous marquez une pause dans la frappe, le document est compilé et le PDF, à droite, se met à jour sans perdre votre position. Le badge **En direct** de la barre du haut le rappelle ; un clic dessus la désactive (le document est alors compilé à chaque enregistrement).
 
-Vous pouvez aussi compiler vous-même : <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Entrée</kbd> ou le bouton **Compiler**. labaguetex choisit le bon moteur et ne lance Biber, BibTeX ou l'index que lorsque c'est utile.
+Vous pouvez aussi compiler vous-même : <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Entrée</kbd> ou le bouton **Compiler**. LaBagueTex choisit le bon moteur et ne lance Biber, BibTeX ou l'index que lorsque c'est utile.
 
 ## 5. Corriger les erreurs
 

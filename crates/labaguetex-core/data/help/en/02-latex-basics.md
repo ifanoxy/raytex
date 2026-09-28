@@ -38,7 +38,7 @@ An **environment** wraps a block:
 \end{itemize}
 ```
 
-> Tip: type `\begin{` and pick the environment; labaguetex adds the matching `\end{…}`.
+> Tip: type `\begin{` and pick the environment; LaBagueTex adds the matching `\end{…}`.
 
 ## Structure
 
@@ -86,7 +86,7 @@ Give a **label** to what you want to refer to, then reference it:
 As explained in section~\ref{sec:method}, page~\pageref{sec:method}…
 ```
 
-`~` is a non-breaking space: it keeps the number from starting a line on its own. Type `\ref{`: labaguetex lists every label of the project, with its number.
+`~` is a non-breaking space: it keeps the number from starting a line on its own. Type `\ref{`: LaBagueTex lists every label of the project, with its number.
 
 ## Special characters
 

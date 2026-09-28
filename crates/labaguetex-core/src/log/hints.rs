@@ -11,7 +11,7 @@ use std::sync::LazyLock;
 use regex::Regex;
 use serde::Deserialize;
 
-use crate::diagnostics::{Diagnostic, Fix, Hint};
+use crate::diagnostics::{Diagnostic, Fix, Hint, Severity, Source};
 use crate::i18n::Lang;
 use crate::kb::{Doc, KERNEL, kb};
 
@@ -93,7 +93,7 @@ pub fn enrich(d: &mut Diagnostic, lang: Lang) {
                             &format!("`\\{name}` is defined by the `{pkg}` package."),
                         )
                         .to_owned();
-                    push_fix(d, Fix::AddPackage { package: pkg });
+                    push_fix(d, package_fix(pkg));
                 } else if let Some(best) = closest_command(&name) {
                     extra = lang
                         .pick(
@@ -114,7 +114,7 @@ pub fn enrich(d: &mut Diagnostic, lang: Lang) {
                             &format!("The `{env}` environment is defined by the `{pkg}` package."),
                         )
                         .to_owned();
-                    push_fix(d, Fix::AddPackage { package: pkg });
+                    push_fix(d, package_fix(pkg));
                 }
             }
         }
@@ -157,6 +157,82 @@ pub fn enrich(d: &mut Diagnostic, lang: Lang) {
     }
 }
 
+static PACKAGE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?:Package (\S+) (?:Error|Warning)|([A-Za-z][\w.-]*): )").unwrap()
+});
+
+/// Gives a diagnostic an explanation when the catalogue does not know its
+/// message: what kind of problem it is and where to look.
+pub fn fallback(d: &mut Diagnostic, lang: Lang) {
+    if d.hint.is_some() {
+        return;
+    }
+    let package = PACKAGE
+        .captures(&d.message)
+        .and_then(|m| m.get(1).or(m.get(2)))
+        .map(|m| m.as_str().to_owned())
+        .filter(|p| !matches!(p.as_str(), "Font" | "pdfTeX" | "LaTeX"));
+    let error = d.severity == Severity::Error;
+    let (title, explanation) = match (&package, d.source) {
+        (_, Source::Bibtex | Source::Biber) => (
+            lang.pick("Problème de bibliographie", "Bibliography problem").to_owned(),
+            lang.pick(
+                "BibTeX ou Biber signale un problème dans un fichier `.bib` ou dans les citations. Ouvrez l'entrée indiquée : une virgule, une accolade ou un champ manquant sont les causes les plus fréquentes.",
+                "BibTeX or Biber reports a problem in a `.bib` file or in the citations. Open the entry: a missing comma, brace or field is the usual cause.",
+            )
+            .to_owned(),
+        ),
+        (Some(p), _) if error => (
+            format!("{} {p}", lang.pick("Erreur du package", "Error of package")),
+            format!(
+                "{} `{p}` {}",
+                lang.pick("Le package", "The package"),
+                lang.pick(
+                    "refuse ce qui est écrit à cet endroit. Le message (en anglais) dit quoi corriger ; sa documentation détaille ses commandes et options.",
+                    "rejects what is written here. The message says what to fix; its documentation details its commands and options.",
+                )
+            ),
+        ),
+        (Some(p), _) => (
+            format!("{} {p}", lang.pick("Avertissement du package", "Warning of package")),
+            format!(
+                "{} `{p}` {}",
+                lang.pick("Le package", "The package"),
+                lang.pick(
+                    "signale un point à vérifier ; le PDF est tout de même produit. Le message (en anglais) indique quoi changer.",
+                    "points out something to check; the PDF is still produced. The message says what to change.",
+                )
+            ),
+        ),
+        (None, _) if error => (
+            lang.pick("Erreur LaTeX", "LaTeX error").to_owned(),
+            lang.pick(
+                "LaTeX s'est arrêté sur cette ligne. Regardez le texte signalé : une commande mal écrite, une accolade ou un `$` manquant sont les causes les plus fréquentes. Quand plusieurs erreurs se suivent, corrigez d'abord la première : les suivantes en sont souvent la conséquence.",
+                "LaTeX stopped on this line. Look at the highlighted text: a misspelled command, a missing brace or `$` are the usual causes. When errors follow each other, fix the first one: the next ones are often its consequence.",
+            )
+            .to_owned(),
+        ),
+        (None, _) => (
+            lang.pick("Avertissement LaTeX", "LaTeX warning").to_owned(),
+            lang.pick(
+                "LaTeX signale un point à vérifier, mais le PDF est produit. Le message (en anglais) indique ce qui ne va pas.",
+                "LaTeX points out something to check, but the PDF is produced. The message says what is wrong.",
+            )
+            .to_owned(),
+        ),
+    };
+    d.hint = Some(Hint { title, explanation });
+}
+
+/// Loads a package, with the options it asks for when loaded without them.
+pub fn package_fix(package: String) -> Fix {
+    let options = match package.as_str() {
+        "mhchem" => Some("version=4".to_owned()),
+        _ => None,
+    };
+    Fix::AddPackage { package, options }
+}
+
 fn push_fix(d: &mut Diagnostic, fix: Fix) {
     if !d.fixes.contains(&fix) {
         d.fixes.push(fix);
@@ -178,11 +254,11 @@ fn best_provider(providers: Vec<&str>) -> Option<String> {
     providers.first().map(|p| (*p).to_owned())
 }
 
-/// The known command closest to `name` (edit distance ≤ 2), if any.
+/// The command of the LaTeX kernel closest to `name` (edit distance ≤ 2), if any.
 pub fn closest_command(name: &str) -> Option<String> {
     let max = if name.len() <= 4 { 1 } else { 2 };
     let mut best: Option<(usize, &str)> = None;
-    for cmd in kb().commands() {
+    for cmd in kb().commands().iter().filter(|c| c.package == KERNEL) {
         let candidate = cmd.name.as_str();
         if candidate == name || candidate.len().abs_diff(name.len()) > max {
             continue;
@@ -241,12 +317,7 @@ mod tests {
         );
         d.context_before = Some("$x \\in \\mathbb".into());
         enrich(&mut d, Lang::En);
-        assert_eq!(
-            d.fixes,
-            [Fix::AddPackage {
-                package: "amsfonts".into()
-            }]
-        );
+        assert_eq!(d.fixes, [Fix::add_package("amsfonts")]);
     }
 
     #[test]

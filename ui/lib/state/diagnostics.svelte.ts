@@ -1,8 +1,64 @@
 // Diagnostics from the linter (live, per file) and from the last build.
 
-import type { Diagnostic } from "../types";
+import type { Diagnostic, Position, Range } from "../types";
 
 export const pathKey = (p: string) => p.replace(/\\/g, "/");
+
+/** Where a position of a file is after a change (`assoc`: side it sticks to). */
+export type PositionMap = (p: Position, assoc: -1 | 1) => Position;
+
+const before = (a: Position, b: Position) => a.line < b.line || (a.line === b.line && a.character < b.character);
+const empty = (r: Range) => r.start.line === r.end.line && r.start.character === r.end.character;
+
+/** Moves a range; null when the text it covered is gone. */
+function mapRange(r: Range, map: PositionMap): Range | null {
+  if (empty(r)) {
+    const at = map(r.start, -1);
+    return { start: at, end: at };
+  }
+  const start = map(r.start, 1);
+  const end = map(r.end, -1);
+  return before(start, end) ? { start, end } : null;
+}
+
+/**
+ * Keeps a diagnostic on its text after a change of the file `key`: its
+ * range and the ranges of its fixes follow the text; a fix whose text was
+ * replaced is dropped (it would apply to something else).
+ */
+export function mapDiagnostic(d: Diagnostic, key: string, map: PositionMap) {
+  const inFile = !!d.file && pathKey(d.file) === key;
+  if (inFile && d.range) {
+    const r = mapRange(d.range, map);
+    if (r) d.range = r;
+    else {
+      const at = map(d.range.start, 1);
+      d.range = { start: at, end: at };
+      d.fixes = [];
+    }
+    d.line = d.range.start.line + 1;
+  } else if (inFile && d.line) {
+    const first = map({ line: d.line - 1, character: 0 }, 1).line + 1;
+    if (d.endLine) d.endLine = map({ line: d.endLine - 1, character: 0 }, 1).line + 1;
+    d.line = first;
+  }
+  d.fixes = d.fixes.filter((f) => {
+    if (f.kind === "replace" && inFile) {
+      const r = mapRange(f.range, map);
+      if (!r) return false;
+      f.range = r;
+    }
+    if (f.kind === "edits") {
+      for (const e of f.edits) {
+        if (pathKey(e.file) !== key) continue;
+        const r = mapRange(e.range, map);
+        if (!r) return false;
+        e.range = r;
+      }
+    }
+    return true;
+  });
+}
 
 type Listener = (path: string) => void;
 
@@ -36,6 +92,12 @@ class DiagnosticsStore {
     for (const d of diags) if (d.file) touched.add(pathKey(d.file));
     this.build = diags;
     this.notify(touched);
+  }
+
+  /** A file changed: its diagnostics (and the fixes touching it) follow the text. */
+  mapFile(key: string, map: PositionMap) {
+    for (const d of this.build) mapDiagnostic(d, key, map);
+    for (const list of Object.values(this.lint)) for (const d of list) mapDiagnostic(d, key, map);
   }
 
   /** Forgets one diagnostic (its fix was applied). */

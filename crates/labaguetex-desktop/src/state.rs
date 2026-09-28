@@ -95,6 +95,33 @@ pub struct Session {
     pub active_file: HashMap<String, PathBuf>,
 }
 
+impl Session {
+    /// Follows a folder that was renamed (`old` → `new`).
+    pub fn moved(&mut self, old: &Path, new: &Path) {
+        let fix = |p: &Path| match p.strip_prefix(old) {
+            Ok(rest) => new.join(rest),
+            Err(_) => p.to_path_buf(),
+        };
+        for r in &mut self.recent {
+            r.path = fix(&r.path);
+        }
+        if let Some(p) = &mut self.last_project {
+            *p = fix(p);
+        }
+        self.open_files = std::mem::take(&mut self.open_files)
+            .into_iter()
+            .map(|(k, v)| {
+                let files = v.iter().map(|f| fix(f)).collect();
+                (fix(Path::new(&k)).to_string_lossy().into_owned(), files)
+            })
+            .collect();
+        self.active_file = std::mem::take(&mut self.active_file)
+            .into_iter()
+            .map(|(k, v)| (fix(Path::new(&k)).to_string_lossy().into_owned(), fix(&v)))
+            .collect();
+    }
+}
+
 /// State of the TeX installation.
 #[derive(Debug, Default)]
 pub struct TexState {
@@ -226,10 +253,26 @@ impl AppState {
     pub fn new() -> Self {
         let paths = AppPaths::default();
         let settings = Settings::load(&paths.settings);
-        let session = std::fs::read_to_string(&paths.session)
+        let mut session: Session = std::fs::read_to_string(&paths.session)
             .ok()
             .and_then(|s| serde_json::from_str(&s).ok())
             .unwrap_or_default();
+        // The projects folder of the versions named "labaguetex".
+        if settings.general.projects_dir.is_none()
+            && let Some(docs) =
+                directories::UserDirs::new().and_then(|u| u.document_dir().map(Path::to_path_buf))
+            && let Some((old, new)) = labaguetex_core::projects::migrate_legacy_dir(&docs)
+        {
+            tracing::info!(
+                "projects folder renamed: {} → {}",
+                old.display(),
+                new.display()
+            );
+            session.moved(&old, &new);
+            if let Ok(json) = serde_json::to_string_pretty(&session) {
+                let _ = write_atomic(&paths.session, json.as_bytes());
+            }
+        }
         Self {
             paths,
             settings: RwLock::new(settings),

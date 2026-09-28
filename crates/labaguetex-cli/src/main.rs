@@ -24,7 +24,7 @@ use labaguetex_core::workspace::{Workspace, project_root_for};
 use labaguetex_core::{templates, wordcount};
 
 #[derive(Parser)]
-#[command(name = "baguette", version, about = "labaguetex from the command line", long_about = None)]
+#[command(name = "baguette", version, about = "LaBagueTex from the command line", long_about = None)]
 struct Cli {
     /// Message language (fr or en). Defaults to $LANG.
     #[arg(long, global = true)]

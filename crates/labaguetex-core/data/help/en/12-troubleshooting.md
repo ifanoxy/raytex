@@ -12,7 +12,7 @@ The package is not installed. Click **Install** in the Problems panel, or look i
 
 ## "Undefined control sequence"
 
-The reported command does not exist: a typo (`\textbff`), or a package that is not loaded. labaguetex suggests the closest command or the package to add.
+The reported command does not exist: a typo (`\textbff`), or a package that is not loaded. LaBagueTex suggests the closest command or the package to add.
 
 ## References "??" and citations "[?]"
 
@@ -44,4 +44,4 @@ Look at the **Problems** panel: a fatal error prevents the PDF from being produc
 
 ## Reporting a problem
 
-labaguetex is free and open source: report a bug or suggest an improvement on the project repository, ideally with a small document that reproduces the problem.
+LaBagueTex is free and open source: report a bug or suggest an improvement on the project repository, ideally with a small document that reproduces the problem.

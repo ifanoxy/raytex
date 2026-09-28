@@ -1,6 +1,6 @@
 # Bibliography
 
-labaguetex reads your `.bib` files, completes citation keys, shows the full entry on hover and runs Biber or BibTeX only when needed.
+LaBagueTex reads your `.bib` files, completes citation keys, shows the full entry on hover and runs Biber or BibTeX only when needed.
 
 ## The .bib file
 
@@ -49,7 +49,7 @@ According to \textcite{knuth1984}, … \parencite{lamport1986}.
 
 Use `natbib` for `\citet` / `\citep`. Journals often require their own `.bst` file.
 
-## Citing in labaguetex
+## Citing in LaBagueTex
 
 - Type `\cite{`: references appear with authors, year and title; type an author name or a word of the title to filter.
 - Hover a key to see the complete reference.
@@ -57,6 +57,6 @@ Use `natbib` for `\citet` / `\citep`. Journals often require their own `.bst` fi
 
 ## Building
 
-labaguetex detects `biber` or `bibtex` by itself and only reruns them when citations or the `.bib` changed. Biber and BibTeX errors (missing field, duplicate key…) appear in the **Problems** panel with the offending `.bib` line.
+LaBagueTex detects `biber` or `bibtex` by itself and only reruns them when citations or the `.bib` changed. Biber and BibTeX errors (missing field, duplicate key…) appear in the **Problems** panel with the offending `.bib` line.
 
 A citation shown as **[?]** or in bold is not resolved yet: build again, or check the key.

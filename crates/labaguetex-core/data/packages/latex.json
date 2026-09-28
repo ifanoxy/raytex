@@ -202,7 +202,6 @@
     { "name": "OE", "mode": "text", "glyph": "Œ", "doc": { "en": "Ligature Œ.", "fr": "Ligature Œ." } },
     { "name": "ae", "mode": "text", "glyph": "æ", "doc": { "en": "Ligature æ.", "fr": "Ligature æ." } },
     { "name": "ss", "mode": "text", "glyph": "ß", "doc": { "en": "German sharp s.", "fr": "Eszett allemand." } },
-    { "name": "url", "args": "{address}", "doc": { "en": "Typesets a URL (from the url or hyperref package).", "fr": "Affiche une URL (packages url ou hyperref)." } },
 
     { "name": "frac", "args": "{numerator}{denominator}", "mode": "math", "doc": { "en": "Fraction.", "fr": "Fraction." }, "example": "\\frac{a+b}{2}" },
     { "name": "sqrt", "args": "[n]{radicand}", "mode": "math", "doc": { "en": "Square root, or n-th root with the optional argument.", "fr": "Racine carrée, ou racine n-ième avec l'argument optionnel." }, "example": "\\sqrt[3]{x}" },

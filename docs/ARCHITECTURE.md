@@ -1,6 +1,6 @@
 # Architecture
 
-labaguetex is split into an **engine** that knows everything about LaTeX and has no user interface, and **front ends** that use it: a desktop application and a command-line tool.
+LaBagueTex is split into an **engine** that knows everything about LaTeX and has no user interface, and **front ends** that use it: a desktop application and a command-line tool.
 
 ```
 ┌────────────────────────── ui/ (Svelte 5, TypeScript) ──────────────────────────┐
@@ -32,8 +32,9 @@ Pure Rust, synchronous, no global state: every function receives what it needs. 
 | `completion` | Completion lists for every context, merging the kernel, the knowledge base, analysed packages and the project. Items are narrowed to what is typed before crossing the IPC bridge. |
 | `lint` | Checks that do not need a build (references, duplicates, missing files/packages, engine requirements, typography…). Each rule has an id and can be disabled. |
 | `navigation` | Hover, go to definition (including package sources), references, rename, formula under the cursor. |
-| `build` | Build plans and the smart driver (with `build::preamble`: pdfLaTeX preambles dumped into formats with mylatexformat in the background, keyed by the preamble, the local files it reads and the distribution; unsafe preambles skipped, failed passes redone without the format): engine choice, bibliography / index / glossary tools run only when their inputs changed (hashes in `build/.labaguetex-build.json`), reruns until stable, latexmk / single pass / custom steps, cancellation. `refine` locates the exact token of an error. |
+| `build` | Build plans and the smart driver (with `build::preamble`: pdfLaTeX preambles dumped into formats with mylatexformat in the background, keyed by the preamble, the local files it reads and the distribution; unsafe preambles skipped, failed passes redone without the format): engine choice, bibliography / index / glossary tools run only when their inputs changed (hashes in `build/.labaguetex-build.json`), reruns until stable, latexmk / single pass / custom steps, cancellation. `refine` locates the exact token of an error, then adds its fixes and explanation. |
 | `log` | TeX log parser (file stack, `file:line:error` and classic formats, warnings, bad boxes, missing files, rerun requests) and BibTeX / Biber logs; `hints` turns messages into explanations and fixes using `data/errors.json`. |
+| `fixes` | Quick fixes: `latex` finds, in the sources of the project (scanned like the editor does), the fix of each compiler error or warning (misspelt names, missing packages and TikZ libraries, braces, environments, tables, floats, definitions, preamble, bibliography…) and moves errors reported inside a package to the `\usepackage` that causes them; `text` edits the preamble like `ui/lib/preamble.ts`; `apply` applies a fix to files (tests, command line). |
 | `synctex` | Native SyncTeX parser (`.synctex.gz`), forward and inverse search. |
 | `aux` | Label numbers, citations and the table of contents written by the last build. |
 | `preview` | Small `standalone` documents compiled next to the project (TikZ drawings, font samples): the project's preamble without what breaks previews, errors mapped to the lines of the snippet, bounding box of the first TikZ picture (for the coordinate grid). |

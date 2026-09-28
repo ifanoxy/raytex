@@ -548,7 +548,7 @@ export function installMocks() {
             { id: "latex-basics", title: "Les bases de LaTeX" },
           ];
         case "help_page":
-          return `<h1>Premiers pas</h1><p>Bienvenue dans <strong>labaguetex</strong> !</p><pre><code>\\documentclass{article}\n\\begin{document}\nBonjour !\n\\end{document}\n</code></pre>`;
+          return `<h1>Premiers pas</h1><p>Bienvenue dans <strong>LaBagueTex</strong> !</p><pre><code>\\documentclass{article}\n\\begin{document}\nBonjour !\n\\end{document}\n</code></pre>`;
         case "reference_search":
           return [{ label: "\\frac", environment: false, package: null, args: "{num}{den}", doc: "Une fraction.", glyph: "½", insert: "\\frac{${1}}{${2}}" }];
         case "symbol_palette":
@@ -584,14 +584,14 @@ export function installMocks() {
             { id: "exam", name: { fr: "Examen", en: "Exam" }, description: { fr: "Sujet avec barème et corrigé.", en: "Exam." }, category: "teacher", order: 9, main: "main.tex", engine: null, tags: ["exam"], user: false },
           ];
         case "projects_dir":
-          return "/Users/demo/Documents/labaguetex";
+          return "/Users/demo/Documents/LaBagueTex";
         case "list_projects":
           return {
-            dir: "/Users/demo/Documents/labaguetex",
+            dir: "/Users/demo/Documents/LaBagueTex",
             projects: [
               { path: ROOT, name: "Mémoire", main: p("main.tex"), modified: Date.now() / 1000 - 3600, pdf: p("build/main.pdf") },
-              { path: "/Users/demo/Documents/labaguetex/td-analyse", name: "TD d'analyse", main: "/Users/demo/Documents/labaguetex/td-analyse/main.tex", modified: Date.now() / 1000 - 86400 * 2, pdf: null },
-              { path: "/Users/demo/Documents/labaguetex/cours-physique", name: "Cours de physique", main: "/Users/demo/Documents/labaguetex/cours-physique/main.tex", modified: Date.now() / 1000 - 86400 * 9, pdf: null },
+              { path: "/Users/demo/Documents/LaBagueTex/td-analyse", name: "TD d'analyse", main: "/Users/demo/Documents/LaBagueTex/td-analyse/main.tex", modified: Date.now() / 1000 - 86400 * 2, pdf: null },
+              { path: "/Users/demo/Documents/LaBagueTex/cours-physique", name: "Cours de physique", main: "/Users/demo/Documents/LaBagueTex/cours-physique/main.tex", modified: Date.now() / 1000 - 86400 * 9, pdf: null },
             ],
             recent: session.recent,
           };

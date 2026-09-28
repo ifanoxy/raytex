@@ -502,7 +502,7 @@
       {:else if ui.settingsSection === "about"}
         <div class="about">
           <img src="/assets/logo.svg" alt="" width="88" height="88" />
-          <h3>labaguetex {app.info?.version}</h3>
+          <h3>LaBagueTex {app.info?.version}</h3>
           <p>{t("welcome.tagline")}</p>
           <p class="faint">{app.info?.os} · {app.info?.arch}</p>
           <p class="faint small">{t("settings.license")}</p>

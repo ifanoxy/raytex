@@ -15,6 +15,8 @@ import { build } from "../lib/state/build.svelte";
 import { editor } from "../lib/state/editor.svelte";
 import { project } from "../lib/state/project.svelte";
 import { distLabel, tex } from "../lib/state/tex.svelte";
+import { diagnostics } from "../lib/state/diagnostics.svelte";
+import { fixable, quickFix } from "../lib/fixes";
 import { media } from "../lib/state/media.svelte";
 import { colors } from "../lib/state/colors.svelte";
 import { fonts } from "../lib/state/fonts.svelte";
@@ -89,6 +91,7 @@ export async function runSelfTest() {
   const [which, assets] = await invoke<[string | null, string | null]>("selftest_scenes");
   if (ok && which === "workflow" && assets) ok = await workflowScenes(log, assets);
   else if (ok && which === "projects" && assets) ok = await projectsScenes(log, assets);
+  else if (ok && which === "fixes" && assets) ok = await fixesScenes(log, assets);
   else {
     if (ok && which && which !== "media") await scenes(log);
     if (ok && which && (which === "media" || which === "all") && assets) ok = await mediaScenes(log, assets);
@@ -738,5 +741,114 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
   log(JSON.stringify(results, null, 2));
   const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));
   log(`projects scenes ${ok ? "PASSED" : "FAILED"}`);
+  return ok;
+}
+
+/** A document full of common mistakes: suggestions, quick fix (Alt+Enter), "Fix all". */
+const MISTAKES = String.raw`\documentclass{article}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{tikz}
+\begin{document}
+\section{Introduction}\label{sec:intro}
+Du texte en \textbff{gras} et le carré x^2 dans le texte.
+\begin{itemise}
+\item Premier point
+\end{itemise}
+Voir la section~\ref{sec:intr} et les équations
+\begin{align}
+a &= b
+\end{align}
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\draw[-Stealth] (0,0) -- (1,0);
+\end{tikzpicture}
+\caption{Un schéma}
+\end{figure}
+Le fichier mon_fichier.txt de Dupont & Fils.
+\end{document}
+`;
+
+async function fixesScenes(log: (msg: string) => void, dir: string): Promise<boolean> {
+  const scene = async (name: string, holdMs = 2500) => {
+    await pause(700);
+    log(`scene: ${name}`);
+    await pause(holdMs);
+  };
+  const results: Record<string, unknown> = {};
+  const check = (name: string, value: boolean, detail: unknown = "") => {
+    results[name] = value ? "ok" : `FAILED ${detail}`;
+  };
+  try {
+    check("created", await project.createEmpty(`${dir}/fautes-${Date.now()}`, "Fautes courantes"));
+    const main = project.info!.main!;
+    await until(() => editor.active === main && !!editor.view, 5_000, "main open");
+    const view = editor.view!;
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: MISTAKES } });
+    await editor.saveAll({ auto: true, silent: true });
+    check("build fails", !(await buildOk(log, "mistakes")));
+    ui.showBottom("problems");
+    await until(() => document.querySelectorAll(".list .item .suggestion").length > 0, 10_000, "suggestions");
+    const items = document.querySelectorAll(".list .item").length;
+    const suggestions = document.querySelectorAll(".list .item .suggestion").length;
+    const buttons = document.querySelectorAll(".list .item .fix").length;
+    results.problems = `${items} problems, ${suggestions} suggestions, ${buttons} fix buttons`;
+    const all = [...diagnostics.build, ...Object.values(diagnostics.lint).flat()];
+    const errors = all.filter((d) => d.severity === "error");
+    check("every error explained", errors.every((d) => !!d.hint), errors.filter((d) => !d.hint).map((d) => d.message).join(" | "));
+    check("errors have a fix", errors.filter((d) => d.fixes.length).length >= 6, errors.map((d) => `${d.code}:${d.fixes.length}`).join(" "));
+    const fixAll = document.querySelector<HTMLButtonElement>(".bar .fix-all");
+    check("fix all button", !!fixAll && !fixAll.disabled && /\d/.test(fixAll.textContent ?? ""), fixAll?.textContent);
+    await scene("problems-suggestions", 2500);
+
+    // Alt+Enter on the misspelled command.
+    const at = view.state.doc.toString().indexOf("textbff") + 2;
+    view.dispatch({ selection: { anchor: at } });
+    view.focus();
+    quickFix(view, main);
+    await until(() => !!ui.menu, 3_000, "quick fix menu");
+    const labels = ui.menu!.items.map((i) => i.label ?? "");
+    check("quick fix menu", labels.some((l) => l.includes("\\textbf")), labels.join(" | "));
+    await scene("quick-fix-menu", 2000);
+    ui.menu!.items.find((i) => i.label?.includes("\\textbf"))?.run?.();
+    ui.closeMenu();
+    await until(() => view.state.doc.toString().includes("\\textbf{gras}"), 3_000, "quick fix applied");
+    check("quick fix applied", true);
+
+    // Fix all, as many rounds as needed (a fix can reveal the next problem).
+    let rounds = 0;
+    const left = () => fixable([...diagnostics.build, ...Object.values(diagnostics.lint).flat()]).length;
+    while (rounds < 4 && (build.status !== "success" || left() > 0)) {
+      await until(() => !build.running, 120_000, "idle");
+      const button = document.querySelector<HTMLButtonElement>(".bar .fix-all");
+      if (!button || button.disabled) break;
+      rounds++;
+      button.click();
+      await until(() => build.running, 15_000, "build after fix all");
+      await until(() => !build.running, 180_000, "build end");
+      log(`fix all round ${rounds}: ${build.status}, ${fixable([...diagnostics.build, ...Object.values(diagnostics.lint).flat()]).length} fixable left`);
+    }
+    results.rounds = rounds;
+    check("compiles after fix all", build.status === "success", build.outcome?.diagnostics.filter((d) => d.severity === "error").map((d) => d.message).join(" | "));
+    const text = editor.textOf(main) ?? "";
+    for (const [what, needle] of [
+      ["amsmath", "\\usepackage{amsmath}"],
+      ["itemize", "\\begin{itemize}"],
+      ["math", "$x^2$"],
+      ["underscore", "mon\\_fichier"],
+      ["ampersand", "Dupont \\& Fils"],
+      ["arrows", "arrows.meta"],
+      ["reference", "\\ref{sec:intro}"],
+    ]) {
+      check(`fixed ${what}`, text.includes(needle));
+    }
+    await scene("fixed", 3000);
+  } catch (e) {
+    results.failure = String(e);
+  }
+  log(JSON.stringify(results, null, 2));
+  const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));
+  log(`fixes scenes ${ok ? "PASSED" : "FAILED"}`);
   return ok;
 }

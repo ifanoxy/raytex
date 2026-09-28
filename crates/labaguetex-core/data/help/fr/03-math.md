@@ -1,6 +1,6 @@
 # Mathématiques
 
-Les mathématiques sont le point fort de LaTeX. labaguetex affiche un **aperçu en direct** de la formule sous le curseur, avec vos propres macros.
+Les mathématiques sont le point fort de LaTeX. LaBagueTex affiche un **aperçu en direct** de la formule sous le curseur, avec vos propres macros.
 
 ## Formules en ligne et centrées
 
@@ -92,4 +92,4 @@ En mode mathématique, tapez `@` suivi d'une lettre : `@a` → `\alpha`, `@b` �
 \DeclareMathOperator{\rang}{rang}
 ```
 
-labaguetex les apprend immédiatement : elles apparaissent dans l'autocomplétion et l'aperçu les utilise.
+LaBagueTex les apprend immédiatement : elles apparaissent dans l'autocomplétion et l'aperçu les utilise.

@@ -24,13 +24,13 @@ Toutes les polices installées sur votre système sont utilisables grâce à **f
 
 Choisissez l'usage : texte principal, texte sans empattement, code, mathématiques (polices OpenType Math seulement, avec `unicode-math`), ou une **nouvelle commande** pour quelques mots (`\newfontfamily\titre{…}` puis `{\titre Mon titre}`).
 
-labaguetex vérifie que LaTeX trouve bien la police (aperçu compilé), ajoute fontspec, peut commenter `fontenc` et `inputenc` (inutiles avec fontspec) et fait compiler le document avec LuaLaTeX.
+LaBagueTex vérifie que LaTeX trouve bien la police (aperçu compilé), ajoute fontspec, peut commenter `fontenc` et `inputenc` (inutiles avec fontspec) et fait compiler le document avec LuaLaTeX.
 
 > Vos co-auteurs doivent avoir la même police installée. Pour partager le projet, préférez les fichiers de police.
 
 ## Fichiers de police
 
-Ajoutez des fichiers `.ttf` ou `.otf` (téléchargés sur Google Fonts, Adobe Fonts…) : labaguetex les copie dans le dossier `fonts/` du projet et les nomme dans le préambule, style par style :
+Ajoutez des fichiers `.ttf` ou `.otf` (téléchargés sur Google Fonts, Adobe Fonts…) : LaBagueTex les copie dans le dossier `fonts/` du projet et les nomme dans le préambule, style par style :
 
 ```latex
 \setmainfont{sourceserif4-regular.otf}[

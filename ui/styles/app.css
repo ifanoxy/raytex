@@ -1,4 +1,4 @@
-/* labaguetex design system: tokens, base elements, shared components. */
+/* LaBagueTex design system: tokens, base elements, shared components. */
 
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/jetbrains-mono";
@@ -656,6 +656,11 @@ kbd {
   padding: 0 4px;
   border-radius: 3px;
   background: var(--bg-active);
+}
+.lbt-diag-keys {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-faint);
 }
 .cm-vim-panel {
   padding: 2px 10px;

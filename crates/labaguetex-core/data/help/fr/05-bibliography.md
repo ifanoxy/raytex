@@ -1,6 +1,6 @@
 # Bibliographie
 
-labaguetex lit vos fichiers `.bib`, complète les clés de citation, affiche l'entrée complète au survol et lance Biber ou BibTeX uniquement quand c'est nécessaire.
+LaBagueTex lit vos fichiers `.bib`, complète les clés de citation, affiche l'entrée complète au survol et lance Biber ou BibTeX uniquement quand c'est nécessaire.
 
 ## Le fichier .bib
 
@@ -49,7 +49,7 @@ Selon \textcite{knuth1984}, … \parencite{lamport1986}.
 
 Utilisez `natbib` pour `\citet` / `\citep`. Les revues imposent souvent leur fichier `.bst`.
 
-## Citer dans labaguetex
+## Citer dans LaBagueTex
 
 - Tapez `\cite{` : les références s'affichent avec auteurs, année et titre ; tapez un nom d'auteur ou un mot du titre pour filtrer.
 - Survolez une clé pour voir la référence complète.
@@ -57,6 +57,6 @@ Utilisez `natbib` pour `\citet` / `\citep`. Les revues imposent souvent leur fic
 
 ## Compilation
 
-labaguetex détecte seul `biber` ou `bibtex`, et ne les relance que si les citations ou le `.bib` ont changé. Les erreurs de Biber et BibTeX (champ manquant, clé en double…) apparaissent dans le panneau **Problèmes** avec la ligne du `.bib` en cause.
+LaBagueTex détecte seul `biber` ou `bibtex`, et ne les relance que si les citations ou le `.bib` ont changé. Les erreurs de Biber et BibTeX (champ manquant, clé en double…) apparaissent dans le panneau **Problèmes** avec la ligne du `.bib` en cause.
 
 Une citation affichée **[?]** ou en gras signifie qu'elle n'est pas encore résolue : compilez à nouveau, ou vérifiez la clé.

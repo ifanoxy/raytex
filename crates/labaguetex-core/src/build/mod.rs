@@ -455,6 +455,9 @@ pub fn run(
             BibTool::Biber => bibtex::parse_biber(&text, &plan.root_dir),
             _ => bibtex::parse_bibtex(&text, &plan.root_dir),
         };
+        for x in &mut d {
+            crate::log::hints::enrich(x, ctx.lang);
+        }
         report.diagnostics.append(&mut d);
     }
     if !ctx.settings.show_badboxes {
@@ -462,7 +465,7 @@ pub fn run(
             .diagnostics
             .retain(|d| !matches!(d.code.as_deref(), Some("overfull-box" | "underfull-box")));
     }
-    refine::refine_all(&mut report.diagnostics, ctx.source, ctx.lang);
+    refine::refine_all(&mut report.diagnostics, &plan.root, ctx.source, ctx.lang);
 
     let pdf_meta = std::fs::metadata(&plan.pdf).ok();
     let pdf_updated = pdf_meta
@@ -672,11 +675,23 @@ impl Runner<'_, '_> {
             .ok()
             .and_then(|s| serde_json::from_str(&s).ok())
             .unwrap_or_default();
+        let aux_path = plan.out_dir.join(format!("{}.aux", plan.job));
+        let aux_initial = hash_file(&aux_path);
         let (code, mut report) = self.engine_pass(1);
         if self.cancelled() || (code != Some(0) && report.fatal && !plan.pdf.exists()) {
             return report;
         }
-        let aux_before = hash_file(&plan.out_dir.join(format!("{}.aux", plan.job)));
+        let aux_before = hash_file(&aux_path);
+        // Labels read twice from the last .aux (a duplicate just renamed):
+        // LaTeX does not ask for a rerun, but the next pass is clean.
+        if aux_initial != aux_before
+            && report
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("multiply defined"))
+        {
+            report.rerun_needed = true;
+        }
         let mut auxiliary_ran = false;
 
         // Bibliography.

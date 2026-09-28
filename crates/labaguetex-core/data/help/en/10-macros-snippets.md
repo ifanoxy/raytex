@@ -62,7 +62,7 @@ For what must appear in the document, prefer a LaTeX command in the preamble:
 \newcommand{\R}{\mathbb{R}}
 ```
 
-labaguetex recognises them at once: completion with the right number of arguments, math preview, <kbd>F12</kbd> to go to their definition, <kbd>F2</kbd> to rename them across the project.
+LaBagueTex recognises them at once: completion with the right number of arguments, math preview, <kbd>F12</kbd> to go to their definition, <kbd>F2</kbd> to rename them across the project.
 
 ## Formatting shortcuts
 

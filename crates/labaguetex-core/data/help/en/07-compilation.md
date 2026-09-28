@@ -1,6 +1,6 @@
 # Compilation
 
-Building turns your `.tex` files into a PDF. labaguetex does it fast, at the right time, and explains every problem.
+Building turns your `.tex` files into a PDF. LaBagueTex does it fast, at the right time, and explains every problem.
 
 ## Starting a build
 
@@ -22,7 +22,7 @@ An included file can also name its root on its first line:
 
 ## Which engine?
 
-Unless you forced an engine (in the general or project settings), labaguetex picks:
+Unless you forced an engine (in the general or project settings), LaBagueTex picks:
 
 1. the engine of the magic comment of the main file, if any:
    ```latex
@@ -44,7 +44,7 @@ The built-in method (recommended):
 
 Auxiliary files (`.aux`, `.log`, `.toc`…) go to the `build/` folder: your project stays clean. The **Output** panel shows the raw output of every step.
 
-**Precompiled preamble** (pdfLaTeX): after a first build, labaguetex prepares in the background a “precompiled” version of the preamble (with `mylatexformat`). The next builds start directly at `\begin{document}`: often twice as fast (0.6 s instead of 1.3 s with TikZ and pgfplots), with the same PDF. The preamble is prepared again as soon as it changes. Documents that write files in their preamble (indexes, glossaries, `minted`…) are built normally. Setting: *Settings › Compilation › Precompile the preamble*.
+**Precompiled preamble** (pdfLaTeX): after a first build, LaBagueTex prepares in the background a “precompiled” version of the preamble (with `mylatexformat`). The next builds start directly at `\begin{document}`: often twice as fast (0.6 s instead of 1.3 s with TikZ and pgfplots), with the same PDF. The preamble is prepared again as soon as it changes. Documents that write files in their preamble (indexes, glossaries, `minted`…) are built normally. Setting: *Settings › Compilation › Precompile the preamble*.
 
 Other methods: **latexmk**, **a single pass**, or your **custom steps** (with the placeholders `%DOC%`, `%DOCFILE%`, `%OUTDIR%`, `%DIR%`, `%ENGINE%`).
 
@@ -56,10 +56,30 @@ All the text of the panels can be selected and copied: drag over the compiler ou
 
 The **Problems** panel groups errors by file:
 
-- the TeX message, turned into a clear explanation;
-- the exact position (line and column), underlined in the editor;
+- the TeX message, turned into a clear explanation, and under each problem a **suggestion** (💡) saying what to do;
+- the exact position (line and column), underlined in the editor. An error reported inside a package (`geometry.sty`, `babel.sty`…) is brought back to your `\usepackage` line, on the option at fault;
 - the context shown by TeX, with the point where it stopped;
-- **one-click fixes**: add or install a package, fix a misspelt command, switch engines, create a missing file…
+- **one-click fixes**, computed from your text.
+
+A few of the fixes offered:
+
+| Problem | Fix |
+|---|---|
+| `\textbff{…}`, `\sectoin`, a misspelt macro of yours | Replace with `\textbf`, `\section`, your macro |
+| `\mathbb`, `\includegraphics`, `\toprule`, `align`… without their package | Add `\usepackage{amssymb}`, `graphicx`, `booktabs`, `amsmath`… |
+| `\begin{itemise}`, `\end{enumerate}` closing an `itemize`, environment never closed | Rename `\begin` and `\end` together, close the environment |
+| Brace or formula never closed, blank line inside a formula | Close the brace or formula, delete the blank line |
+| `my_file`, `x^2` or `\alpha` in text, a lone `&` or `#` | Write `my\_file`, `$x^2$`, `$\alpha$`, `\&`, `\#` |
+| Table: extra column, `\hline` after an unfinished row | Add a column to `{ll}`, end the row with `\\` |
+| Figure `[h]`, `[H]` without `float`, image too large or not found | `[htbp]`, load `float`, fit the image, use the file with a close name |
+| Misspelt reference, citation or option key (`sec:intr`, `knut`, `widht`, `marging`) | The label, key or option that exists |
+| TikZ: forgotten `;`, `right=of`, `Stealth` arrow, `diamond` shape | Add the `;`, the `positioning`, `arrows.meta`, `shapes.geometric` library |
+| `\newcommand` that already exists or without `[1]`, `\usepackage` after `\begin{document}` | `\renewcommand`, declare the arguments, move to the preamble |
+| Warnings of `babel`, `fancyhdr`, `pgfplots`, `hyperref`… | Current language name, `\headheight`, `compat=`, `\texorpdfstring` |
+
+**Fix all** applies the suggested fix of every problem shown (the highlighted one), then compiles again. A fix already made by another one counts once, and fixes that would touch the same text wait for the next round. Package installations, enabling external programs and document-wide layout settings are never applied without you. Every fix can be undone like typing (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Z</kbd>).
+
+In the editor, <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>Enter</kbd> on underlined text opens the fixes of the problem there. Positions follow your edits: a fix applies at the right place even if you typed since the last build.
 
 Warnings (undefined references, overfull boxes) are shown separately and can be filtered.
 
@@ -72,4 +92,4 @@ Warnings (undefined references, overfull boxes) are shown separately and can be 
 
 ## External programs (shell escape)
 
-Some packages (`minted`, `svg`, `gnuplottex`…) need to run programs while building. This is off by default for your safety. labaguetex offers to enable it for a project when needed.
+Some packages (`minted`, `svg`, `gnuplottex`…) need to run programs while building. This is off by default for your safety. LaBagueTex offers to enable it for a project when needed.

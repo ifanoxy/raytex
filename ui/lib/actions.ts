@@ -9,6 +9,7 @@ import { toggleComment } from "@codemirror/commands";
 import { gotoLine, openSearchPanel } from "@codemirror/search";
 import { EditorView, type KeyBinding } from "@codemirror/view";
 import { REPOSITORY_URL } from "./constants";
+import { allDiagnostics, fixable, fixAllAndReport, quickFix } from "./fixes";
 import { matchesKey } from "./keys";
 import { setAlignment, setList } from "./editor/format";
 import { wrapCommand, wrapEnvironment, wrapMath } from "./editor/structure";
@@ -116,6 +117,7 @@ export const actions: Action[] = [
   { id: "build.setMain", title: "action.setMain", category: "build", icon: "star", when: hasTex, run: () => editor.active && project.setMain(editor.active) },
   { id: "build.log", title: "action.openLog", category: "build", icon: "file", when: () => !!build.outcome, run: () => build.openLog() },
   { id: "build.output", title: "action.showOutput", category: "build", keys: "Mod-Shift-u", icon: "terminal", run: () => ui.showBottom("output") },
+  { id: "build.fixAll", title: "action.fixAll", category: "build", icon: "wand", when: () => fixable(allDiagnostics()).length > 0, run: () => fixAllAndReport() },
   { id: "build.problems", title: "action.showProblems", category: "build", icon: "alert-circle", run: () => ui.showBottom("problems") },
   { id: "build.live", title: "action.toggleLiveBuild", category: "build", icon: "bolt", run: () => toggleLiveBuild() },
   { id: "pdf.export", title: "action.exportPdf", category: "build", icon: "download", when: hasPdf, run: () => viewer.exportPdf() },
@@ -158,6 +160,7 @@ export const actions: Action[] = [
   // ------------------------------------------------------------- edit
   { id: "edit.undo", title: "action.undo", category: "edit", keys: "Mod-z", icon: "undo", when: documentHistory, run: () => editor.undo() },
   { id: "edit.redo", title: "action.redo", category: "edit", keys: "Mod-Shift-z", altKeys: ["Mod-y"], icon: "redo", when: documentHistory, run: () => editor.redo() },
+  { id: "edit.quickFix", title: "action.quickFix", category: "edit", keys: "Alt-Enter", editor: true, icon: "wand", when: hasText, run: withView((v) => (editor.active ? quickFix(v, editor.active) : false)) },
   { id: "edit.bold", title: "action.bold", category: "edit", keys: "Mod-b", editor: true, when: hasTex, run: withView((v) => wrapCommand(v, "textbf")) },
   { id: "edit.italic", title: "action.italic", category: "edit", keys: "Mod-i", editor: true, when: hasTex, run: withView((v) => wrapCommand(v, "textit")) },
   { id: "edit.emph", title: "action.emph", category: "edit", keys: "Mod-e", editor: true, when: hasTex, run: withView((v) => wrapCommand(v, "emph")) },

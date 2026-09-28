@@ -1,6 +1,6 @@
 # Mathematics
 
-Mathematics is where LaTeX shines. labaguetex shows a **live preview** of the formula under the cursor, using your own macros.
+Mathematics is where LaTeX shines. LaBagueTex shows a **live preview** of the formula under the cursor, using your own macros.
 
 ## Inline and display formulas
 
@@ -92,4 +92,4 @@ In math mode, type `@` followed by a letter: `@a` → `\alpha`, `@b` → `\beta`
 \DeclareMathOperator{\rank}{rank}
 ```
 
-labaguetex learns them immediately: they appear in completion and the preview uses them.
+LaBagueTex learns them immediately: they appear in completion and the preview uses them.

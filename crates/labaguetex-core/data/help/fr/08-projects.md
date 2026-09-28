@@ -1,10 +1,10 @@
 # Projets
 
-Un projet labaguetex est simplement un **dossier**. Il contient vos fichiers `.tex`, `.bib`, vos images, et éventuellement un fichier de réglages `labaguetex.toml`.
+Un projet LaBagueTex est simplement un **dossier**. Il contient vos fichiers `.tex`, `.bib`, vos images, et éventuellement un fichier de réglages `labaguetex.toml`.
 
 ## Le dossier des projets et « Mes projets »
 
-Tous les nouveaux projets sont rangés dans un même dossier, propre à labaguetex : `Documents/labaguetex` par défaut, modifiable dans *Réglages › Général › Dossier des projets*.
+Tous les nouveaux projets sont rangés dans un même dossier, propre à LaBagueTex : `Documents/LaBagueTex` par défaut, modifiable dans *Réglages › Général › Dossier des projets*.
 
 L'écran d'accueil, et **Mes projets…** (menu du projet, en haut à gauche) quand un projet est ouvert, montrent :
 
@@ -35,7 +35,7 @@ Pour un mémoire ou une thèse, un fichier par chapitre :
 - `\input{fichier}` insère le fichier tel quel ;
 - `\include{fichier}` commence une nouvelle page et permet `\includeonly{…}` pour compiler seulement certains chapitres.
 
-labaguetex suit les inclusions : autocomplétion des étiquettes de tous les chapitres, plan complet, recherche dans tout le projet, renommage d'une étiquette partout.
+LaBagueTex suit les inclusions : autocomplétion des étiquettes de tous les chapitres, plan complet, recherche dans tout le projet, renommage d'une étiquette partout.
 
 ## Fichiers et dossiers
 
@@ -68,7 +68,7 @@ disabled_rules = ["nbsp-ref"]
 
 ## Sessions
 
-À la réouverture, labaguetex restaure le dernier projet, ses onglets et le fichier actif (désactivable dans *Réglages › Général*).
+À la réouverture, LaBagueTex restaure le dernier projet, ses onglets et le fichier actif (désactivable dans *Réglages › Général*).
 
 ## Modèles personnels
 

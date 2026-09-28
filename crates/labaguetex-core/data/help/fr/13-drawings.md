@@ -1,6 +1,6 @@
 # Schémas TikZ
 
-TikZ dessine des schémas, graphes, figures géométriques et diagrammes directement en LaTeX : même police, mêmes couleurs que le document, et un résultat vectoriel, net à toutes les tailles. Le **studio TikZ** de labaguetex le rend accessible sans connaître la syntaxe : on dessine à la souris, le code s'écrit tout seul.
+TikZ dessine des schémas, graphes, figures géométriques et diagrammes directement en LaTeX : même police, mêmes couleurs que le document, et un résultat vectoriel, net à toutes les tailles. Le **studio TikZ** de LaBagueTex le rend accessible sans connaître la syntaxe : on dessine à la souris, le code s'écrit tout seul.
 
 ## Ouvrir le studio
 
@@ -57,7 +57,7 @@ Dans l'onglet **Code** :
 - **À la position du curseur**, ou **dans un fichier séparé** (`figures/schema.tikz`, inclus par `\input`) : pratique pour les gros schémas.
 - **Dans une figure avec légende** : le schéma est centré, numéroté et reçoit une étiquette pour `\ref`.
 
-labaguetex ajoute au préambule ce dont le schéma a besoin : `\usepackage{tikz}` (ou pgfplots, circuitikz, tikz-cd), les `\usetikzlibrary`, et la bibliothèque `babel` quand le document est en français (elle évite les conflits avec la ponctuation française).
+LaBagueTex ajoute au préambule ce dont le schéma a besoin : `\usepackage{tikz}` (ou pgfplots, circuitikz, tikz-cd), les `\usetikzlibrary`, et la bibliothèque `babel` quand le document est en français (elle évite les conflits avec la ponctuation française).
 
 ## Pour aller plus loin
 

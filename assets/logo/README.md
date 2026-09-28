@@ -1,4 +1,4 @@
-# The labaguetex logo
+# The LaBagueTex logo
 
 The logo is the famous **LaTeX** lettering — L, raised small-cap A, T,
 lowered E — whose **X is made of two crossed baguettes**.

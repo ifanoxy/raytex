@@ -23,9 +23,9 @@
 <div class="welcome">
   <div class="inner">
     <header>
-      <img class="logo" src="/assets/logo.svg" alt="labaguetex" />
+      <img class="logo" src="/assets/logo.svg" alt="LaBagueTex" />
       <div>
-        <h1>labaguetex</h1>
+        <h1>LaBagueTex</h1>
         <p class="tagline">{t("welcome.tagline")}</p>
       </div>
     </header>

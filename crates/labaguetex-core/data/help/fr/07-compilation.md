@@ -1,6 +1,6 @@
 # Compilation
 
-Compiler, c'est transformer vos fichiers `.tex` en PDF. labaguetex le fait vite, au bon moment, et vous explique chaque problème.
+Compiler, c'est transformer vos fichiers `.tex` en PDF. LaBagueTex le fait vite, au bon moment, et vous explique chaque problème.
 
 ## Lancer une compilation
 
@@ -22,7 +22,7 @@ Un fichier inclus peut aussi indiquer sa racine sur sa première ligne :
 
 ## Quel moteur ?
 
-Si vous n'avez pas imposé de moteur (dans les réglages généraux ou ceux du projet), labaguetex choisit :
+Si vous n'avez pas imposé de moteur (dans les réglages généraux ou ceux du projet), LaBagueTex choisit :
 
 1. le moteur du commentaire magique du fichier principal, s'il existe :
    ```latex
@@ -44,7 +44,7 @@ La méthode intégrée (recommandée) :
 
 Les fichiers auxiliaires (`.aux`, `.log`, `.toc`…) sont rangés dans le dossier `build/` : votre projet reste propre. Le panneau **Sortie** affiche la sortie brute de chaque étape.
 
-**Préambule précompilé** (pdfLaTeX) : après une première compilation, labaguetex prépare en arrière-plan une version « précompilée » du préambule (avec `mylatexformat`). Les compilations suivantes commencent directement à `\begin{document}` : souvent deux fois plus rapides (0,6 s au lieu de 1,3 s avec TikZ et pgfplots), le PDF est identique. Le préambule est préparé à nouveau dès qu'il change. Les documents qui écrivent des fichiers dans leur préambule (index, glossaires, `minted`…) sont compilés normalement. Réglage : *Réglages › Compilation › Précompiler le préambule*.
+**Préambule précompilé** (pdfLaTeX) : après une première compilation, LaBagueTex prépare en arrière-plan une version « précompilée » du préambule (avec `mylatexformat`). Les compilations suivantes commencent directement à `\begin{document}` : souvent deux fois plus rapides (0,6 s au lieu de 1,3 s avec TikZ et pgfplots), le PDF est identique. Le préambule est préparé à nouveau dès qu'il change. Les documents qui écrivent des fichiers dans leur préambule (index, glossaires, `minted`…) sont compilés normalement. Réglage : *Réglages › Compilation › Précompiler le préambule*.
 
 Autres méthodes : **latexmk**, **une seule passe**, ou vos **étapes personnalisées** (avec les variables `%DOC%`, `%DOCFILE%`, `%OUTDIR%`, `%DIR%`, `%ENGINE%`).
 
@@ -56,10 +56,30 @@ Tout le texte des panneaux se sélectionne et se copie : glissez sur la sortie d
 
 Le panneau **Problèmes** regroupe les erreurs par fichier :
 
-- le message de TeX, traduit en une explication claire ;
-- la position exacte (ligne et colonne), soulignée dans l'éditeur ;
+- le message de TeX, traduit en une explication claire, et sous chaque problème une **suggestion** (💡) qui dit quoi faire ;
+- la position exacte (ligne et colonne), soulignée dans l'éditeur. Une erreur signalée à l'intérieur d'un package (`geometry.sty`, `babel.sty`…) est ramenée sur votre ligne `\usepackage`, sur l'option en cause ;
 - le contexte montré par TeX, avec le point où il s'est arrêté ;
-- des **corrections en un clic** : ajouter ou installer un package, corriger une commande mal orthographiée, changer de moteur, créer un fichier manquant…
+- des **corrections en un clic**, calculées à partir de votre texte.
+
+Quelques exemples de corrections proposées :
+
+| Problème | Correction |
+|---|---|
+| `\textbff{…}`, `\sectoin`, une macro à vous mal écrite | Remplacer par `\textbf`, `\section`, votre macro |
+| `\mathbb`, `\includegraphics`, `\toprule`, `align`… sans leur package | Ajouter `\usepackage{amssymb}`, `graphicx`, `booktabs`, `amsmath`… |
+| `\begin{itemise}`, `\end{enumerate}` qui ferme un `itemize`, environnement jamais fermé | Renommer `\begin` et `\end` ensemble, fermer l'environnement |
+| Accolade ou formule jamais fermée, ligne vide dans une formule | Fermer l'accolade ou la formule, supprimer la ligne vide |
+| `mon_fichier`, `x^2` ou `\alpha` dans le texte, `&` ou `#` seuls | Écrire `mon\_fichier`, `$x^2$`, `$\alpha$`, `\&`, `\#` |
+| Tableau : colonne en trop, `\hline` après une ligne non terminée | Ajouter une colonne à `{ll}`, terminer la ligne par `\\` |
+| Figure `[h]`, `[H]` sans `float`, image trop grande ou introuvable | `[htbp]`, charger `float`, adapter l'image, utiliser le fichier au nom proche |
+| Référence, citation ou clé d'option mal écrite (`sec:intr`, `knut`, `widht`, `marging`) | Le label, la clé, l'option qui existent |
+| TikZ : `;` oublié, `right=of`, flèche `Stealth`, forme `diamond` | Ajouter le `;`, la bibliothèque `positioning`, `arrows.meta`, `shapes.geometric` |
+| `\newcommand` qui existe déjà ou sans `[1]`, `\usepackage` après `\begin{document}` | `\renewcommand`, déclarer les arguments, déplacer dans le préambule |
+| Avertissements de `babel`, `fancyhdr`, `pgfplots`, `hyperref`… | Nom de langue actuel, `\headheight`, `compat=`, `\texorpdfstring` |
+
+**Tout corriger** applique la correction proposée de chaque problème affiché (celle en surbrillance), puis recompile. Une correction déjà faite par une autre est comptée une seule fois, et celles qui toucheraient le même texte attendent le tour suivant. Les installations de packages, l'activation des programmes externes et les réglages de mise en page globaux ne sont jamais appliqués sans vous. Chaque correction s'annule comme une saisie (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Z</kbd>).
+
+Dans l'éditeur, <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>Entrée</kbd> sur un texte souligné ouvre les corrections du problème à cet endroit. Les positions suivent vos modifications : une correction s'applique au bon endroit même si vous avez écrit depuis la dernière compilation.
 
 Les avertissements (renvois indéfinis, boîtes trop pleines) sont affichés séparément et filtrables.
 
@@ -72,4 +92,4 @@ Les avertissements (renvois indéfinis, boîtes trop pleines) sont affichés sé
 
 ## Programmes externes (shell escape)
 
-Certains packages (`minted`, `svg`, `gnuplottex`…) doivent lancer des programmes pendant la compilation. C'est désactivé par défaut pour votre sécurité. labaguetex vous propose de l'activer pour un projet lorsque c'est nécessaire.
+Certains packages (`minted`, `svg`, `gnuplottex`…) doivent lancer des programmes pendant la compilation. C'est désactivé par défaut pour votre sécurité. LaBagueTex vous propose de l'activer pour un projet lorsque c'est nécessaire.

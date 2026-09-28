@@ -24,13 +24,13 @@ Every font installed on your system can be used thanks to **fontspec** (XeLaTeX 
 
 Choose its use: main text, sans serif text, code, mathematics (OpenType Math fonts only, with `unicode-math`), or a **new command** for a few words (`\newfontfamily\heading{…}` then `{\heading My title}`).
 
-labaguetex checks that LaTeX finds the font (compiled preview), adds fontspec, can comment out `fontenc` and `inputenc` (not needed with fontspec) and builds the document with LuaLaTeX.
+LaBagueTex checks that LaTeX finds the font (compiled preview), adds fontspec, can comment out `fontenc` and `inputenc` (not needed with fontspec) and builds the document with LuaLaTeX.
 
 > Your co-authors need the same font installed. To share the project, prefer font files.
 
 ## Font files
 
-Add `.ttf` or `.otf` files (downloaded from Google Fonts, Adobe Fonts…): labaguetex copies them into the `fonts/` folder of the project and names them in the preamble, style by style:
+Add `.ttf` or `.otf` files (downloaded from Google Fonts, Adobe Fonts…): LaBagueTex copies them into the `fonts/` folder of the project and names them in the preamble, style by style:
 
 ```latex
 \setmainfont{sourceserif4-regular.otf}[

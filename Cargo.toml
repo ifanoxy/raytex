@@ -10,7 +10,7 @@ rust-version = "1.88"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/labaguetex/labaguetex"
 homepage = "https://github.com/labaguetex/labaguetex"
-authors = ["The labaguetex contributors"]
+authors = ["The LaBagueTex contributors"]
 
 [workspace.dependencies]
 labaguetex-core = { path = "crates/labaguetex-core" }

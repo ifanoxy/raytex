@@ -50,14 +50,55 @@ pub struct Hint {
     pub explanation: String,
 }
 
+/// A change of one place of a file (fixes touching several places).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileEdit {
+    /// Absolute path of the file.
+    pub file: PathBuf,
+    /// Range to replace.
+    pub range: Range,
+    /// Replacement text.
+    pub text: String,
+}
+
 /// An automatic fix the editor can apply.
+///
+/// Fixes of the preamble are described by their intent (load a package,
+/// add an option…): the editor applies them to the current text, so they
+/// stay right after other edits.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum Fix {
-    /// Add `\usepackage{name}` to the preamble of the root document.
+    /// Add `\usepackage[options]{name}` to the preamble of the root document.
     AddPackage {
         /// Package to load.
         package: String,
+        /// Options, when the package needs some.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        options: Option<String>,
+    },
+    /// Add an option to a package (loading it when it is not).
+    AddPackageOption {
+        /// Package.
+        package: String,
+        /// Option to add.
+        option: String,
+    },
+    /// Add a line to the preamble (after a package, else after the others).
+    AddToPreamble {
+        /// Button label.
+        title: String,
+        /// The line.
+        code: String,
+        /// Package after which the line goes.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        after: Option<String>,
+    },
+    /// Load a TikZ library.
+    AddTikzLibrary {
+        /// Library name (`positioning`).
+        library: String,
     },
     /// Install a missing package with the distribution's package manager.
     InstallPackage {
@@ -73,6 +114,13 @@ pub enum Fix {
         /// Replacement text.
         text: String,
     },
+    /// Several changes, possibly in several files, applied together.
+    Edits {
+        /// Button label.
+        title: String,
+        /// The changes (ranges of the same file do not overlap).
+        edits: Vec<FileEdit>,
+    },
     /// Switch the compiler for this project.
     UseEngine {
         /// `xelatex` or `lualatex`.
@@ -85,6 +133,23 @@ pub enum Fix {
         /// Path relative to the project root.
         path: String,
     },
+    /// Compile again (the problem goes away with another pass).
+    Rebuild,
+    /// Open the documentation of a package.
+    OpenDoc {
+        /// Package name.
+        package: String,
+    },
+}
+
+impl Fix {
+    /// Loads a package without options.
+    pub fn add_package(package: impl Into<String>) -> Self {
+        Fix::AddPackage {
+            package: package.into(),
+            options: None,
+        }
+    }
 }
 
 /// A problem found in a document.

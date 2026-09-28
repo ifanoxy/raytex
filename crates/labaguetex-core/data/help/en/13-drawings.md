@@ -1,6 +1,6 @@
 # TikZ drawings
 
-TikZ draws diagrams, graphs, geometric figures and charts directly in LaTeX: same fonts, same colours as the document, and a vector result, sharp at any size. The **TikZ studio** of labaguetex makes it accessible without knowing the syntax: you draw with the mouse, the code writes itself.
+TikZ draws diagrams, graphs, geometric figures and charts directly in LaTeX: same fonts, same colours as the document, and a vector result, sharp at any size. The **TikZ studio** of LaBagueTex makes it accessible without knowing the syntax: you draw with the mouse, the code writes itself.
 
 ## Opening the studio
 
@@ -57,7 +57,7 @@ At every pause in typing, the drawing is compiled with the preamble of your docu
 - **At the cursor**, or **in its own file** (`figures/schema.tikz`, included with `\input`): handy for large drawings.
 - **In a figure with a caption**: the drawing is centred, numbered and gets a label for `\ref`.
 
-labaguetex adds what the drawing needs to the preamble: `\usepackage{tikz}` (or pgfplots, circuitikz, tikz-cd), the `\usetikzlibrary` lines, and the `babel` library when the document uses babel (it avoids conflicts with active punctuation, in French for instance).
+LaBagueTex adds what the drawing needs to the preamble: `\usepackage{tikz}` (or pgfplots, circuitikz, tikz-cd), the `\usetikzlibrary` lines, and the `babel` library when the document uses babel (it avoids conflicts with active punctuation, in French for instance).
 
 ## Going further
 

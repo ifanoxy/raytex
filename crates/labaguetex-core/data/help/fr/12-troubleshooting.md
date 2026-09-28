@@ -12,7 +12,7 @@ Le package n'est pas installé. Cliquez sur **Installer** dans le panneau Probl�
 
 ## « Undefined control sequence »
 
-La commande signalée n'existe pas : faute de frappe (`\textbff`), ou package non chargé. labaguetex propose la commande la plus proche ou le package à ajouter.
+La commande signalée n'existe pas : faute de frappe (`\textbff`), ou package non chargé. LaBagueTex propose la commande la plus proche ou le package à ajouter.
 
 ## Renvois « ?? » et citations « [?] »
 
@@ -44,4 +44,4 @@ Vérifiez le panneau **Problèmes** : une erreur fatale empêche la production d
 
 ## Signaler un problème
 
-labaguetex est libre et open source : signalez un bug ou proposez une amélioration sur le dépôt du projet, en joignant si possible un petit document qui reproduit le problème.
+LaBagueTex est libre et open source : signalez un bug ou proposez une amélioration sur le dépôt du projet, en joignant si possible un petit document qui reproduit le problème.

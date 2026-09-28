@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions of the main window. Everything else goes through labaguetex's own commands.",
+  "description": "Permissions of the main window. Everything else goes through LaBagueTex's own commands.",
   "windows": [
     "main"
   ],

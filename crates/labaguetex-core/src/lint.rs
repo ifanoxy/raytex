@@ -8,11 +8,15 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use crate::diagnostics::{Diagnostic, Fix, Hint, Severity, Source};
+use crate::diagnostics::{Diagnostic, FileEdit, Fix, Hint, Severity, Source};
+use crate::fixes::text::{
+    brace_close_at, closest as closest_name, content_end, env_close_at, group_end, line_end,
+    line_start,
+};
 use crate::i18n::Lang;
 use crate::kb::{KERNEL, kb};
 use crate::log::hints::levenshtein;
-use crate::syntax::{IncludeKind, ProblemKind, context::comment_start};
+use crate::syntax::{IncludeKind, Problem, ProblemKind, context::comment_start};
 use crate::tex::{Engine, TexmfIndex};
 use crate::text::Span;
 use crate::workspace::{DocKind, Document, Workspace};
@@ -99,6 +103,16 @@ pub fn lint(ws: &Workspace, file: &Path, opts: &LintOptions<'_>) -> Vec<Diagnost
     let disabled = &opts.disabled;
     l.out
         .retain(|d| d.code.as_ref().is_none_or(|c| !disabled.contains(c)));
+    for d in &mut l.out {
+        if d.hint.is_none()
+            && let Some(explanation) = d.code.as_deref().and_then(|c| explanation(c, opts.lang))
+        {
+            d.hint = Some(Hint {
+                title: d.message.clone(),
+                explanation: explanation.to_owned(),
+            });
+        }
+    }
     if disabled.contains("syntax") {
         l.out.retain(|d| d.source != Source::Syntax);
     }
@@ -138,7 +152,7 @@ impl Linter<'_> {
 
     fn structure(&mut self, package_file: bool) {
         let problems = self.doc.index.problems.clone();
-        for p in problems {
+        for p in problems.clone() {
             if package_file
                 && !matches!(
                     p.kind,
@@ -181,11 +195,193 @@ impl Linter<'_> {
                     self.t("Chaque `\\left` doit avoir son `\\right` dans la même formule (`\\right.` pour un délimiteur invisible).", "Every `\\left` needs a `\\right` in the same formula (`\\right.` for an invisible one)."),
                 ),
             };
+            let fixes = self.syntax_fixes(&p, &problems);
             let d = self.push(Severity::Error, Source::Syntax, "syntax", &p.span, msg);
             d.hint = Some(Hint {
                 title: d.message.clone(),
                 explanation: hint.to_owned(),
             });
+            d.fixes = fixes;
+        }
+    }
+
+    fn edit(&self, span: Span, text: impl Into<String>) -> FileEdit {
+        FileEdit {
+            file: self.doc.path.clone(),
+            range: self.doc.range(&span),
+            text: text.into(),
+        }
+    }
+
+    /// Deletes `span`, with its line when nothing else is on it.
+    fn delete(&self, span: Span) -> FileEdit {
+        let text = &self.doc.text;
+        let (start, end) = (line_start(text, span.start), line_end(text, span.end));
+        if text[start..span.start].trim().is_empty() && text[span.end..end].trim().is_empty() {
+            self.edit(start..(end + 1).min(text.len()), "")
+        } else {
+            self.edit(span, "")
+        }
+    }
+
+    /// Renames `\end{old}` (whose span is `end`) to `\end{new}`: the same
+    /// fix as the compiler's "ended by" error.
+    fn rename_end(&self, end: &Span, new: &str) -> Vec<Fix> {
+        vec![Fix::Edits {
+            title: format!("{} \\end{{{new}}}", self.t("Remplacer par", "Replace with")),
+            edits: vec![self.edit(end.start + 5..end.end - 1, new)],
+        }]
+    }
+
+    /// Fixes of a structural problem, with the same edits as the fixes of
+    /// the compiler errors it causes.
+    fn syntax_fixes(&self, p: &Problem, all: &[Problem]) -> Vec<Fix> {
+        let text = &self.doc.text;
+        let one = |title: String, edits: Vec<FileEdit>| vec![Fix::Edits { title, edits }];
+        match &p.kind {
+            ProblemKind::UnmatchedCloseBrace => one(
+                self.t("Supprimer cette }", "Delete this }").into(),
+                vec![self.edit(p.span.clone(), "")],
+            ),
+            ProblemKind::UnclosedBrace => {
+                let open = p.span.start;
+                let start = text[..open]
+                    .rfind('\\')
+                    .filter(|&b| text[b + 1..open].chars().all(|c| c.is_ascii_alphabetic()))
+                    .unwrap_or(open);
+                let what = &text[start..open];
+                let at = brace_close_at(text, open);
+                one(
+                    if what.is_empty() {
+                        self.t("Fermer l'accolade", "Close the brace").into()
+                    } else {
+                        format!(
+                            "{} {what}",
+                            self.t("Fermer l'accolade de", "Close the brace of")
+                        )
+                    },
+                    vec![self.edit(at..at, "}")],
+                )
+            }
+            ProblemKind::UnclosedEnvironment(name) => {
+                // An \end of another environment follows: it is the one to rename.
+                if name != "document"
+                    && let Some(end) = all.iter().find(|q| {
+                        matches!(q.kind, ProblemKind::UnmatchedEnd(_))
+                            && q.span.start > p.span.start
+                    })
+                {
+                    return self.rename_end(&end.span, name);
+                }
+                let at = if name == "document" {
+                    text.len()
+                } else {
+                    env_close_at(text, p.span.end)
+                };
+                let before = if at == text.len() && !text.is_empty() && !text.ends_with('\n') {
+                    "\n"
+                } else {
+                    ""
+                };
+                one(
+                    format!("{} \\end{{{name}}}", self.t("Fermer avec", "Close with")),
+                    vec![self.edit(at..at, format!("{before}\\end{{{name}}}\n"))],
+                )
+            }
+            ProblemKind::UnmatchedEnd(name) => {
+                if let Some(open) = all.iter().rev().find(|q| {
+                    matches!(q.kind, ProblemKind::UnclosedEnvironment(_))
+                        && q.span.start < p.span.start
+                }) && let ProblemKind::UnclosedEnvironment(other) = &open.kind
+                    && other != "document"
+                {
+                    return self.rename_end(&p.span, other);
+                }
+                one(
+                    format!("{} \\end{{{name}}}", self.t("Supprimer", "Delete")),
+                    vec![self.delete(p.span.clone())],
+                )
+            }
+            ProblemKind::UnclosedMath => {
+                let token = &text[p.span.clone()];
+                if token.trim().is_empty() {
+                    // A blank line inside a math environment.
+                    let start = p.span.start + usize::from(token.starts_with('\n'));
+                    let end = (line_end(text, start) + 1).min(text.len());
+                    return one(
+                        self.t(
+                            "Supprimer la ligne vide de la formule",
+                            "Delete the blank line of the formula",
+                        )
+                        .into(),
+                        vec![self.edit(start..end, "")],
+                    );
+                }
+                let close = match token {
+                    "$" => "$",
+                    "$$" => "$$",
+                    "\\[" => "\\]",
+                    "\\(" => "\\)",
+                    _ => return Vec::new(),
+                };
+                // The end of the paragraph.
+                let mut para = line_end(text, p.span.end);
+                while para < text.len() {
+                    let next = line_end(text, para + 1);
+                    if text[para + 1..next].trim().is_empty() {
+                        break;
+                    }
+                    para = next;
+                }
+                // Closed after a blank line: the blank line is the mistake.
+                let after = &text[para..(para + 600).min(text.len())];
+                let blank_end = para + after.len() - after.trim_start().len();
+                if blank_end < text.len() && text[blank_end..].starts_with(close) && close != "$" {
+                    let start = para + 1;
+                    return one(
+                        self.t(
+                            "Supprimer la ligne vide de la formule",
+                            "Delete the blank line of the formula",
+                        )
+                        .into(),
+                        vec![self.edit(start..line_start(text, blank_end), "")],
+                    );
+                }
+                let line = line_end(text, p.span.end);
+                if matches!(close, "$" | "\\)")
+                    && let Some(at) = text_resumes(text, p.span.end, line)
+                {
+                    return one(
+                        format!(
+                            "{} {close}",
+                            self.t("Fermer la formule avec", "Close the formula with")
+                        ),
+                        vec![self.edit(at..at, close)],
+                    );
+                }
+                let at = if text[p.span.end..line].trim().is_empty() {
+                    line_start(text, para) + content_end(&text[line_start(text, para)..para])
+                } else {
+                    line_start(text, p.span.end)
+                        + content_end(&text[line_start(text, p.span.end)..line])
+                };
+                one(
+                    format!(
+                        "{} {close}",
+                        self.t("Fermer la formule avec", "Close the formula with")
+                    ),
+                    vec![self.edit(at..at, close)],
+                )
+            }
+            ProblemKind::UnmatchedMathClose => one(
+                format!(
+                    "{} {}",
+                    self.t("Supprimer", "Delete"),
+                    &text[p.span.clone()]
+                ),
+                vec![self.edit(p.span.clone(), "")],
+            ),
+            ProblemKind::NestedMath | ProblemKind::LeftRightMismatch => Vec::new(),
         }
     }
 
@@ -241,13 +437,36 @@ impl Linter<'_> {
                     ),
                     l.name
                 );
-                self.push(
+                // The first definition keeps the name, the next ones get `-2`, `-3`…
+                let range = doc.range(&l.span);
+                let rank = labels
+                    .iter()
+                    .filter(|x| x.name == l.name)
+                    .position(|x| x.location.file == doc.path && x.location.range == range);
+                let mut fix = None;
+                if let Some(rank) = rank.filter(|&r| r > 0) {
+                    let mut n = 1;
+                    let mut new = String::new();
+                    for _ in 0..rank {
+                        n += 1;
+                        while label_names.contains(format!("{}-{n}", l.name).as_str()) {
+                            n += 1;
+                        }
+                        new = format!("{}-{n}", l.name);
+                    }
+                    fix = Some(Fix::Edits {
+                        title: format!("{} {new}", self.t("Renommer en", "Rename to")),
+                        edits: vec![self.edit(l.span.clone(), new.clone())],
+                    });
+                }
+                let d = self.push(
                     Severity::Warning,
                     Source::Lint,
                     "duplicate-label",
                     &l.span,
                     msg,
                 );
+                d.fixes.extend(fix);
             }
         }
 
@@ -327,6 +546,7 @@ impl Linter<'_> {
                     } else {
                         format!("{}.tex", inc.path)
                     };
+                    let similar = self.similar_file(&inc.path, &["tex"], true);
                     let d = self.push(
                         Severity::Error,
                         Source::Lint,
@@ -334,6 +554,7 @@ impl Linter<'_> {
                         &inc.span,
                         msg,
                     );
+                    d.fixes.extend(similar);
                     d.fixes.push(Fix::CreateFile { path });
                 }
                 IncludeKind::Graphics => {
@@ -356,13 +577,17 @@ impl Linter<'_> {
                         self.t("Image introuvable :", "Image not found:"),
                         inc.path
                     );
-                    self.push(
+                    let bare = Path::new(&inc.path).extension().is_none();
+                    let similar =
+                        self.similar_file(&inc.path, crate::fixes::latex::IMAGE_EXTENSIONS, bare);
+                    let d = self.push(
                         Severity::Warning,
                         Source::Lint,
                         "missing-image",
                         &inc.span,
                         msg,
                     );
+                    d.fixes.extend(similar);
                 }
                 IncludeKind::Bibliography | IncludeKind::BibResource => {
                     // A system-wide .bib may exist in the distribution.
@@ -391,6 +616,55 @@ impl Linter<'_> {
                 IncludeKind::Other => {}
             }
         }
+    }
+
+    /// "Use images/photo" for a file of the project named almost like `path`.
+    fn similar_file(&self, path: &str, exts: &[&str], bare: bool) -> Option<Fix> {
+        let dir = self.root.parent()?;
+        let names: Vec<String> = crate::fixes::latex::files_with(dir, exts)
+            .into_iter()
+            .filter_map(|f| {
+                let rel = f
+                    .strip_prefix(dir)
+                    .ok()?
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                Some(if bare {
+                    rel.rsplit_once('.')
+                        .map_or(rel.clone(), |(s, _)| s.to_owned())
+                } else {
+                    rel
+                })
+            })
+            .collect();
+        let written = path.trim_end_matches(".tex");
+        let best = closest_name(written, names.iter().map(String::as_str), 3)?;
+        let span = self
+            .doc
+            .index
+            .includes
+            .iter()
+            .find(|i| i.path == path)?
+            .span
+            .clone();
+        Some(Fix::Edits {
+            title: format!("{} {best}", self.t("Utiliser", "Use")),
+            edits: vec![self.edit(span, best)],
+        })
+    }
+
+    /// Moves the `\usepackage` at `from` after the one at `after`.
+    fn move_package(&self, from: &Span, after: &Span, title: String) -> Option<Fix> {
+        let text = &self.doc.text;
+        let stmt = &text[from.clone()];
+        let at = line_end(text, after.end);
+        Some(Fix::Edits {
+            title,
+            edits: vec![
+                self.delete(from.clone()),
+                self.edit(at..at, format!("\n{stmt}")),
+            ],
+        })
     }
 
     // ------------------------------------------------------------ packages
@@ -459,13 +733,40 @@ impl Linter<'_> {
                     p.name,
                     self.t("est chargé deux fois", "is loaded twice")
                 );
-                self.push(
+                let stmt = &doc.text[p.command_span.clone()];
+                let names = stmt.trim_end_matches('}').rsplit('{').next().unwrap_or("");
+                let fix = if names.split(',').filter(|n| !n.trim().is_empty()).count() <= 1 {
+                    Some(self.delete(p.command_span.clone()))
+                } else {
+                    // Only this name is removed from the list.
+                    let at = p.span.start;
+                    let after = doc.text[p.span.end..].starts_with(',');
+                    let span = if after {
+                        at..p.span.end + 1
+                    } else {
+                        doc.text[..at].rfind(',').unwrap_or(at)..p.span.end
+                    };
+                    Some(self.edit(span, ""))
+                };
+                let title = format!(
+                    "{} {}",
+                    self.t(
+                        "Retirer le second chargement de",
+                        "Remove the second load of"
+                    ),
+                    p.name
+                );
+                let d = self.push(
                     Severity::Warning,
                     Source::Lint,
                     "duplicate-package",
                     &p.command_span,
                     msg,
                 );
+                d.fixes.extend(fix.map(|e| Fix::Edits {
+                    title,
+                    edits: vec![e],
+                }));
             }
         }
 
@@ -575,6 +876,24 @@ impl Linter<'_> {
                 .collect();
             if !late.is_empty() {
                 let span = doc.index.packages[h].command_span.clone();
+                let last = doc
+                    .index
+                    .packages
+                    .iter()
+                    .rev()
+                    .find(|p| late.contains(&p.name.as_str()))
+                    .map(|p| p.command_span.clone());
+                let fix = last.and_then(|last| {
+                    self.move_package(
+                        &span,
+                        &last,
+                        self.t(
+                            "Placer hyperref après les autres packages",
+                            "Put hyperref after the other packages",
+                        )
+                        .into(),
+                    )
+                });
                 let msg = format!(
                     "{} ({})",
                     self.t(
@@ -583,7 +902,8 @@ impl Linter<'_> {
                     ),
                     late.join(", ")
                 );
-                self.push(Severity::Hint, Source::Lint, "package-order", &span, msg);
+                let d = self.push(Severity::Hint, Source::Lint, "package-order", &span, msg);
+                d.fixes.extend(fix);
             }
         }
         if let (Some(c), Some(h)) = (
@@ -598,7 +918,17 @@ impl Linter<'_> {
                     "cleveref must be loaded after hyperref",
                 )
                 .to_owned();
-            self.push(Severity::Warning, Source::Lint, "package-order", &span, msg);
+            let fix = self.move_package(
+                &span,
+                &doc.index.packages[h].command_span.clone(),
+                self.t(
+                    "Placer cleveref après hyperref",
+                    "Put cleveref after hyperref",
+                )
+                .into(),
+            );
+            let d = self.push(Severity::Warning, Source::Lint, "package-order", &span, msg);
+            d.fixes.extend(fix);
         }
 
         self.cleveref_french(&packages);
@@ -768,7 +1098,7 @@ impl Linter<'_> {
                 )
             };
             let d = self.push(severity, Source::Lint, "package-required", &span, msg);
-            d.fixes.push(Fix::AddPackage { package: pkg });
+            d.fixes.push(Fix::add_package(pkg));
         }
     }
 
@@ -797,16 +1127,37 @@ impl Linter<'_> {
             if label < caption && !nested {
                 let start = env.begin.end + label;
                 let span = start..start + 6;
+                // The \label moves right after the caption.
+                let text = &doc.text;
+                let label_end = group_end(text, start + 6).unwrap_or(start + 6);
+                let cap = env.begin.end + caption + "\\caption".len();
+                let mut open = cap;
+                if text[open..].starts_with('[') {
+                    open = text[open..].find(']').map_or(open, |i| open + i + 1);
+                }
+                let fix = group_end(text, open).map(|cap_end| Fix::Edits {
+                    title: self
+                        .t(
+                            "Placer \\label après \\caption",
+                            "Put \\label after \\caption",
+                        )
+                        .into(),
+                    edits: vec![
+                        self.delete(start..label_end),
+                        self.edit(cap_end..cap_end, text[start..label_end].to_owned()),
+                    ],
+                });
                 let msg = self
                     .t("\\label est placé avant \\caption : la référence donnera un mauvais numéro", "\\label is before \\caption: the reference will get the wrong number")
                     .to_owned();
-                self.push(
+                let d = self.push(
                     Severity::Warning,
                     Source::Lint,
                     "label-before-caption",
                     &span,
                     msg,
                 );
+                d.fixes.extend(fix);
             }
         }
     }
@@ -1092,7 +1443,19 @@ impl Linter<'_> {
                         "\\\\ at the end of a paragraph: just leave a blank line",
                     )
                     .to_owned();
-                self.push(Severity::Hint, Source::Lint, "paragraph-break", &span, msg);
+                // The same edit as the fix of the "Underfull \hbox" warning.
+                let start = pos - (text[..pos].len() - text[..pos].trim_end().len());
+                let fix = Fix::Edits {
+                    title: self
+                        .t(
+                            "Supprimer le \\\\ en fin de paragraphe",
+                            "Delete the \\\\ at the end of the paragraph",
+                        )
+                        .into(),
+                    edits: vec![self.edit(start..pos + 2, "")],
+                };
+                let d = self.push(Severity::Hint, Source::Lint, "paragraph-break", &span, msg);
+                d.fixes.push(fix);
             }
         }
     }
@@ -1144,6 +1507,107 @@ impl Linter<'_> {
             }
         }
     }
+}
+
+/// Where the text of an unclosed inline formula resumes: before the first
+/// word (two letters or more, not a command) after its opening, if any.
+fn text_resumes(text: &str, from: usize, to: usize) -> Option<usize> {
+    let mut last_end = from;
+    let mut pos = from;
+    for token in text[from..to].split_whitespace() {
+        let start = pos + text[pos..to].find(token)?;
+        let word = token.trim_end_matches(|c: char| ".,;:!?".contains(c));
+        if start > from && word.chars().count() >= 2 && word.chars().all(char::is_alphabetic) {
+            return Some(last_end);
+        }
+        last_end = start + token.len();
+        pos = last_end;
+    }
+    None
+}
+
+/// Why a rule reports something and what to do, in plain words.
+fn explanation(code: &str, lang: Lang) -> Option<&'static str> {
+    let (fr, en) = match code {
+        "undefined-reference" => (
+            "Aucun `\\label{…}` ne porte ce nom dans le projet : la référence affichera « ?? ». Vérifiez l'orthographe, ou ajoutez le label à l'endroit visé.",
+            "No `\\label{…}` has this name in the project: the reference will print “??”. Check the spelling, or add the label where it should point.",
+        ),
+        "undefined-citation" => (
+            "Cette clé n'est dans aucun fichier `.bib` du projet : la citation affichera « ? ». Vérifiez l'orthographe de la clé ou ajoutez l'entrée.",
+            "This key is in no `.bib` file of the project: the citation will print “?”. Check the spelling of the key or add the entry.",
+        ),
+        "duplicate-label" => (
+            "Deux labels (ou deux entrées de bibliographie) ont le même nom : les références pointeront toutes vers le dernier. Donnez un nom unique à chacun.",
+            "Two labels (or two bibliography entries) have the same name: every reference will point to the last one. Give each a unique name.",
+        ),
+        "missing-file" => (
+            "Le fichier n'existe pas. Le chemin part du dossier du document principal, et l'extension `.tex` peut être omise.",
+            "The file does not exist. The path starts from the folder of the main document, and the `.tex` extension can be left out.",
+        ),
+        "missing-image" => (
+            "L'image n'existe pas à cet emplacement : la compilation échouera. Vérifiez le nom et le dossier (l'extension peut être omise).",
+            "The image does not exist at this place: the build will fail. Check its name and folder (the extension can be left out).",
+        ),
+        "missing-package" => (
+            "Ce package n'est pas installé dans votre distribution TeX : la compilation échouera tant qu'il manque. Installez-le en un clic.",
+            "This package is not installed in your TeX distribution: the build fails until it is. Install it in one click.",
+        ),
+        "package-required" => (
+            "Cette commande vient d'un package qui n'est pas chargé : ajoutez-le au préambule.",
+            "This command comes from a package that is not loaded: add it to the preamble.",
+        ),
+        "engine-required" => (
+            "Ce package ne fonctionne qu'avec XeLaTeX ou LuaLaTeX, pas avec pdfLaTeX.",
+            "This package only works with XeLaTeX or LuaLaTeX, not with pdfLaTeX.",
+        ),
+        "shell-escape-required" => (
+            "Ce package lance des programmes externes : il faut autoriser les commandes externes (shell escape) pour ce projet.",
+            "This package runs external programs: external commands (shell escape) must be allowed for this project.",
+        ),
+        "label-before-caption" => (
+            "Le numéro d'une figure ou d'un tableau est créé par `\\caption` : un `\\label` placé avant reprend le numéro de la section. Placez `\\label` juste après `\\caption`.",
+            "The number of a figure or table is created by `\\caption`: a `\\label` before it gets the number of the section. Put `\\label` right after `\\caption`.",
+        ),
+        "package-order" => (
+            "hyperref modifie beaucoup de commandes : il se charge après les autres packages, sauf quelques-uns (cleveref, bookmark…) qui viennent juste après lui.",
+            "hyperref changes many commands: it is loaded after the other packages, except a few (cleveref, bookmark…) that come right after it.",
+        ),
+        "duplicate-package" => (
+            "Charger deux fois le même package est inutile, et provoque une erreur si les options diffèrent.",
+            "Loading the same package twice is useless, and an error when the options differ.",
+        ),
+        "obsolete" => (
+            "Cette commande est ancienne : sa version moderne donne un meilleur résultat et fonctionne avec les autres packages.",
+            "This command is old: its modern version gives a better result and works with the other packages.",
+        ),
+        "nbsp-ref" => (
+            "Une espace insécable `~` avant une référence évite qu'un numéro se retrouve seul en début de ligne.",
+            "A non-breaking space `~` before a reference keeps a number from starting a line on its own.",
+        ),
+        "space-before-footnote" => (
+            "Une espace avant `\\footnote` décale l'appel de note du mot : collez `\\footnote` au mot.",
+            "A space before `\\footnote` separates the note mark from the word: attach `\\footnote` to the word.",
+        ),
+        "ellipsis" => (
+            "`\\ldots` (ou `\\dots`) espace correctement les points de suspension.",
+            "`\\ldots` (or `\\dots`) spaces the ellipsis correctly.",
+        ),
+        "paragraph-break" => (
+            "`\\\\` coupe la ligne sans finir le paragraphe et provoque des avertissements « Underfull \\hbox ». Pour un nouveau paragraphe, une ligne vide suffit.",
+            "`\\\\` breaks the line without ending the paragraph and causes “Underfull \\hbox” warnings. For a new paragraph, a blank line is enough.",
+        ),
+        "bib-fields" => (
+            "Une entrée sans titre s'affichera incomplète dans la bibliographie.",
+            "An entry without a title will be incomplete in the bibliography.",
+        ),
+        "cleveref-babel-french" => (
+            "Avec babel en français, « : » devient un caractère actif : les labels comme `sec:intro` font échouer `\\cref`. `\\AtBeginDocument{\\shorthandoff{:}}` le désactive.",
+            "With French babel, “:” becomes an active character: labels like `sec:intro` make `\\cref` fail. `\\AtBeginDocument{\\shorthandoff{:}}` turns it off.",
+        ),
+        _ => return None,
+    };
+    Some(lang.pick(fr, en))
 }
 
 /// Spans that are not LaTeX prose: comments and verbatim-like environments.

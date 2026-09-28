@@ -1,10 +1,10 @@
 # Projects
 
-A labaguetex project is simply a **folder**. It holds your `.tex` and `.bib` files, your images, and optionally a settings file, `labaguetex.toml`.
+A LaBagueTex project is simply a **folder**. It holds your `.tex` and `.bib` files, your images, and optionally a settings file, `labaguetex.toml`.
 
 ## The projects folder and “My projects”
 
-Every new project goes to the same folder, labaguetex's own: `Documents/labaguetex` by default, changed in *Settings › General › Projects folder*.
+Every new project goes to the same folder, LaBagueTex's own: `Documents/LaBagueTex` by default, changed in *Settings › General › Projects folder*.
 
 The start screen, and **My projects…** (project menu, top left) while a project is open, show:
 
@@ -35,7 +35,7 @@ For a thesis, one file per chapter:
 - `\input{file}` inserts the file as is;
 - `\include{file}` starts a new page and allows `\includeonly{…}` to build only some chapters.
 
-labaguetex follows inclusions: label completion across all chapters, complete outline, project-wide search, renaming a label everywhere.
+LaBagueTex follows inclusions: label completion across all chapters, complete outline, project-wide search, renaming a label everywhere.
 
 ## Files and folders
 
@@ -68,7 +68,7 @@ disabled_rules = ["nbsp-ref"]
 
 ## Sessions
 
-When starting, labaguetex reopens the last project, its tabs and the active file (can be disabled in *Settings › General*).
+When starting, LaBagueTex reopens the last project, its tabs and the active file (can be disabled in *Settings › General*).
 
 ## Personal templates
 

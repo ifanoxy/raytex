@@ -6,7 +6,7 @@ Every user-facing text is bilingual: `{ "en": "…", "fr": "…" }`. A missing l
 
 ## Knowledge base: `data/packages/<name>.json`
 
-labaguetex supports **every** package: the commands, environments and options of any installed package are read from its source code when a document loads it. The knowledge base only **adds** what a source file cannot tell: clear documentation, argument names, snippets, symbols with their glyph. Document a package here when it is widely used or its commands deserve an explanation.
+LaBagueTex supports **every** package: the commands, environments and options of any installed package are read from its source code when a document loads it. The knowledge base only **adds** what a source file cannot tell: clear documentation, argument names, snippets, symbols with their glyph. Document a package here when it is widely used or its commands deserve an explanation.
 
 ```json
 {

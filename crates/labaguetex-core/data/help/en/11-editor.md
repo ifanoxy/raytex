@@ -18,7 +18,7 @@ When an **@ shortcut** exists, it is shown next to the command: `\alpha` shows `
 
 ## Checking while typing
 
-Without building, labaguetex reports: unbalanced braces and environments, unknown references and citations, duplicate labels, missing files and images, missing or misordered packages, obsolete commands, small typographic mistakes (non-breaking space before `\ref`, ellipsis…). Rules are chosen in *Settings › Checks*.
+Without building, LaBagueTex reports: unbalanced braces and environments, unknown references and citations, duplicate labels, missing files and images, missing or misordered packages, obsolete commands, small typographic mistakes (non-breaking space before `\ref`, ellipsis…). Rules are chosen in *Settings › Checks*.
 
 ## Documentation on hover
 
@@ -75,4 +75,4 @@ The **View** menu (top right) shows or hides this bar, the side panel, the PDF p
 
 ## Saving
 
-Auto-save is on by default. A dot on a tab marks unsaved changes; when closing, labaguetex offers to save. Files that are not UTF-8 are converted when saved.
+Auto-save is on by default. A dot on a tab marks unsaved changes; when closing, LaBagueTex offers to save. Files that are not UTF-8 are converted when saved.

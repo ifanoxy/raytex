@@ -34,6 +34,7 @@ pub mod bib;
 pub mod build;
 pub mod completion;
 pub mod diagnostics;
+pub mod fixes;
 pub mod fonts;
 pub mod help;
 pub mod i18n;

@@ -38,7 +38,7 @@ Un **environnement** entoure un bloc :
 \end{itemize}
 ```
 
-> Astuce : tapez `\begin{` puis choisissez l'environnement ; labaguetex ajoute le `\end{…}` correspondant.
+> Astuce : tapez `\begin{` puis choisissez l'environnement ; LaBagueTex ajoute le `\end{…}` correspondant.
 
 ## Structurer le texte
 
@@ -86,7 +86,7 @@ Donnez une **étiquette** à ce que vous voulez citer, puis faites-y référence
 Comme expliqué en section~\ref{sec:methode}, page~\pageref{sec:methode}…
 ```
 
-Le `~` est une espace insécable : il évite que le numéro se retrouve seul en début de ligne. Tapez `\ref{` : labaguetex propose toutes les étiquettes du projet, avec leur numéro.
+Le `~` est une espace insécable : il évite que le numéro se retrouve seul en début de ligne. Tapez `\ref{` : LaBagueTex propose toutes les étiquettes du projet, avec leur numéro.
 
 ## Caractères spéciaux
 

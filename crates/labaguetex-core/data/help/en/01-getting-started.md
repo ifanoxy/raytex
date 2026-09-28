@@ -1,10 +1,10 @@
 # Getting started
 
-Welcome to **labaguetex**, the LaTeX editor designed for learning as well as for working fast. This guide takes you from installation to your first PDF in five minutes.
+Welcome to **LaBagueTex**, the LaTeX editor designed for learning as well as for working fast. This guide takes you from installation to your first PDF in five minutes.
 
 ## 1. A TeX distribution
 
-LaTeX turns your `.tex` files into PDF with a *TeX distribution* (TeX Live, MacTeX, MiKTeX, TinyTeX, Tectonic…). labaguetex detects all of them automatically.
+LaTeX turns your `.tex` files into PDF with a *TeX distribution* (TeX Live, MacTeX, MiKTeX, TinyTeX, Tectonic…). LaBagueTex detects all of them automatically.
 
 - The status bar, bottom left, shows the distribution in use.
 - If none is found, the **setup assistant** opens: it suggests the right distribution for your system, shows the exact commands and runs them for you.
@@ -25,7 +25,7 @@ To start:
 
 Every template compiles without errors from the start.
 
-Already have files? **Open folder** is enough: labaguetex finds the main file (the one with `\documentclass`) by itself.
+Already have files? **Open folder** is enough: LaBagueTex finds the main file (the one with `\documentclass`) by itself.
 
 ## 3. Write
 
@@ -42,7 +42,7 @@ The editor also helps at every keystroke:
 
 Nothing to do: compilation is **live**. As soon as you pause typing, the document is built and the PDF, on the right, updates while keeping your position. The **Live** badge of the top bar reminds you of it; a click turns it off (the document is then built on each save).
 
-You can also build yourself: <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd> or the **Build** button. labaguetex picks the right engine and only runs Biber, BibTeX or the index when needed.
+You can also build yourself: <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd> or the **Build** button. LaBagueTex picks the right engine and only runs Biber, BibTeX or the index when needed.
 
 ## 5. Fix errors
 

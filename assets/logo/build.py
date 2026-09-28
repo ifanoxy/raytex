@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds the labaguetex logos from letters typeset by LaTeX.
+"""Builds the LaBagueTex logos from letters typeset by LaTeX.
 
 1. `latex letters.tex && dvisvgm --no-fonts --exact-bbox --precision=3 letters.dvi -o letters.svg`
    (the letters L, A, T, E, X of the \\LaTeX logo, in Latin Modern Bold, with
