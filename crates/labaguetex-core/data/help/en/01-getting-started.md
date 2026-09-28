@@ -35,7 +35,7 @@ The editor also helps at every keystroke:
 
 - type `\`: commands appear, with their documentation;
 - type `\begin{`: pick an environment, its `\end{…}` is added;
-- inside a formula, the **math preview** appears under the cursor, and the **@ shortcuts** type symbols in two keys: `@a` gives `\alpha`, `@/` a fraction, `@R` gives `\mathbb{R}` (full list: the **@ Macros** button);
+- inside a formula, the **math preview** appears under the cursor, and the **@ shortcuts** type symbols in two keys: `@a` gives `\alpha`, `@/` a fraction, `@R` gives `\mathbb{R}` (full list: the **Macros** button);
 - hover a command, a label or a citation to see what it does or refers to.
 
 ## 4. Build

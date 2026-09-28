@@ -35,7 +35,7 @@ L'éditeur vous aide aussi à chaque frappe :
 
 - tapez `\` : les commandes apparaissent, avec leur documentation ;
 - tapez `\begin{` : choisissez un environnement, le `\end{…}` est ajouté ;
-- dans une formule, l'**aperçu mathématique** s'affiche sous le curseur, et les **raccourcis @** écrivent les symboles en deux touches : `@a` donne `\alpha`, `@/` une fraction, `@R` donne `\mathbb{R}` (liste complète : bouton **Macros @**) ;
+- dans une formule, l'**aperçu mathématique** s'affiche sous le curseur, et les **raccourcis @** écrivent les symboles en deux touches : `@a` donne `\alpha`, `@/` une fraction, `@R` donne `\mathbb{R}` (liste complète : bouton **Macros**) ;
 - survolez une commande, une étiquette ou une citation pour voir ce qu'elle fait ou désigne.
 
 ## 4. Compiler

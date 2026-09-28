@@ -15,7 +15,7 @@ Dans une formule, tapez `@` puis une touche : la commande s'écrit toute seule.
 | `@<`, `@>` | `\leq`, `\geq` | `@->`, `@=>` | `\to`, `\implies` |
 | `@(`, `@[`, `@\|` | `\left( … \right)`… | `@^`, `@_`, `@V` | `\hat{}`, `\bar{}`, `\vec{}` |
 
-Pour les découvrir : le bouton **Macros @** de la barre de mise en forme ouvre la liste complète, avec chaque symbole dessiné (un clic l'insère) ; **Tout voir** montre les plus utiles ; et quand vous tapez une commande qui a un raccourci, les suggestions l'affichent à côté (`\alpha` → `@a`). Ils se désactivent dans *Réglages › Autocomplétion*.
+Pour les découvrir : le bouton **Macros** de la barre de mise en forme ouvre la liste complète, avec chaque symbole dessiné (un clic l'insère) ; **Tout voir** montre les plus utiles ; et quand vous tapez une commande qui a un raccourci, les suggestions l'affichent à côté (`\alpha` → `@a`). Ils se désactivent dans *Réglages › Autocomplétion*.
 
 ## Les extraits
 

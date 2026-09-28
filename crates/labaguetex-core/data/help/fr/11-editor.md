@@ -54,7 +54,7 @@ Sous la barre du haut, comme dans un traitement de texte (tous les boutons agiss
 | Formule, équation | `$…$` autour de la sélection ; environnement `equation` |
 | Image, Tableau, Schéma TikZ | fenêtre d'images ; grille pour choisir la taille du tableau (cellules vides, `booktabs` ajouté) ; studio TikZ |
 | Lien, note, renvoi, citation | `\href`, `\footnote`, `\ref`, `\cite` |
-| Macros @ | la liste des raccourcis @ |
+| Macros | la liste des raccourcis @ |
 | Tout voir | toutes les commandes de mise en forme et d'insertion, groupées, avec leur raccourci |
 
 Le menu **Affichage** (en haut à droite) montre ou masque cette barre, le panneau latéral, l'aperçu PDF et la console ; l'aperçu et la console se ferment aussi par leur croix.

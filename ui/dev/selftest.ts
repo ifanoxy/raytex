@@ -6,7 +6,7 @@
 // distribution, waits for the PDF to be drawn by pdf.js, exercises
 // completion and SyncTeX, prints a report on the terminal and quits.
 
-import { startCompletion } from "@codemirror/autocomplete";
+import { acceptCompletion, currentCompletions, setSelectedCompletion, startCompletion } from "@codemirror/autocomplete";
 import { EditorView } from "@codemirror/view";
 import { invoke } from "@tauri-apps/api/core";
 import * as ipc from "../lib/ipc";
@@ -891,11 +891,13 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     check("ctrl/cmd adds", fileSelection.count === 4, names());
     click("chap2.tex", { add: true });
     check("ctrl/cmd removes", names() === "chap1.tex,chap3.tex,notes.txt", names());
-    // Ctrl + click on a Mac (a right click for the system).
+    click("chap2.tex", { add: true });
+    // Ctrl + click on a Mac is the right click: the menu of the selection.
     if (mac) {
-      row("chap2.tex").dispatchEvent(new MouseEvent("mousedown", { bubbles: true, ctrlKey: true, button: 0 }));
-      row("chap2.tex").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, ctrlKey: true, button: 0 }));
-      check("mac ctrl click", fileSelection.count === 4 && !ui.menu, names());
+      row("chap3.tex").dispatchEvent(new MouseEvent("click", { bubbles: true, ctrlKey: true }));
+      row("chap3.tex").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, ctrlKey: true, button: 0 }));
+      check("mac ctrl click opens the menu", fileSelection.count === 4 && !!ui.menu, `${names()} menu ${!!ui.menu}`);
+      ui.closeMenu();
     }
     await until(() => !!document.querySelector(".selection"), 2_000, "selection bar");
     check("selection bar", document.querySelector(".selection")?.textContent?.includes(String(fileSelection.count)) ?? false);
@@ -905,6 +907,24 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     check("menu of the selection", labels.some((l) => /4/.test(l) && /Supprimer|Delete/.test(l)), labels.join(" | "));
     await scene("multi-select", 2500);
     ui.closeMenu();
+
+    // "Move to…" then the folder, from the menu of the selection.
+    await ipc.createDir(`${root}/brouillons`);
+    await project.refreshTree();
+    click("notes.txt");
+    row("notes.txt").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, button: 2 }));
+    await until(() => !!ui.menu, 2_000, "menu");
+    ui.menu!.items.find((i) => /Déplacer|Move/.test(i.label ?? ""))?.run?.();
+    await until(() => !!ui.menu && ui.menu.items.some((i) => i.label?.startsWith("brouillons")), 2_000, "folders");
+    await scene("move-to", 1500);
+    const target = ui.menu!.items.find((i) => i.label?.startsWith("brouillons"))!;
+    ui.closeMenu();
+    await target.run?.();
+    check("move to", await ipc.pathExists(`${root}/brouillons/notes.txt`));
+    await project.move(`${root}/brouillons/notes.txt`, `${root}/notes.txt`);
+    click("chap1.tex");
+    click("chap3.tex", { shift: true });
+    click("notes.txt", { add: true });
 
     // Drag the selection onto a folder.
     const dt = new DataTransfer();
@@ -939,10 +959,26 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     // The formatting bar at the size of the window.
     await editor.open(project.info!.main!);
     await pause(500);
+
+    // @[ typed: the editor closes the bracket; the shortcut replaces both.
+    const view = editor.view!;
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "$@[]$" }, selection: { anchor: 3 } });
+    view.focus();
+    startCompletion(view);
+    await until(() => currentCompletions(view.state).some((c) => c.label === "@["), 5_000, "@[ completion");
+    const option = currentCompletions(view.state).findIndex((c) => c.label === "@[");
+    view.dispatch({ effects: setSelectedCompletion(option) });
+    // CodeMirror ignores an acceptance right after the list opens.
+    await pause(200);
+    acceptCompletion(view);
+    await pause(200);
+    check("@[ not doubled", view.state.doc.toString() === "$\\left[  \\right]$", view.state.doc.toString());
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } });
     const shown = (sel: string) => [...document.querySelectorAll<HTMLElement>(sel)].filter((e) => e.offsetWidth > 0).map((e) => e.textContent?.trim());
     const texts = shown(".format-bar .text-btn span");
     results.window = `${window.innerWidth}px`;
     results.barTexts = texts.join(" | ");
+    check("one @ on the macros button", (document.querySelector(".format-bar .macros")?.textContent?.match(/@/g) ?? []).length === 0);
     check("image, table, diagram texts", ["Image", "Tableau", "Schéma"].every((x) => texts.some((s) => s?.startsWith(x))) || ["Image", "Table", "Diagram"].every((x) => texts.some((s) => s?.startsWith(x))), texts.join(","));
     const font = document.querySelector<HTMLElement>(".format-bar .select-btn.font");
     results.fontButton = `${font?.offsetWidth}px`;

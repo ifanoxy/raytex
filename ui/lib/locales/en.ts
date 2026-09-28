@@ -825,7 +825,7 @@ const en = {
   "format.tableHint": "Insert a table: choose its size",
   "format.tableSize": "{rows} row(s) × {cols} column(s)",
   "format.tablePick": "Hover to choose the size",
-  "format.macros": "@ Macros",
+  "format.macros": "Macros",
   "format.macrosHint": "@ shortcuts: type @a for α, @/ for a fraction, @R for ℝ…",
   "format.all": "See all",
   "format.allHint": "Every formatting and insertion command",
@@ -1079,6 +1079,9 @@ const en = {
   "files.clearSelection": "Clear the selection",
   "project.deleteManyTitle": "Delete {n} items?",
   "project.andMore": "… and {n} more",
+  "files.moveTo": "Move to…",
+  "files.moveMany": "Move the {n} items to…",
+  "files.noOtherFolder": "No other folder in the project",
 };
 
 export default en;

@@ -6,6 +6,7 @@ import * as ipc from "../ipc";
 import type { CompletionItem, ItemKind } from "../types";
 import { t } from "../i18n.svelte";
 import { docPath, hooks } from "./context";
+import { autoClosed } from "./pairs";
 
 const TYPE: Record<ItemKind, string> = {
   command: "function",
@@ -35,6 +36,8 @@ interface Extra {
 
 function apply(item: CompletionItem) {
   return (view: EditorView, completion: Completion, from: number, to: number) => {
+    // `@[` typed became `@[]`: the `]` goes with what is replaced.
+    if (autoClosed(view.state.sliceDoc(from, to), view.state.sliceDoc(to, to + 1))) to += 1;
     if (item.snippet) {
       snippet(item.apply)(view, completion, from, to);
     } else {

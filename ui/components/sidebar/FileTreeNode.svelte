@@ -1,7 +1,8 @@
 <script lang="ts">
   // One file or folder of the project tree (recursive). A click selects it
-  // (and opens a file); Shift + click selects a range, Ctrl / Cmd + click
-  // adds or removes it; menus, deleting and dragging apply to the selection.
+  // (and opens a file); Shift + click selects a range, Ctrl + click (Cmd +
+  // click on a Mac, where Ctrl + click is the right click) adds or removes
+  // it; menus, moving, deleting and dragging apply to the selection.
   import FileTreeNode from "./FileTreeNode.svelte";
   import { t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
@@ -12,7 +13,7 @@
   import { fileSelection } from "$lib/state/selection.svelte";
   import { type MenuItem, ui } from "$lib/state/ui.svelte";
   import type { FileNode } from "$lib/types";
-  import { basename, fileKind, isMac, join, relative, samePath } from "$lib/utils";
+  import { basename, dirname, fileKind, isMac, join, relative, samePath } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
 
   let {
@@ -46,7 +47,7 @@
 
   /** Shift / Ctrl / Cmd + click: changes the selection only. */
   function selectWith(e: MouseEvent): boolean {
-    const add = e.metaKey || e.ctrlKey;
+    const add = isMac() ? e.metaKey : e.ctrlKey || e.metaKey;
     if (e.shiftKey) {
       fileSelection.range(node.path, order(), add);
       return true;
@@ -60,16 +61,37 @@
   }
 
   function click(e: MouseEvent) {
+    // On a Mac, Ctrl + click opens the menu (contextmenu): nothing else.
+    if (isMac() && e.ctrlKey) return;
     if (selectWith(e)) return;
     if (node.dir) toggle(node.path);
     else void editor.open(node.path);
   }
 
-  // On a Mac, Ctrl + click is a right click for the system: it selects here too
-  // (the menu stays on the right click and the two-finger tap).
-  let ctrlClick = false;
-  function down(e: MouseEvent) {
-    ctrlClick = isMac() && e.ctrlKey && e.button === 0;
+  /** Folders of the project, for "Move to…" (the root first). */
+  function folders(nodes: FileNode[] = project.tree, out: string[] = []): string[] {
+    for (const n of nodes) {
+      if (!n.dir) continue;
+      out.push(n.path);
+      folders(n.children ?? [], out);
+    }
+    return out;
+  }
+
+  /** "Move to…": the folders where `paths` can go, in a second menu. */
+  function moveMenu(e: MouseEvent, paths: string[]) {
+    const root = project.info?.root ?? "";
+    const inside = (dir: string, p: string) => samePath(dir, p) || dir.replace(/\\/g, "/").startsWith(p.replace(/\\/g, "/") + "/");
+    const targets = [root, ...folders()].filter(
+      (dir) => !paths.some((p) => inside(dir, p)) && !paths.every((p) => samePath(dirname(p), dir)),
+    );
+    const items: MenuItem[] = targets.map((dir) => ({
+      label: samePath(dir, root) ? `${project.info?.name ?? basename(root)} /` : `${relative(root, dir)} /`,
+      icon: "folder",
+      run: () => project.moveMany(paths, dir),
+    }));
+    if (!items.length) items.push({ label: t("files.noOtherFolder"), disabled: true });
+    ui.openMenu(e, items);
   }
 
   function copy(text: string) {
@@ -77,12 +99,6 @@
   }
 
   function menu(e: MouseEvent) {
-    if (ctrlClick) {
-      ctrlClick = false;
-      e.preventDefault();
-      fileSelection.toggle(node.path);
-      return;
-    }
     if (!selected) fileSelection.only(node.path);
     if (fileSelection.count > 1) {
       manyMenu(e);
@@ -115,6 +131,7 @@
     }
     items.push(
       { label: t("files.rename"), icon: "edit", keys: "F2", run: () => project.rename(node.path) },
+      { label: t("files.moveTo"), icon: "folder-open", run: () => moveMenu(e, [node.path]) },
       { label: t("files.delete"), icon: "trash", danger: true, run: () => project.remove(node.path, node.dir) },
       { separator: true },
       { label: t("files.copyPath"), icon: "copy", run: () => copy(node.path) },
@@ -139,6 +156,7 @@
     }
     items.push(
       { separator: true },
+      { label: t("files.moveMany", { n: paths.length }), icon: "folder-open", run: () => moveMenu(e, paths) },
       { label: t("files.deleteMany", { n: paths.length }), icon: "trash", danger: true, run: () => project.removeMany(paths) },
       { separator: true },
       { label: t("files.copyPaths"), icon: "copy", run: () => copy(paths.join("\n")) },
@@ -215,7 +233,6 @@
     draggable="true"
     data-drop-dir={node.dir ? node.path : undefined}
     onclick={click}
-    onmousedown={down}
     oncontextmenu={menu}
     onkeydown={key}
     ondragstart={dragStart}

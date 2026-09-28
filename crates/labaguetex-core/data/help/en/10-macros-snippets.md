@@ -15,7 +15,7 @@ In a formula, type `@` then a key: the command writes itself.
 | `@<`, `@>` | `\leq`, `\geq` | `@->`, `@=>` | `\to`, `\implies` |
 | `@(`, `@[`, `@\|` | `\left( … \right)`… | `@^`, `@_`, `@V` | `\hat{}`, `\bar{}`, `\vec{}` |
 
-To discover them: the **@ Macros** button of the formatting bar opens the full list, with each symbol drawn (a click inserts it); **See all** shows the most useful ones; and when you type a command that has a shortcut, suggestions show it next to it (`\alpha` → `@a`). They can be turned off in *Settings › Completion*.
+To discover them: the **Macros** button of the formatting bar opens the full list, with each symbol drawn (a click inserts it); **See all** shows the most useful ones; and when you type a command that has a shortcut, suggestions show it next to it (`\alpha` → `@a`). They can be turned off in *Settings › Completion*.
 
 ## Snippets
 

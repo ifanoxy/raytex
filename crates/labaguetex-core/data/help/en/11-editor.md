@@ -54,7 +54,7 @@ Under the top bar, like in a word processor (every button acts on the selection,
 | Formula, equation | `$…$` around the selection; `equation` environment |
 | Image, Table, TikZ drawing | image window; a grid to choose the size of the table (empty cells, `booktabs` added); TikZ studio |
 | Link, footnote, reference, citation | `\href`, `\footnote`, `\ref`, `\cite` |
-| @ Macros | the list of @ shortcuts |
+| Macros | the list of @ shortcuts |
 | See all | every formatting and insertion command, grouped, with its shortcut |
 
 The **View** menu (top right) shows or hides this bar, the side panel, the PDF preview and the console; the preview and the console also close with their cross.

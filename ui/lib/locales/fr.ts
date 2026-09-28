@@ -827,7 +827,7 @@ const fr: Record<keyof typeof en, string> = {
   "format.tableHint": "Insérer un tableau : choisissez sa taille",
   "format.tableSize": "{rows} ligne(s) × {cols} colonne(s)",
   "format.tablePick": "Survolez pour choisir la taille",
-  "format.macros": "Macros @",
+  "format.macros": "Macros",
   "format.macrosHint": "Raccourcis @ : tapez @a pour α, @/ pour une fraction, @R pour ℝ…",
   "format.all": "Tout voir",
   "format.allHint": "Toutes les commandes de mise en forme et d'insertion",
@@ -1081,6 +1081,9 @@ const fr: Record<keyof typeof en, string> = {
   "files.clearSelection": "Désélectionner",
   "project.deleteManyTitle": "Supprimer {n} éléments ?",
   "project.andMore": "… et {n} autres",
+  "files.moveTo": "Déplacer vers…",
+  "files.moveMany": "Déplacer les {n} éléments vers…",
+  "files.noOtherFolder": "Aucun autre dossier dans le projet",
 };
 
 export default fr;
