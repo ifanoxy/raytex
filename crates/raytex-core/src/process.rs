@@ -363,15 +363,34 @@ pub fn exe_name(name: &str) -> String {
     }
 }
 
+/// File names a tool may have on this platform: on Windows `pdflatex.exe`,
+/// and the scripts some distributions use (`tlmgr.bat` in TeX Live).
+pub fn exe_names(name: &str) -> Vec<String> {
+    if cfg!(windows) && Path::new(name).extension().is_none() {
+        ["exe", "bat", "cmd"]
+            .iter()
+            .map(|ext| format!("{name}.{ext}"))
+            .collect()
+    } else {
+        vec![name.to_owned()]
+    }
+}
+
+/// The tool called `name` in `dir`, if it is there.
+pub fn executable_in(dir: &Path, name: &str) -> Option<PathBuf> {
+    exe_names(name)
+        .into_iter()
+        .map(|f| dir.join(f))
+        .find(|p| is_executable(p))
+}
+
 /// Looks for an executable in `dirs`, then in `PATH`.
 pub fn find_executable(name: &str, dirs: &[PathBuf]) -> Option<PathBuf> {
-    let file = exe_name(name);
     let path = std::env::var_os("PATH").unwrap_or_default();
     dirs.iter()
         .cloned()
         .chain(std::env::split_paths(&path))
-        .map(|d| d.join(&file))
-        .find(|p| is_executable(p))
+        .find_map(|d| executable_in(&d, name))
 }
 
 /// Whether `path` is an executable file.
@@ -411,6 +430,25 @@ pub fn login_shell_path() -> Vec<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    #[cfg(windows)]
+    fn windows_tools_can_be_scripts() {
+        // TeX Live's tlmgr is tlmgr.bat on Windows.
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("tlmgr.bat"), "@echo off\n").unwrap();
+        std::fs::write(dir.path().join("pdflatex.exe"), "").unwrap();
+        assert_eq!(
+            executable_in(dir.path(), "tlmgr"),
+            Some(dir.path().join("tlmgr.bat"))
+        );
+        assert_eq!(
+            executable_in(dir.path(), "pdflatex"),
+            Some(dir.path().join("pdflatex.exe"))
+        );
+        assert_eq!(executable_in(dir.path(), "biber"), None);
+    }
+
     use super::*;
 
     #[cfg(unix)]

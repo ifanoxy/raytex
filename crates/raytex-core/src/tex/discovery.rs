@@ -378,14 +378,10 @@ fn canonical_bin_dir(dir: &Path) -> PathBuf {
 pub fn examine(dir: &Path, canonical: &Path) -> Option<Distribution> {
     let mut tools = BTreeMap::new();
     for tool in TOOLS {
-        let p = dir.join(exe_name(tool));
-        if is_executable(&p) {
+        if let Some(p) =
+            process::executable_in(dir, tool).or_else(|| process::executable_in(canonical, tool))
+        {
             tools.insert((*tool).to_owned(), p);
-        } else {
-            let p = canonical.join(exe_name(tool));
-            if is_executable(&p) {
-                tools.insert((*tool).to_owned(), p);
-            }
         }
     }
     if !tools.contains_key("perl")
