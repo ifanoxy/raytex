@@ -24,6 +24,8 @@
   } = $props();
 
   function key(e: KeyboardEvent) {
+    // Escape already used inside (a completion list, a snippet field closed).
+    if (e.defaultPrevented) return;
     if (e.key === "Escape" && !ui.dialog && !ui.menu) {
       e.stopPropagation();
       onclose();

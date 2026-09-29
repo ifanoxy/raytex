@@ -96,6 +96,8 @@ export interface FigureOptions {
   label: string;
   /** Images per row (sub-figures). */
   columns: number;
+  /** Options of a single `\\includegraphics` kept as written (instead of `width`). */
+  options?: string | null;
 }
 
 function fraction(percent: number): string {
@@ -105,12 +107,14 @@ function fraction(percent: number): string {
 
 /** LaTeX code inserting the images (tabs mark one indentation level). */
 export function figureCode(o: FigureOptions): string {
+  const one = (p: string) =>
+    o.options != null ? `\\includegraphics${o.options ? `[${o.options}]` : ""}{${p}}` : `\\includegraphics[width=${fraction(o.width)}]{${p}}`;
   if (o.mode === "inline") {
-    return o.paths.map((p) => `\\includegraphics[width=${fraction(o.width)}]{${p}}`).join("\\hfill\n");
+    return o.paths.map(one).join("\\hfill\n");
   }
   const lines = [`\\begin{figure}[${o.placement}]`, "\t\\centering"];
   if (o.paths.length === 1) {
-    lines.push(`\t\\includegraphics[width=${fraction(o.width)}]{${o.paths[0]}}`);
+    lines.push(`\t${one(o.paths[0])}`);
   } else {
     const cols = Math.max(1, Math.min(o.columns, o.paths.length));
     const sub = `${Math.floor((1 / cols - 0.02) * 100) / 100}\\linewidth`;
@@ -126,4 +130,71 @@ export function figureCode(o: FigureOptions): string {
   if (o.label) lines.push(`\t\\label{${o.label}}`);
   lines.push("\\end{figure}");
   return lines.join("\n");
+}
+
+/** A picture of the document, as the image dialog edits it. */
+export interface FigureAt {
+  /** Range rewritten by "Update": the whole figure, or the `\\includegraphics` alone. */
+  from: number;
+  to: number;
+  mode: "figure" | "inline";
+  /** Path written in `\\includegraphics{…}`. */
+  path: string;
+  /** Width in percent of the line, or null when the options say something else. */
+  width: number | null;
+  /** Options of `\\includegraphics` as written. */
+  options: string;
+  placement: string;
+  caption: string;
+  label: string;
+}
+
+/** `\\name{…}` (with braces inside) in `text`: the whole command and its argument. */
+function commandArg(text: string, name: string): { raw: string; value: string } | null {
+  const m = new RegExp(`\\\\${name}\\s*(?:\\[[^\\]]*\\])?\\s*\\{`).exec(text);
+  if (!m) return null;
+  let depth = 0;
+  for (let i = m.index + m[0].length - 1; i < text.length; i++) {
+    if (text[i] === "\\") i++;
+    else if (text[i] === "{") depth++;
+    else if (text[i] === "}" && --depth === 0) return { raw: text.slice(m.index, i + 1), value: text.slice(m.index + m[0].length, i) };
+  }
+  return null;
+}
+
+/**
+ * The `\\includegraphics` starting at `at`. A figure holding only this image,
+ * `\\centering`, a caption and a label is edited whole; otherwise the
+ * command alone.
+ */
+export function figureAt(text: string, at: number): FigureAt | null {
+  const m = /^\\includegraphics\*?\s*(?:\[([^\]]*)\])?\s*\{([^{}]*)\}/.exec(text.slice(at, at + 1000));
+  if (!m) return null;
+  const options = (m[1] ?? "").trim();
+  const w = /^width\s*=\s*([\d.]*)\s*\\(?:linewidth|textwidth|columnwidth)$/.exec(options);
+  const width = w ? Math.round((w[1] ? Number(w[1]) : 1) * 100) : null;
+  const inline: FigureAt = { from: at, to: at + m[0].length, mode: "inline", path: m[2].trim(), width, options, placement: "htbp", caption: "", label: "" };
+  const begin = text.lastIndexOf("\\begin{figure", at);
+  if (begin < 0 || text.slice(begin, at).includes("\\end{figure")) return inline;
+  const head = /^\\begin\{figure\*?\}\s*(?:\[([^\]]*)\])?/.exec(text.slice(begin, begin + 80));
+  const end = text.indexOf("\\end{figure", at);
+  const close = end >= 0 ? /^\\end\{figure\*?\}/.exec(text.slice(end, end + 16)) : null;
+  if (!head || !close) return inline;
+  const body = text.slice(begin + head[0].length, end);
+  const caption = commandArg(body, "caption");
+  const label = commandArg(body, "label");
+  let rest = body.replace(m[0], "");
+  if (caption) rest = rest.replace(caption.raw, "");
+  if (label) rest = rest.replace(label.raw, "");
+  rest = rest.replace(/%.*$/gm, "").replace(/\\centering\b/, "");
+  if (rest.trim()) return inline;
+  return {
+    ...inline,
+    from: begin,
+    to: end + close[0].length,
+    mode: "figure",
+    placement: head[1] ?? "htbp",
+    caption: caption?.value ?? "",
+    label: label?.value ?? "",
+  };
 }

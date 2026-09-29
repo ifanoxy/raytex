@@ -7,6 +7,12 @@ import type { EditorView } from "@codemirror/view";
 /** Path of the document an editor state belongs to. */
 export const docPath = Facet.define<string, string>({ combine: (v) => v[0] ?? "" });
 
+/**
+ * Text standing before the document for completion (a cell of a matrix is
+ * in a formula: `\\[`).
+ */
+export const completionPrefix = Facet.define<string, string>({ combine: (v) => v[0] ?? "" });
+
 export const hooks = {
   /** Adds `\usepackage{pkg}` to the preamble of the root document. */
   addPackage: async (_view: EditorView, _pkg: string): Promise<void> => {},

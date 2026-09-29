@@ -5,7 +5,7 @@ import type { EditorView } from "@codemirror/view";
 import * as ipc from "../ipc";
 import type { CompletionItem, ItemKind } from "../types";
 import { t } from "../i18n.svelte";
-import { docPath, hooks } from "./context";
+import { completionPrefix, docPath, hooks } from "./context";
 import { autoClosed } from "./pairs";
 
 const TYPE: Record<ItemKind, string> = {
@@ -64,7 +64,7 @@ async function source(context: CompletionContext): Promise<CompletionResult | nu
   const lineBefore = line.text.slice(0, pos - line.from);
   if (!context.explicit && !TRIGGER.test(lineBefore)) return null;
   const doc = context.state.doc;
-  const before = doc.sliceString(Math.max(0, pos - 12000), pos);
+  const before = context.state.facet(completionPrefix) + doc.sliceString(Math.max(0, pos - 12000), pos);
   const after = doc.sliceString(pos, Math.min(doc.length, pos + 400));
   let list;
   try {

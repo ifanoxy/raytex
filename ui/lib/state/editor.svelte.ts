@@ -35,7 +35,8 @@ import { latexCompletion } from "../editor/completion";
 import { docPath, hooks } from "../editor/context";
 import { deleteDollarPair, handleDollar } from "../editor/dollar";
 import { flash, flashField } from "../editor/flash";
-import { gridChips } from "../editor/grid-chip";
+import { codeChips, type ChipKind } from "../editor/chips";
+import { expandTrigger } from "../editor/macros";
 import { latexHover } from "../editor/hover";
 import { bibtex, latex } from "../editor/latex";
 import { findFormula, mathPreview, refreshMacros } from "../editor/math-preview";
@@ -46,9 +47,10 @@ import { frenchPhrases } from "../editor/phrases";
 import { enterKeymap, latexStructure } from "../editor/structure";
 import { editorTheme } from "../editor/theme";
 import { fixLabel, runFix } from "../fixes";
-import { i18n, t } from "../i18n.svelte";
+import { figureAt } from "../images";
+import { i18n, type MessageKey, t } from "../i18n.svelte";
 import * as ipc from "../ipc";
-import { addPackages, hasPackage, insertionPoint } from "../preamble";
+import { addPackages, graphicsPaths, hasPackage, insertionPoint } from "../preamble";
 import type { Diagnostic, Location, Macro, Position, Range, Settings, TextEdit } from "../types";
 import { basename, debounce, dirname, escapeSnippet, fileKind, type FileKind, inlineMarkdown, isMac, join, prettyKey, relative, samePath } from "../utils";
 import { app } from "./app.svelte";
@@ -234,6 +236,14 @@ function symbolAt(state: EditorState, pos: number): { from: number; to: number; 
 
 type Listener = (path: string) => void;
 
+/** Label and tooltip of each chip in the code. */
+const CHIP_TEXT: Record<ChipKind, [MessageKey, MessageKey]> = {
+  matrix: ["grid.matrix", "grid.chipMatrix"],
+  table: ["grid.table", "grid.chipTable"],
+  tikz: ["chip.tikz", "chip.tikzHint"],
+  image: ["chip.image", "chip.imageHint"],
+};
+
 class EditorStore {
   tabs = $state<Tab[]>([]);
   active = $state<string | null>(null);
@@ -390,12 +400,10 @@ class EditorStore {
             linkedEnvironments(),
             readOnly
               ? []
-              : gridChips({
-                  label: (kind) => t(kind === "matrix" ? "grid.matrix" : "grid.table"),
-                  title: (kind) => t(kind === "matrix" ? "grid.chipMatrix" : "grid.chipTable"),
-                  open: (view, from) => {
-                    if (!gridStore.edit(view, path, from)) ui.toast("warning", t("grid.unreadable"));
-                  },
+              : codeChips({
+                  label: (kind) => t(CHIP_TEXT[kind][0]),
+                  title: (kind) => t(CHIP_TEXT[kind][1]),
+                  open: (view, kind, from) => void this.openChip(view, path, kind, from),
                 }),
             EditorView.inputHandler.of((view, from, to, text) => handleDollar(view, from, to, text)),
             Prec.high(keymap.of([{ key: "Backspace", run: deleteDollarPair }])),
@@ -1119,23 +1127,7 @@ class EditorStore {
   }
 
   private expandMacroTrigger(view: EditorView): boolean {
-    const macros = this.settings()?.macros ?? [];
-    if (!macros.length) return false;
-    const sel = view.state.selection.main;
-    if (!sel.empty) return false;
-    const line = view.state.doc.lineAt(sel.head);
-    const before = line.text.slice(0, sel.head - line.from);
-    for (const m of macros) {
-      if (!m.trigger || !before.endsWith(m.trigger)) continue;
-      const start = sel.head - m.trigger.length;
-      const prev = before[before.length - m.trigger.length - 1];
-      // The trigger must be a whole word (or start after a space / brace).
-      if (prev && /[A-Za-z0-9]/.test(prev) && /^[A-Za-z0-9]/.test(m.trigger)) continue;
-      if (m.math && !findFormula(view.state.doc, sel.head)) continue;
-      snippet(m.body.replaceAll("${SELECTION}", ""))(view, { label: m.trigger }, start, sel.head);
-      return true;
-    }
-    return false;
+    return expandTrigger(view, this.settings()?.macros ?? [], (pos) => !!findFormula(view.state.doc, pos));
   }
 
   /** Root document of `path` (or of the active file). */
@@ -1183,12 +1175,47 @@ class EditorStore {
   }
 
   /** The TikZ picture under the cursor (or the picture file of an `\input` line). */
-  async tikzAt(): Promise<TikzRequest | null> {
+  /** A chip after `\begin{…}` or `\includegraphics` was clicked: opens its editor. */
+  private async openChip(view: EditorView, path: string, kind: ChipKind, from: number) {
+    if (kind === "matrix" || kind === "table") {
+      if (!gridStore.edit(view, path, from)) ui.toast("warning", t("grid.unreadable"));
+    } else if (kind === "tikz") {
+      const request = await this.tikzAt(from + 1);
+      if (request) media.openTikz(request);
+      else ui.toast("warning", t("chip.unreadable"));
+    } else {
+      const doc = view.state.doc;
+      const start = Math.max(0, from - 20_000);
+      const text = doc.sliceString(start, Math.min(doc.length, from + 20_000));
+      const figure = figureAt(text, from - start);
+      if (!figure) return;
+      const at = { ...figure, from: start + figure.from, to: start + figure.to };
+      const indent = /^[\t ]*/.exec(doc.lineAt(at.from).text)![0];
+      await media.openImages({ edit: { doc: path, figure: at, file: await this.imageFile(path, figure.path), indent, unit: view.state.facet(indentUnit) } });
+    }
+  }
+
+  /** File of `\includegraphics{path}`: next to the root, in `\graphicspath`, with or without extension. */
+  private async imageFile(path: string, written: string): Promise<string | null> {
+    const root = await this.rootOf(path);
+    const base = dirname(root ?? path);
+    const rootText = (root && this.textOf(root)) ?? "";
+    for (const prefix of ["", ...graphicsPaths(rootText)]) {
+      for (const ext of ["", ".pdf", ".png", ".jpg", ".jpeg", ".eps"]) {
+        const file = join(base, `${prefix}${written}${ext}`);
+        if (await ipc.pathExists(file).catch(() => false)) return file;
+      }
+    }
+    return null;
+  }
+
+  /** The TikZ picture at `pos` (the cursor by default), for the studio. */
+  async tikzAt(at?: number): Promise<TikzRequest | null> {
     const view = this.view;
     const path = this.active;
     if (!view || !path || fileKind(path) !== "tex") return null;
     const doc = view.state.doc;
-    const pos = view.state.selection.main.head;
+    const pos = at ?? view.state.selection.main.head;
     const text = doc.toString();
     const envRe = /\\begin\{(tikzpicture|tikzcd|circuitikz)\}/g;
     let m: RegExpExecArray | null;

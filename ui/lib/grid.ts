@@ -176,11 +176,14 @@ export function gridAt(text: string, pos: number): number | null {
 function splitTop(text: string, rows: boolean): string[] {
   const parts: string[] = [];
   let depth = 0;
+  // Environments inside a cell (`cases`, a nested `tabular`) keep their `&` and `\\`.
+  let envs = 0;
   let start = 0;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (ch === "\\") {
-      if (rows && depth === 0 && text[i + 1] === "\\") {
+      envs += envStep(text, i);
+      if (rows && depth === 0 && envs === 0 && text[i + 1] === "\\") {
         parts.push(text.slice(start, i));
         let j = i + 2;
         const k = skipSpaces(text, j);
@@ -197,13 +200,55 @@ function splitTop(text: string, rows: boolean): string[] {
     }
     if (ch === "{") depth++;
     else if (ch === "}") depth--;
-    else if (!rows && ch === "&" && depth === 0) {
+    else if (!rows && ch === "&" && depth === 0 && envs === 0) {
       parts.push(text.slice(start, i));
       start = i + 1;
     }
   }
   parts.push(text.slice(start));
   return parts;
+}
+
+/** +1 at `\\begin{`, -1 at `\\end{`, 0 elsewhere (`i` is on a backslash). */
+function envStep(text: string, i: number): number {
+  if (text.startsWith("begin", i + 1) && /^\\begin\s*\{/.test(text.slice(i, i + 12))) return 1;
+  if (text.startsWith("end", i + 1) && /^\\end\s*\{/.test(text.slice(i, i + 10))) return -1;
+  return 0;
+}
+
+/**
+ * A cell as shown in the grid: `\\&` becomes `&` (the character). The `&` of
+ * an environment inside the cell stay as they are.
+ */
+export function cellText(latex: string): string {
+  let out = "";
+  let envs = 0;
+  for (let i = 0; i < latex.length; i++) {
+    const ch = latex[i];
+    if (ch === "\\") {
+      envs += envStep(latex, i);
+      if (latex[i + 1] === "&" && envs === 0) out += "&";
+      else out += latex.slice(i, i + 2);
+      i++;
+    } else out += ch;
+  }
+  return out;
+}
+
+/** A cell written in the code: an `&` typed in the grid is the character, `\\&`. */
+export function cellLatex(text: string): string {
+  let out = "";
+  let envs = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "\\") {
+      envs += envStep(text, i);
+      out += text.slice(i, i + 2);
+      i++;
+    } else if (ch === "&" && envs === 0) out += "\\&";
+    else out += ch;
+  }
+  return out;
 }
 
 const RULES = /\\(?:hline|toprule|midrule|bottomrule|addlinespace(?:\[[^\]]*\])?|cline\s*\{[^}]*\}|cmidrule(?:\([^)]*\))?\s*\{[^}]*\})/g;
@@ -273,7 +318,7 @@ export function parseGrid(text: string, from = 0): Grid | null {
   const header = rawRows.length > 1 && /^\\(midrule|hline|cmidrule)\b/.test(rawRows[1].trimStart());
   const rows = rawRows.map((row) => row.replace(RULES, ""));
   while (rows.length > 1 && !rows[rows.length - 1].trim()) rows.pop();
-  const cells = rows.map((row) => splitTop(row, false).map((c) => c.trim()));
+  const cells = rows.map((row) => splitTop(row, false).map((c) => cellText(c.trim().replace(/\s*\n\s*/g, " "))));
   const spec = head.spec !== null ? parseSpec(head.spec) : null;
   const width = Math.max(1, spec?.columns.length ?? 0, ...cells.map(rowSpan));
   const count = Math.max(width, ...cells.map((row) => row.length));
@@ -348,7 +393,7 @@ export function gridToLatex(g: Grid, indent = "", unit = "\t"): string {
     let span = 0;
     for (const cell of row) {
       if (span >= width) break;
-      out.push(cell.trim());
+      out.push(cellLatex(cell.trim()));
       span += spanOf(cell.trim());
     }
     return out;
@@ -388,12 +433,18 @@ export function gridToLatex(g: Grid, indent = "", unit = "\t"): string {
  */
 export function pastedCells(text: string): string[][] | null {
   const clean = text.replace(/\r\n?/g, "\n").replace(/\n+$/, "");
-  if (clean.includes("\t")) return clean.split("\n").map((l) => l.split("\t").map((c) => c.trim()));
+  if (clean.includes("\t")) return clean.split("\n").map((l) => l.split("\t").map((c) => plainData(c.trim())));
   if (/&|\\\\/.test(clean)) {
     const rows = splitTop(clean.replace(RULES, ""), true);
     while (rows.length > 1 && !rows[rows.length - 1].trim()) rows.pop();
-    return rows.map((r) => splitTop(r, false).map((c) => c.trim()));
+    return rows.map((r) => splitTop(r, false).map((c) => cellText(c.trim())));
   }
   if (clean.includes("\n")) return clean.split("\n").map((l) => [l.trim()]);
   return null;
+}
+
+/** A spreadsheet value: `%`, `#` and `_` written for LaTeX (`50 %` stays a percentage). */
+function plainData(value: string): string {
+  if (/[\\$]/.test(value)) return value;
+  return value.replace(/[%#_]/g, (c) => `\\${c}`);
 }

@@ -1,22 +1,32 @@
 <script lang="ts">
-  // Grid editor: a matrix or a table filled cell by cell. Enter goes to the
-  // next cell, Tab in the last cell adds a row, Ctrl+Enter inserts; cells
-  // pasted from a spreadsheet (or LaTeX) fill the grid. Opened on a new grid
-  // or, from the chip after `\begin{…}`, on an environment of the document.
+  // Grid editor: a matrix or a table filled cell by cell. Each cell is a
+  // small LaTeX editor (colours, completion, macros, Ctrl+B / I / U…). Enter
+  // goes to the next cell, Tab in the last cell adds a row, Ctrl+Enter
+  // inserts; cells pasted from a spreadsheet (or LaTeX) fill the grid. An `&`
+  // typed in a cell is the character. Opened on a new grid or, from the chip
+  // after `\begin{…}`, on an environment of the document.
+  import { EditorView } from "@codemirror/view";
   import { onMount, tick } from "svelte";
-  import { displayHtml } from "$lib/editor/math-preview";
-  import { type Grid, gridToLatex, pastedCells, resize, specOf, type TableStyle, trimmed } from "$lib/grid";
+  import type { CellMove } from "$lib/editor/cell";
+  import { displayHtml, textHtml } from "$lib/editor/math-preview";
+  import { cellLatex, type Grid, gridToLatex, pastedCells, resize, specOf, type TableStyle, trimmed } from "$lib/grid";
   import { t } from "$lib/i18n.svelte";
   import { editor } from "$lib/state/editor.svelte";
   import { gridStore } from "$lib/state/grid.svelte";
   import { ui } from "$lib/state/ui.svelte";
-  import { escapeSnippet, isMac, prettyKey } from "$lib/utils";
+  import { escapeSnippet, prettyKey } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
   import Modal from "../common/Modal.svelte";
+  import GridCell from "./GridCell.svelte";
 
   const request = gridStore.request;
   const editing = !!request?.range;
-  let g = $state<Grid>(request ? ($state.snapshot(request.grid) as Grid) : { kind: "matrix", env: "pmatrix", cells: [[""]], columns: ["c"], style: "plain", header: false, option: "", rawSpec: null, rawCount: 0 });
+  const path = request?.range?.path ?? editor.active ?? "";
+  let g = $state<Grid>(
+    request
+      ? ($state.snapshot(request.grid) as Grid)
+      : { kind: "matrix", env: "pmatrix", cells: [[""]], columns: ["c"], style: "plain", header: false, option: "", rawSpec: null, rawCount: 0 },
+  );
   let float = $state(!editing);
   let caption = $state("");
   let label = $state("");
@@ -45,22 +55,45 @@
   ];
   const ALIGN_ICON: Record<string, string> = { l: "align-left", c: "align-center", r: "align-right" };
   const NEXT_ALIGN: Record<string, string> = { l: "c", c: "r", r: "l" };
+  const alignOf = (col: string | undefined) => (col === "r" ? "right" : col === "c" ? "center" : "left");
 
   onMount(() => {
     if (!request) ui.closeOverlay();
     else void focusCell(0, 0);
   });
 
-  // Picture of the matrix, as the PDF will show it.
+  // What the PDF will show: the matrix as a formula, the table cell by cell
+  // (formulas, bold, italics… and the macros of the document).
   let previewToken = 0;
   $effect(() => {
-    if (!matrix) return;
     const token = ++previewToken;
-    const source = code.replace(/\\begin\{(\w+)\*\}\[[^\]]*\]/, "\\begin{$1}").replace(/\\end\{(\w+)\*\}/, "\\end{$1}");
-    void displayHtml(source).then((html) => {
+    const shown = trimmed($state.snapshot(g) as Grid);
+    const source = code;
+    const render = matrix ? displayHtml(source.replace(/\\begin\{(\w+)\*\}\[[^\]]*\]/, "\\begin{$1}").replace(/\\end\{(\w+)\*\}/, "\\end{$1}"), path) : tableHtml(shown);
+    void render.then((html) => {
       if (token === previewToken) preview = html;
     });
   });
+
+  async function tableHtml(grid: Grid): Promise<string> {
+    const width = grid.cells[0]?.length ?? 1;
+    const out: string[] = [];
+    for (const row of grid.cells) {
+      let cells = "";
+      let span = 0;
+      for (const cell of row) {
+        if (span >= width) break;
+        const m = /^\\multicolumn\s*\{\s*(\d+)\s*\}\s*\{([^}]*)\}\s*\{([\s\S]*)\}$/.exec(cell.trim());
+        const n = m ? Math.max(1, Number(m[1])) : 1;
+        const align = m ? alignOf(/r/.test(m[2]) ? "r" : /l/.test(m[2]) ? "l" : "c") : alignOf(grid.columns[span]);
+        const html = await textHtml(cellLatex(m ? m[3] : cell), path);
+        cells += `<td colspan="${n}" style="text-align:${align}">${html}</td>`;
+        span += n;
+      }
+      out.push(`<tr>${cells}</tr>`);
+    }
+    return `<table>${out.join("")}</table>`;
+  }
 
   function setSize(r: number, c: number) {
     g = resize(g, r, c);
@@ -82,65 +115,59 @@
     g.rawCount = cols;
   }
 
-  function cell(r: number, c: number): HTMLInputElement | null {
-    return gridEl?.querySelector<HTMLInputElement>(`input[data-r="${r}"][data-c="${c}"]`) ?? null;
-  }
-
   async function focusCell(r: number, c: number) {
     await tick();
-    const el = cell(r, c);
-    el?.focus();
-    el?.select();
+    const dom = gridEl?.querySelector<HTMLElement>(`[data-r="${r}"][data-c="${c}"] .cm-editor`);
+    const view = dom ? EditorView.findFromDOM(dom) : null;
+    if (!view) return;
+    view.focus();
+    view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
   }
 
-  /** The cell `step` places away in reading order (row by row). */
+  /** The cell `delta` places away in reading order (row by row). */
   function step(r: number, c: number, delta: number): [number, number] | null {
     const i = r * cols + c + delta;
     if (i < 0 || i >= rows * cols) return null;
     return [Math.floor(i / cols), i % cols];
   }
 
-  function onKey(e: KeyboardEvent, r: number, c: number) {
-    const input = e.currentTarget as HTMLInputElement;
-    const mod = isMac() ? e.metaKey : e.ctrlKey;
-    if (e.key === "Enter" && mod) {
-      e.preventDefault();
-      void insert();
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const to = step(r, c, e.shiftKey ? -1 : 1);
-      if (to) void focusCell(...to);
-      else if (!e.shiftKey) insertBtn?.focus();
-    } else if (e.key === "Tab" && !e.shiftKey && r === rows - 1 && c === cols - 1) {
-      e.preventDefault();
-      const last = rows;
-      setSize(last + 1, cols);
-      void focusCell(last, 0);
-    } else if (e.key === "ArrowDown" && r < rows - 1) {
-      e.preventDefault();
-      void focusCell(r + 1, c);
-    } else if (e.key === "ArrowUp" && r > 0) {
-      e.preventDefault();
-      void focusCell(r - 1, c);
-    } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-      const collapsed = input.selectionStart === input.selectionEnd;
-      const atEdge = e.key === "ArrowRight" ? input.selectionEnd === input.value.length : input.selectionStart === 0;
-      const to = collapsed && atEdge ? step(r, c, e.key === "ArrowRight" ? 1 : -1) : null;
-      if (to) {
-        e.preventDefault();
-        void focusCell(...to);
+  function move(r: number, c: number, to: CellMove): boolean {
+    switch (to) {
+      case "insert":
+        void insert();
+        return true;
+      case "next":
+      case "previous": {
+        const target = step(r, c, to === "next" ? 1 : -1);
+        if (target) void focusCell(...target);
+        else if (to === "next") insertBtn?.focus();
+        return !!target || to === "next";
+      }
+      case "up":
+      case "down": {
+        const target = to === "up" ? r - 1 : r + 1;
+        if (target < 0 || target >= rows) return false;
+        void focusCell(target, c);
+        return true;
+      }
+      case "newRow": {
+        if (r !== rows - 1 || c !== cols - 1) return false;
+        const last = rows;
+        setSize(last + 1, cols);
+        void focusCell(last, 0);
+        return true;
       }
     }
   }
 
   /** Cells from a spreadsheet or from LaTeX fill the grid from this cell on. */
-  function onPaste(e: ClipboardEvent, r: number, c: number) {
-    const cells = pastedCells(e.clipboardData?.getData("text/plain") ?? "");
-    if (!cells) return;
-    e.preventDefault();
+  function paste(r: number, c: number, text: string): boolean {
+    const cells = pastedCells(text);
+    if (!cells) return false;
     const width = Math.max(...cells.map((row) => row.length));
     if (r + cells.length > rows || c + width > cols) setSize(Math.max(rows, r + cells.length), Math.max(cols, c + width));
     cells.forEach((row, i) => row.forEach((value, j) => (g.cells[r + i][c + j] = value)));
+    return true;
   }
 
   const indented = (text: string) =>
@@ -158,8 +185,8 @@
     const view = editor.view;
     ui.closeOverlay();
     if (request.range) {
-      const { path, from, to, indent } = request.range;
-      editor.replaceRange(path, from, to, gridToLatex(out, indent, request.unit));
+      const { path: file, from, to, indent } = request.range;
+      editor.replaceRange(file, from, to, gridToLatex(out, indent, request.unit));
     } else {
       let body = escapeSnippet(gridToLatex(out, "", "\t"));
       if (out.kind === "matrix" && !request.inMath) body = `\\[\n${indented(body)}\n\\]`;
@@ -186,7 +213,7 @@
   const insertKey = prettyKey("Mod-Enter");
 </script>
 
-<Modal {title} icon={matrix ? "matrix" : "table"} width="min(980px, 95vw)" height="min(720px, 92vh)">
+<Modal {title} icon={matrix ? "matrix" : "table"} width="min(1040px, 96vw)" height="min(760px, 94vh)">
   <div class="grid-editor" data-own-keys>
     <div class="options">
       <div class="size">
@@ -224,11 +251,25 @@
           <input type="checkbox" bind:checked={g.header} disabled={g.style === "lines"} />
           {t("grid.header")}
         </label>
+        <label class="spec">
+          <span class="faint">{t("grid.columns")}</span>
+          <input class="input small mono" value={specOf(g)} oninput={(e) => setSpec(e.currentTarget.value)} spellcheck="false" />
+        </label>
       {/if}
     </div>
 
+    {#if !matrix && !editing}
+      <div class="options float">
+        <label class="check"><input type="checkbox" bind:checked={float} />{t("grid.float")}</label>
+        {#if float}
+          <input class="input small caption" placeholder={t("grid.caption")} bind:value={caption} />
+          <input class="input small mono label" placeholder={t("grid.label")} bind:value={label} spellcheck="false" />
+        {/if}
+      </div>
+    {/if}
+
     <div class="cells-wrap">
-      <div class="cells" bind:this={gridEl} style:grid-template-columns="repeat({cols}, minmax(84px, 1fr))">
+      <div class="cells" bind:this={gridEl} style:grid-template-columns="repeat({cols}, minmax(96px, 1fr))">
         {#if !matrix}
           {#each g.cells[0] as _, c (c)}
             {@const col = g.columns[c] ?? "c"}
@@ -239,18 +280,18 @@
         {/if}
         {#each g.cells as row, r (r)}
           {#each row as _, c (c)}
-            <input
-              class="cell mono"
-              class:head={!matrix && g.header && r === 0 && g.style !== "lines"}
-              style:text-align={matrix ? "center" : g.columns[c] === "r" ? "right" : g.columns[c] === "c" ? "center" : "left"}
-              data-r={r}
-              data-c={c}
-              bind:value={g.cells[r][c]}
-              onkeydown={(e) => onKey(e, r, c)}
-              onpaste={(e) => onPaste(e, r, c)}
-              spellcheck="false"
-              autocomplete="off"
-              aria-label="{r + 1}, {c + 1}"
+            <GridCell
+              value={g.cells[r][c]}
+              {r}
+              {c}
+              math={matrix}
+              {path}
+              align={matrix ? "center" : alignOf(g.columns[c])}
+              head={!matrix && g.header && r === 0 && g.style !== "lines"}
+              label="{r + 1}, {c + 1}"
+              onchange={(text) => (g.cells[r][c] = text)}
+              onmove={(to) => move(r, c, to)}
+              onpaste={(text) => paste(r, c, text)}
             />
           {/each}
         {/each}
@@ -258,30 +299,14 @@
     </div>
 
     <div class="bottom">
-      {#if matrix}
-        <div class="preview" aria-label={t("grid.preview")}>
-          {@html preview}
-        </div>
-      {:else}
-        <div class="table-options">
-          {#if !editing}
-            <label class="check"><input type="checkbox" bind:checked={float} />{t("grid.float")}</label>
-            {#if float}
-              <input class="input small" placeholder={t("grid.caption")} bind:value={caption} />
-              <input class="input small mono label" placeholder={t("grid.label")} bind:value={label} spellcheck="false" />
-            {/if}
-          {/if}
-          <label class="spec">
-            <span class="faint">{t("grid.columns")}</span>
-            <input class="input small mono" value={specOf(g)} oninput={(e) => setSpec(e.currentTarget.value)} spellcheck="false" />
-          </label>
-        </div>
-      {/if}
+      <div class="preview" class:table={!matrix} class:booktabs={!matrix && g.style === "booktabs"} class:lines={!matrix && g.style === "lines"} class:head={!matrix && g.header && g.style !== "lines"} aria-label={t("grid.preview")}>
+        {@html preview}
+      </div>
       <pre class="code selectable" aria-label={t("grid.code")}>{code}</pre>
     </div>
 
     <footer>
-      <span class="hint faint">{t("grid.hint", { insert: insertKey })}</span>
+      <span class="hint faint">{t("grid.hint", { insert: insertKey, bold: prettyKey("Mod-b"), italic: prettyKey("Mod-i") })}</span>
       <button class="btn" onclick={() => ui.closeOverlay()}>{t("common.cancel")}</button>
       <button class="btn primary" bind:this={insertBtn} onclick={() => void insert()}>
         <Icon name="check" size={15} />{editing ? t("grid.update") : t("grid.insert")}
@@ -304,6 +329,16 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 10px 18px;
+  }
+  .options.float {
+    gap: 10px;
+  }
+  .options .caption {
+    flex: 1;
+    max-width: 380px;
+  }
+  .options .label {
+    width: 200px;
   }
   .size {
     display: flex;
@@ -359,6 +394,16 @@
   .check.disabled {
     opacity: 0.5;
   }
+  .spec {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    font-size: 12px;
+  }
+  .spec input {
+    width: 150px;
+  }
   .cells-wrap {
     flex: 1;
     min-height: 120px;
@@ -373,24 +418,6 @@
     gap: 6px;
     width: max-content;
     min-width: 100%;
-  }
-  .cell {
-    height: 34px;
-    min-width: 0;
-    padding: 0 8px;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-sm);
-    background: var(--bg-input);
-    color: var(--text);
-    font-size: 13px;
-    outline: none;
-  }
-  .cell:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px var(--accent-soft);
-  }
-  .cell.head {
-    font-weight: 700;
   }
   .align {
     display: grid;
@@ -414,49 +441,48 @@
   .bottom {
     display: flex;
     gap: 12px;
-    min-height: 0;
-    max-height: 34%;
+    min-height: 90px;
+    max-height: 36%;
   }
   .preview,
-  .table-options {
+  .code {
     flex: 1;
     min-width: 0;
     overflow: auto;
-    padding: 8px 12px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
   }
   .preview {
     display: grid;
     place-items: center;
+    padding: 8px 12px;
     font-size: 15px;
   }
-  .table-options {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+  .preview.table {
+    font-size: 13px;
   }
-  .table-options .label {
-    max-width: 240px;
+  .preview :global(table) {
+    border-collapse: collapse;
   }
-  .spec {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: auto;
-    font-size: 12px;
+  .preview :global(td) {
+    padding: 3px 12px;
+    white-space: nowrap;
   }
-  .spec input {
-    flex: 1;
+  .preview.booktabs :global(tr:first-child td) {
+    border-top: 1.5px solid var(--text);
+  }
+  .preview.booktabs :global(tr:last-child td) {
+    border-bottom: 1.5px solid var(--text);
+  }
+  .preview.head :global(tr:first-child td) {
+    border-bottom: 1px solid var(--text-muted);
+  }
+  .preview.lines :global(td) {
+    border: 1px solid var(--text-muted);
   }
   .code {
-    flex: 1;
-    min-width: 0;
     margin: 0;
-    overflow: auto;
     padding: 8px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
     background: var(--bg-input);
     font-family: var(--font-mono);
     font-size: 11.5px;

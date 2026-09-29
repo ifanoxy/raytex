@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { envRange, gridAt, gridToLatex, newGrid, parseGrid, parseSpec, pastedCells, resize, trimmed } from "./grid.ts";
+import { cellLatex, cellText, envRange, gridAt, gridToLatex, newGrid, parseGrid, parseSpec, pastedCells, resize, trimmed } from "./grid.ts";
 
 test("a matrix is read into cells", () => {
   const g = parseGrid("\\begin{pmatrix}\n  a & b \\\\\n  c & \\frac{1}{2}\n\\end{pmatrix}")!;
@@ -42,7 +42,7 @@ test("tables with lines, escaped &, spacing after \\\\ and comments", () => {
   assert.equal(g.option, "[t]");
   assert.deepEqual(g.columns, ["l", "p{3cm}"]);
   assert.deepEqual(g.cells, [
-    ["A \\& B", "x"],
+    ["A & B", "x"],
     ["C", "y"],
   ]);
   assert.match(gridToLatex(g), /^\\begin\{tabular\}\[t\]\{\|l\|p\{3cm\}\|\}\n\t\\hline\n/);
@@ -96,4 +96,20 @@ test("pasted cells from a spreadsheet or LaTeX", () => {
     ["3", "4"],
   ]);
   assert.equal(pastedCells("x^2"), null);
+});
+
+test("an & typed in a cell is the character; environments in a cell keep theirs", () => {
+  assert.equal(cellLatex("R&D"), "R\\&D");
+  assert.equal(cellLatex("a \\& b"), "a \\& b");
+  assert.equal(cellText("R\\&D"), "R&D");
+  const nested = "$\\begin{cases} 1 & x > 0 \\\\ 0 & x \\le 0 \\end{cases}$";
+  assert.equal(cellLatex(nested), nested);
+  assert.equal(cellText(nested), nested);
+  const g = parseGrid(`\\begin{tabular}{cc}\nR\\&D & ${nested} \\\\\n\\end{tabular}`)!;
+  assert.deepEqual(g.cells, [["R&D", nested]]);
+  assert.match(gridToLatex(g), /R\\&D & \$\\begin\{cases\} 1 & x > 0/);
+  assert.deepEqual(pastedCells("Prix\t50%\nR&D\tx_1"), [
+    ["Prix", "50\\%"],
+    ["R&D", "x\\_1"],
+  ]);
 });

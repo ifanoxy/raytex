@@ -3,6 +3,58 @@
 
 import { EditorView } from "@codemirror/view";
 
+/** Completion lists and their documentation (also used by the cells of the grid editor). */
+const TOOLTIPS = {
+  ".cm-tooltip": {
+    backgroundColor: "var(--bg-elev-2)",
+    color: "var(--text)",
+    border: "1px solid var(--border-strong)",
+    borderRadius: "10px",
+    boxShadow: "var(--shadow)",
+    overflow: "hidden",
+  },
+  ".cm-tooltip.cm-tooltip-autocomplete > ul": {
+    fontFamily: "var(--font-ui)",
+    fontSize: "13px",
+    maxHeight: "22em",
+    minWidth: "300px",
+    maxWidth: "min(640px, 70vw)",
+  },
+  ".cm-tooltip.cm-tooltip-autocomplete > ul > li": {
+    padding: "3px 10px 3px 6px",
+    lineHeight: "1.5",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+  },
+  ".cm-tooltip-autocomplete ul li[aria-selected]": {
+    backgroundColor: "var(--accent-soft)",
+    color: "var(--text)",
+  },
+  ".cm-completionLabel": { fontFamily: "var(--font-mono)", fontSize: "12.5px" },
+  ".cm-completionMatchedText": { textDecoration: "none", color: "var(--accent)", fontWeight: "700" },
+  ".cm-completionDetail": {
+    marginLeft: "auto",
+    paddingLeft: "14px",
+    fontStyle: "normal",
+    color: "var(--text-faint)",
+    fontSize: "11.5px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    maxWidth: "340px",
+  },
+  ".cm-completionInfo": {
+    padding: "10px 12px",
+    maxWidth: "420px",
+    fontSize: "12.5px",
+    lineHeight: "1.55",
+  },
+  ".cm-completionIcon": { width: "18px", opacity: "0.9", paddingRight: "0" },
+};
+
+export const tooltipTheme = EditorView.theme(TOOLTIPS);
+
 export function editorTheme(fontFamily: string, fontSize: number, lineHeight: number) {
   return EditorView.theme({
     "&": {
@@ -74,52 +126,7 @@ export function editorTheme(fontFamily: string, fontSize: number, lineHeight: nu
     },
     ".cm-panel.cm-search button": { backgroundImage: "none", cursor: "pointer" },
     ".cm-panel.cm-search label": { fontSize: "12px", color: "var(--text-muted)" },
-    ".cm-tooltip": {
-      backgroundColor: "var(--bg-elev-2)",
-      color: "var(--text)",
-      border: "1px solid var(--border-strong)",
-      borderRadius: "10px",
-      boxShadow: "var(--shadow)",
-      overflow: "hidden",
-    },
-    ".cm-tooltip.cm-tooltip-autocomplete > ul": {
-      fontFamily: "var(--font-ui)",
-      fontSize: "13px",
-      maxHeight: "22em",
-      minWidth: "300px",
-      maxWidth: "min(640px, 70vw)",
-    },
-    ".cm-tooltip.cm-tooltip-autocomplete > ul > li": {
-      padding: "3px 10px 3px 6px",
-      lineHeight: "1.5",
-      display: "flex",
-      alignItems: "center",
-      gap: "6px",
-    },
-    ".cm-tooltip-autocomplete ul li[aria-selected]": {
-      backgroundColor: "var(--accent-soft)",
-      color: "var(--text)",
-    },
-    ".cm-completionLabel": { fontFamily: "var(--font-mono)", fontSize: "12.5px" },
-    ".cm-completionMatchedText": { textDecoration: "none", color: "var(--accent)", fontWeight: "700" },
-    ".cm-completionDetail": {
-      marginLeft: "auto",
-      paddingLeft: "14px",
-      fontStyle: "normal",
-      color: "var(--text-faint)",
-      fontSize: "11.5px",
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap",
-      maxWidth: "340px",
-    },
-    ".cm-completionInfo": {
-      padding: "10px 12px",
-      maxWidth: "420px",
-      fontSize: "12.5px",
-      lineHeight: "1.55",
-    },
-    ".cm-completionIcon": { width: "18px", opacity: "0.9", paddingRight: "0" },
+    ...TOOLTIPS,
     ".cm-diagnostic": { padding: "6px 10px", fontFamily: "var(--font-ui)", fontSize: "12.5px", maxWidth: "520px" },
     ".cm-diagnostic-error": { borderLeft: "3px solid var(--error)" },
     ".cm-diagnostic-warning": { borderLeft: "3px solid var(--warning)" },

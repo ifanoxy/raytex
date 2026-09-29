@@ -11,7 +11,7 @@
   import * as ipc from "$lib/ipc";
   import { addPackages, graphicsPaths } from "$lib/preamble";
   import { editor } from "$lib/state/editor.svelte";
-  import { media } from "$lib/state/media.svelte";
+  import { type ImageEdit, media } from "$lib/state/media.svelte";
   import { project } from "$lib/state/project.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import type { FileNode } from "$lib/types";
@@ -52,6 +52,12 @@
   let busy = $state(false);
   let showProject = $state(false);
   let dragOver = $state(false);
+  /** A picture of the document being changed (chip after `\includegraphics`). */
+  let edit = $state<ImageEdit | null>(null);
+  /** Options of that picture other than a width of the line, kept until the width is changed. */
+  let keepOptions = $state<string | null>(null);
+  let rootReady: () => void = () => {};
+  const ready = new Promise<void>((resolve) => (rootReady = resolve));
 
   const multiple = $derived(items.length > 1);
 
@@ -65,6 +71,7 @@
     const fromGraphicsPath = graphicsPaths(rootText)[0]?.replace(/\/$/, "");
     folder = existing ?? fromGraphicsPath ?? "figures";
     window.addEventListener("paste", onPaste);
+    rootReady();
   });
 
   onDestroy(() => {
@@ -79,7 +86,32 @@
     media.imageRequest = null;
     for (const p of request.paths ?? []) void addPath(p);
     for (const b of request.blobs ?? []) void addBlob(b);
+    const change = request.edit;
+    // After the root is known: an image of the project is used where it is.
+    if (change) void ready.then(() => startEdit(change));
   });
+
+  function startEdit(change: ImageEdit) {
+    edit = change;
+    const f = change.figure;
+    mode = f.mode;
+    if (f.width !== null) width = f.width;
+    else keepOptions = f.options;
+    placement = f.placement || "htbp";
+    caption = f.caption;
+    label = f.label;
+    labelEdited = true;
+    if (change.file) void addPath(change.file);
+    else ui.toast("warning", t("image.missing", { path: f.path }));
+  }
+
+  /** Continuation lines indented like the first one, in the unit of the document. */
+  function reindent(code: string, indent: string, unit: string): string {
+    return code
+      .split("\n")
+      .map((line, i) => (i === 0 ? line : indent + line.replace(/^\t+/, (tabs) => unit.repeat(tabs.length))))
+      .join("\n");
+  }
 
   // The figure label follows the first image until edited.
   $effect(() => {
@@ -230,6 +262,7 @@
           caption: caption || t("snippet.caption"),
           label,
           columns,
+          options: keepOptions,
         })
       : "",
   );
@@ -272,6 +305,21 @@
       const files: string[] = [];
       for (const item of items) files.push(await importItem(item));
       const paths = files.map(includePath);
+      if (edit) {
+        const changed = figureCode({
+          paths,
+          captions: items.map((i) => i.caption),
+          labels: items.map((i) => (multiple && i.caption ? `fig:${i.stem}` : "")),
+          mode,
+          width,
+          placement,
+          caption,
+          label,
+          columns,
+          options: keepOptions,
+        });
+        editor.replaceRange(edit.doc, edit.figure.from, edit.figure.to, reindent(changed, edit.indent, edit.unit));
+      }
       const final = figureCode({
         paths,
         captions: items.map((i) => i.caption),
@@ -287,14 +335,15 @@
       const line = view.state.doc.lineAt(view.state.selection.main.head);
       const prefix = mode === "figure" && line.text.trim() !== "" ? "\n" : "";
       const body = escapeSnippet(prefix + final).replace(CAPTION_FIELD, `\${1:${t("snippet.caption")}}`);
-      editor.insertSnippet(`${body}\${0}`, view);
+      if (!edit) editor.insertSnippet(`${body}\${0}`, view);
       const packages = [{ name: "graphicx" }];
       if (mode === "figure" && multiple) packages.push({ name: "subcaption" });
       if (mode === "figure" && placement === "H") packages.push({ name: "float" });
       await editor.transformRoot((text) => addPackages(text, packages));
       await project.refreshTree();
       const copied = items.filter((i) => i.kind !== "project").length;
-      ui.toast("success", copied ? t("image.inserted", { n: items.length, folder }) : t("image.insertedExisting", { n: items.length }));
+      if (edit) ui.toast("success", t("image.updated"));
+      else ui.toast("success", copied ? t("image.inserted", { n: items.length, folder }) : t("image.insertedExisting", { n: items.length }));
       if (ui.overlay === "image") ui.closeOverlay();
       editor.focus();
     } catch (e) {
@@ -322,7 +371,7 @@
 
 <svelte:window onkeydown={key} />
 
-<Modal title={t("image.title")} icon="image" width="min(1080px, 95vw)" height="min(760px, 92vh)">
+<Modal title={edit ? t("image.editTitle") : t("image.title")} icon="image" width="min(1080px, 95vw)" height="min(760px, 92vh)">
   <div class="left">
     <div class="sources">
       <button class="btn primary" onclick={choose}><Icon name="folder-open" size={14} />{t("image.choose")}</button>
@@ -430,7 +479,7 @@
 
     <label class="field">
       <span>{t("image.width", { n: width })}</span>
-      <input type="range" min="10" max="100" step="5" bind:value={width} disabled={multiple && mode === "figure"} />
+      <input type="range" min="10" max="100" step="5" bind:value={width} oninput={() => (keepOptions = null)} disabled={multiple && mode === "figure"} />
     </label>
 
     {#if mode === "figure"}
@@ -489,7 +538,7 @@
     <div class="spacer"></div>
     <button class="btn primary large" disabled={!items.length || busy} onclick={insert}>
       {#if busy}<span class="spinner"></span>{:else}<Icon name="check" size={15} />{/if}
-      {t("image.insert", { n: items.length })}
+      {edit ? t("image.update") : t("image.insert", { n: items.length })}
     </button>
   </aside>
 </Modal>

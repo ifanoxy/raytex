@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { figureCode, safeStem, targetExtension } from "./images.ts";
+import { figureAt, figureCode, safeStem, targetExtension } from "./images.ts";
 
 test("names follow the engine's rules", () => {
   assert.equal(safeStem("Capture d’écran 2026-09-27 à 10.12.33"), "capture-d-ecran-2026-09-27-a-10-12-33");
@@ -33,4 +33,24 @@ test("inline images and full width", () => {
     figureCode({ paths: ["x", "y"], captions: [], labels: [], mode: "inline", width: 100, placement: "", caption: "", label: "", columns: 1 }),
     "\\includegraphics[width=\\linewidth]{x}\\hfill\n\\includegraphics[width=\\linewidth]{y}",
   );
+});
+
+test("a figure of the document is read back for the image dialog", () => {
+  const fig = "\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.7\\linewidth]{figures/courbe}\n  \\caption{Profil de {la} température.}\n  \\label{fig:courbe}\n\\end{figure}";
+  const text = `Texte\n${fig}\nSuite`;
+  const f = figureAt(text, text.indexOf("\\includegraphics"))!;
+  assert.equal(f.mode, "figure");
+  assert.equal(text.slice(f.from, f.to), fig);
+  assert.deepEqual([f.path, f.width, f.placement, f.caption, f.label], ["figures/courbe", 70, "htbp", "Profil de {la} température.", "fig:courbe"]);
+  // Anything else in the figure: only the command is edited.
+  const busy = fig.replace("\\centering", "\\centering\\small Source : INSEE.");
+  const g = figureAt(busy, busy.indexOf("\\includegraphics"))!;
+  assert.equal(g.mode, "inline");
+  assert.equal(busy.slice(g.from, g.to), "\\includegraphics[width=0.7\\linewidth]{figures/courbe}");
+  // Options other than a width of the line are kept.
+  const h = figureAt("\\includegraphics[scale=0.5, angle=90]{a.png}", 0)!;
+  assert.equal(h.width, null);
+  assert.equal(h.options, "scale=0.5, angle=90");
+  assert.equal(figureAt("\\includegraphics{b}", 0)!.width, null);
+  assert.equal(figureAt("\\includegraphics[width=\\textwidth]{b}", 0)!.width, 100);
 });

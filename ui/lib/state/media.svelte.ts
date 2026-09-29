@@ -2,6 +2,7 @@
 // chosen (pasted image, dropped files, picture under the cursor…).
 
 import { t } from "../i18n.svelte";
+import type { FigureAt } from "../images";
 import type { FontRole } from "../types";
 import { ui } from "./ui.svelte";
 
@@ -17,6 +18,19 @@ export interface ImageRequest {
   paths?: string[];
   /** Images from the clipboard. */
   blobs?: File[];
+  /** A picture of the document to change (chip after `\includegraphics`). */
+  edit?: ImageEdit;
+}
+
+export interface ImageEdit {
+  /** Document holding the picture. */
+  doc: string;
+  figure: FigureAt;
+  /** Its image file, when found. */
+  file: string | null;
+  /** Indentation of the first line and unit of the document. */
+  indent: string;
+  unit: string;
 }
 
 export interface TikzRequest {

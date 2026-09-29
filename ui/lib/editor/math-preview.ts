@@ -122,13 +122,24 @@ export async function mathHtml(latex: string): Promise<string> {
   return k.renderToString(tex, { throwOnError: false, displayMode: false });
 }
 
-/** HTML of a displayed formula (grid editor preview). */
-export async function displayHtml(latex: string): Promise<string> {
+/** HTML of a displayed formula (grid editor preview), with the macros of the document `path`. */
+export async function displayHtml(latex: string, path?: string | null): Promise<string> {
   const k = await katex();
-  return k.renderToString(latex, { throwOnError: false, displayMode: true });
+  return k.renderToString(latex, { throwOnError: false, displayMode: true, strict: "ignore", macros: macrosOf(path) });
+}
+
+/** HTML of text-mode LaTeX (a table cell): formulas, `\\textbf`, `\\emph`…, with the macros of `path`. */
+export async function textHtml(latex: string, path?: string | null): Promise<string> {
+  const k = await katex();
+  return k.renderToString(`\\text{${latex}}`, { throwOnError: false, strict: "ignore", macros: macrosOf(path) });
 }
 
 const macrosByPath = new Map<string, Record<string, string>>();
+
+/** A copy of the macros of a document (KaTeX adds the ones a formula defines). */
+function macrosOf(path?: string | null): Record<string, string> {
+  return { ...((path && macrosByPath.get(path)) || {}) };
+}
 
 /** Refreshes the macros of a document (called after each synchronisation). */
 export async function refreshMacros(path: string) {
