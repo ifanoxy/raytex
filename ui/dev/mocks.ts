@@ -516,6 +516,16 @@ export function installMocks() {
           return Object.entries(files).flatMap(([path, text]) => (path.endsWith(".tex") ? lintFor(path, text) : []));
         case "complete":
           return complete(a.before as string, a.after as string);
+        case "argument_hint": {
+          const b = a.before as string;
+          if (/\\item\[[^\]]*$/.test(b)) {
+            return { parts: [{ text: "\\item", active: false }, { text: "[terme]", active: true }], name: "terme", doc: "Texte libre affiché à la place de la puce ou du numéro : le terme défini dans une liste description." };
+          }
+          if (/\\section\{[^}]*$/.test(b)) {
+            return { parts: [{ text: "\\section", active: false }, { text: "[titre court]", active: false }, { text: "{titre}", active: true }], name: "titre", doc: "Texte libre : le titre de la section." };
+          }
+          return null;
+        }
         case "completion_info":
           return `<p><code>\\${a.key}</code> — documentation de démonstration.</p>`;
         case "hover":

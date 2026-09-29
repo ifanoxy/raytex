@@ -69,6 +69,7 @@ export const lintProject = () => call<T.Diagnostic[]>("lint_project");
 export const complete = (path: string, before: string, after: string, explicit: boolean) =>
   call<T.CompletionList | null>("complete", { path, before, after, explicit });
 export const completionInfo = (path: string, key: string) => call<string | null>("completion_info", { path, key });
+export const argumentHint = (path: string, before: string, after: string) => call<T.ArgumentHint | null>("argument_hint", { path, before, after });
 export const hover = (path: string, line: number, character: number) => call<T.HoverView | null>("hover", { path, line, character });
 export const definition = (path: string, line: number, character: number) => call<T.Location[]>("definition", { path, line, character });
 export const references = (path: string, line: number, character: number) => call<T.Location[]>("references", { path, line, character });

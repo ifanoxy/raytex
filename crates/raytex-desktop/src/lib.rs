@@ -149,6 +149,7 @@ pub fn run() {
             commands::language::lint_project,
             commands::language::complete,
             commands::language::completion_info,
+            commands::language::argument_hint,
             commands::language::hover,
             commands::language::definition,
             commands::language::references,

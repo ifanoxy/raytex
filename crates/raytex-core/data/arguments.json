@@ -1,0 +1,1816 @@
+{
+ "names": {
+  "text": {
+   "fr": [
+    "texte",
+    "Texte libre : ce qui sera affiché."
+   ],
+   "en": [
+    "text",
+    "Free text: what will be printed."
+   ]
+  },
+  "content": {
+   "fr": [
+    "contenu",
+    "Texte libre : le contenu mis en forme."
+   ],
+   "en": [
+    "content",
+    "Free text: the content being formatted."
+   ]
+  },
+  "body": {
+   "fr": [
+    "corps",
+    "Texte libre : le contenu."
+   ],
+   "en": [
+    "body",
+    "Free text: the content."
+   ]
+  },
+  "title": {
+   "fr": [
+    "titre",
+    "Texte libre : le titre."
+   ],
+   "en": [
+    "title",
+    "Free text: the title."
+   ]
+  },
+  "short": {
+   "fr": [
+    "titre court",
+    "Version courte, pour la table des matières et les en-têtes. Facultatif."
+   ],
+   "en": [
+    "short title",
+    "Short version, for the table of contents and headers. Optional."
+   ]
+  },
+  "long": {
+   "fr": [
+    "texte long",
+    "Version complète du texte."
+   ],
+   "en": [
+    "long text",
+    "Full version of the text."
+   ]
+  },
+  "name": {
+   "fr": [
+    "nom",
+    "Nom libre (lettres, sans espace de préférence)."
+   ],
+   "en": [
+    "name",
+    "Free name (letters, preferably no spaces)."
+   ]
+  },
+  "\\name": {
+   "fr": [
+    "\\nom",
+    "Nom de la nouvelle commande, avec sa barre oblique inverse : \\R, \\vect…"
+   ],
+   "en": [
+    "\\name",
+    "Name of the new command, with its backslash: \\R, \\vect…"
+   ]
+  },
+  "\\cmd": {
+   "fr": [
+    "\\commande",
+    "Une commande, avec sa barre oblique inverse."
+   ],
+   "en": [
+    "\\command",
+    "A command, with its backslash."
+   ]
+  },
+  "\\length": {
+   "fr": [
+    "\\longueur",
+    "Une longueur nommée : \\parindent, \\parskip…"
+   ],
+   "en": [
+    "\\length",
+    "A named length: \\parindent, \\parskip…"
+   ]
+  },
+  "key": {
+   "fr": [
+    "clé",
+    "Nom unique, sans espace ni accent : fig:schema, eq:energie…"
+   ],
+   "en": [
+    "key",
+    "Unique name, without spaces or accents: fig:diagram, eq:energy…"
+   ]
+  },
+  "label": {
+   "fr": [
+    "étiquette",
+    "Texte libre affiché comme étiquette."
+   ],
+   "en": [
+    "label",
+    "Free text shown as a label."
+   ]
+  },
+  "term": {
+   "fr": [
+    "terme",
+    "Texte libre affiché à la place de la puce ou du numéro : le terme défini dans une liste description."
+   ],
+   "en": [
+    "term",
+    "Free text shown instead of the bullet or number: the term defined in a description list."
+   ]
+  },
+  "definition": {
+   "fr": [
+    "définition",
+    "Ce que la commande produit ; #1, #2… pour ses arguments."
+   ],
+   "en": [
+    "definition",
+    "What the command produces; #1, #2… for its arguments."
+   ]
+  },
+  "description": {
+   "fr": [
+    "description",
+    "Texte libre : la description."
+   ],
+   "en": [
+    "description",
+    "Free text: the description."
+   ]
+  },
+  "caption": {
+   "fr": [
+    "légende",
+    "Texte libre : la légende."
+   ],
+   "en": [
+    "caption",
+    "Free text: the caption."
+   ]
+  },
+  "file": {
+   "fr": [
+    "fichier",
+    "Chemin du fichier, relatif au document principal."
+   ],
+   "en": [
+    "file",
+    "Path of the file, relative to the main document."
+   ]
+  },
+  "url": {
+   "fr": [
+    "adresse",
+    "Adresse web complète : https://…"
+   ],
+   "en": [
+    "address",
+    "Full web address: https://…"
+   ]
+  },
+  "author": {
+   "fr": [
+    "auteur",
+    "Auteurs, séparés par \\and."
+   ],
+   "en": [
+    "author",
+    "Authors, separated by \\and."
+   ]
+  },
+  "date": {
+   "fr": [
+    "date",
+    "Date libre, \\today pour aujourd'hui, vide pour aucune."
+   ],
+   "en": [
+    "date",
+    "Free date, \\today for today, empty for none."
+   ]
+  },
+  "options": {
+   "fr": [
+    "options",
+    "Options séparées par des virgules."
+   ],
+   "en": [
+    "options",
+    "Options separated by commas."
+   ]
+  },
+  "keys": {
+   "fr": [
+    "clés",
+    "Réglages clé=valeur séparés par des virgules."
+   ],
+   "en": [
+    "keys",
+    "key=value settings separated by commas."
+   ]
+  },
+  "x": {
+   "fr": [
+    "x",
+    "Une expression mathématique."
+   ],
+   "en": [
+    "x",
+    "A math expression."
+   ]
+  },
+  "expr": {
+   "fr": [
+    "expression",
+    "Une expression mathématique."
+   ],
+   "en": [
+    "expression",
+    "A math expression."
+   ]
+  },
+  "formula": {
+   "fr": [
+    "formule",
+    "Une formule mathématique."
+   ],
+   "en": [
+    "formula",
+    "A math formula."
+   ]
+  },
+  "math": {
+   "fr": [
+    "formule",
+    "Une formule mathématique."
+   ],
+   "en": [
+    "formula",
+    "A math formula."
+   ]
+  },
+  "numerator": {
+   "fr": [
+    "numérateur",
+    "Ce qui est au-dessus de la barre de fraction."
+   ],
+   "en": [
+    "numerator",
+    "What goes above the fraction bar."
+   ]
+  },
+  "denominator": {
+   "fr": [
+    "dénominateur",
+    "Ce qui est sous la barre de fraction."
+   ],
+   "en": [
+    "denominator",
+    "What goes below the fraction bar."
+   ]
+  },
+  "num": {
+   "fr": [
+    "numérateur",
+    "Ce qui est au-dessus de la barre de fraction."
+   ],
+   "en": [
+    "numerator",
+    "What goes above the fraction bar."
+   ]
+  },
+  "den": {
+   "fr": [
+    "dénominateur",
+    "Ce qui est sous la barre de fraction."
+   ],
+   "en": [
+    "denominator",
+    "What goes below the fraction bar."
+   ]
+  },
+  "n": {
+   "fr": [
+    "n",
+    "Un nombre entier."
+   ],
+   "en": [
+    "n",
+    "A whole number."
+   ]
+  },
+  "number": {
+   "fr": [
+    "nombre",
+    "Un nombre."
+   ],
+   "en": [
+    "number",
+    "A number."
+   ]
+  },
+  "value": {
+   "fr": [
+    "valeur",
+    "Une valeur."
+   ],
+   "en": [
+    "value",
+    "A value."
+   ]
+  },
+  "counter": {
+   "fr": [
+    "compteur",
+    "Nom d'un compteur : section, page, equation, figure…"
+   ],
+   "en": [
+    "counter",
+    "Name of a counter: section, page, equation, figure…"
+   ]
+  },
+  "symbol": {
+   "fr": [
+    "symbole",
+    "Le symbole ou le texte à transformer."
+   ],
+   "en": [
+    "symbol",
+    "The symbol or text to transform."
+   ]
+  },
+  "letter": {
+   "fr": [
+    "lettre",
+    "Une lettre (ou un symbole) à transformer."
+   ],
+   "en": [
+    "letter",
+    "A letter (or symbol) to transform."
+   ]
+  },
+  "width": {
+   "fr": [
+    "largeur",
+    "Une longueur : 5cm, 0.5\\linewidth…"
+   ],
+   "en": [
+    "width",
+    "A length: 5cm, 0.5\\linewidth…"
+   ]
+  },
+  "height": {
+   "fr": [
+    "hauteur",
+    "Une longueur : 3cm, 2\\baselineskip…"
+   ],
+   "en": [
+    "height",
+    "A length: 3cm, 2\\baselineskip…"
+   ]
+  },
+  "length": {
+   "fr": [
+    "longueur",
+    "Une longueur : 1em, 5mm, \\baselineskip…"
+   ],
+   "en": [
+    "length",
+    "A length: 1em, 5mm, \\baselineskip…"
+   ]
+  },
+  "thickness": {
+   "fr": [
+    "épaisseur",
+    "Une longueur : 0.4pt, 1pt…"
+   ],
+   "en": [
+    "thickness",
+    "A length: 0.4pt, 1pt…"
+   ]
+  },
+  "angle": {
+   "fr": [
+    "angle",
+    "Un angle en degrés."
+   ],
+   "en": [
+    "angle",
+    "An angle in degrees."
+   ]
+  },
+  "factor": {
+   "fr": [
+    "facteur",
+    "Un nombre : 0.5 pour moitié, 2 pour double."
+   ],
+   "en": [
+    "factor",
+    "A number: 0.5 for half, 2 for double."
+   ]
+  },
+  "color": {
+   "fr": [
+    "couleur",
+    "Une couleur : red, blue!50, MaCouleur…"
+   ],
+   "en": [
+    "colour",
+    "A colour: red, blue!50, MyColour…"
+   ]
+  },
+  "style": {
+   "fr": [
+    "style",
+    "Un style."
+   ],
+   "en": [
+    "style",
+    "A style."
+   ]
+  },
+  "type": {
+   "fr": [
+    "type",
+    "Un type."
+   ],
+   "en": [
+    "type",
+    "A type."
+   ]
+  },
+  "language": {
+   "fr": [
+    "langage",
+    "Nom d'un langage."
+   ],
+   "en": [
+    "language",
+    "Name of a language."
+   ]
+  },
+  "columns": {
+   "fr": [
+    "colonnes",
+    "Colonnes : l (gauche), c (centre), r (droite), p{3cm} (paragraphe), | pour un trait."
+   ],
+   "en": [
+    "columns",
+    "Columns: l (left), c (centre), r (right), p{3cm} (paragraph), | for a rule."
+   ]
+  },
+  "cols": {
+   "fr": [
+    "colonnes",
+    "Colonnes : l, c, r, p{3cm}, | pour un trait."
+   ],
+   "en": [
+    "columns",
+    "Columns: l, c, r, p{3cm}, | for a rule."
+   ]
+  },
+  "rows": {
+   "fr": [
+    "lignes",
+    "Nombre de lignes couvertes."
+   ],
+   "en": [
+    "rows",
+    "Number of rows spanned."
+   ]
+  },
+  "position": {
+   "fr": [
+    "position",
+    "Position."
+   ],
+   "en": [
+    "position",
+    "Position."
+   ]
+  },
+  "pos": {
+   "fr": [
+    "position",
+    "Position : t (haut), c (centre), b (bas)."
+   ],
+   "en": [
+    "position",
+    "Position: t (top), c (centre), b (bottom)."
+   ]
+  },
+  "placement": {
+   "fr": [
+    "placement",
+    "Où placer le flottant : h (ici), t (haut), b (bas), p (page), ! (forcer)."
+   ],
+   "en": [
+    "placement",
+    "Where to put the float: h (here), t (top), b (bottom), p (page), ! (force)."
+   ]
+  },
+  "prenote": {
+   "fr": [
+    "avant",
+    "Texte avant la référence : voir, cf."
+   ],
+   "en": [
+    "prenote",
+    "Text before the reference: see, cf."
+   ]
+  },
+  "postnote": {
+   "fr": [
+    "précision",
+    "Précision après la référence : p.~12, chap.~3."
+   ],
+   "en": [
+    "postnote",
+    "Detail after the reference: p.~12, ch.~3."
+   ]
+  },
+  "above": {
+   "fr": [
+    "au-dessus",
+    "Ce qui est écrit au-dessus."
+   ],
+   "en": [
+    "above",
+    "What is written above."
+   ]
+  },
+  "below": {
+   "fr": [
+    "en dessous",
+    "Ce qui est écrit en dessous."
+   ],
+   "en": [
+    "below",
+    "What is written below."
+   ]
+  },
+  "left": {
+   "fr": [
+    "gauche",
+    "Délimiteur ou texte à gauche."
+   ],
+   "en": [
+    "left",
+    "Delimiter or text on the left."
+   ]
+  },
+  "right": {
+   "fr": [
+    "droite",
+    "Délimiteur ou texte à droite."
+   ],
+   "en": [
+    "right",
+    "Delimiter or text on the right."
+   ]
+  },
+  "code": {
+   "fr": [
+    "code",
+    "Du code LaTeX."
+   ],
+   "en": [
+    "code",
+    "LaTeX code."
+   ]
+  },
+  "element": {
+   "fr": [
+    "élément",
+    "Un élément de la structure."
+   ],
+   "en": [
+    "element",
+    "An element of the structure."
+   ]
+  },
+  "default": {
+   "fr": [
+    "par défaut",
+    "Valeur utilisée quand l'argument optionnel est absent."
+   ],
+   "en": [
+    "default",
+    "Value used when the optional argument is left out."
+   ]
+  },
+  "alignment": {
+   "fr": [
+    "alignement",
+    "Alignement."
+   ],
+   "en": [
+    "alignment",
+    "Alignment."
+   ]
+  },
+  "overlay": {
+   "fr": [
+    "diapositives",
+    "Numéros des étapes : 2, 2-, 1-3."
+   ],
+   "en": [
+    "overlay",
+    "Step numbers: 2, 2-, 1-3."
+   ]
+  },
+  "points": {
+   "fr": [
+    "points",
+    "Des coordonnées : (0,0) (1,2)…"
+   ],
+   "en": [
+    "points",
+    "Coordinates: (0,0) (1,2)…"
+   ]
+  },
+  "lines": {
+   "fr": [
+    "lignes",
+    "Un nombre de lignes."
+   ],
+   "en": [
+    "lines",
+    "A number of lines."
+   ]
+  },
+  "space": {
+   "fr": [
+    "espace",
+    "Une longueur d'espace."
+   ],
+   "en": [
+    "space",
+    "A length of space."
+   ]
+  },
+  "environment": {
+   "fr": [
+    "environnement",
+    "Nom d'un environnement."
+   ],
+   "en": [
+    "environment",
+    "Name of an environment."
+   ]
+  },
+  "before": {
+   "fr": [
+    "avant",
+    "Ce qui vient avant."
+   ],
+   "en": [
+    "before",
+    "What comes before."
+   ]
+  },
+  "after": {
+   "fr": [
+    "après",
+    "Ce qui vient après."
+   ],
+   "en": [
+    "after",
+    "What comes after."
+   ]
+  },
+  "citation": {
+   "fr": [
+    "citation",
+    "Le texte cité."
+   ],
+   "en": [
+    "quotation",
+    "The quoted text."
+   ]
+  },
+  "quote": {
+   "fr": [
+    "citation",
+    "Le texte cité."
+   ],
+   "en": [
+    "quotation",
+    "The quoted text."
+   ]
+  },
+  "source": {
+   "fr": [
+    "source",
+    "D'où vient la citation."
+   ],
+   "en": [
+    "source",
+    "Where the quotation comes from."
+   ]
+  },
+  "format": {
+   "fr": [
+    "format",
+    "Mise en forme : \\bfseries, \\itshape…"
+   ],
+   "en": [
+    "format",
+    "Formatting: \\bfseries, \\itshape…"
+   ]
+  },
+  "within": {
+   "fr": [
+    "dans",
+    "Compteur parent : la numérotation repart à chaque section, chapitre…"
+   ],
+   "en": [
+    "within",
+    "Parent counter: numbering restarts at each section, chapter…"
+   ]
+  },
+  "unit": {
+   "fr": [
+    "unité",
+    "Unités : \\metre\\per\\second, kg.m/s^2…"
+   ],
+   "en": [
+    "unit",
+    "Units: \\metre\\per\\second, kg.m/s^2…"
+   ]
+  },
+  "mark": {
+   "fr": [
+    "marque",
+    "Texte de la marque."
+   ],
+   "en": [
+    "mark",
+    "Text of the mark."
+   ]
+  },
+  "level": {
+   "fr": [
+    "niveau",
+    "Un niveau (nombre)."
+   ],
+   "en": [
+    "level",
+    "A level (number)."
+   ]
+  },
+  "institution": {
+   "fr": [
+    "institution",
+    "Nom de l'établissement."
+   ],
+   "en": [
+    "institution",
+    "Name of the institution."
+   ]
+  },
+  "address": {
+   "fr": [
+    "adresse",
+    "Adresse postale."
+   ],
+   "en": [
+    "address",
+    "Postal address."
+   ]
+  },
+  "command": {
+   "fr": [
+    "commande",
+    "Une commande."
+   ],
+   "en": [
+    "command",
+    "A command."
+   ]
+  },
+  "font": {
+   "fr": [
+    "police",
+    "Nom d'une police installée."
+   ],
+   "en": [
+    "font",
+    "Name of an installed font."
+   ]
+  },
+  "features": {
+   "fr": [
+    "réglages",
+    "Réglages de la police : Scale=0.9, Ligatures=TeX…"
+   ],
+   "en": [
+    "features",
+    "Font settings: Scale=0.9, Ligatures=TeX…"
+   ]
+  },
+  "theme": {
+   "fr": [
+    "thème",
+    "Nom du thème."
+   ],
+   "en": [
+    "theme",
+    "Name of the theme."
+   ]
+  },
+  "condition": {
+   "fr": [
+    "condition",
+    "Une condition."
+   ],
+   "en": [
+    "condition",
+    "A condition."
+   ]
+  },
+  "sup": {
+   "fr": [
+    "exposant",
+    "Ce qui est en exposant."
+   ],
+   "en": [
+    "superscript",
+    "What is in superscript."
+   ]
+  },
+  "sub": {
+   "fr": [
+    "indice",
+    "Ce qui est en indice."
+   ],
+   "en": [
+    "subscript",
+    "What is in subscript."
+   ]
+  },
+  "from": {
+   "fr": [
+    "depuis",
+    "Début."
+   ],
+   "en": [
+    "from",
+    "Start."
+   ]
+  },
+  "to": {
+   "fr": [
+    "jusqu'à",
+    "Fin."
+   ],
+   "en": [
+    "to",
+    "End."
+   ]
+  },
+  "shape": {
+   "fr": [
+    "forme",
+    "Une forme."
+   ],
+   "en": [
+    "shape",
+    "A shape."
+   ]
+  },
+  "variable": {
+   "fr": [
+    "variable",
+    "Une variable."
+   ],
+   "en": [
+    "variable",
+    "A variable."
+   ]
+  },
+  "note": {
+   "fr": [
+    "note",
+    "Texte libre de la note."
+   ],
+   "en": [
+    "note",
+    "Free text of the note."
+   ]
+  }
+ },
+ "arguments": {
+  "\\item[1]": {
+   "fr": [
+    "terme",
+    "Texte libre affiché à la place de la puce ou du numéro : le terme défini dans une liste description."
+   ],
+   "en": [
+    "term",
+    "Free text shown instead of the bullet or number: the term defined in a description list."
+   ]
+  },
+  "\\section[1]": {
+   "fr": [
+    "titre court",
+    "Version courte, pour la table des matières et les en-têtes. Facultatif."
+   ],
+   "en": [
+    "short title",
+    "Short version, for the table of contents and headers. Optional."
+   ]
+  },
+  "\\subsection[1]": {
+   "fr": [
+    "titre court",
+    "Version courte, pour la table des matières et les en-têtes. Facultatif."
+   ],
+   "en": [
+    "short title",
+    "Short version, for the table of contents and headers. Optional."
+   ]
+  },
+  "\\subsubsection[1]": {
+   "fr": [
+    "titre court",
+    "Version courte, pour la table des matières et les en-têtes. Facultatif."
+   ],
+   "en": [
+    "short title",
+    "Short version, for the table of contents and headers. Optional."
+   ]
+  },
+  "\\chapter[1]": {
+   "fr": [
+    "titre court",
+    "Version courte, pour la table des matières et les en-têtes. Facultatif."
+   ],
+   "en": [
+    "short title",
+    "Short version, for the table of contents and headers. Optional."
+   ]
+  },
+  "\\part[1]": {
+   "fr": [
+    "titre court",
+    "Version courte, pour la table des matières et les en-têtes. Facultatif."
+   ],
+   "en": [
+    "short title",
+    "Short version, for the table of contents and headers. Optional."
+   ]
+  },
+  "\\paragraph[1]": {
+   "fr": [
+    "titre court",
+    "Version courte, pour la table des matières et les en-têtes. Facultatif."
+   ],
+   "en": [
+    "short title",
+    "Short version, for the table of contents and headers. Optional."
+   ]
+  },
+  "\\section{1}": {
+   "fr": [
+    "titre",
+    "Texte libre : le titre de la section."
+   ],
+   "en": [
+    "title",
+    "Free text: the title of the section."
+   ]
+  },
+  "\\subsection{1}": {
+   "fr": [
+    "titre",
+    "Texte libre : le titre de la sous-section."
+   ],
+   "en": [
+    "title",
+    "Free text: the title of the subsection."
+   ]
+  },
+  "\\subsubsection{1}": {
+   "fr": [
+    "titre",
+    "Texte libre : le titre."
+   ],
+   "en": [
+    "title",
+    "Free text: the title."
+   ]
+  },
+  "\\chapter{1}": {
+   "fr": [
+    "titre",
+    "Texte libre : le titre du chapitre."
+   ],
+   "en": [
+    "title",
+    "Free text: the title of the chapter."
+   ]
+  },
+  "\\part{1}": {
+   "fr": [
+    "titre",
+    "Texte libre : le titre de la partie."
+   ],
+   "en": [
+    "title",
+    "Free text: the title of the part."
+   ]
+  },
+  "\\paragraph{1}": {
+   "fr": [
+    "titre",
+    "Texte libre : le titre du paragraphe (en gras, suivi du texte)."
+   ],
+   "en": [
+    "title",
+    "Free text: the title of the paragraph (bold, followed by the text)."
+   ]
+  },
+  "\\caption[1]": {
+   "fr": [
+    "légende courte",
+    "Version courte dans la liste des figures ou des tableaux. Facultatif."
+   ],
+   "en": [
+    "short caption",
+    "Short version in the list of figures or tables. Optional."
+   ]
+  },
+  "\\caption{1}": {
+   "fr": [
+    "légende",
+    "Texte libre affiché avec « Figure 1 : » ou « Tableau 1 : »."
+   ],
+   "en": [
+    "caption",
+    "Free text printed with \"Figure 1:\" or \"Table 1:\"."
+   ]
+  },
+  "\\footnote{1}": {
+   "fr": [
+    "note",
+    "Texte libre de la note en bas de page."
+   ],
+   "en": [
+    "note",
+    "Free text of the footnote."
+   ]
+  },
+  "\\footnote[1]": {
+   "fr": [
+    "numéro",
+    "Numéro forcé de la note. Facultatif."
+   ],
+   "en": [
+    "number",
+    "Forced number of the note. Optional."
+   ]
+  },
+  "\\title{1}": {
+   "fr": [
+    "titre",
+    "Texte libre : titre du document (affiché par \\maketitle). \\\\ pour aller à la ligne."
+   ],
+   "en": [
+    "title",
+    "Free text: title of the document (printed by \\maketitle). \\\\ for a new line."
+   ]
+  },
+  "\\author{1}": {
+   "fr": [
+    "auteurs",
+    "Noms des auteurs, séparés par \\and ; \\thanks{…} pour une note."
+   ],
+   "en": [
+    "authors",
+    "Names of the authors, separated by \\and; \\thanks{…} for a note."
+   ]
+  },
+  "\\date{1}": {
+   "fr": [
+    "date",
+    "Date libre ; \\today pour la date du jour ; vide : pas de date."
+   ],
+   "en": [
+    "date",
+    "Free date; \\today for today; empty: no date."
+   ]
+  },
+  "\\label{1}": {
+   "fr": [
+    "clé",
+    "Nom unique pour y renvoyer avec \\ref ou \\eqref : fig:…, tab:…, eq:…, sec:…"
+   ],
+   "en": [
+    "key",
+    "Unique name to refer to it with \\ref or \\eqref: fig:…, tab:…, eq:…, sec:…"
+   ]
+  },
+  "\\textbf{1}": {
+   "fr": [
+    "texte",
+    "Texte libre mis en gras."
+   ],
+   "en": [
+    "text",
+    "Free text in bold."
+   ]
+  },
+  "\\textit{1}": {
+   "fr": [
+    "texte",
+    "Texte libre mis en italique."
+   ],
+   "en": [
+    "text",
+    "Free text in italics."
+   ]
+  },
+  "\\emph{1}": {
+   "fr": [
+    "texte",
+    "Texte libre mis en valeur (italique)."
+   ],
+   "en": [
+    "text",
+    "Free text emphasised (italics)."
+   ]
+  },
+  "\\underline{1}": {
+   "fr": [
+    "texte",
+    "Texte libre souligné."
+   ],
+   "en": [
+    "text",
+    "Free text underlined."
+   ]
+  },
+  "\\texttt{1}": {
+   "fr": [
+    "texte",
+    "Texte libre en police à chasse fixe."
+   ],
+   "en": [
+    "text",
+    "Free text in a monospaced font."
+   ]
+  },
+  "\\textsc{1}": {
+   "fr": [
+    "texte",
+    "Texte libre en petites capitales."
+   ],
+   "en": [
+    "text",
+    "Free text in small caps."
+   ]
+  },
+  "\\frac{1}": {
+   "fr": [
+    "numérateur",
+    "Ce qui est au-dessus de la barre de fraction."
+   ],
+   "en": [
+    "numerator",
+    "What goes above the fraction bar."
+   ]
+  },
+  "\\frac{2}": {
+   "fr": [
+    "dénominateur",
+    "Ce qui est sous la barre de fraction."
+   ],
+   "en": [
+    "denominator",
+    "What goes below the fraction bar."
+   ]
+  },
+  "\\dfrac{1}": {
+   "fr": [
+    "numérateur",
+    "Ce qui est au-dessus de la barre de fraction."
+   ],
+   "en": [
+    "numerator",
+    "What goes above the fraction bar."
+   ]
+  },
+  "\\dfrac{2}": {
+   "fr": [
+    "dénominateur",
+    "Ce qui est sous la barre de fraction."
+   ],
+   "en": [
+    "denominator",
+    "What goes below the fraction bar."
+   ]
+  },
+  "\\tfrac{1}": {
+   "fr": [
+    "numérateur",
+    "Ce qui est au-dessus de la barre de fraction."
+   ],
+   "en": [
+    "numerator",
+    "What goes above the fraction bar."
+   ]
+  },
+  "\\tfrac{2}": {
+   "fr": [
+    "dénominateur",
+    "Ce qui est sous la barre de fraction."
+   ],
+   "en": [
+    "denominator",
+    "What goes below the fraction bar."
+   ]
+  },
+  "\\sqrt[1]": {
+   "fr": [
+    "indice",
+    "Indice de la racine : 3 pour une racine cubique. Facultatif."
+   ],
+   "en": [
+    "index",
+    "Index of the root: 3 for a cube root. Optional."
+   ]
+  },
+  "\\sqrt{1}": {
+   "fr": [
+    "radicande",
+    "Ce qui est sous la racine."
+   ],
+   "en": [
+    "radicand",
+    "What goes under the root."
+   ]
+  },
+  "\\href{1}": {
+   "fr": [
+    "adresse",
+    "Adresse web complète : https://…"
+   ],
+   "en": [
+    "address",
+    "Full web address: https://…"
+   ]
+  },
+  "\\href{2}": {
+   "fr": [
+    "texte",
+    "Texte cliquable affiché."
+   ],
+   "en": [
+    "text",
+    "Clickable text shown."
+   ]
+  },
+  "\\url{1}": {
+   "fr": [
+    "adresse",
+    "Adresse web complète, affichée telle quelle."
+   ],
+   "en": [
+    "address",
+    "Full web address, printed as it is."
+   ]
+  },
+  "\\cite[1]": {
+   "fr": [
+    "précision",
+    "Précision après la référence : p.~12, chap.~3."
+   ],
+   "en": [
+    "postnote",
+    "Detail after the reference: p.~12, ch.~3."
+   ]
+  },
+  "\\textcite[1]": {
+   "fr": [
+    "précision",
+    "Précision après la référence : p.~12, chap.~3."
+   ],
+   "en": [
+    "postnote",
+    "Detail after the reference: p.~12, ch.~3."
+   ]
+  },
+  "\\parencite[1]": {
+   "fr": [
+    "précision",
+    "Précision après la référence : p.~12, chap.~3."
+   ],
+   "en": [
+    "postnote",
+    "Detail after the reference: p.~12, ch.~3."
+   ]
+  },
+  "\\autocite[1]": {
+   "fr": [
+    "précision",
+    "Précision après la référence : p.~12, chap.~3."
+   ],
+   "en": [
+    "postnote",
+    "Detail after the reference: p.~12, ch.~3."
+   ]
+  },
+  "\\citep[1]": {
+   "fr": [
+    "précision",
+    "Précision après la référence : p.~12, chap.~3."
+   ],
+   "en": [
+    "postnote",
+    "Detail after the reference: p.~12, ch.~3."
+   ]
+  },
+  "\\citet[1]": {
+   "fr": [
+    "précision",
+    "Précision après la référence : p.~12, chap.~3."
+   ],
+   "en": [
+    "postnote",
+    "Detail after the reference: p.~12, ch.~3."
+   ]
+  },
+  "\\newcommand{1}": {
+   "fr": [
+    "\\nom",
+    "Nom de la nouvelle commande, avec sa barre oblique inverse : \\R, \\vect…"
+   ],
+   "en": [
+    "\\name",
+    "Name of the new command, with its backslash: \\R, \\vect…"
+   ]
+  },
+  "\\renewcommand{1}": {
+   "fr": [
+    "\\nom",
+    "Nom de la nouvelle commande, avec sa barre oblique inverse : \\R, \\vect…"
+   ],
+   "en": [
+    "\\name",
+    "Name of the new command, with its backslash: \\R, \\vect…"
+   ]
+  },
+  "\\newcommand{2}": {
+   "fr": [
+    "définition",
+    "Ce que la commande produit ; #1, #2… pour ses arguments."
+   ],
+   "en": [
+    "definition",
+    "What the command produces; #1, #2… for its arguments."
+   ]
+  },
+  "\\renewcommand{2}": {
+   "fr": [
+    "définition",
+    "Ce que la commande produit ; #1, #2… pour ses arguments."
+   ],
+   "en": [
+    "definition",
+    "What the command produces; #1, #2… for its arguments."
+   ]
+  },
+  "\\newenvironment{1}": {
+   "fr": [
+    "nom",
+    "Nom du nouvel environnement."
+   ],
+   "en": [
+    "name",
+    "Name of the new environment."
+   ]
+  },
+  "\\newenvironment{2}": {
+   "fr": [
+    "début",
+    "Code placé à \\begin{…}."
+   ],
+   "en": [
+    "begin",
+    "Code run at \\begin{…}."
+   ]
+  },
+  "\\newenvironment{3}": {
+   "fr": [
+    "fin",
+    "Code placé à \\end{…}."
+   ],
+   "en": [
+    "end",
+    "Code run at \\end{…}."
+   ]
+  },
+  "\\newtheorem{1}": {
+   "fr": [
+    "nom",
+    "Nom de l'environnement : thm, lemme, definition…"
+   ],
+   "en": [
+    "name",
+    "Name of the environment: thm, lemma, definition…"
+   ]
+  },
+  "\\newtheorem{2}": {
+   "fr": [
+    "titre",
+    "Titre affiché : Théorème, Lemme, Définition…"
+   ],
+   "en": [
+    "title",
+    "Title printed: Theorem, Lemma, Definition…"
+   ]
+  },
+  "\\newtheorem[1]": {
+   "fr": [
+    "partagé avec",
+    "Environnement dont il partage la numérotation. Facultatif."
+   ],
+   "en": [
+    "shared with",
+    "Environment whose numbering it shares. Optional."
+   ]
+  },
+  "\\newtheorem[2]": {
+   "fr": [
+    "dans",
+    "Compteur parent : la numérotation repart à chaque section, chapitre…"
+   ],
+   "en": [
+    "within",
+    "Parent counter: numbering restarts at each section, chapter…"
+   ]
+  },
+  "\\text{1}": {
+   "fr": [
+    "texte",
+    "Texte normal dans une formule."
+   ],
+   "en": [
+    "text",
+    "Normal text inside a formula."
+   ]
+  },
+  "\\mathrm{1}": {
+   "fr": [
+    "texte",
+    "Lettres droites dans une formule : d, e, unités."
+   ],
+   "en": [
+    "text",
+    "Upright letters in a formula: d, e, units."
+   ]
+  },
+  "\\mathbf{1}": {
+   "fr": [
+    "lettres",
+    "Lettres en gras dans une formule."
+   ],
+   "en": [
+    "letters",
+    "Bold letters in a formula."
+   ]
+  },
+  "\\mathbb{1}": {
+   "fr": [
+    "lettre",
+    "Lettre ajourée majuscule : R, N, Z, Q, C."
+   ],
+   "en": [
+    "letter",
+    "Blackboard capital letter: R, N, Z, Q, C."
+   ]
+  },
+  "\\mathcal{1}": {
+   "fr": [
+    "lettre",
+    "Lettre calligraphique majuscule."
+   ],
+   "en": [
+    "letter",
+    "Calligraphic capital letter."
+   ]
+  },
+  "\\operatorname{1}": {
+   "fr": [
+    "nom",
+    "Nom d'un opérateur écrit droit : sgn, Tr…"
+   ],
+   "en": [
+    "name",
+    "Name of an operator printed upright: sgn, Tr…"
+   ]
+  },
+  "\\hat{1}": {
+   "fr": [
+    "symbole",
+    "Le symbole ou le texte à transformer."
+   ],
+   "en": [
+    "symbol",
+    "The symbol or text to transform."
+   ]
+  },
+  "\\bar{1}": {
+   "fr": [
+    "symbole",
+    "Le symbole ou le texte à transformer."
+   ],
+   "en": [
+    "symbol",
+    "The symbol or text to transform."
+   ]
+  },
+  "\\vec{1}": {
+   "fr": [
+    "symbole",
+    "Le symbole ou le texte à transformer."
+   ],
+   "en": [
+    "symbol",
+    "The symbol or text to transform."
+   ]
+  },
+  "\\tilde{1}": {
+   "fr": [
+    "symbole",
+    "Le symbole ou le texte à transformer."
+   ],
+   "en": [
+    "symbol",
+    "The symbol or text to transform."
+   ]
+  },
+  "\\dot{1}": {
+   "fr": [
+    "symbole",
+    "Le symbole ou le texte à transformer."
+   ],
+   "en": [
+    "symbol",
+    "The symbol or text to transform."
+   ]
+  },
+  "\\overline{1}": {
+   "fr": [
+    "expression",
+    "Une expression mathématique."
+   ],
+   "en": [
+    "expression",
+    "A math expression."
+   ]
+  },
+  "\\underbrace{1}": {
+   "fr": [
+    "expression",
+    "Une expression mathématique."
+   ],
+   "en": [
+    "expression",
+    "A math expression."
+   ]
+  },
+  "\\overbrace{1}": {
+   "fr": [
+    "expression",
+    "Une expression mathématique."
+   ],
+   "en": [
+    "expression",
+    "A math expression."
+   ]
+  },
+  "\\boxed{1}": {
+   "fr": [
+    "formule",
+    "Formule encadrée."
+   ],
+   "en": [
+    "formula",
+    "Boxed formula."
+   ]
+  },
+  "\\colorbox{2}": {
+   "fr": [
+    "texte",
+    "Texte libre : ce qui sera affiché."
+   ],
+   "en": [
+    "text",
+    "Free text: what will be printed."
+   ]
+  },
+  "\\textcolor{2}": {
+   "fr": [
+    "texte",
+    "Texte libre mis en couleur."
+   ],
+   "en": [
+    "text",
+    "Free text in colour."
+   ]
+  },
+  "\\fbox{1}": {
+   "fr": [
+    "texte",
+    "Texte libre encadré."
+   ],
+   "en": [
+    "text",
+    "Free text in a frame."
+   ]
+  },
+  "\\mbox{1}": {
+   "fr": [
+    "texte",
+    "Texte qui ne sera pas coupé en fin de ligne."
+   ],
+   "en": [
+    "text",
+    "Text that will not be broken at the end of a line."
+   ]
+  },
+  "\\makebox{1}": {
+   "fr": [
+    "texte",
+    "Texte libre : ce qui sera affiché."
+   ],
+   "en": [
+    "text",
+    "Free text: what will be printed."
+   ]
+  },
+  "\\framebox{1}": {
+   "fr": [
+    "texte",
+    "Texte libre : ce qui sera affiché."
+   ],
+   "en": [
+    "text",
+    "Free text: what will be printed."
+   ]
+  },
+  "\\parbox{2}": {
+   "fr": [
+    "texte",
+    "Texte libre : ce qui sera affiché."
+   ],
+   "en": [
+    "text",
+    "Free text: what will be printed."
+   ]
+  },
+  "\\thanks{1}": {
+   "fr": [
+    "note",
+    "Note de l'auteur (affiliation, remerciements)."
+   ],
+   "en": [
+    "note",
+    "Author's note (affiliation, thanks)."
+   ]
+  },
+  "\\chapter*{1}": {
+   "fr": [
+    "titre",
+    "Texte libre : le titre."
+   ],
+   "en": [
+    "title",
+    "Free text: the title."
+   ]
+  },
+  "\\multicolumn{1}": {
+   "fr": [
+    "colonnes",
+    "Nombre de colonnes couvertes."
+   ],
+   "en": [
+    "columns",
+    "Number of columns spanned."
+   ]
+  },
+  "\\multicolumn{2}": {
+   "fr": [
+    "alignement",
+    "Alignement de la case : l, c, r (| pour un trait)."
+   ],
+   "en": [
+    "alignment",
+    "Alignment of the cell: l, c, r (| for a rule)."
+   ]
+  },
+  "\\multicolumn{3}": {
+   "fr": [
+    "texte",
+    "Contenu de la case."
+   ],
+   "en": [
+    "text",
+    "Content of the cell."
+   ]
+  },
+  "\\multirow{1}": {
+   "fr": [
+    "lignes",
+    "Nombre de lignes couvertes."
+   ],
+   "en": [
+    "rows",
+    "Number of rows spanned."
+   ]
+  },
+  "\\multirow{2}": {
+   "fr": [
+    "largeur",
+    "Largeur : * pour la largeur naturelle."
+   ],
+   "en": [
+    "width",
+    "Width: * for the natural width."
+   ]
+  },
+  "\\multirow{3}": {
+   "fr": [
+    "texte",
+    "Contenu de la case."
+   ],
+   "en": [
+    "text",
+    "Content of the cell."
+   ]
+  },
+  "\\hyperref[1]": {
+   "fr": [
+    "clé",
+    "Étiquette de la cible (définie par \\label)."
+   ],
+   "en": [
+    "key",
+    "Label of the target (set by \\label)."
+   ]
+  },
+  "\\hyperref{1}": {
+   "fr": [
+    "texte",
+    "Texte cliquable."
+   ],
+   "en": [
+    "text",
+    "Clickable text."
+   ]
+  },
+  "\\includegraphics{1}": {
+   "fr": [
+    "fichier",
+    "Chemin du fichier, relatif au document principal."
+   ],
+   "en": [
+    "file",
+    "Path of the file, relative to the main document."
+   ]
+  },
+  "\\input{1}": {
+   "fr": [
+    "fichier",
+    "Chemin du fichier, relatif au document principal."
+   ],
+   "en": [
+    "file",
+    "Path of the file, relative to the main document."
+   ]
+  },
+  "\\include{1}": {
+   "fr": [
+    "fichier",
+    "Chemin du fichier, relatif au document principal."
+   ],
+   "en": [
+    "file",
+    "Path of the file, relative to the main document."
+   ]
+  }
+ }
+}

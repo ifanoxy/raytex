@@ -6,6 +6,7 @@ import * as ipc from "../ipc";
 import type { CompletionItem, ItemKind } from "../types";
 import { t } from "../i18n.svelte";
 import { completionPrefix, docPath, hooks } from "./context";
+import { argumentHints } from "./hints";
 import { autoClosed } from "./pairs";
 
 const TYPE: Record<ItemKind, string> = {
@@ -139,7 +140,7 @@ const openInEmptyArgument = EditorView.updateListener.of((u) => {
 });
 
 export function latexCompletion() {
-  return [openInEmptyArgument, latexAutocompletion()];
+  return [openInEmptyArgument, latexAutocompletion(), argumentHints()];
 }
 
 function latexAutocompletion() {

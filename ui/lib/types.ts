@@ -320,6 +320,13 @@ export interface CompletionItem {
   shortcut?: string;
 }
 
+/** What a free argument expects (engine: completion::hints). */
+export interface ArgumentHint {
+  parts: { text: string; active: boolean }[];
+  name: string;
+  doc: string;
+}
+
 export interface CompletionList {
   from: number;
   toAfter: number;

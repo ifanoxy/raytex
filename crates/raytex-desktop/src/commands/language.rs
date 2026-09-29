@@ -151,6 +151,33 @@ pub async fn complete(
     .await
 }
 
+/// What the free argument at the cursor expects (shown above it).
+#[tauri::command]
+pub async fn argument_hint(
+    app: AppHandle,
+    path: String,
+    before: String,
+    after: String,
+) -> CmdResult<Option<completion::hints::ArgumentHint>> {
+    let p = abs(&path);
+    blocking(&app, move |_, state| {
+        let settings = state.settings().clone();
+        let project = state.project();
+        let pr = project.as_ref()?;
+        let req = CompletionRequest {
+            file: &p,
+            before: &before,
+            after: &after,
+            explicit: false,
+            lang: state.lang(),
+            settings: &settings.completion,
+            macros: &settings.macros,
+        };
+        completion::argument_hint(&pr.ws, &req)
+    })
+    .await
+}
+
 /// Documentation of a completion item (HTML).
 #[tauri::command]
 pub async fn completion_info(

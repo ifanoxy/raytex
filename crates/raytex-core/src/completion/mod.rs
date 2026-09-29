@@ -14,6 +14,7 @@
 //! Documentation is fetched lazily for the highlighted item ([`info`]).
 
 pub mod data;
+pub mod hints;
 pub mod keys;
 
 use std::collections::HashSet;
@@ -236,6 +237,27 @@ pub fn complete(ws: &Workspace, req: &CompletionRequest<'_>) -> Option<Completio
     (!list.items.is_empty()).then_some(list)
 }
 
+/// What the free argument at the cursor expects (none when it has a list of
+/// proposals, or is not an argument).
+pub fn argument_hint(ws: &Workspace, req: &CompletionRequest<'_>) -> Option<hints::ArgumentHint> {
+    if !req.settings.enabled {
+        return None;
+    }
+    let CursorContext::Argument {
+        kind: ArgumentKind::Keys(target),
+        ..
+    } = cursor_context(req.before, req.after)
+    else {
+        return None;
+    };
+    Completer {
+        ws,
+        req,
+        root: ws.root_for(req.file),
+    }
+    .hint(&target)
+}
+
 /// Empties the snippet fields written between braces: `\section{${1:title}}`
 /// becomes `\section{${1}}`, so completion creates the braces and the user
 /// types the value. Defaults between brackets (`[${1:htbp}]`) are real
@@ -271,7 +293,12 @@ pub fn empty_brace_fields(snippet: &str) -> String {
                     let default = &snippet[body..end];
                     let opened = out.ends_with('{') || out.ends_with("{\\");
                     let closed = bytes.get(end + 1) == Some(&b'}');
-                    if opened && closed && !default.contains("${") {
+                    // A name of what to write (`[${1:term}]`) is not inserted
+                    // either: the hint above the cursor says it.
+                    let in_brackets = out.ends_with('[') && bytes.get(end + 1) == Some(&b']');
+                    if (opened && closed || in_brackets && hints::is_placeholder_name(default))
+                        && !default.contains("${")
+                    {
                         out.push_str(&snippet[i..body - 1]);
                         out.push('}');
                         i = end + 1;
@@ -878,19 +905,7 @@ impl Completer<'_> {
                 CompletionList::new(partial, items)
             }
             ArgumentKind::Keys(target) => {
-                let (class, _, loaded) = self.loaded();
-                let available = |package: &str| {
-                    package == "latex"
-                        || match package.strip_prefix("class:") {
-                            Some(c) => class.as_deref() == Some(c),
-                            None => loaded.contains(package),
-                        }
-                };
-                let sets: Vec<(usize, &keys::KeySet)> = keys::sets()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, s)| s.targets.contains(&target) && available(&s.package))
-                    .collect();
+                let sets = self.key_sets(&target);
                 if sets.is_empty() {
                     return None;
                 }
@@ -903,6 +918,76 @@ impl Completer<'_> {
         list.items
             .dedup_by(|a, b| a.label == b.label && a.kind == b.kind);
         Some(list)
+    }
+
+    /// Key sets of an argument (`\\includegraphics[1]`) whose package is loaded.
+    fn key_sets(&self, target: &str) -> Vec<(usize, &'static keys::KeySet)> {
+        let (class, _, loaded) = self.loaded();
+        let available = |package: &str| {
+            package == "latex"
+                || match package.strip_prefix("class:") {
+                    Some(c) => class.as_deref() == Some(c),
+                    None => loaded.contains(package),
+                }
+        };
+        keys::sets()
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.targets.iter().any(|t| t == target) && available(&s.package))
+            .collect()
+    }
+
+    /// What the free argument `target` (`\\item[1]`, `minipage{1}`) expects.
+    fn hint(&self, target: &str) -> Option<hints::ArgumentHint> {
+        if !self.key_sets(target).is_empty() {
+            return None;
+        }
+        let at = target.find(['[', '{'])?;
+        let (head, rest) = target.split_at(at);
+        let open = rest.chars().next()?;
+        let position: usize = rest[1..rest.len() - 1].parse().ok()?;
+        let lang = self.lang();
+        let (_, _, loaded) = self.loaded();
+        if let Some(name) = head.strip_prefix('\\') {
+            if let Some((def, _)) = self
+                .ws
+                .command_definitions(&self.root)
+                .into_iter()
+                .find(|(d, _)| d.name == name)
+            {
+                let args: String = (1..=def.args)
+                    .map(|i| {
+                        if i == 1 && def.first_optional {
+                            "[#1]".to_owned()
+                        } else {
+                            format!("{{#{i}}}")
+                        }
+                    })
+                    .collect();
+                let mut h = hints::hint(head, &args, open, position, target, lang)?;
+                h.doc = match lang {
+                    Lang::Fr => format!("Argument {} de \\{name}, défini dans le projet.", h.name),
+                    Lang::En => format!("Argument {} of \\{name}, defined in the project.", h.name),
+                };
+                return Some(h);
+            }
+            let kb = kb();
+            let cmd = kb
+                .commands_named(name)
+                .find(|c| c.package == KERNEL || loaded.contains(&c.package))
+                .or_else(|| kb.commands_named(name).next())?;
+            hints::hint(head, &cmd.args, open, position, target, lang)
+        } else {
+            let env = kb().environment(head, Some(&loaded))?;
+            hints::hint(
+                &format!("\\begin{{{head}}}"),
+                &env.args,
+                open,
+                position,
+                target,
+                lang,
+            )
+        }
     }
 
     /// Keys of `sets` (documented first, then those read from the
@@ -930,7 +1015,7 @@ impl Completer<'_> {
         }
         let mut seen = HashSet::new();
         let mut items = Vec::new();
-        for (index, set) in sets {
+        for (index, set) in sets.iter() {
             for (j, k) in set.keys.iter().enumerate() {
                 if !seen.insert(k.name.clone()) {
                     continue;
@@ -1657,6 +1742,26 @@ mod tests {
     }
 
     #[test]
+    fn hints_of_free_arguments() {
+        let (_d, ws, main) = ws();
+        let s = CompletionSettings::default();
+        let hint = |before: &str, after: &str| argument_hint(&ws, &req(&main, before, after, &s));
+        let item = hint("\\begin{description}\n\\item[", "] x").unwrap();
+        assert_eq!(item.name, "terme");
+        assert!(item.parts[1].active);
+        let section = hint("\\section{Introduction et ", "}").unwrap();
+        assert_eq!(section.name, "titre");
+        // A command of the project: its arguments by number.
+        let norm = hint("$\\norm{", "}$").unwrap();
+        assert_eq!(norm.name, "#1");
+        assert!(norm.doc.contains("projet"));
+        // Arguments with proposals have no hint.
+        assert!(hint("\\ref{", "}").is_none());
+        assert!(hint("\\begin{minipage}[", "]{3cm}").is_none());
+        assert!(hint("texte", "").is_none());
+    }
+
+    #[test]
     fn fields_between_braces_start_empty() {
         assert_eq!(empty_brace_fields("section{${1:title}}"), "section{${1}}");
         assert_eq!(
@@ -1675,6 +1780,11 @@ mod tests {
         );
         assert_eq!(empty_brace_fields("x{${1:a\\{b\\}}}é"), "x{${1}}é");
         assert_eq!(empty_brace_fields("item ${1:text}"), "item ${1:text}");
+        // Names of what to write in brackets are left out too (the hint says them).
+        assert_eq!(
+            empty_brace_fields("\\item[${1:term}] ${2}"),
+            "\\item[${1}] ${2}"
+        );
         assert_eq!(
             empty_brace_fields("{${1:${SELECTION}}}"),
             "{${1:${SELECTION}}}"
