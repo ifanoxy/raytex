@@ -1,0 +1,50 @@
+\documentclass[11pt,a4paper]{report}
+
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+\usepackage{booktabs}
+\usepackage{csquotes}
+\usepackage[backend=biber, style=numeric, sorting=none]{biblatex}
+\addbibresource{references.bib}
+\usepackage[hidelinks]{hyperref}
+
+\title{Rapport test}
+\author{}
+\date{\today}
+
+\begin{document}
+
+% Pas d'ancre de page pour la page de titre (évite un doublon « page.1 »)
+\hypersetup{pageanchor=false}
+\begin{titlepage}
+  \centering
+  {\large \par}
+  \vspace*{4cm}
+  {\Huge\bfseries Rapport test\par}
+  \vspace{2cm}
+  {\Large \par}
+  \vfill
+  {\large \today\par}
+\end{titlepage}
+\hypersetup{pageanchor=true}
+
+\tableofcontents
+
+% Chaque chapitre est dans son propre fichier.
+\include{chapters/introduction}
+\include{chapters/methode}
+\include{chapters/conclusion}
+
+\printbibliography[heading=bibintoc]
+
+\appendix
+\chapter{Annexe}
+Contenu complémentaire.
+
+\end{document}

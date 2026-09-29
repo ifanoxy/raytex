@@ -66,6 +66,17 @@ cargo test -p raytex-core --release -- --ignored --skip ctan
 
 ## 3. End-to-end checks of the application
 
+All the scenes at once, on a fresh copy of `tests/e2e/rapport`, with a
+screenshot at each step (in `e2e-output/`):
+
+```powershell
+node scripts/e2e.mjs
+```
+
+The CI runs the same on Windows with MiKTeX (workflow *Integration*, job
+*Application on Windows*; screenshots and the Windows installers are
+attached to the run). One scene group by hand:
+
 The self-test variables are set this way in PowerShell (development builds
 only):
 

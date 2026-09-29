@@ -23,6 +23,7 @@ First version.
 - Projects in folders whose path has a space, an accent or a Windows short name (`C:\Users\Jean Dupont\…`, `RUNNER~1`) build with MiKTeX: the engine runs without `TEXINPUTS`, which made MiKTeX rewrite the root file as a full path that TeX misread. Paths no longer carry the `\\?\` prefix of Windows. The *modern article* template loads its Libertinus fonts by file name, which MiKTeX finds.
 - A click on an error (or in the PDF) no longer opens a second, read-only copy of a file of the project: when TeX or SyncTeX writes its path otherwise (another case, other slashes, a Windows short name, through a link), it is named like the project names it; on Windows, paths are compared without regard to case.
 - `npm test` works from Node 22.12 (Node 23.5 needed an option to run TypeScript).
+- End-to-end checks of the application in the repository: `node scripts/e2e.mjs` runs the self-test scenes (workflow, fixes, files, projects) on `tests/e2e/rapport` with a screenshot at each step, on macOS and Windows; the CI runs them on Windows with MiKTeX and builds the Windows installers (MSI, NSIS), both attached to the run.
 - CI: integration tests (TeX Live, MiKTeX) in their own workflow, never cancelled by a newer push (the newest waits), so the long MiKTeX run always finishes.
 - CI: integration tests with MiKTeX on Windows (packages installed on the fly), next to TeX Live on Linux; [docs/WINDOWS.md](docs/WINDOWS.md) explains how to build, test and check MiKTeX on Windows.
 

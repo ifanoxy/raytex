@@ -84,3 +84,61 @@ jobs:
       # at once make one of them fail (MiKTeX locks its package database).
       - name: Engine tests needing TeX
         run: cargo test -p raytex-core --release -- --ignored --skip ctan --nocapture --test-threads=1
+
+  # The application itself on Windows, with MiKTeX: the scenes of
+  # ui/dev/selftest.ts (scripts/e2e.mjs), with a screenshot at each step.
+  windows-app:
+    name: Application on Windows (end to end, MiKTeX)
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: MiKTeX (packages installed on the fly)
+        shell: pwsh
+        run: |
+          choco install miktex --no-progress -y
+          $bin = "C:\Program Files\MiKTeX\miktex\bin\x64"
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          & "$bin\initexmf.exe" --admin --set-config-value="[MPM]AutoInstall=1"
+          & "$bin\initexmf.exe" --set-config-value="[MPM]AutoInstall=1"
+          & "$bin\miktex.exe" --admin packages update-package-database
+          & "$bin\initexmf.exe" --admin --update-fndb
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Scenes of the application
+        run: node scripts/e2e.mjs workflow fixes files projects
+      - name: Logs and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-app-screenshots
+          path: e2e-output/
+          retention-days: 14
+
+  # Installers for Windows (MSI and NSIS), to download from the run.
+  windows-installers:
+    name: Windows installers
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run app:build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: raytex-windows-installers
+          path: |
+            target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*.exe
+          retention-days: 30

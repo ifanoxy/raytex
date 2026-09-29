@@ -24,6 +24,7 @@ import { fonts } from "../lib/state/fonts.svelte";
 import { templates } from "../lib/state/templates.svelte";
 import { ui } from "../lib/state/ui.svelte";
 import { viewer } from "../lib/state/viewer.svelte";
+import { basename, samePath } from "../lib/utils";
 
 async function until(check: () => boolean, timeoutMs: number, what: string) {
   const start = Date.now();
@@ -77,7 +78,7 @@ export async function runSelfTest() {
     if (fwd && viewer.pdf) {
       const r = fwd.rects[0];
       const inv = await ipc.synctexInverse(viewer.pdf, fwd.page, r.x + 1, r.y + r.height / 2);
-      report.synctexInverse = inv ? `${inv.file.split("/").pop()}:${inv.line}` : null;
+      report.synctexInverse = inv ? `${basename(inv.file)}:${inv.line}` : null;
     }
     const outline = await ipc.structure(main);
     report.outline = outline?.outline.length ?? 0;
@@ -129,7 +130,7 @@ async function scenes(log: (msg: string) => void) {
     view().dispatch({ selection: { anchor: lineStart(target) + 5 } });
     view().focus();
     const fwd = await ipc.synctexForward(chapter, target);
-    log(`forward ${chapter.split("/").pop()}:${target} → ${JSON.stringify(fwd && { page: fwd.page, rects: fwd.rects })}`);
+    log(`forward ${basename(chapter)}:${target} → ${JSON.stringify(fwd && { page: fwd.page, rects: fwd.rects })}`);
     await editor.syncForward();
     await pause(1200);
     const sc = document.querySelector<HTMLElement>(".pdf-viewer .scroller");
@@ -707,7 +708,7 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     type(nameInput, "Devoir de maths");
     document.querySelector<HTMLButtonElement>(".form .btn.primary")!.click();
     await until(() => ui.overlay === "image", 20_000, "image dialog after conversion");
-    check("converted", !project.info?.light && project.info?.root === `${projectsDir}/devoir-de-maths`, project.info?.root);
+    check("converted", !project.info?.light && samePath(project.info?.root, `${projectsDir}/devoir-de-maths`), project.info?.root);
     check("files copied", (await ipc.pathExists(`${projectsDir}/devoir-de-maths/partie.tex`)) && (await ipc.pathExists(`${projectsDir}/devoir-de-maths/devoir.tex`)));
     check("original untouched", !(await ipc.pathExists(`${loose}/raytex.toml`)));
     ui.closeOverlay();
@@ -870,7 +871,7 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
   const row = (name: string) => [...document.querySelectorAll<HTMLElement>(".tree .row")].find((r) => r.dataset.path?.endsWith(`/${name}`))!;
   const click = (name: string, mods: { shift?: boolean; add?: boolean } = {}) =>
     row(name).dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: !!mods.shift, metaKey: !!mods.add && mac, ctrlKey: !!mods.add && !mac }));
-  const names = () => fileSelection.paths.map((p) => p.split("/").pop()).join(",");
+  const names = () => fileSelection.paths.map((p) => basename(p)).join(",");
   try {
     ui.setVisible("sidebar", true);
     ui.showSidebar("files");

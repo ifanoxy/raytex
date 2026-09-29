@@ -27,3 +27,4 @@ Thumbs.db
 
 # Local assistant settings
 .claude/
+e2e-output/
