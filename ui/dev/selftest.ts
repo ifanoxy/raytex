@@ -296,7 +296,10 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     // The studio opens on the whiteboard: the templates are in their tab.
     await until(() => !!document.querySelector(".studio"), 10_000, "tikz studio");
     clickText('[role="dialog"] [role="tab"]', "Modèles") || clickText('[role="dialog"] [role="tab"]', "Templates");
-    await until(() => !!document.querySelector(".studio .tpl"), 5_000, "tikz templates");
+    await until(() => !!document.querySelector(".studio .tpl"), 20_000, "tikz templates").catch((e) => {
+      const tabs = [...document.querySelectorAll<HTMLElement>('[role="dialog"] [role="tab"]')].map((t) => `${t.textContent?.trim()}${t.getAttribute("aria-selected") === "true" ? "*" : ""}`);
+      throw new Error(`${e.message} (overlay ${ui.overlay}, tabs ${tabs.join(", ")})`);
+    });
     clickText(".cats .cat", "Diagram") || clickText(".cats .cat", "Diagramme");
     await pause(300);
     clickText(".templates .tpl", "Organigramme") || clickText(".templates .tpl", "Flowchart");

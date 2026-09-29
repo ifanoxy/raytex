@@ -302,6 +302,8 @@
     }
     busy = true;
     try {
+      // Pasted images come with the dialog: the project's folder may not be known yet.
+      await ready;
       const files: string[] = [];
       for (const item of items) files.push(await importItem(item));
       const paths = files.map(includePath);

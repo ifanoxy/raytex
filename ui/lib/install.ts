@@ -49,7 +49,7 @@ export async function confirmAndRun(request: JobRequest, title: string): Promise
 }
 
 /** MiKTeX installs the missing packages itself, silently, during builds. */
-function miktexInstalls(): boolean {
+export function miktexInstalls(): boolean {
   return tex.active?.kind === "miktex" && !!app.settings?.build.miktexAutoInstall;
 }
 

@@ -120,6 +120,16 @@ jobs:
         env:
           WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: --disable-features=CalculateNativeWinOcclusion --disable-renderer-backgrounding --disable-background-timer-throttling --disable-backgrounding-occluded-windows
         run: node scripts/e2e.mjs workflow fixes files projects media
+      # Why MiKTeX could not install a package on the fly, when that happens.
+      - name: MiKTeX logs
+        if: always()
+        shell: pwsh
+        run: |
+          foreach ($pair in @(@("user", "$env:LOCALAPPDATA\MiKTeX\miktex\log"), @("admin", "$env:ProgramData\MiKTeX\miktex\log"))) {
+            $to = "e2e-output/miktex-logs/$($pair[0])"
+            New-Item -ItemType Directory -Force $to | Out-Null
+            if (Test-Path $pair[1]) { Copy-Item "$($pair[1])\*.log" $to -ErrorAction SilentlyContinue }
+          }
       - name: Logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4

@@ -9,6 +9,7 @@
   import * as ipc from "$lib/ipc";
   import { addLines, addPackages, commentOutPackages, hasPackage, loadedPackages, setStatement } from "$lib/preamble";
   import { fontCommand } from "$lib/fonts";
+  import { miktexInstalls } from "$lib/install";
   import { app } from "$lib/state/app.svelte";
   import { fonts } from "$lib/state/fonts.svelte";
   import { editor } from "$lib/state/editor.svelte";
@@ -235,7 +236,8 @@
   }
 
   async function applyTex(font: TexFont) {
-    if (!installed.has(font.package.split(",")[0])) {
+    // MiKTeX installs it by itself at the next build.
+    if (!installed.has(font.package.split(",")[0]) && !miktexInstalls()) {
       ui.toast("warning", t("fonts.notInstalled", { name: font.name }));
     }
     // Other font packages of the same kind are commented out (they would fight).

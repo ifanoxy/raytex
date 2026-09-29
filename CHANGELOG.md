@@ -30,6 +30,8 @@ First version.
 - Saving a file while another program reads it (TeX during a build, an antivirus, the search indexer) no longer fails with "Access is denied": the save tries again for a moment, then writes the file in place; no temporary file is left in the folder.
 - The TikZ studio no longer undoes a first stroke or tab chosen right after opening it (the gallery and the libraries arrived later and reset the board), and pasting an SVG reads the system fonts once and only when the drawing has text (seconds on Windows).
 - "auto expansion is only possible with scalable fonts" (microtype with a font installed only as a bitmap, or whose MiKTeX package is still being installed) is explained: build again, install the font's `-type1` package, or `expansion=false`.
+- Images pasted and inserted right after the image dialog opened go into the project's folder (they could be written next to the application, then refused as outside the project).
+- Choosing a LaTeX font that is not installed no longer warns when MiKTeX installs packages by itself: it comes with the next build.
 - A preview (TikZ, font) that produces no PDF always says why: time limit reached (MiKTeX may still be installing a package: try again), or the engine's last message.
 - The window is brought inside its screen at start when it is larger (first start on a laptop: 1366 × 768, or 1920 × 1080 at 150 %), so the status bar is not under the task bar.
 - The format bar fits at every window width from 900 px: its breakpoints were measured again with the Matrix button (alignment and links hide below 1510 px, texts below 1195 px, undo/redo and macros below 980 px).
