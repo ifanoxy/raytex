@@ -8,8 +8,10 @@
   import { project } from "$lib/state/project.svelte";
   import { viewer } from "$lib/state/viewer.svelte";
   import { type MenuItem, ui } from "$lib/state/ui.svelte";
+  import { appWindow } from "$lib/state/window.svelte";
   import { basename, formatDuration, prettyKey, relative, samePath } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
+  import WindowControls from "./WindowControls.svelte";
 
   const logo = $derived(app.theme === "dark" ? "/assets/logo-mark-dark.svg" : "/assets/logo-mark-light.svg");
 
@@ -88,7 +90,14 @@
   const live = $derived(app.settings?.build.autoBuild === "onIdle");
 </script>
 
-<header class="toolbar">
+<!-- The top bar is also the title bar: its empty parts move the window. -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<header
+  class="toolbar"
+  class:own-buttons={appWindow.titleBar === "windows"}
+  class:traffic-lights={appWindow.titleBar === "mac" && !appWindow.fullscreen}
+  onmousedown={(e) => appWindow.drag(e)}
+>
   <div class="brand">
     <img src={logo} alt="" width="26" height="26" />
   </div>
@@ -172,6 +181,10 @@
       <Icon name="chevron-down" size={12} />
     </button>
   {/if}
+
+  {#if appWindow.titleBar === "windows"}
+    <WindowControls />
+  {/if}
 </header>
 
 <style>
@@ -185,6 +198,14 @@
     border-bottom: 1px solid var(--border);
     min-width: 0;
     overflow: hidden;
+    user-select: none;
+  }
+  .toolbar.own-buttons {
+    padding-right: 0;
+  }
+  /* Room for the close, minimize and zoom buttons of macOS. */
+  .toolbar.traffic-lights {
+    padding-left: 86px;
   }
   .brand {
     display: flex;

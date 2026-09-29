@@ -52,7 +52,16 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        // Size and position come back; the title bar is the one of the
+        // configuration (drawn by RayTeX on Windows).
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all()
+                        - tauri_plugin_window_state::StateFlags::DECORATIONS,
+                )
+                .build(),
+        )
         .manage(AppState::new())
         // The last window is gone: the application quits (the unsaved files
         // were dealt with when it was closed).
