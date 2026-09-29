@@ -286,7 +286,7 @@ const pdfBytes = () =>
 
 const COMMANDS = ["section", "subsection", "textbf", "textit", "emph", "frac", "sqrt", "alpha", "beta", "label", "ref", "eqref", "cite", "includegraphics", "begin", "end", "item", "mathbb", "partial", "Delta"];
 
-function complete(before: string): T.CompletionList | null {
+function complete(before: string, after = ""): T.CompletionList | null {
   const cmd = /\\([a-zA-Z]*)$/.exec(before);
   if (cmd) {
     return {
@@ -320,13 +320,14 @@ function complete(before: string): T.CompletionList | null {
   }
   const env = /\\begin\{([^}]*)$/.exec(before);
   if (env) {
+    // Like the engine: the closing brace is replaced too.
     return {
       from: env[1].length,
-      toAfter: 0,
-      validFor: null,
+      toAfter: after.startsWith("}") ? 1 : 0,
+      validFor: "^[a-zA-Z*@-]*$",
       filter: true,
       incomplete: false,
-      items: ["equation", "align", "itemize", "enumerate", "figure", "table", "theorem"].map((e) => ({ label: e, kind: "environment", apply: e, snippet: false, boost: 0 })),
+      items: ["equation", "align", "itemize", "enumerate", "figure", "table", "theorem"].map((e) => ({ label: e, kind: "environment", apply: `${e}}`, snippet: false, boost: 0 })),
     };
   }
   return null;
@@ -482,7 +483,7 @@ export function installMocks() {
         case "lint_project":
           return Object.entries(files).flatMap(([path, text]) => (path.endsWith(".tex") ? lintFor(path, text) : []));
         case "complete":
-          return complete(a.before as string);
+          return complete(a.before as string, a.after as string);
         case "completion_info":
           return `<p><code>\\${a.key}</code> — documentation de démonstration.</p>`;
         case "hover":

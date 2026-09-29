@@ -1,7 +1,7 @@
 // Completion source backed by the Rust engine.
 
-import { autocompletion, type Completion, type CompletionContext, type CompletionResult, snippet, startCompletion } from "@codemirror/autocomplete";
-import type { EditorView } from "@codemirror/view";
+import { autocompletion, type Completion, type CompletionContext, type CompletionResult, completionStatus, snippet, startCompletion } from "@codemirror/autocomplete";
+import { EditorView } from "@codemirror/view";
 import * as ipc from "../ipc";
 import type { CompletionItem, ItemKind } from "../types";
 import { t } from "../i18n.svelte";
@@ -34,10 +34,17 @@ interface Extra {
   shortcut?: string;
 }
 
-function apply(item: CompletionItem) {
+/**
+ * `tail`: text after the cursor that the item replaces too (the `}` of
+ * `\\begin{it|}`, the end of a name). It is not part of the completion range:
+ * the editor filters the items with the whole range, and `it}` would match
+ * nothing.
+ */
+function apply(item: CompletionItem, tail: string) {
   return (view: EditorView, completion: Completion, from: number, to: number) => {
+    if (tail && view.state.sliceDoc(to, to + tail.length) === tail) to += tail.length;
     // `@[` typed became `@[]`: the `]` goes with what is replaced.
-    if (autoClosed(view.state.sliceDoc(from, to), view.state.sliceDoc(to, to + 1))) to += 1;
+    else if (autoClosed(view.state.sliceDoc(from, to), view.state.sliceDoc(to, to + 1))) to += 1;
     if (item.snippet) {
       snippet(item.apply)(view, completion, from, to);
     } else {
@@ -73,13 +80,14 @@ async function source(context: CompletionContext): Promise<CompletionResult | nu
     return null;
   }
   if (!list || context.aborted) return null;
+  const tail = after.slice(0, list.toAfter);
   const options: Completion[] = list.items.map((item) => {
     const c: Completion & Extra = {
       label: item.label,
       detail: item.detail,
       type: TYPE[item.kind] ?? "text",
       boost: item.boost,
-      apply: apply(item),
+      apply: apply(item, tail),
       glyph: item.glyph,
       color: item.color,
       shortcut: item.shortcut,
@@ -103,14 +111,34 @@ async function source(context: CompletionContext): Promise<CompletionResult | nu
   const pattern = list.validFor ? new RegExp(list.validFor) : null;
   return {
     from: pos - list.from,
-    to: pos + list.toAfter,
     options,
     validFor: pattern && !list.incomplete ? (text: string) => text.startsWith(typed) && pattern.test(text) : undefined,
     filter: list.filter,
   };
 }
 
+/** Arguments completed as soon as the cursor is in their empty braces. */
+const ARGUMENT = /\\(?:begin|end|[a-zA-Z]*ref|[a-zA-Z]*cite[a-zA-Z]*|usepackage|RequirePackage|documentclass|input|include|includeonly|includegraphics|addbibresource|bibliography|bibliographystyle|usetikzlibrary|textcolor|color|colorbox|pagecolor|gls|Gls|glspl|Glspl|acr|ac)\*?(?:\[[^\]\n]*\])*\{(?:[^{}\n]*,)?$/;
+
+/**
+ * The cursor put into `\\begin{|}`, `\\ref{|}`, `\\cite{a,|}` (arrows, click):
+ * the list opens as if something had been typed.
+ */
+const openInEmptyArgument = EditorView.updateListener.of((u) => {
+  if (u.docChanged || !u.selectionSet || !u.transactions.some((tr) => tr.isUserEvent("select"))) return;
+  const sel = u.state.selection.main;
+  if (!sel.empty || completionStatus(u.state) !== null || !u.state.facet(docPath)) return;
+  const line = u.state.doc.lineAt(sel.head);
+  const before = line.text.slice(0, sel.head - line.from);
+  const next = line.text[sel.head - line.from];
+  if ((next === "}" || next === ",") && ARGUMENT.test(before)) setTimeout(() => startCompletion(u.view), 0);
+});
+
 export function latexCompletion() {
+  return [openInEmptyArgument, latexAutocompletion()];
+}
+
+function latexAutocompletion() {
   return autocompletion({
     override: [source],
     activateOnTyping: true,
