@@ -38,10 +38,11 @@ pub enum ArgumentKind {
     Glossary,
     /// Float placement: `\begin{figure}[…]`.
     Placement,
-    /// Key-value options of `\includegraphics[…]`.
-    GraphicsOptions,
-    /// Any other argument (no special completion).
-    Other,
+    /// Any other argument, named after its command and position, for the
+    /// keys and values it accepts (see [`crate::completion::keys`]):
+    /// `\includegraphics[1]` (first optional argument), `\hypersetup{1}`
+    /// (first mandatory one), `itemize[1]` (`\begin{itemize}[…]`).
+    Keys(String),
 }
 
 /// Kind of file expected in a path argument.
@@ -283,7 +284,10 @@ fn argument_context(before: &str, after: &str) -> Option<CursorContext> {
             ("crefrange" | "Crefrange" | "cpagerefrange", 0 | 1) => {
                 ArgumentKind::Reference(command.to_owned())
             }
-            _ => ArgumentKind::Other,
+            ("begin", n) => {
+                ArgumentKind::Keys(format!("{}{{{n}}}", first_group_text().unwrap_or_default()))
+            }
+            (cmd, n) => ArgumentKind::Keys(format!("\\{cmd}{{{}}}", n + 1)),
         }
     } else {
         match command {
@@ -302,11 +306,11 @@ fn argument_context(before: &str, after: &str) -> Option<CursorContext> {
                 Some(
                     "figure" | "figure*" | "table" | "table*" | "wrapfigure" | "sidewaysfigure",
                 ) => ArgumentKind::Placement,
-                _ => ArgumentKind::Other,
+                Some(env) => ArgumentKind::Keys(format!("{env}[{}]", optionals_before + 1)),
+                None => ArgumentKind::Keys(String::new()),
             },
-            "includegraphics" => ArgumentKind::GraphicsOptions,
             "hyperref" => ArgumentKind::Reference("hyperref".into()),
-            _ => ArgumentKind::Other,
+            _ => ArgumentKind::Keys(format!("\\{command}[{}]", optionals_before + 1)),
         }
     };
     let close = if open_char == b'{' { '}' } else { ']' };
@@ -664,7 +668,38 @@ mod tests {
         );
         assert_eq!(
             arg_kind("\\section{Intro \\emph{x} and y", "}"),
-            (ArgumentKind::Other, "Intro \\emph{x} and y".into())
+            (
+                ArgumentKind::Keys("\\section{1}".into()),
+                "Intro \\emph{x} and y".into()
+            )
+        );
+        // Keys: command (or environment) and position of the argument.
+        assert_eq!(
+            arg_kind("\\includegraphics[width=0.5\\linewidth, an", "]{a}"),
+            (
+                ArgumentKind::Keys("\\includegraphics[1]".into()),
+                "an".into()
+            )
+        );
+        assert_eq!(
+            arg_kind("\\begin{itemize}[label=", "]"),
+            (ArgumentKind::Keys("itemize[1]".into()), "label=".into())
+        );
+        assert_eq!(
+            arg_kind("\\hypersetup{colorlinks, pdftitle={A, B}, li", "}"),
+            (ArgumentKind::Keys("\\hypersetup{1}".into()), "li".into())
+        );
+        assert_eq!(
+            arg_kind("\\setmainfont{Libertinus Serif}[Sc", "]"),
+            (ArgumentKind::Keys("\\setmainfont[1]".into()), "Sc".into())
+        );
+        assert_eq!(
+            arg_kind("\\makebox[3cm][", "]{x}"),
+            (ArgumentKind::Keys("\\makebox[2]".into()), "".into())
+        );
+        assert_eq!(
+            arg_kind("\\begin{wrapfigure}{", "}"),
+            (ArgumentKind::Keys("wrapfigure{1}".into()), "".into())
         );
         assert!(matches!(
             cursor_context("\\begin{a}\n\n{x", ""),

@@ -1,0 +1,5428 @@
+{
+ "sets": [
+  {
+   "package": "latex",
+   "for": [
+    "minipage[1]",
+    "\\parbox[1]",
+    "tabular[1]",
+    "array[1]",
+    "subfigure[1]",
+    "subtable[1]"
+   ],
+   "keys": [
+    {
+     "k": "t",
+     "fr": "Aligné sur sa première ligne (haut)",
+     "en": "Aligned on its first line (top)"
+    },
+    {
+     "k": "c",
+     "fr": "Centré verticalement",
+     "en": "Centred vertically"
+    },
+    {
+     "k": "b",
+     "fr": "Aligné sur sa dernière ligne (bas)",
+     "en": "Aligned on its last line (bottom)"
+    }
+   ]
+  },
+  {
+   "package": "latex",
+   "for": [
+    "minipage[3]",
+    "\\parbox[3]"
+   ],
+   "keys": [
+    {
+     "k": "t",
+     "fr": "Contenu en haut de la boîte",
+     "en": "Content at the top of the box"
+    },
+    {
+     "k": "c",
+     "fr": "Contenu centré dans la boîte",
+     "en": "Content centred in the box"
+    },
+    {
+     "k": "b",
+     "fr": "Contenu en bas de la boîte",
+     "en": "Content at the bottom of the box"
+    },
+    {
+     "k": "s",
+     "fr": "Contenu étiré sur la hauteur",
+     "en": "Content stretched over the height"
+    }
+   ]
+  },
+  {
+   "package": "latex",
+   "for": [
+    "\\makebox[2]",
+    "\\framebox[2]"
+   ],
+   "keys": [
+    {
+     "k": "l",
+     "fr": "Texte à gauche de la boîte",
+     "en": "Text on the left of the box"
+    },
+    {
+     "k": "c",
+     "fr": "Texte centré",
+     "en": "Text centred"
+    },
+    {
+     "k": "r",
+     "fr": "Texte à droite",
+     "en": "Text on the right"
+    },
+    {
+     "k": "s",
+     "fr": "Texte étiré sur toute la largeur",
+     "en": "Text stretched over the width"
+    }
+   ]
+  },
+  {
+   "package": "latex",
+   "for": [
+    "\\makebox[1]",
+    "\\framebox[1]",
+    "minipage{1}",
+    "\\parbox{1}"
+   ],
+   "keys": [
+    {
+     "k": "\\linewidth",
+     "fr": "Largeur de la ligne",
+     "en": "Width of the line"
+    },
+    {
+     "k": "0.5\\linewidth",
+     "fr": "La moitié de la ligne",
+     "en": "Half the line"
+    },
+    {
+     "k": "0.45\\linewidth",
+     "fr": "Un peu moins de la moitié (deux côte à côte)",
+     "en": "A little less than half (two side by side)"
+    },
+    {
+     "k": "\\textwidth",
+     "fr": "Largeur du texte de la page",
+     "en": "Width of the page's text"
+    },
+    {
+     "k": "5cm",
+     "fr": "Largeur fixe",
+     "en": "Fixed width"
+    }
+   ]
+  },
+  {
+   "package": "latex",
+   "for": [
+    "\\newcommand[1]",
+    "\\renewcommand[1]",
+    "\\providecommand[1]",
+    "\\newenvironment[1]",
+    "\\renewenvironment[1]"
+   ],
+   "keys": [
+    {
+     "k": "1",
+     "fr": "1 argument : #1 dans la définition",
+     "en": "1 argument: #1 in the definition"
+    },
+    {
+     "k": "2",
+     "fr": "2 arguments : #1…#2 dans la définition",
+     "en": "2 arguments: #1…#2 in the definition"
+    },
+    {
+     "k": "3",
+     "fr": "3 arguments : #1…#3 dans la définition",
+     "en": "3 arguments: #1…#3 in the definition"
+    },
+    {
+     "k": "4",
+     "fr": "4 arguments : #1…#4 dans la définition",
+     "en": "4 arguments: #1…#4 in the definition"
+    },
+    {
+     "k": "5",
+     "fr": "5 arguments : #1…#5 dans la définition",
+     "en": "5 arguments: #1…#5 in the definition"
+    },
+    {
+     "k": "6",
+     "fr": "6 arguments : #1…#6 dans la définition",
+     "en": "6 arguments: #1…#6 in the definition"
+    },
+    {
+     "k": "7",
+     "fr": "7 arguments : #1…#7 dans la définition",
+     "en": "7 arguments: #1…#7 in the definition"
+    },
+    {
+     "k": "8",
+     "fr": "8 arguments : #1…#8 dans la définition",
+     "en": "8 arguments: #1…#8 in the definition"
+    },
+    {
+     "k": "9",
+     "fr": "9 arguments : #1…#9 dans la définition",
+     "en": "9 arguments: #1…#9 in the definition"
+    }
+   ]
+  },
+  {
+   "package": "latex",
+   "for": [
+    "\\vspace{1}",
+    "\\hspace{1}",
+    "\\addvspace{1}"
+   ],
+   "keys": [
+    {
+     "k": "\\baselineskip",
+     "fr": "Une ligne de texte",
+     "en": "One line of text"
+    },
+    {
+     "k": "\\parskip",
+     "fr": "L'espace entre paragraphes",
+     "en": "The space between paragraphs"
+    },
+    {
+     "k": "\\smallskipamount",
+     "fr": "Petit espace (celui de \\smallskip)",
+     "en": "Small space (that of \\smallskip)"
+    },
+    {
+     "k": "\\medskipamount",
+     "fr": "Espace moyen (\\medskip)",
+     "en": "Medium space (\\medskip)"
+    },
+    {
+     "k": "\\bigskipamount",
+     "fr": "Grand espace (\\bigskip)",
+     "en": "Big space (\\bigskip)"
+    },
+    {
+     "k": "\\fill",
+     "fr": "Tout l'espace disponible (ressort)",
+     "en": "All the available space (a spring)"
+    },
+    {
+     "k": "\\stretch{${1:1}}",
+     "fr": "Ressort pondéré : \\stretch{2} prend deux fois plus",
+     "en": "Weighted spring: \\stretch{2} takes twice as much"
+    },
+    {
+     "k": "1em",
+     "fr": "Largeur d'un « M » de la police",
+     "en": "Width of an \"M\" of the font"
+    },
+    {
+     "k": "1ex",
+     "fr": "Hauteur d'un « x » de la police",
+     "en": "Height of an \"x\" of the font"
+    },
+    {
+     "k": "5mm",
+     "fr": "Longueur fixe (mm, cm, pt, in)",
+     "en": "Fixed length (mm, cm, pt, in)"
+    }
+   ]
+  },
+  {
+   "package": "latex",
+   "for": [
+    "\\setlength{1}",
+    "\\addtolength{1}"
+   ],
+   "keys": [
+    {
+     "k": "\\parindent",
+     "fr": "Retrait de la première ligne des paragraphes",
+     "en": "Indent of the first line of paragraphs"
+    },
+    {
+     "k": "\\parskip",
+     "fr": "Espace entre paragraphes",
+     "en": "Space between paragraphs"
+    },
+    {
+     "k": "\\baselineskip",
+     "fr": "Distance entre deux lignes",
+     "en": "Distance between two lines"
+    },
+    {
+     "k": "\\tabcolsep",
+     "fr": "Demi-espace entre colonnes d'un tableau",
+     "en": "Half the space between table columns"
+    },
+    {
+     "k": "\\arraycolsep",
+     "fr": "Demi-espace entre colonnes d'un array",
+     "en": "Half the space between array columns"
+    },
+    {
+     "k": "\\columnsep",
+     "fr": "Espace entre colonnes de texte",
+     "en": "Space between text columns"
+    },
+    {
+     "k": "\\fboxsep",
+     "fr": "Marge intérieure de \\fbox",
+     "en": "Inner margin of \\fbox"
+    },
+    {
+     "k": "\\fboxrule",
+     "fr": "Épaisseur du cadre de \\fbox",
+     "en": "Thickness of the \\fbox frame"
+    },
+    {
+     "k": "\\textwidth",
+     "fr": "Largeur du texte",
+     "en": "Width of the text"
+    },
+    {
+     "k": "\\textheight",
+     "fr": "Hauteur du texte",
+     "en": "Height of the text"
+    },
+    {
+     "k": "\\headheight",
+     "fr": "Hauteur de l'en-tête",
+     "en": "Height of the header"
+    },
+    {
+     "k": "\\footskip",
+     "fr": "Distance du bas du texte au pied de page",
+     "en": "Distance from the text to the footer"
+    },
+    {
+     "k": "\\marginparwidth",
+     "fr": "Largeur des notes en marge",
+     "en": "Width of margin notes"
+    },
+    {
+     "k": "\\abovedisplayskip",
+     "fr": "Espace au-dessus des équations",
+     "en": "Space above equations"
+    },
+    {
+     "k": "\\belowdisplayskip",
+     "fr": "Espace au-dessous des équations",
+     "en": "Space below equations"
+    }
+   ]
+  },
+  {
+   "package": "latex",
+   "for": [
+    "\\setlength{2}",
+    "\\addtolength{2}"
+   ],
+   "keys": [
+    {
+     "k": "\\baselineskip",
+     "fr": "Une ligne de texte",
+     "en": "One line of text"
+    },
+    {
+     "k": "\\parskip",
+     "fr": "L'espace entre paragraphes",
+     "en": "The space between paragraphs"
+    },
+    {
+     "k": "\\smallskipamount",
+     "fr": "Petit espace (celui de \\smallskip)",
+     "en": "Small space (that of \\smallskip)"
+    },
+    {
+     "k": "\\medskipamount",
+     "fr": "Espace moyen (\\medskip)",
+     "en": "Medium space (\\medskip)"
+    },
+    {
+     "k": "\\bigskipamount",
+     "fr": "Grand espace (\\bigskip)",
+     "en": "Big space (\\bigskip)"
+    },
+    {
+     "k": "\\fill",
+     "fr": "Tout l'espace disponible (ressort)",
+     "en": "All the available space (a spring)"
+    },
+    {
+     "k": "0pt",
+     "fr": "Zéro (supprimer l'espace)",
+     "en": "Zero (no space)"
+    },
+    {
+     "k": "1em",
+     "fr": "Largeur d'un « M »",
+     "en": "Width of an \"M\""
+    },
+    {
+     "k": "5mm",
+     "fr": "Longueur fixe",
+     "en": "Fixed length"
+    }
+   ]
+  },
+  {
+   "package": "graphicx",
+   "for": [
+    "\\includegraphics[1]"
+   ],
+   "learn": {
+    "files": [
+     "graphicx.sty"
+    ],
+    "pattern": "\\\\define@key\\{Gin\\}\\{([A-Za-z]+)\\}"
+   },
+   "keys": [
+    {
+     "k": "width",
+     "fr": "Largeur de l'image : 0.8\\linewidth = 80 % de la ligne",
+     "en": "Width of the image: 0.8\\linewidth = 80% of the line",
+     "v": "${1:0.8}\\linewidth"
+    },
+    {
+     "k": "height",
+     "fr": "Hauteur de l'image (avec keepaspectratio pour ne pas la déformer)",
+     "en": "Height of the image (with keepaspectratio not to distort it)",
+     "v": "${1:5cm}"
+    },
+    {
+     "k": "totalheight",
+     "fr": "Hauteur totale, profondeur comprise (image tournée)",
+     "en": "Total height, depth included (rotated image)",
+     "v": "${1:5cm}"
+    },
+    {
+     "k": "scale",
+     "fr": "Facteur d'échelle : 0.5 = moitié de la taille d'origine",
+     "en": "Scale factor: 0.5 = half the original size",
+     "v": "${1:0.5}"
+    },
+    {
+     "k": "angle",
+     "fr": "Rotation en degrés, sens inverse des aiguilles d'une montre",
+     "en": "Rotation in degrees, anticlockwise",
+     "v": "${1:90}"
+    },
+    {
+     "k": "origin",
+     "fr": "Centre de la rotation : c (centre), lt, rb…",
+     "en": "Centre of the rotation: c (centre), lt, rb…",
+     "v": "${1:c}"
+    },
+    {
+     "k": "keepaspectratio",
+     "fr": "Garde les proportions quand width et height sont donnés",
+     "en": "Keeps the proportions when width and height are both given"
+    },
+    {
+     "k": "trim",
+     "fr": "Rogne : gauche bas droite haut (avec clip)",
+     "en": "Crops: left bottom right top (with clip)",
+     "v": "{${1:0 0 0 0}}"
+    },
+    {
+     "k": "clip",
+     "fr": "Cache ce qui dépasse (après trim ou viewport)",
+     "en": "Hides what goes beyond (after trim or viewport)"
+    },
+    {
+     "k": "page",
+     "fr": "Page d'un PDF à inclure",
+     "en": "Page of a PDF to include",
+     "v": "${1:1}"
+    },
+    {
+     "k": "viewport",
+     "fr": "Partie de l'image affichée : x1 y1 x2 y2 (avec clip)",
+     "en": "Part of the image shown: x1 y1 x2 y2 (with clip)",
+     "v": "{${1:0 0 100 100}}"
+    },
+    {
+     "k": "draft",
+     "fr": "Cadre avec le nom du fichier au lieu de l'image (compilation plus rapide)",
+     "en": "Frame with the file name instead of the image (faster builds)"
+    },
+    {
+     "k": "interpolate",
+     "fr": "Adoucit les images agrandies (PDF)",
+     "en": "Smooths enlarged images (PDF)"
+    },
+    {
+     "k": "decodearray",
+     "fr": "Remappe les couleurs (rarement utile)",
+     "en": "Remaps the colours (rarely useful)",
+     "v": "{${1}}"
+    }
+   ]
+  },
+  {
+   "package": "enumitem",
+   "for": [
+    "itemize[1]",
+    "enumerate[1]",
+    "description[1]",
+    "\\setlist{1}",
+    "\\setlist*{1}"
+   ],
+   "options_of": [],
+   "learn": {
+    "files": [
+     "enumitem.sty"
+    ],
+    "pattern": "\\\\enitkv@key\\{\\}\\{([A-Za-z*]+)\\}"
+   },
+   "keys": [
+    {
+     "k": "label",
+     "fr": "Étiquette de chaque élément : \\arabic*., (\\alph*), \\textbullet…",
+     "en": "Label of each item: \\arabic*., (\\alph*), \\textbullet…",
+     "values": [
+      [
+       "\\arabic*.",
+       "1. 2. 3.",
+       "1. 2. 3."
+      ],
+      [
+       "\\alph*)",
+       "a) b) c)",
+       "a) b) c)"
+      ],
+      [
+       "(\\alph*)",
+       "(a) (b) (c)",
+       "(a) (b) (c)"
+      ],
+      [
+       "\\Alph*.",
+       "A. B. C.",
+       "A. B. C."
+      ],
+      [
+       "\\roman*.",
+       "i. ii. iii.",
+       "i. ii. iii."
+      ],
+      [
+       "\\Roman*.",
+       "I. II. III.",
+       "I. II. III."
+      ],
+      [
+       "\\textbullet",
+       "Puce ronde •",
+       "Round bullet •"
+      ],
+      [
+       "--",
+       "Tiret –",
+       "Dash –"
+      ],
+      [
+       "$\\star$",
+       "Étoile ⋆",
+       "Star ⋆"
+      ],
+      [
+       "$\\triangleright$",
+       "Triangle ▹",
+       "Triangle ▹"
+      ],
+      [
+       "\\textbf{\\arabic*.}",
+       "Numéros en gras",
+       "Bold numbers"
+      ],
+      [
+       "{}",
+       "Aucune étiquette",
+       "No label"
+      ]
+     ]
+    },
+    {
+     "k": "label*",
+     "fr": "Étiquette ajoutée à celle du niveau parent (1.1, 1.2…)",
+     "en": "Label added to the parent's (1.1, 1.2…)",
+     "values": [
+      [
+       "\\arabic*.",
+       "1.1. 1.2.",
+       "1.1. 1.2."
+      ]
+     ]
+    },
+    {
+     "k": "ref",
+     "fr": "Forme des renvois \\ref vers les éléments",
+     "en": "Form of \\ref cross-references to items",
+     "v": "${1:\\arabic*}"
+    },
+    {
+     "k": "start",
+     "fr": "Numéro du premier élément",
+     "en": "Number of the first item",
+     "v": "${1:1}"
+    },
+    {
+     "k": "resume",
+     "fr": "Reprend la numérotation de la liste précédente",
+     "en": "Resumes the numbering of the previous list"
+    },
+    {
+     "k": "resume*",
+     "fr": "Reprend la numérotation et les réglages de la liste précédente",
+     "en": "Resumes the numbering and settings of the previous list"
+    },
+    {
+     "k": "series",
+     "fr": "Nom d'une suite de listes à reprendre avec resume=nom",
+     "en": "Name of a series of lists resumed with resume=name",
+     "v": "${1:nom}"
+    },
+    {
+     "k": "nosep",
+     "fr": "Supprime tous les espaces verticaux de la liste",
+     "en": "Removes all the vertical space of the list"
+    },
+    {
+     "k": "noitemsep",
+     "fr": "Supprime l'espace entre les éléments",
+     "en": "Removes the space between items"
+    },
+    {
+     "k": "itemsep",
+     "fr": "Espace entre deux éléments",
+     "en": "Space between two items",
+     "v": "${1:0pt}"
+    },
+    {
+     "k": "topsep",
+     "fr": "Espace avant et après la liste",
+     "en": "Space before and after the list",
+     "v": "${1:0pt}"
+    },
+    {
+     "k": "parsep",
+     "fr": "Espace entre paragraphes d'un même élément",
+     "en": "Space between paragraphs of an item",
+     "v": "${1:0pt}"
+    },
+    {
+     "k": "partopsep",
+     "fr": "Espace ajouté quand la liste commence un paragraphe",
+     "en": "Space added when the list starts a paragraph",
+     "v": "${1:0pt}"
+    },
+    {
+     "k": "leftmargin",
+     "fr": "Retrait de la liste à gauche (* = calculé)",
+     "en": "Indent of the list on the left (* = computed)",
+     "v": "${1:*}"
+    },
+    {
+     "k": "rightmargin",
+     "fr": "Retrait à droite",
+     "en": "Indent on the right",
+     "v": "${1:0pt}"
+    },
+    {
+     "k": "labelindent",
+     "fr": "Retrait de l'étiquette",
+     "en": "Indent of the label",
+     "v": "${1:0pt}"
+    },
+    {
+     "k": "labelwidth",
+     "fr": "Largeur réservée à l'étiquette",
+     "en": "Width kept for the label",
+     "v": "${1:*}"
+    },
+    {
+     "k": "labelsep",
+     "fr": "Espace entre l'étiquette et le texte",
+     "en": "Space between the label and the text",
+     "v": "${1:0.5em}"
+    },
+    {
+     "k": "itemindent",
+     "fr": "Retrait de la première ligne de chaque élément",
+     "en": "Indent of the first line of each item",
+     "v": "${1:0pt}"
+    },
+    {
+     "k": "listparindent",
+     "fr": "Retrait des paragraphes suivants d'un élément",
+     "en": "Indent of the next paragraphs of an item",
+     "v": "${1:0pt}"
+    },
+    {
+     "k": "align",
+     "fr": "Alignement de l'étiquette",
+     "en": "Alignment of the label",
+     "values": [
+      [
+       "left",
+       "À gauche",
+       "Left"
+      ],
+      [
+       "right",
+       "À droite (par défaut)",
+       "Right (default)"
+      ],
+      [
+       "parleft",
+       "À gauche, sur plusieurs lignes",
+       "Left, on several lines"
+      ]
+     ]
+    },
+    {
+     "k": "font",
+     "fr": "Police de l'étiquette : \\bfseries, \\itshape…",
+     "en": "Font of the label: \\bfseries, \\itshape…",
+     "v": "${1:\\bfseries}"
+    },
+    {
+     "k": "wide",
+     "fr": "Étiquette dans le texte, sans retrait (listes larges)",
+     "en": "Label inside the text, no indent (wide lists)"
+    },
+    {
+     "k": "widest",
+     "fr": "Étiquette la plus large, pour aligner (widest=00)",
+     "en": "Widest label, to align (widest=00)",
+     "v": "${1:00}"
+    },
+    {
+     "k": "before",
+     "fr": "Code exécuté au début de la liste",
+     "en": "Code run at the start of the list",
+     "v": "{${1}}"
+    },
+    {
+     "k": "after",
+     "fr": "Code exécuté à la fin de la liste",
+     "en": "Code run at the end of the list",
+     "v": "{${1}}"
+    },
+    {
+     "k": "format",
+     "fr": "Mise en forme des étiquettes de description",
+     "en": "Format of description labels",
+     "v": "${1:\\bfseries}"
+    }
+   ]
+  },
+  {
+   "package": "geometry",
+   "for": [
+    "\\geometry{1}",
+    "\\newgeometry{1}"
+   ],
+   "options_of": [
+    "geometry"
+   ],
+   "learn": {
+    "files": [
+     "geometry.sty"
+    ],
+    "pattern": "\\\\define@key\\{Gm\\}\\{([A-Za-z]+)\\}"
+   },
+   "keys": [
+    {
+     "k": "margin",
+     "fr": "Les quatre marges à la fois",
+     "en": "The four margins at once",
+     "v": "${1:2.5cm}"
+    },
+    {
+     "k": "left",
+     "fr": "Marge gauche",
+     "en": "Left margin",
+     "v": "${1:2.5cm}"
+    },
+    {
+     "k": "right",
+     "fr": "Marge droite",
+     "en": "Right margin",
+     "v": "${1:2.5cm}"
+    },
+    {
+     "k": "top",
+     "fr": "Marge du haut",
+     "en": "Top margin",
+     "v": "${1:2.5cm}"
+    },
+    {
+     "k": "bottom",
+     "fr": "Marge du bas",
+     "en": "Bottom margin",
+     "v": "${1:2.5cm}"
+    },
+    {
+     "k": "inner",
+     "fr": "Marge intérieure (reliure, recto-verso)",
+     "en": "Inner margin (binding, two-sided)",
+     "v": "${1:3cm}"
+    },
+    {
+     "k": "outer",
+     "fr": "Marge extérieure (recto-verso)",
+     "en": "Outer margin (two-sided)",
+     "v": "${1:2cm}"
+    },
+    {
+     "k": "hmargin",
+     "fr": "Marges gauche et droite",
+     "en": "Left and right margins",
+     "v": "${1:2cm}"
+    },
+    {
+     "k": "vmargin",
+     "fr": "Marges du haut et du bas",
+     "en": "Top and bottom margins",
+     "v": "${1:2cm}"
+    },
+    {
+     "k": "a4paper",
+     "fr": "Papier A4",
+     "en": "A4 paper"
+    },
+    {
+     "k": "a5paper",
+     "fr": "Papier A5",
+     "en": "A5 paper"
+    },
+    {
+     "k": "letterpaper",
+     "fr": "Papier Letter (US)",
+     "en": "Letter paper (US)"
+    },
+    {
+     "k": "landscape",
+     "fr": "Page en paysage",
+     "en": "Landscape page"
+    },
+    {
+     "k": "portrait",
+     "fr": "Page en portrait",
+     "en": "Portrait page"
+    },
+    {
+     "k": "paperwidth",
+     "fr": "Largeur du papier",
+     "en": "Paper width",
+     "v": "${1:21cm}"
+    },
+    {
+     "k": "paperheight",
+     "fr": "Hauteur du papier",
+     "en": "Paper height",
+     "v": "${1:29.7cm}"
+    },
+    {
+     "k": "textwidth",
+     "fr": "Largeur du texte (les marges s'adaptent)",
+     "en": "Width of the text (margins follow)",
+     "v": "${1:16cm}"
+    },
+    {
+     "k": "textheight",
+     "fr": "Hauteur du texte",
+     "en": "Height of the text",
+     "v": "${1:24cm}"
+    },
+    {
+     "k": "total",
+     "fr": "Largeur et hauteur du texte",
+     "en": "Width and height of the text",
+     "v": "{${1:16cm},${2:24cm}}"
+    },
+    {
+     "k": "headheight",
+     "fr": "Hauteur de l'en-tête (fancyhdr demande parfois 14pt)",
+     "en": "Height of the header (fancyhdr sometimes asks for 14pt)",
+     "v": "${1:14pt}"
+    },
+    {
+     "k": "headsep",
+     "fr": "Espace entre l'en-tête et le texte",
+     "en": "Space between the header and the text",
+     "v": "${1:1cm}"
+    },
+    {
+     "k": "footskip",
+     "fr": "Distance entre le bas du texte et le pied de page",
+     "en": "Distance from the text to the footer",
+     "v": "${1:1.5cm}"
+    },
+    {
+     "k": "includehead",
+     "fr": "Compte l'en-tête dans la zone de texte",
+     "en": "Counts the header in the text area"
+    },
+    {
+     "k": "includefoot",
+     "fr": "Compte le pied de page dans la zone de texte",
+     "en": "Counts the footer in the text area"
+    },
+    {
+     "k": "includeheadfoot",
+     "fr": "Compte en-tête et pied de page",
+     "en": "Counts header and footer"
+    },
+    {
+     "k": "bindingoffset",
+     "fr": "Espace ajouté pour la reliure",
+     "en": "Space added for the binding",
+     "v": "${1:1cm}"
+    },
+    {
+     "k": "marginparwidth",
+     "fr": "Largeur des notes en marge (\\marginpar, todonotes)",
+     "en": "Width of margin notes (\\marginpar, todonotes)",
+     "v": "${1:3cm}"
+    },
+    {
+     "k": "marginparsep",
+     "fr": "Espace entre le texte et les notes en marge",
+     "en": "Space between the text and margin notes",
+     "v": "${1:5mm}"
+    },
+    {
+     "k": "twoside",
+     "fr": "Marges différentes pages paires et impaires",
+     "en": "Different margins on even and odd pages"
+    },
+    {
+     "k": "centering",
+     "fr": "Centre la zone de texte",
+     "en": "Centres the text area"
+    },
+    {
+     "k": "showframe",
+     "fr": "Dessine les contours des zones (pour régler)",
+     "en": "Draws the outlines of the areas (for tuning)"
+    }
+   ]
+  },
+  {
+   "package": "hyperref",
+   "for": [
+    "\\hypersetup{1}"
+   ],
+   "options_of": [
+    "hyperref"
+   ],
+   "learn": {
+    "files": [
+     "hyperref.sty"
+    ],
+    "pattern": "\\\\define@key\\{Hyp\\}\\{([A-Za-z]+)\\}"
+   },
+   "keys": [
+    {
+     "k": "colorlinks",
+     "fr": "Liens en couleur au lieu de cadres",
+     "en": "Coloured links instead of frames",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "hidelinks",
+     "fr": "Liens sans couleur ni cadre (pour l'impression)",
+     "en": "Links without colour or frame (for printing)"
+    },
+    {
+     "k": "linkcolor",
+     "fr": "Couleur des liens internes (sections, \\ref)",
+     "en": "Colour of internal links (sections, \\ref)",
+     "values": [
+      [
+       "red",
+       "Rouge",
+       "Red"
+      ],
+      [
+       "blue",
+       "Bleu",
+       "Blue"
+      ],
+      [
+       "black",
+       "Noir",
+       "Black"
+      ],
+      [
+       "teal",
+       "Bleu-vert",
+       "Teal"
+      ],
+      [
+       "magenta",
+       "Magenta",
+       "Magenta"
+      ],
+      [
+       "cyan",
+       "Cyan",
+       "Cyan"
+      ],
+      [
+       "violet",
+       "Violet",
+       "Violet"
+      ],
+      [
+       "orange",
+       "Orange",
+       "Orange"
+      ],
+      [
+       "gray",
+       "Gris",
+       "Grey"
+      ],
+      [
+       "green!50!black",
+       "Vert foncé",
+       "Dark green"
+      ],
+      [
+       "blue!70!black",
+       "Bleu foncé",
+       "Dark blue"
+      ]
+     ]
+    },
+    {
+     "k": "citecolor",
+     "fr": "Couleur des citations",
+     "en": "Colour of citations",
+     "values": [
+      [
+       "red",
+       "Rouge",
+       "Red"
+      ],
+      [
+       "blue",
+       "Bleu",
+       "Blue"
+      ],
+      [
+       "black",
+       "Noir",
+       "Black"
+      ],
+      [
+       "teal",
+       "Bleu-vert",
+       "Teal"
+      ],
+      [
+       "magenta",
+       "Magenta",
+       "Magenta"
+      ],
+      [
+       "cyan",
+       "Cyan",
+       "Cyan"
+      ],
+      [
+       "violet",
+       "Violet",
+       "Violet"
+      ],
+      [
+       "orange",
+       "Orange",
+       "Orange"
+      ],
+      [
+       "gray",
+       "Gris",
+       "Grey"
+      ],
+      [
+       "green!50!black",
+       "Vert foncé",
+       "Dark green"
+      ],
+      [
+       "blue!70!black",
+       "Bleu foncé",
+       "Dark blue"
+      ]
+     ]
+    },
+    {
+     "k": "urlcolor",
+     "fr": "Couleur des adresses web",
+     "en": "Colour of web addresses",
+     "values": [
+      [
+       "red",
+       "Rouge",
+       "Red"
+      ],
+      [
+       "blue",
+       "Bleu",
+       "Blue"
+      ],
+      [
+       "black",
+       "Noir",
+       "Black"
+      ],
+      [
+       "teal",
+       "Bleu-vert",
+       "Teal"
+      ],
+      [
+       "magenta",
+       "Magenta",
+       "Magenta"
+      ],
+      [
+       "cyan",
+       "Cyan",
+       "Cyan"
+      ],
+      [
+       "violet",
+       "Violet",
+       "Violet"
+      ],
+      [
+       "orange",
+       "Orange",
+       "Orange"
+      ],
+      [
+       "gray",
+       "Gris",
+       "Grey"
+      ],
+      [
+       "green!50!black",
+       "Vert foncé",
+       "Dark green"
+      ],
+      [
+       "blue!70!black",
+       "Bleu foncé",
+       "Dark blue"
+      ]
+     ]
+    },
+    {
+     "k": "filecolor",
+     "fr": "Couleur des liens vers des fichiers",
+     "en": "Colour of links to files",
+     "values": [
+      [
+       "red",
+       "Rouge",
+       "Red"
+      ],
+      [
+       "blue",
+       "Bleu",
+       "Blue"
+      ],
+      [
+       "black",
+       "Noir",
+       "Black"
+      ],
+      [
+       "teal",
+       "Bleu-vert",
+       "Teal"
+      ],
+      [
+       "magenta",
+       "Magenta",
+       "Magenta"
+      ],
+      [
+       "cyan",
+       "Cyan",
+       "Cyan"
+      ],
+      [
+       "violet",
+       "Violet",
+       "Violet"
+      ],
+      [
+       "orange",
+       "Orange",
+       "Orange"
+      ],
+      [
+       "gray",
+       "Gris",
+       "Grey"
+      ],
+      [
+       "green!50!black",
+       "Vert foncé",
+       "Dark green"
+      ],
+      [
+       "blue!70!black",
+       "Bleu foncé",
+       "Dark blue"
+      ]
+     ]
+    },
+    {
+     "k": "allcolors",
+     "fr": "Même couleur pour tous les liens",
+     "en": "Same colour for every link",
+     "values": [
+      [
+       "red",
+       "Rouge",
+       "Red"
+      ],
+      [
+       "blue",
+       "Bleu",
+       "Blue"
+      ],
+      [
+       "black",
+       "Noir",
+       "Black"
+      ],
+      [
+       "teal",
+       "Bleu-vert",
+       "Teal"
+      ],
+      [
+       "magenta",
+       "Magenta",
+       "Magenta"
+      ],
+      [
+       "cyan",
+       "Cyan",
+       "Cyan"
+      ],
+      [
+       "violet",
+       "Violet",
+       "Violet"
+      ],
+      [
+       "orange",
+       "Orange",
+       "Orange"
+      ],
+      [
+       "gray",
+       "Gris",
+       "Grey"
+      ],
+      [
+       "green!50!black",
+       "Vert foncé",
+       "Dark green"
+      ],
+      [
+       "blue!70!black",
+       "Bleu foncé",
+       "Dark blue"
+      ]
+     ]
+    },
+    {
+     "k": "pdftitle",
+     "fr": "Titre du PDF (propriétés du document)",
+     "en": "Title of the PDF (document properties)",
+     "v": "{${1}}"
+    },
+    {
+     "k": "pdfauthor",
+     "fr": "Auteur du PDF",
+     "en": "Author of the PDF",
+     "v": "{${1}}"
+    },
+    {
+     "k": "pdfsubject",
+     "fr": "Sujet du PDF",
+     "en": "Subject of the PDF",
+     "v": "{${1}}"
+    },
+    {
+     "k": "pdfkeywords",
+     "fr": "Mots-clés du PDF",
+     "en": "Keywords of the PDF",
+     "v": "{${1}}"
+    },
+    {
+     "k": "pdfcreator",
+     "fr": "Logiciel créateur indiqué dans le PDF",
+     "en": "Creator application written in the PDF",
+     "v": "{${1}}"
+    },
+    {
+     "k": "bookmarks",
+     "fr": "Signets (table des matières du lecteur PDF)",
+     "en": "Bookmarks (the PDF viewer's outline)",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "bookmarksnumbered",
+     "fr": "Numéros des sections dans les signets",
+     "en": "Section numbers in the bookmarks"
+    },
+    {
+     "k": "bookmarksopen",
+     "fr": "Signets dépliés à l'ouverture",
+     "en": "Bookmarks unfolded when opened"
+    },
+    {
+     "k": "bookmarksopenlevel",
+     "fr": "Niveau de signets dépliés",
+     "en": "Level of unfolded bookmarks",
+     "v": "${1:1}"
+    },
+    {
+     "k": "pdfstartview",
+     "fr": "Zoom à l'ouverture du PDF",
+     "en": "Zoom when the PDF opens",
+     "values": [
+      [
+       "Fit",
+       "Page entière",
+       "Whole page"
+      ],
+      [
+       "FitH",
+       "Largeur de la page",
+       "Page width"
+      ],
+      [
+       "FitB",
+       "Contenu entier",
+       "Whole content"
+      ]
+     ]
+    },
+    {
+     "k": "pdfpagemode",
+     "fr": "Panneau affiché à l'ouverture",
+     "en": "Panel shown when opened",
+     "values": [
+      [
+       "UseOutlines",
+       "Signets",
+       "Bookmarks"
+      ],
+      [
+       "UseNone",
+       "Aucun",
+       "None"
+      ],
+      [
+       "FullScreen",
+       "Plein écran",
+       "Full screen"
+      ]
+     ]
+    },
+    {
+     "k": "breaklinks",
+     "fr": "Autorise les coupures dans les liens",
+     "en": "Allows line breaks in links"
+    },
+    {
+     "k": "linktoc",
+     "fr": "Partie cliquable dans la table des matières",
+     "en": "Clickable part in the table of contents",
+     "values": [
+      [
+       "all",
+       "Titre et numéro de page",
+       "Title and page number"
+      ],
+      [
+       "page",
+       "Numéro de page",
+       "Page number"
+      ],
+      [
+       "section",
+       "Titre",
+       "Title"
+      ]
+     ]
+    },
+    {
+     "k": "pdfborder",
+     "fr": "Bordure des liens : {0 0 0} = aucune",
+     "en": "Border of links: {0 0 0} = none",
+     "v": "{${1:0 0 0}}"
+    },
+    {
+     "k": "pdfdisplaydoctitle",
+     "fr": "Affiche le titre au lieu du nom de fichier",
+     "en": "Shows the title instead of the file name"
+    },
+    {
+     "k": "unicode",
+     "fr": "Caractères accentués dans les signets",
+     "en": "Accented characters in bookmarks"
+    },
+    {
+     "k": "final",
+     "fr": "Liens actifs même en mode brouillon",
+     "en": "Active links even in draft mode"
+    }
+   ]
+  },
+  {
+   "package": "caption",
+   "for": [
+    "\\captionsetup{1}"
+   ],
+   "options_of": [
+    "caption",
+    "subcaption"
+   ],
+   "learn": {
+    "files": [
+     "caption3.sty",
+     "caption.sty"
+    ],
+    "pattern": "\\\\DeclareCaptionOption\\*?\\{([A-Za-z]+)\\}"
+   },
+   "keys": [
+    {
+     "k": "font",
+     "fr": "Police de toute la légende",
+     "en": "Font of the whole caption",
+     "values": [
+      [
+       "small",
+       "Petit",
+       "Small"
+      ],
+      [
+       "footnotesize",
+       "Plus petit",
+       "Smaller"
+      ],
+      [
+       "it",
+       "Italique",
+       "Italics"
+      ],
+      [
+       "bf",
+       "Gras",
+       "Bold"
+      ],
+      [
+       "sf",
+       "Sans empattement",
+       "Sans serif"
+      ],
+      [
+       "sc",
+       "Petites capitales",
+       "Small caps"
+      ],
+      [
+       "{small,it}",
+       "Petit et italique",
+       "Small and italics"
+      ]
+     ]
+    },
+    {
+     "k": "labelfont",
+     "fr": "Police de l'étiquette « Figure 1 »",
+     "en": "Font of the label \"Figure 1\"",
+     "values": [
+      [
+       "bf",
+       "Gras",
+       "Bold"
+      ],
+      [
+       "it",
+       "Italique",
+       "Italics"
+      ],
+      [
+       "sc",
+       "Petites capitales",
+       "Small caps"
+      ],
+      [
+       "sf",
+       "Sans empattement",
+       "Sans serif"
+      ]
+     ]
+    },
+    {
+     "k": "textfont",
+     "fr": "Police du texte de la légende",
+     "en": "Font of the caption text",
+     "values": [
+      [
+       "it",
+       "Italique",
+       "Italics"
+      ],
+      [
+       "small",
+       "Petit",
+       "Small"
+      ],
+      [
+       "up",
+       "Droit",
+       "Upright"
+      ]
+     ]
+    },
+    {
+     "k": "labelsep",
+     "fr": "Séparateur après l'étiquette",
+     "en": "Separator after the label",
+     "values": [
+      [
+       "colon",
+       "Deux-points",
+       "Colon"
+      ],
+      [
+       "period",
+       "Point",
+       "Period"
+      ],
+      [
+       "space",
+       "Espace",
+       "Space"
+      ],
+      [
+       "quad",
+       "Cadratin",
+       "Quad"
+      ],
+      [
+       "newline",
+       "Retour à la ligne",
+       "New line"
+      ],
+      [
+       "endash",
+       "Tiret demi-cadratin",
+       "En dash"
+      ]
+     ]
+    },
+    {
+     "k": "labelformat",
+     "fr": "Forme de l'étiquette",
+     "en": "Form of the label",
+     "values": [
+      [
+       "default",
+       "Figure 1",
+       "Figure 1"
+      ],
+      [
+       "simple",
+       "Figure 1",
+       "Figure 1"
+      ],
+      [
+       "parens",
+       "Figure (1)",
+       "Figure (1)"
+      ],
+      [
+       "brace",
+       "Figure 1)",
+       "Figure 1)"
+      ],
+      [
+       "empty",
+       "Sans étiquette",
+       "No label"
+      ]
+     ]
+    },
+    {
+     "k": "justification",
+     "fr": "Alignement du texte de la légende",
+     "en": "Alignment of the caption text",
+     "values": [
+      [
+       "justified",
+       "Justifié",
+       "Justified"
+      ],
+      [
+       "centering",
+       "Centré",
+       "Centred"
+      ],
+      [
+       "raggedright",
+       "À gauche",
+       "Left"
+      ],
+      [
+       "raggedleft",
+       "À droite",
+       "Right"
+      ],
+      [
+       "centerlast",
+       "Dernière ligne centrée",
+       "Last line centred"
+      ]
+     ]
+    },
+    {
+     "k": "singlelinecheck",
+     "fr": "Centre les légendes d'une seule ligne",
+     "en": "Centres one-line captions",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "skip",
+     "fr": "Espace entre la figure et la légende",
+     "en": "Space between the figure and the caption",
+     "v": "${1:5pt}"
+    },
+    {
+     "k": "position",
+     "fr": "Position de la légende (pour les espacements)",
+     "en": "Position of the caption (for the spacing)",
+     "values": [
+      [
+       "top",
+       "Au-dessus",
+       "Above"
+      ],
+      [
+       "bottom",
+       "En dessous",
+       "Below"
+      ]
+     ]
+    },
+    {
+     "k": "width",
+     "fr": "Largeur de la légende",
+     "en": "Width of the caption",
+     "v": "${1:0.8\\linewidth}"
+    },
+    {
+     "k": "margin",
+     "fr": "Marges de chaque côté de la légende",
+     "en": "Margins on each side of the caption",
+     "v": "${1:1cm}"
+    },
+    {
+     "k": "format",
+     "fr": "Disposition des lignes",
+     "en": "Layout of the lines",
+     "values": [
+      [
+       "plain",
+       "Normale",
+       "Plain"
+      ],
+      [
+       "hang",
+       "Lignes suivantes décalées sous le texte",
+       "Next lines indented under the text"
+      ]
+     ]
+    },
+    {
+     "k": "name",
+     "fr": "Nom de l'étiquette (Fig., Tab.)",
+     "en": "Name of the label (Fig., Tab.)",
+     "v": "${1:Fig.}"
+    },
+    {
+     "k": "list",
+     "fr": "Légende dans la liste des figures",
+     "en": "Caption in the list of figures",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "hypcap",
+     "fr": "Lien vers le haut de la figure plutôt que la légende",
+     "en": "Link to the top of the figure rather than the caption",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "package": "caption",
+   "for": [
+    "\\captionsetup[1]"
+   ],
+   "keys": [
+    {
+     "k": "figure",
+     "fr": "Réglages des légendes de figures seulement",
+     "en": "Settings of figure captions only"
+    },
+    {
+     "k": "table",
+     "fr": "Réglages des légendes de tableaux seulement",
+     "en": "Settings of table captions only"
+    },
+    {
+     "k": "sub",
+     "fr": "Réglages des sous-légendes (subcaption)",
+     "en": "Settings of sub-captions (subcaption)"
+    }
+   ]
+  },
+  {
+   "package": "siunitx",
+   "for": [
+    "\\sisetup{1}",
+    "\\SI[1]",
+    "\\si[1]",
+    "\\qty[1]",
+    "\\num[1]",
+    "\\unit[1]",
+    "\\ang[1]",
+    "\\qtyrange[1]",
+    "\\numrange[1]",
+    "\\qtylist[1]",
+    "\\numlist[1]",
+    "\\qtyproduct[1]",
+    "\\numproduct[1]",
+    "\\complexnum[1]",
+    "\\tablenum[1]"
+   ],
+   "options_of": [
+    "siunitx"
+   ],
+   "learn": {
+    "files": [
+     "siunitx.sty"
+    ],
+    "pattern": "(?m)^\\s*([a-z][a-z-]*[a-z])\\s*\\.(?:bool_set|tl_set|int_set|dim_set|fp_set|str_set|clist_set|code|choice|choices|meta|value_required|default)"
+   },
+   "keys": [
+    {
+     "k": "locale",
+     "fr": "Conventions d'un pays : séparateur décimal, unités…",
+     "en": "Conventions of a country: decimal marker, units…",
+     "values": [
+      [
+       "FR",
+       "Français : virgule décimale",
+       "French: decimal comma"
+      ],
+      [
+       "DE",
+       "Allemand",
+       "German"
+      ],
+      [
+       "UK",
+       "Britannique",
+       "British"
+      ],
+      [
+       "US",
+       "Américain",
+       "American"
+      ]
+     ]
+    },
+    {
+     "k": "output-decimal-marker",
+     "fr": "Séparateur décimal affiché",
+     "en": "Decimal marker shown",
+     "values": [
+      [
+       "{,}",
+       "Virgule (français)",
+       "Comma (French)"
+      ],
+      [
+       ".",
+       "Point",
+       "Period"
+      ]
+     ]
+    },
+    {
+     "k": "round-mode",
+     "fr": "Arrondi des nombres",
+     "en": "Rounding of numbers",
+     "values": [
+      [
+       "places",
+       "Nombre de décimales fixé",
+       "Fixed number of decimal places"
+      ],
+      [
+       "figures",
+       "Nombre de chiffres significatifs",
+       "Number of significant figures"
+      ],
+      [
+       "uncertainty",
+       "Selon l'incertitude",
+       "From the uncertainty"
+      ],
+      [
+       "none",
+       "Pas d'arrondi",
+       "No rounding"
+      ]
+     ]
+    },
+    {
+     "k": "round-precision",
+     "fr": "Nombre de décimales ou de chiffres gardés",
+     "en": "Number of places or figures kept",
+     "v": "${1:2}"
+    },
+    {
+     "k": "round-minimum",
+     "fr": "Valeur minimale affichée après arrondi",
+     "en": "Smallest value shown after rounding",
+     "v": "${1:0.01}"
+    },
+    {
+     "k": "per-mode",
+     "fr": "Écriture des unités divisées (m/s)",
+     "en": "Writing of divided units (m/s)",
+     "values": [
+      [
+       "power",
+       "m s^{-1}",
+       "m s^{-1}"
+      ],
+      [
+       "fraction",
+       "Fraction",
+       "Fraction"
+      ],
+      [
+       "symbol",
+       "Barre oblique m/s",
+       "Slash m/s"
+      ],
+      [
+       "repeated-symbol",
+       "Barre répétée",
+       "Repeated slash"
+      ],
+      [
+       "single-symbol",
+       "Une seule barre",
+       "A single slash"
+      ]
+     ]
+    },
+    {
+     "k": "exponent-mode",
+     "fr": "Écriture des puissances de dix",
+     "en": "Writing of powers of ten",
+     "values": [
+      [
+       "input",
+       "Comme tapé",
+       "As typed"
+      ],
+      [
+       "scientific",
+       "Notation scientifique",
+       "Scientific notation"
+      ],
+      [
+       "engineering",
+       "Puissances multiples de 3",
+       "Powers multiple of 3"
+      ],
+      [
+       "fixed",
+       "Exposant fixe",
+       "Fixed exponent"
+      ],
+      [
+       "threshold",
+       "Scientifique au-delà d'un seuil",
+       "Scientific beyond a threshold"
+      ]
+     ]
+    },
+    {
+     "k": "exponent-product",
+     "fr": "Signe de multiplication avant 10^n",
+     "en": "Multiplication sign before 10^n",
+     "values": [
+      [
+       "\\times",
+       "×",
+       "×"
+      ],
+      [
+       "\\cdot",
+       "·",
+       "·"
+      ]
+     ]
+    },
+    {
+     "k": "group-digits",
+     "fr": "Groupement des chiffres par trois",
+     "en": "Grouping of digits by three",
+     "values": [
+      [
+       "all",
+       "Partout",
+       "Everywhere"
+      ],
+      [
+       "none",
+       "Jamais",
+       "Never"
+      ],
+      [
+       "integer",
+       "Partie entière",
+       "Integer part"
+      ],
+      [
+       "decimal",
+       "Partie décimale",
+       "Decimal part"
+      ]
+     ]
+    },
+    {
+     "k": "group-separator",
+     "fr": "Séparateur des groupes de chiffres",
+     "en": "Separator of digit groups",
+     "v": "{${1:\\,}}"
+    },
+    {
+     "k": "group-minimum-digits",
+     "fr": "Nombre de chiffres à partir duquel on groupe",
+     "en": "Number of digits from which digits are grouped",
+     "v": "${1:4}"
+    },
+    {
+     "k": "uncertainty-mode",
+     "fr": "Écriture des incertitudes",
+     "en": "Writing of uncertainties",
+     "values": [
+      [
+       "separate",
+       "1.23 ± 0.04",
+       "1.23 ± 0.04"
+      ],
+      [
+       "compact",
+       "1.23(4)",
+       "1.23(4)"
+      ],
+      [
+       "full",
+       "1.23(0.04)",
+       "1.23(0.04)"
+      ]
+     ]
+    },
+    {
+     "k": "separate-uncertainty",
+     "fr": "Incertitude avec ± (ancienne clé)",
+     "en": "Uncertainty with ± (older key)",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "range-phrase",
+     "fr": "Mot entre les bornes d'un intervalle",
+     "en": "Word between the bounds of a range",
+     "v": "{${1: à }}"
+    },
+    {
+     "k": "range-units",
+     "fr": "Unités dans un intervalle",
+     "en": "Units in a range",
+     "values": [
+      [
+       "repeat",
+       "Répétées",
+       "Repeated"
+      ],
+      [
+       "single",
+       "Une fois à la fin",
+       "Once at the end"
+      ],
+      [
+       "bracket",
+       "Entre parenthèses",
+       "In brackets"
+      ]
+     ]
+    },
+    {
+     "k": "list-final-separator",
+     "fr": "Mot avant le dernier élément d'une liste",
+     "en": "Word before the last item of a list",
+     "v": "{${1: et }}"
+    },
+    {
+     "k": "list-units",
+     "fr": "Unités dans une liste",
+     "en": "Units in a list",
+     "values": [
+      [
+       "repeat",
+       "Répétées",
+       "Repeated"
+      ],
+      [
+       "single",
+       "Une fois à la fin",
+       "Once at the end"
+      ],
+      [
+       "bracket",
+       "Entre parenthèses",
+       "In brackets"
+      ]
+     ]
+    },
+    {
+     "k": "drop-zero-decimal",
+     "fr": "Supprime une partie décimale nulle",
+     "en": "Drops a zero decimal part",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "minimum-integer-digits",
+     "fr": "Chiffres minimum avant la virgule (0,5)",
+     "en": "Minimum digits before the decimal marker (0.5)",
+     "v": "${1:1}"
+    },
+    {
+     "k": "table-format",
+     "fr": "Format d'une colonne S : 3.2 = 3 chiffres, 2 décimales",
+     "en": "Format of an S column: 3.2 = 3 digits, 2 decimals",
+     "v": "${1:3.2}"
+    },
+    {
+     "k": "table-alignment-mode",
+     "fr": "Alignement des nombres dans une colonne S",
+     "en": "Alignment of numbers in an S column",
+     "values": [
+      [
+       "marker",
+       "Sur la virgule",
+       "On the decimal marker"
+      ],
+      [
+       "format",
+       "Selon table-format",
+       "From table-format"
+      ],
+      [
+       "none",
+       "Aucun",
+       "None"
+      ]
+     ]
+    },
+    {
+     "k": "quantity-product",
+     "fr": "Espace entre nombre et unité",
+     "en": "Space between number and unit",
+     "v": "{${1:\\,}}"
+    },
+    {
+     "k": "inter-unit-product",
+     "fr": "Séparateur entre unités (N·m)",
+     "en": "Separator between units (N·m)",
+     "v": "{${1:\\cdot}}"
+    },
+    {
+     "k": "mode",
+     "fr": "Texte ou math pour l'affichage",
+     "en": "Text or math for printing",
+     "values": [
+      [
+       "match",
+       "Comme autour",
+       "As around"
+      ],
+      [
+       "math",
+       "Math",
+       "Math"
+      ],
+      [
+       "text",
+       "Texte",
+       "Text"
+      ]
+     ]
+    },
+    {
+     "k": "reset-text-family",
+     "fr": "Police normale pour les nombres en texte",
+     "en": "Normal font for numbers in text",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "package": "listings",
+   "for": [
+    "\\lstset{1}",
+    "lstlisting[1]",
+    "\\lstinputlisting[1]",
+    "\\lstinline[1]",
+    "\\lstdefinestyle{2}",
+    "\\lstnewenvironment{3}"
+   ],
+   "learn": {
+    "files": [
+     "listings.sty",
+     "lstmisc.sty"
+    ],
+    "pattern": "\\\\lst@Key\\{([A-Za-z]+)\\}"
+   },
+   "keys": [
+    {
+     "k": "language",
+     "fr": "Langage du code (coloration des mots-clés)",
+     "en": "Language of the code (keyword colours)",
+     "values": [
+      "Python",
+      "C",
+      "C++",
+      "Java",
+      "Matlab",
+      "Octave",
+      "R",
+      "bash",
+      "SQL",
+      "HTML",
+      "XML",
+      "[LaTeX]TeX",
+      "Haskell",
+      "Fortran",
+      "Pascal",
+      "Lisp",
+      "Ruby",
+      "PHP",
+      "Perl",
+      "Lua",
+      "Scilab",
+      "VHDL",
+      "Verilog",
+      "Assembler",
+      "make"
+     ]
+    },
+    {
+     "k": "style",
+     "fr": "Style défini avec \\lstdefinestyle",
+     "en": "Style defined with \\lstdefinestyle",
+     "v": "${1:nom}"
+    },
+    {
+     "k": "basicstyle",
+     "fr": "Police du code : \\ttfamily\\small",
+     "en": "Font of the code: \\ttfamily\\small",
+     "v": "${1:\\ttfamily\\small}"
+    },
+    {
+     "k": "keywordstyle",
+     "fr": "Style des mots-clés",
+     "en": "Style of keywords",
+     "v": "${1:\\color{blue}\\bfseries}"
+    },
+    {
+     "k": "commentstyle",
+     "fr": "Style des commentaires",
+     "en": "Style of comments",
+     "v": "${1:\\color{gray}\\itshape}"
+    },
+    {
+     "k": "stringstyle",
+     "fr": "Style des chaînes de caractères",
+     "en": "Style of strings",
+     "v": "${1:\\color{red!60!black}}"
+    },
+    {
+     "k": "identifierstyle",
+     "fr": "Style des identifiants",
+     "en": "Style of identifiers",
+     "v": "${1}"
+    },
+    {
+     "k": "numbers",
+     "fr": "Numéros de ligne",
+     "en": "Line numbers",
+     "values": [
+      [
+       "left",
+       "À gauche",
+       "On the left"
+      ],
+      [
+       "right",
+       "À droite",
+       "On the right"
+      ],
+      [
+       "none",
+       "Aucun",
+       "None"
+      ]
+     ]
+    },
+    {
+     "k": "numberstyle",
+     "fr": "Style des numéros de ligne",
+     "en": "Style of line numbers",
+     "v": "${1:\\tiny\\color{gray}}"
+    },
+    {
+     "k": "stepnumber",
+     "fr": "Un numéro toutes les n lignes",
+     "en": "One number every n lines",
+     "v": "${1:1}"
+    },
+    {
+     "k": "numbersep",
+     "fr": "Espace entre numéros et code",
+     "en": "Space between numbers and code",
+     "v": "${1:8pt}"
+    },
+    {
+     "k": "firstnumber",
+     "fr": "Premier numéro de ligne",
+     "en": "First line number",
+     "v": "${1:1}"
+    },
+    {
+     "k": "breaklines",
+     "fr": "Coupe les lignes trop longues",
+     "en": "Breaks lines that are too long",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "breakatwhitespace",
+     "fr": "Coupe seulement aux espaces",
+     "en": "Breaks only at spaces",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "frame",
+     "fr": "Cadre autour du code",
+     "en": "Frame around the code",
+     "values": [
+      [
+       "single",
+       "Cadre simple",
+       "Single frame"
+      ],
+      [
+       "lines",
+       "Traits en haut et en bas",
+       "Lines above and below"
+      ],
+      [
+       "leftline",
+       "Trait à gauche",
+       "Line on the left"
+      ],
+      [
+       "tb",
+       "Haut et bas",
+       "Top and bottom"
+      ],
+      [
+       "shadowbox",
+       "Cadre ombré",
+       "Shadowed frame"
+      ],
+      [
+       "none",
+       "Aucun",
+       "None"
+      ]
+     ]
+    },
+    {
+     "k": "frameround",
+     "fr": "Coins arrondis du cadre (tttt)",
+     "en": "Rounded corners of the frame (tttt)",
+     "v": "${1:tttt}"
+    },
+    {
+     "k": "rulecolor",
+     "fr": "Couleur du cadre",
+     "en": "Colour of the frame",
+     "v": "${1:\\color{gray}}"
+    },
+    {
+     "k": "backgroundcolor",
+     "fr": "Couleur de fond",
+     "en": "Background colour",
+     "v": "${1:\\color{gray!10}}"
+    },
+    {
+     "k": "caption",
+     "fr": "Légende du code",
+     "en": "Caption of the code",
+     "v": "{${1}}"
+    },
+    {
+     "k": "title",
+     "fr": "Titre sans numéro",
+     "en": "Title without a number",
+     "v": "{${1}}"
+    },
+    {
+     "k": "label",
+     "fr": "Étiquette pour \\ref",
+     "en": "Label for \\ref",
+     "v": "${1:lst:}"
+    },
+    {
+     "k": "captionpos",
+     "fr": "Position de la légende",
+     "en": "Position of the caption",
+     "values": [
+      [
+       "t",
+       "En haut",
+       "At the top"
+      ],
+      [
+       "b",
+       "En bas",
+       "At the bottom"
+      ]
+     ]
+    },
+    {
+     "k": "tabsize",
+     "fr": "Largeur d'une tabulation",
+     "en": "Width of a tab",
+     "v": "${1:4}"
+    },
+    {
+     "k": "showstringspaces",
+     "fr": "Montre les espaces dans les chaînes (␣)",
+     "en": "Shows spaces in strings (␣)",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "showspaces",
+     "fr": "Montre tous les espaces",
+     "en": "Shows every space",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "firstline",
+     "fr": "Première ligne du fichier incluse",
+     "en": "First line of the file included",
+     "v": "${1:1}"
+    },
+    {
+     "k": "lastline",
+     "fr": "Dernière ligne du fichier incluse",
+     "en": "Last line of the file included",
+     "v": "${1:10}"
+    },
+    {
+     "k": "linerange",
+     "fr": "Plages de lignes : {1-5,10-12}",
+     "en": "Ranges of lines: {1-5,10-12}",
+     "v": "{${1:1-10}}"
+    },
+    {
+     "k": "escapeinside",
+     "fr": "Délimiteurs pour écrire du LaTeX dans le code",
+     "en": "Delimiters to write LaTeX inside the code",
+     "v": "${1:{(*}{*)}}"
+    },
+    {
+     "k": "mathescape",
+     "fr": "$…$ en mathématiques dans les commentaires",
+     "en": "$…$ as maths in comments",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "columns",
+     "fr": "Placement des caractères",
+     "en": "Placement of characters",
+     "values": [
+      [
+       "fixed",
+       "Chasse fixe",
+       "Fixed width"
+      ],
+      [
+       "flexible",
+       "Souple",
+       "Flexible"
+      ],
+      [
+       "fullflexible",
+       "Espaces naturels",
+       "Natural spaces"
+      ]
+     ]
+    },
+    {
+     "k": "keepspaces",
+     "fr": "Garde les espaces tels quels",
+     "en": "Keeps spaces as they are",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "morekeywords",
+     "fr": "Mots-clés en plus",
+     "en": "More keywords",
+     "v": "{${1}}"
+    },
+    {
+     "k": "literate",
+     "fr": "Remplacements (accents dans le code : {é}{{\\'e}}1)",
+     "en": "Replacements (accents in code: {é}{{\\'e}}1)",
+     "v": "{${1}}"
+    },
+    {
+     "k": "xleftmargin",
+     "fr": "Retrait à gauche",
+     "en": "Indent on the left",
+     "v": "${1:1em}"
+    },
+    {
+     "k": "aboveskip",
+     "fr": "Espace au-dessus",
+     "en": "Space above",
+     "v": "${1:1em}"
+    },
+    {
+     "k": "belowskip",
+     "fr": "Espace en dessous",
+     "en": "Space below",
+     "v": "${1:1em}"
+    },
+    {
+     "k": "extendedchars",
+     "fr": "Autorise les caractères accentués",
+     "en": "Allows accented characters",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "upquote",
+     "fr": "Apostrophes droites",
+     "en": "Straight quotes",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "gobble",
+     "fr": "Retire n caractères au début de chaque ligne",
+     "en": "Removes n characters at the start of each line",
+     "v": "${1:4}"
+    }
+   ]
+  },
+  {
+   "package": "minted",
+   "for": [
+    "minted[1]",
+    "\\mintinline[1]",
+    "\\inputminted[1]",
+    "\\setminted{1}",
+    "\\setminted[1]",
+    "\\setmintedinline{1}",
+    "\\newminted{2}"
+   ],
+   "keys": [
+    {
+     "k": "linenos",
+     "fr": "Numéros de ligne",
+     "en": "Line numbers"
+    },
+    {
+     "k": "breaklines",
+     "fr": "Coupe les lignes trop longues",
+     "en": "Breaks lines that are too long"
+    },
+    {
+     "k": "fontsize",
+     "fr": "Taille du code",
+     "en": "Size of the code",
+     "values": [
+      "\\tiny",
+      "\\scriptsize",
+      "\\footnotesize",
+      "\\small",
+      "\\normalsize",
+      "\\large"
+     ]
+    },
+    {
+     "k": "bgcolor",
+     "fr": "Couleur de fond",
+     "en": "Background colour",
+     "v": "${1:gray!10}"
+    },
+    {
+     "k": "frame",
+     "fr": "Cadre",
+     "en": "Frame",
+     "values": [
+      [
+       "lines",
+       "Traits en haut et en bas",
+       "Lines above and below"
+      ],
+      [
+       "single",
+       "Cadre simple",
+       "Single frame"
+      ],
+      [
+       "leftline",
+       "Trait à gauche",
+       "Line on the left"
+      ],
+      [
+       "topline",
+       "Trait en haut",
+       "Line above"
+      ],
+      [
+       "bottomline",
+       "Trait en bas",
+       "Line below"
+      ],
+      [
+       "none",
+       "Aucun",
+       "None"
+      ]
+     ]
+    },
+    {
+     "k": "framesep",
+     "fr": "Espace entre le cadre et le code",
+     "en": "Space between the frame and the code",
+     "v": "${1:2mm}"
+    },
+    {
+     "k": "rulecolor",
+     "fr": "Couleur du cadre",
+     "en": "Colour of the frame",
+     "v": "${1:gray}"
+    },
+    {
+     "k": "style",
+     "fr": "Thème de couleurs Pygments",
+     "en": "Pygments colour theme",
+     "values": [
+      "default",
+      "friendly",
+      "colorful",
+      "monokai",
+      "vs",
+      "xcode",
+      "tango",
+      "emacs",
+      "autumn",
+      "manni",
+      "murphy",
+      "perldoc",
+      "borland",
+      "bw",
+      "solarized-light",
+      "solarized-dark"
+     ]
+    },
+    {
+     "k": "tabsize",
+     "fr": "Largeur d'une tabulation",
+     "en": "Width of a tab",
+     "v": "${1:4}"
+    },
+    {
+     "k": "autogobble",
+     "fr": "Retire l'indentation commune",
+     "en": "Removes the common indentation"
+    },
+    {
+     "k": "gobble",
+     "fr": "Retire n caractères au début des lignes",
+     "en": "Removes n characters at the start of lines",
+     "v": "${1:4}"
+    },
+    {
+     "k": "firstline",
+     "fr": "Première ligne incluse",
+     "en": "First line included",
+     "v": "${1:1}"
+    },
+    {
+     "k": "lastline",
+     "fr": "Dernière ligne incluse",
+     "en": "Last line included",
+     "v": "${1:10}"
+    },
+    {
+     "k": "firstnumber",
+     "fr": "Premier numéro de ligne",
+     "en": "First line number",
+     "v": "${1:1}"
+    },
+    {
+     "k": "numbersep",
+     "fr": "Espace entre numéros et code",
+     "en": "Space between numbers and code",
+     "v": "${1:5pt}"
+    },
+    {
+     "k": "highlightlines",
+     "fr": "Lignes surlignées : {2,5-7}",
+     "en": "Highlighted lines: {2,5-7}",
+     "v": "{${1:2}}"
+    },
+    {
+     "k": "highlightcolor",
+     "fr": "Couleur du surlignage",
+     "en": "Colour of the highlight",
+     "v": "${1:yellow!30}"
+    },
+    {
+     "k": "mathescape",
+     "fr": "$…$ en mathématiques dans les commentaires",
+     "en": "$…$ as maths in comments"
+    },
+    {
+     "k": "escapeinside",
+     "fr": "Délimiteurs pour du LaTeX dans le code",
+     "en": "Delimiters for LaTeX inside the code",
+     "v": "${1:||}"
+    },
+    {
+     "k": "baselinestretch",
+     "fr": "Interligne du code",
+     "en": "Line spacing of the code",
+     "v": "${1:1.2}"
+    },
+    {
+     "k": "showspaces",
+     "fr": "Montre les espaces",
+     "en": "Shows spaces"
+    },
+    {
+     "k": "xleftmargin",
+     "fr": "Retrait à gauche",
+     "en": "Indent on the left",
+     "v": "${1:1em}"
+    },
+    {
+     "k": "samepage",
+     "fr": "Garde le code sur une seule page",
+     "en": "Keeps the code on one page"
+    }
+   ]
+  },
+  {
+   "package": "tcolorbox",
+   "for": [
+    "tcolorbox[1]",
+    "\\tcbset{1}",
+    "\\tcbox[1]",
+    "\\newtcolorbox[1]",
+    "\\newtcolorbox{2}",
+    "\\newtcbox{2}"
+   ],
+   "learn": {
+    "files": [
+     "tcolorbox.sty"
+    ],
+    "pattern": "(?m)^\\s*([a-z][a-z ]*[a-z])/\\.(?:code|style|is choice|store in|estore in|default|value required)"
+   },
+   "keys": [
+    {
+     "k": "title",
+     "fr": "Titre de la boîte",
+     "en": "Title of the box",
+     "v": "{${1}}"
+    },
+    {
+     "k": "colback",
+     "fr": "Couleur du fond",
+     "en": "Background colour",
+     "v": "${1:blue!5}"
+    },
+    {
+     "k": "colframe",
+     "fr": "Couleur du cadre (et du bandeau de titre)",
+     "en": "Colour of the frame (and title bar)",
+     "v": "${1:blue!50!black}"
+    },
+    {
+     "k": "coltitle",
+     "fr": "Couleur du texte du titre",
+     "en": "Colour of the title text",
+     "v": "${1:white}"
+    },
+    {
+     "k": "colbacktitle",
+     "fr": "Couleur du bandeau de titre",
+     "en": "Colour of the title bar",
+     "v": "${1:blue!50!black}"
+    },
+    {
+     "k": "coltext",
+     "fr": "Couleur du texte",
+     "en": "Colour of the text",
+     "v": "${1:black}"
+    },
+    {
+     "k": "fonttitle",
+     "fr": "Police du titre",
+     "en": "Font of the title",
+     "v": "${1:\\bfseries}"
+    },
+    {
+     "k": "fontupper",
+     "fr": "Police du contenu",
+     "en": "Font of the content",
+     "v": "${1:\\small}"
+    },
+    {
+     "k": "boxrule",
+     "fr": "Épaisseur du cadre",
+     "en": "Thickness of the frame",
+     "v": "${1:0.5mm}"
+    },
+    {
+     "k": "leftrule",
+     "fr": "Épaisseur du trait gauche",
+     "en": "Thickness of the left line",
+     "v": "${1:3mm}"
+    },
+    {
+     "k": "toprule",
+     "fr": "Épaisseur du trait du haut",
+     "en": "Thickness of the top line",
+     "v": "${1:0mm}"
+    },
+    {
+     "k": "arc",
+     "fr": "Rayon des coins arrondis",
+     "en": "Radius of the rounded corners",
+     "v": "${1:2mm}"
+    },
+    {
+     "k": "sharp corners",
+     "fr": "Coins carrés",
+     "en": "Square corners"
+    },
+    {
+     "k": "enhanced",
+     "fr": "Dessin avancé (ombres, titres attachés…)",
+     "en": "Advanced drawing (shadows, attached titles…)"
+    },
+    {
+     "k": "breakable",
+     "fr": "La boîte peut se couper entre deux pages",
+     "en": "The box can break across pages"
+    },
+    {
+     "k": "left",
+     "fr": "Marge intérieure à gauche",
+     "en": "Inner margin on the left",
+     "v": "${1:2mm}"
+    },
+    {
+     "k": "right",
+     "fr": "Marge intérieure à droite",
+     "en": "Inner margin on the right",
+     "v": "${1:2mm}"
+    },
+    {
+     "k": "top",
+     "fr": "Marge intérieure en haut",
+     "en": "Inner margin at the top",
+     "v": "${1:2mm}"
+    },
+    {
+     "k": "bottom",
+     "fr": "Marge intérieure en bas",
+     "en": "Inner margin at the bottom",
+     "v": "${1:2mm}"
+    },
+    {
+     "k": "boxsep",
+     "fr": "Marge intérieure de tous les côtés",
+     "en": "Inner margin on every side",
+     "v": "${1:1mm}"
+    },
+    {
+     "k": "width",
+     "fr": "Largeur de la boîte",
+     "en": "Width of the box",
+     "v": "${1:\\linewidth}"
+    },
+    {
+     "k": "halign",
+     "fr": "Alignement horizontal du contenu",
+     "en": "Horizontal alignment of the content",
+     "values": [
+      [
+       "left",
+       "À gauche",
+       "Left"
+      ],
+      [
+       "center",
+       "Centré",
+       "Centred"
+      ],
+      [
+       "right",
+       "À droite",
+       "Right"
+      ],
+      [
+       "justify",
+       "Justifié",
+       "Justified"
+      ]
+     ]
+    },
+    {
+     "k": "valign",
+     "fr": "Alignement vertical du contenu",
+     "en": "Vertical alignment of the content",
+     "values": [
+      [
+       "top",
+       "En haut",
+       "Top"
+      ],
+      [
+       "center",
+       "Centré",
+       "Centred"
+      ],
+      [
+       "bottom",
+       "En bas",
+       "Bottom"
+      ]
+     ]
+    },
+    {
+     "k": "drop shadow",
+     "fr": "Ombre portée (avec enhanced)",
+     "en": "Drop shadow (with enhanced)"
+    },
+    {
+     "k": "center title",
+     "fr": "Titre centré",
+     "en": "Centred title"
+    },
+    {
+     "k": "attach boxed title to top left",
+     "fr": "Titre dans un encadré accroché en haut à gauche (enhanced)",
+     "en": "Title in a box attached at the top left (enhanced)"
+    },
+    {
+     "k": "sidebyside",
+     "fr": "Parties haute et basse côte à côte",
+     "en": "Upper and lower parts side by side"
+    },
+    {
+     "k": "lower separated",
+     "fr": "Trait entre les parties haute et basse",
+     "en": "Line between the upper and lower parts",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "before skip",
+     "fr": "Espace avant la boîte",
+     "en": "Space before the box",
+     "v": "${1:1em}"
+    },
+    {
+     "k": "after skip",
+     "fr": "Espace après la boîte",
+     "en": "Space after the box",
+     "v": "${1:1em}"
+    },
+    {
+     "k": "opacityback",
+     "fr": "Opacité du fond",
+     "en": "Opacity of the background",
+     "v": "${1:0.5}"
+    },
+    {
+     "k": "frame hidden",
+     "fr": "Pas de cadre",
+     "en": "No frame"
+    },
+    {
+     "k": "nobeforeafter",
+     "fr": "Pas d'espace avant et après (boîte dans le texte)",
+     "en": "No space before and after (box in the text)"
+    }
+   ]
+  },
+  {
+   "package": "fontspec",
+   "for": [
+    "\\setmainfont[1]",
+    "\\setsansfont[1]",
+    "\\setmonofont[1]",
+    "\\newfontfamily[1]",
+    "\\fontspec[1]",
+    "\\setmathfont[1]",
+    "\\defaultfontfeatures{1}",
+    "\\addfontfeatures{1}"
+   ],
+   "keys": [
+    {
+     "k": "Scale",
+     "fr": "Taille relative : 0.9, ou MatchLowercase pour égaler la hauteur des minuscules",
+     "en": "Relative size: 0.9, or MatchLowercase to match the lowercase height",
+     "values": [
+      [
+       "MatchLowercase",
+       "Même hauteur de x que la police principale",
+       "Same x-height as the main font"
+      ],
+      [
+       "MatchUppercase",
+       "Même hauteur de capitales",
+       "Same cap height"
+      ],
+      [
+       "0.9",
+       "90 %",
+       "90%"
+      ]
+     ]
+    },
+    {
+     "k": "Ligatures",
+     "fr": "Ligatures (TeX : -- et --- deviennent des tirets)",
+     "en": "Ligatures (TeX: -- and --- become dashes)",
+     "values": [
+      [
+       "TeX",
+       "Ligatures de TeX (--, ---, ``)",
+       "TeX ligatures (--, ---, ``)"
+      ],
+      [
+       "Common",
+       "Ligatures courantes (fi, fl)",
+       "Common ligatures (fi, fl)"
+      ],
+      [
+       "Rare",
+       "Ligatures rares",
+       "Rare ligatures"
+      ],
+      [
+       "NoCommon",
+       "Sans ligatures courantes",
+       "No common ligatures"
+      ]
+     ]
+    },
+    {
+     "k": "Numbers",
+     "fr": "Style des chiffres",
+     "en": "Style of figures",
+     "values": [
+      [
+       "OldStyle",
+       "Chiffres elzéviriens",
+       "Old-style figures"
+      ],
+      [
+       "Lining",
+       "Chiffres alignés",
+       "Lining figures"
+      ],
+      [
+       "Monospaced",
+       "Chiffres de même largeur (tableaux)",
+       "Same-width figures (tables)"
+      ],
+      [
+       "Proportional",
+       "Chiffres proportionnels",
+       "Proportional figures"
+      ]
+     ]
+    },
+    {
+     "k": "BoldFont",
+     "fr": "Fichier ou nom de la graisse grasse",
+     "en": "File or name of the bold weight",
+     "v": "{${1}}"
+    },
+    {
+     "k": "ItalicFont",
+     "fr": "Fichier ou nom de l'italique",
+     "en": "File or name of the italics",
+     "v": "{${1}}"
+    },
+    {
+     "k": "BoldItalicFont",
+     "fr": "Fichier ou nom du gras italique",
+     "en": "File or name of the bold italics",
+     "v": "{${1}}"
+    },
+    {
+     "k": "UprightFont",
+     "fr": "Fichier du romain (avec * pour le nom de base)",
+     "en": "File of the upright (with * for the base name)",
+     "v": "${1:*-Regular}"
+    },
+    {
+     "k": "SmallCapsFont",
+     "fr": "Police des petites capitales",
+     "en": "Font of the small caps",
+     "v": "{${1}}"
+    },
+    {
+     "k": "Path",
+     "fr": "Dossier des fichiers de police",
+     "en": "Folder of the font files",
+     "v": "${1:fonts/}"
+    },
+    {
+     "k": "Extension",
+     "fr": "Extension des fichiers de police",
+     "en": "Extension of the font files",
+     "values": [
+      [
+       ".otf",
+       "OpenType",
+       "OpenType"
+      ],
+      [
+       ".ttf",
+       "TrueType",
+       "TrueType"
+      ]
+     ]
+    },
+    {
+     "k": "Color",
+     "fr": "Couleur du texte (hexadécimal)",
+     "en": "Colour of the text (hexadecimal)",
+     "v": "${1:1F4E79}"
+    },
+    {
+     "k": "LetterSpace",
+     "fr": "Espacement des lettres (en % d'un cadratin)",
+     "en": "Letter spacing (in % of an em)",
+     "v": "${1:5}"
+    },
+    {
+     "k": "WordSpace",
+     "fr": "Facteur d'espace entre les mots",
+     "en": "Factor of the space between words",
+     "v": "${1:1.2}"
+    },
+    {
+     "k": "Contextuals",
+     "fr": "Variantes contextuelles (lettres ornées)",
+     "en": "Contextual alternates (swashes)",
+     "values": [
+      "Alternate",
+      "Swash",
+      "WordInitial",
+      "WordFinal"
+     ]
+    },
+    {
+     "k": "Style",
+     "fr": "Variantes de style",
+     "en": "Style variants",
+     "values": [
+      [
+       "Alternate",
+       "Variantes",
+       "Alternates"
+      ],
+      [
+       "Historic",
+       "Formes historiques",
+       "Historic forms"
+      ],
+      [
+       "MathScript",
+       "Écriture mathématique",
+       "Math script"
+      ]
+     ]
+    },
+    {
+     "k": "Language",
+     "fr": "Langue (règles typographiques de la police)",
+     "en": "Language (typographic rules of the font)",
+     "values": [
+      "French",
+      "English",
+      "German",
+      "Spanish",
+      "Turkish"
+     ]
+    },
+    {
+     "k": "Script",
+     "fr": "Système d'écriture",
+     "en": "Writing system",
+     "values": [
+      "Latin",
+      "Greek",
+      "Cyrillic",
+      "Arabic",
+      "Hebrew"
+     ]
+    },
+    {
+     "k": "FakeBold",
+     "fr": "Gras simulé quand la police n'en a pas",
+     "en": "Faked bold when the font has none",
+     "v": "${1:2}"
+    },
+    {
+     "k": "FakeSlant",
+     "fr": "Italique simulé",
+     "en": "Faked slant",
+     "v": "${1:0.2}"
+    },
+    {
+     "k": "Renderer",
+     "fr": "Moteur de rendu (LuaLaTeX)",
+     "en": "Rendering engine (LuaLaTeX)",
+     "values": [
+      [
+       "HarfBuzz",
+       "HarfBuzz (écritures complexes)",
+       "HarfBuzz (complex scripts)"
+      ],
+      [
+       "Node",
+       "Par défaut",
+       "Default"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "package": "biblatex",
+   "for": [],
+   "options_of": [
+    "biblatex"
+   ],
+   "keys": [
+    {
+     "k": "style",
+     "fr": "Style des citations et de la bibliographie",
+     "en": "Style of citations and bibliography",
+     "values": [
+      [
+       "numeric",
+       "[1]",
+       "[1]"
+      ],
+      [
+       "numeric-comp",
+       "[1–3] regroupés",
+       "[1–3] compressed"
+      ],
+      [
+       "authoryear",
+       "(Knuth 1984)",
+       "(Knuth 1984)"
+      ],
+      [
+       "authoryear-comp",
+       "(Knuth 1984a, b)",
+       "(Knuth 1984a, b)"
+      ],
+      [
+       "alphabetic",
+       "[Knu84]",
+       "[Knu84]"
+      ],
+      [
+       "apa",
+       "Normes APA",
+       "APA style"
+      ],
+      [
+       "ieee",
+       "Normes IEEE",
+       "IEEE style"
+      ],
+      [
+       "nature",
+       "Style Nature",
+       "Nature style"
+      ],
+      [
+       "verbose",
+       "Référence complète en note",
+       "Full reference in a note"
+      ],
+      [
+       "chem-acs",
+       "Chimie (ACS)",
+       "Chemistry (ACS)"
+      ],
+      [
+       "phys",
+       "Physique (AIP/APS)",
+       "Physics (AIP/APS)"
+      ]
+     ]
+    },
+    {
+     "k": "backend",
+     "fr": "Programme qui trie la bibliographie",
+     "en": "Program sorting the bibliography",
+     "values": [
+      [
+       "biber",
+       "Biber (recommandé, Unicode)",
+       "Biber (recommended, Unicode)"
+      ],
+      [
+       "bibtex",
+       "BibTeX (ancien)",
+       "BibTeX (older)"
+      ]
+     ]
+    },
+    {
+     "k": "sorting",
+     "fr": "Ordre de la bibliographie",
+     "en": "Order of the bibliography",
+     "values": [
+      [
+       "nyt",
+       "Nom, année, titre",
+       "Name, year, title"
+      ],
+      [
+       "nty",
+       "Nom, titre, année",
+       "Name, title, year"
+      ],
+      [
+       "ynt",
+       "Année, nom, titre",
+       "Year, name, title"
+      ],
+      [
+       "none",
+       "Ordre des citations",
+       "Citation order"
+      ]
+     ]
+    },
+    {
+     "k": "citestyle",
+     "fr": "Style des citations seulement",
+     "en": "Style of citations only",
+     "v": "${1:authoryear}"
+    },
+    {
+     "k": "bibstyle",
+     "fr": "Style de la bibliographie seulement",
+     "en": "Style of the bibliography only",
+     "v": "${1:authoryear}"
+    },
+    {
+     "k": "maxbibnames",
+     "fr": "Auteurs listés dans la bibliographie avant « et al. »",
+     "en": "Authors listed in the bibliography before \"et al.\"",
+     "v": "${1:99}"
+    },
+    {
+     "k": "maxcitenames",
+     "fr": "Auteurs dans une citation avant « et al. »",
+     "en": "Authors in a citation before \"et al.\"",
+     "v": "${1:2}"
+    },
+    {
+     "k": "giveninits",
+     "fr": "Prénoms réduits aux initiales",
+     "en": "Given names as initials",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "doi",
+     "fr": "Affiche les DOI",
+     "en": "Prints DOIs",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "url",
+     "fr": "Affiche les adresses web",
+     "en": "Prints URLs",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "isbn",
+     "fr": "Affiche les ISBN",
+     "en": "Prints ISBNs",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "eprint",
+     "fr": "Affiche les identifiants arXiv",
+     "en": "Prints arXiv identifiers",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "dashed",
+     "fr": "Tiret pour un auteur répété",
+     "en": "Dash for a repeated author",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "natbib",
+     "fr": "Commandes \\citet et \\citep de natbib",
+     "en": "natbib's \\citet and \\citep commands",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "backref",
+     "fr": "Pages où chaque référence est citée",
+     "en": "Pages where each reference is cited",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "date",
+     "fr": "Forme des dates",
+     "en": "Form of dates",
+     "values": [
+      [
+       "year",
+       "Année seule",
+       "Year only"
+      ],
+      [
+       "short",
+       "Courte",
+       "Short"
+      ],
+      [
+       "long",
+       "Longue",
+       "Long"
+      ]
+     ]
+    },
+    {
+     "k": "language",
+     "fr": "Langue des mots de la bibliographie",
+     "en": "Language of the bibliography's words",
+     "values": [
+      [
+       "auto",
+       "Celle de babel",
+       "babel's"
+      ],
+      [
+       "french",
+       "Français",
+       "French"
+      ],
+      [
+       "english",
+       "Anglais",
+       "English"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "package": "biblatex",
+   "for": [
+    "\\printbibliography[1]"
+   ],
+   "keys": [
+    {
+     "k": "title",
+     "fr": "Titre de la bibliographie",
+     "en": "Title of the bibliography",
+     "v": "{${1:Références}}"
+    },
+    {
+     "k": "heading",
+     "fr": "Type de titre",
+     "en": "Kind of heading",
+     "values": [
+      [
+       "bibintoc",
+       "Dans la table des matières",
+       "In the table of contents"
+      ],
+      [
+       "bibnumbered",
+       "Numéroté",
+       "Numbered"
+      ],
+      [
+       "subbibliography",
+       "Sous-titre",
+       "Sub-heading"
+      ],
+      [
+       "none",
+       "Sans titre",
+       "No heading"
+      ]
+     ]
+    },
+    {
+     "k": "keyword",
+     "fr": "Seulement les entrées avec ce mot-clé",
+     "en": "Only entries with this keyword",
+     "v": "${1}"
+    },
+    {
+     "k": "notkeyword",
+     "fr": "Sans les entrées avec ce mot-clé",
+     "en": "Without entries with this keyword",
+     "v": "${1}"
+    },
+    {
+     "k": "type",
+     "fr": "Seulement ce type d'entrée",
+     "en": "Only this entry type",
+     "values": [
+      "article",
+      "book",
+      "inproceedings",
+      "online",
+      "thesis",
+      "report",
+      "misc"
+     ]
+    },
+    {
+     "k": "nottype",
+     "fr": "Sans ce type d'entrée",
+     "en": "Without this entry type",
+     "values": [
+      "article",
+      "book",
+      "online",
+      "misc"
+     ]
+    },
+    {
+     "k": "section",
+     "fr": "Section de références (refsection)",
+     "en": "Reference section (refsection)",
+     "v": "${1:0}"
+    }
+   ]
+  },
+  {
+   "package": "class:beamer",
+   "for": [
+    "frame[1]"
+   ],
+   "keys": [
+    {
+     "k": "fragile",
+     "fr": "Obligatoire pour du code (verbatim, listings, minted)",
+     "en": "Required for code (verbatim, listings, minted)"
+    },
+    {
+     "k": "allowframebreaks",
+     "fr": "Contenu trop long réparti sur plusieurs diapositives",
+     "en": "Content too long spread over several slides"
+    },
+    {
+     "k": "plain",
+     "fr": "Sans en-tête ni pied (image plein écran)",
+     "en": "No header or footer (full-screen image)"
+    },
+    {
+     "k": "t",
+     "fr": "Contenu en haut de la diapositive",
+     "en": "Content at the top of the slide"
+    },
+    {
+     "k": "c",
+     "fr": "Contenu centré verticalement",
+     "en": "Content centred vertically"
+    },
+    {
+     "k": "b",
+     "fr": "Contenu en bas",
+     "en": "Content at the bottom"
+    },
+    {
+     "k": "shrink",
+     "fr": "Réduit le contenu pour qu'il tienne",
+     "en": "Shrinks the content so that it fits",
+     "v": "${1:5}"
+    },
+    {
+     "k": "squeeze",
+     "fr": "Resserre les espaces verticaux",
+     "en": "Squeezes the vertical space"
+    },
+    {
+     "k": "label",
+     "fr": "Nom pour y revenir (\\againframe)",
+     "en": "Name to come back to it (\\againframe)",
+     "v": "${1:nom}"
+    },
+    {
+     "k": "noframenumbering",
+     "fr": "Ne compte pas cette diapositive",
+     "en": "Does not count this slide"
+    },
+    {
+     "k": "standout",
+     "fr": "Diapositive mise en valeur (thème metropolis)",
+     "en": "Stand-out slide (metropolis theme)"
+    }
+   ]
+  },
+  {
+   "package": "pdfpages",
+   "for": [
+    "\\includepdf[1]"
+   ],
+   "keys": [
+    {
+     "k": "pages",
+     "fr": "Pages à inclure : - (toutes), 1-3, {1,4,7}",
+     "en": "Pages to include: - (all), 1-3, {1,4,7}",
+     "v": "${1:-}"
+    },
+    {
+     "k": "nup",
+     "fr": "Plusieurs pages par feuille : 2x1, 2x2",
+     "en": "Several pages per sheet: 2x1, 2x2",
+     "v": "${1:2x1}"
+    },
+    {
+     "k": "landscape",
+     "fr": "Feuille en paysage",
+     "en": "Landscape sheet"
+    },
+    {
+     "k": "scale",
+     "fr": "Échelle des pages",
+     "en": "Scale of the pages",
+     "v": "${1:0.9}"
+    },
+    {
+     "k": "frame",
+     "fr": "Cadre autour des pages",
+     "en": "Frame around the pages"
+    },
+    {
+     "k": "pagecommand",
+     "fr": "Commande sur chaque page (en-tête, numéro)",
+     "en": "Command on each page (header, number)",
+     "v": "{${1:\\thispagestyle{plain}}}"
+    },
+    {
+     "k": "offset",
+     "fr": "Décalage horizontal et vertical",
+     "en": "Horizontal and vertical offset",
+     "v": "{${1:0 0}}"
+    },
+    {
+     "k": "angle",
+     "fr": "Rotation",
+     "en": "Rotation",
+     "v": "${1:90}"
+    },
+    {
+     "k": "fitpaper",
+     "fr": "Taille de la feuille adaptée à la page",
+     "en": "Sheet size fitted to the page"
+    },
+    {
+     "k": "addtotoc",
+     "fr": "Entrée dans la table des matières",
+     "en": "Entry in the table of contents",
+     "v": "{${1:1},section,1,{${2:Titre}},${3:label}}"
+    }
+   ]
+  },
+  {
+   "package": "todonotes",
+   "for": [
+    "\\todo[1]",
+    "\\missingfigure[1]"
+   ],
+   "keys": [
+    {
+     "k": "inline",
+     "fr": "Note dans le texte plutôt qu'en marge",
+     "en": "Note inside the text rather than in the margin"
+    },
+    {
+     "k": "color",
+     "fr": "Couleur de la note",
+     "en": "Colour of the note",
+     "v": "${1:orange!30}"
+    },
+    {
+     "k": "noline",
+     "fr": "Sans trait jusqu'au texte",
+     "en": "Without a line to the text"
+    },
+    {
+     "k": "author",
+     "fr": "Auteur de la note",
+     "en": "Author of the note",
+     "v": "{${1}}"
+    },
+    {
+     "k": "size",
+     "fr": "Taille du texte",
+     "en": "Size of the text",
+     "values": [
+      "\\tiny",
+      "\\scriptsize",
+      "\\footnotesize",
+      "\\small",
+      "\\normalsize",
+      "\\large"
+     ]
+    },
+    {
+     "k": "caption",
+     "fr": "Texte court dans la liste des notes",
+     "en": "Short text in the list of notes",
+     "v": "{${1}}"
+    },
+    {
+     "k": "bordercolor",
+     "fr": "Couleur du cadre",
+     "en": "Colour of the frame",
+     "v": "${1:red}"
+    },
+    {
+     "k": "disable",
+     "fr": "Masque cette note",
+     "en": "Hides this note"
+    }
+   ]
+  },
+  {
+   "package": "wrapfig",
+   "for": [
+    "wrapfigure{1}",
+    "wraptable{1}"
+   ],
+   "keys": [
+    {
+     "k": "r",
+     "fr": "À droite du texte",
+     "en": "Right of the text"
+    },
+    {
+     "k": "l",
+     "fr": "À gauche du texte",
+     "en": "Left of the text"
+    },
+    {
+     "k": "R",
+     "fr": "À droite, peut flotter",
+     "en": "Right, may float"
+    },
+    {
+     "k": "L",
+     "fr": "À gauche, peut flotter",
+     "en": "Left, may float"
+    },
+    {
+     "k": "i",
+     "fr": "Côté intérieur (recto-verso)",
+     "en": "Inner side (two-sided)"
+    },
+    {
+     "k": "o",
+     "fr": "Côté extérieur (recto-verso)",
+     "en": "Outer side (two-sided)"
+    }
+   ]
+  },
+  {
+   "package": "xcolor",
+   "for": [
+    "\\definecolor{2}"
+   ],
+   "keys": [
+    {
+     "k": "HTML",
+     "fr": "Code hexadécimal : 1F4E79",
+     "en": "Hexadecimal code: 1F4E79"
+    },
+    {
+     "k": "RGB",
+     "fr": "Rouge, vert, bleu de 0 à 255 : 31,78,121",
+     "en": "Red, green, blue from 0 to 255: 31,78,121"
+    },
+    {
+     "k": "rgb",
+     "fr": "Rouge, vert, bleu de 0 à 1 : 0.1,0.3,0.5",
+     "en": "Red, green, blue from 0 to 1: 0.1,0.3,0.5"
+    },
+    {
+     "k": "cmyk",
+     "fr": "Cyan, magenta, jaune, noir de 0 à 1 (impression)",
+     "en": "Cyan, magenta, yellow, black from 0 to 1 (print)"
+    },
+    {
+     "k": "gray",
+     "fr": "Niveau de gris de 0 (noir) à 1 (blanc)",
+     "en": "Grey level from 0 (black) to 1 (white)"
+    }
+   ]
+  },
+  {
+   "package": "tikz",
+   "for": [
+    "tikzpicture[1]",
+    "scope[1]",
+    "\\draw[1]",
+    "\\node[1]",
+    "\\path[1]",
+    "\\fill[1]",
+    "\\filldraw[1]",
+    "\\shade[1]",
+    "\\shadedraw[1]",
+    "\\clip[1]",
+    "\\coordinate[1]",
+    "\\tikz[1]",
+    "\\pic[1]",
+    "\\tikzset{1}",
+    "\\matrix[1]",
+    "\\foreach[1]"
+   ],
+   "learn": {
+    "files": [
+     "tikz.code.tex"
+    ],
+    "pattern": "\\\\tikzoption\\{([A-Za-z ]+)\\}"
+   },
+   "keys": [
+    {
+     "k": "draw",
+     "fr": "Trace le contour (draw=couleur)",
+     "en": "Draws the outline (draw=colour)",
+     "values": [
+      [
+       "red",
+       "Rouge",
+       "Red"
+      ],
+      [
+       "blue",
+       "Bleu",
+       "Blue"
+      ],
+      [
+       "black",
+       "Noir",
+       "Black"
+      ],
+      [
+       "teal",
+       "Bleu-vert",
+       "Teal"
+      ],
+      [
+       "magenta",
+       "Magenta",
+       "Magenta"
+      ],
+      [
+       "cyan",
+       "Cyan",
+       "Cyan"
+      ],
+      [
+       "violet",
+       "Violet",
+       "Violet"
+      ],
+      [
+       "orange",
+       "Orange",
+       "Orange"
+      ],
+      [
+       "gray",
+       "Gris",
+       "Grey"
+      ],
+      [
+       "green!50!black",
+       "Vert foncé",
+       "Dark green"
+      ],
+      [
+       "blue!70!black",
+       "Bleu foncé",
+       "Dark blue"
+      ]
+     ]
+    },
+    {
+     "k": "fill",
+     "fr": "Remplit la forme (fill=couleur)",
+     "en": "Fills the shape (fill=colour)",
+     "values": [
+      [
+       "red",
+       "Rouge",
+       "Red"
+      ],
+      [
+       "blue",
+       "Bleu",
+       "Blue"
+      ],
+      [
+       "black",
+       "Noir",
+       "Black"
+      ],
+      [
+       "teal",
+       "Bleu-vert",
+       "Teal"
+      ],
+      [
+       "magenta",
+       "Magenta",
+       "Magenta"
+      ],
+      [
+       "cyan",
+       "Cyan",
+       "Cyan"
+      ],
+      [
+       "violet",
+       "Violet",
+       "Violet"
+      ],
+      [
+       "orange",
+       "Orange",
+       "Orange"
+      ],
+      [
+       "gray",
+       "Gris",
+       "Grey"
+      ],
+      [
+       "green!50!black",
+       "Vert foncé",
+       "Dark green"
+      ],
+      [
+       "blue!70!black",
+       "Bleu foncé",
+       "Dark blue"
+      ],
+      [
+       "blue!20",
+       "Bleu clair",
+       "Light blue"
+      ]
+     ]
+    },
+    {
+     "k": "color",
+     "fr": "Couleur du trait et du texte",
+     "en": "Colour of the line and the text",
+     "values": [
+      [
+       "red",
+       "Rouge",
+       "Red"
+      ],
+      [
+       "blue",
+       "Bleu",
+       "Blue"
+      ],
+      [
+       "black",
+       "Noir",
+       "Black"
+      ],
+      [
+       "teal",
+       "Bleu-vert",
+       "Teal"
+      ],
+      [
+       "magenta",
+       "Magenta",
+       "Magenta"
+      ],
+      [
+       "cyan",
+       "Cyan",
+       "Cyan"
+      ],
+      [
+       "violet",
+       "Violet",
+       "Violet"
+      ],
+      [
+       "orange",
+       "Orange",
+       "Orange"
+      ],
+      [
+       "gray",
+       "Gris",
+       "Grey"
+      ],
+      [
+       "green!50!black",
+       "Vert foncé",
+       "Dark green"
+      ],
+      [
+       "blue!70!black",
+       "Bleu foncé",
+       "Dark blue"
+      ]
+     ]
+    },
+    {
+     "k": "text",
+     "fr": "Couleur du texte des nœuds",
+     "en": "Colour of node text",
+     "values": [
+      [
+       "red",
+       "Rouge",
+       "Red"
+      ],
+      [
+       "blue",
+       "Bleu",
+       "Blue"
+      ],
+      [
+       "black",
+       "Noir",
+       "Black"
+      ],
+      [
+       "teal",
+       "Bleu-vert",
+       "Teal"
+      ],
+      [
+       "magenta",
+       "Magenta",
+       "Magenta"
+      ],
+      [
+       "cyan",
+       "Cyan",
+       "Cyan"
+      ],
+      [
+       "violet",
+       "Violet",
+       "Violet"
+      ],
+      [
+       "orange",
+       "Orange",
+       "Orange"
+      ],
+      [
+       "gray",
+       "Gris",
+       "Grey"
+      ],
+      [
+       "green!50!black",
+       "Vert foncé",
+       "Dark green"
+      ],
+      [
+       "blue!70!black",
+       "Bleu foncé",
+       "Dark blue"
+      ]
+     ]
+    },
+    {
+     "k": "thin",
+     "fr": "Trait fin (par défaut)",
+     "en": "Thin line (default)"
+    },
+    {
+     "k": "thick",
+     "fr": "Trait épais",
+     "en": "Thick line"
+    },
+    {
+     "k": "very thick",
+     "fr": "Trait très épais",
+     "en": "Very thick line"
+    },
+    {
+     "k": "ultra thick",
+     "fr": "Trait le plus épais",
+     "en": "Thickest line"
+    },
+    {
+     "k": "very thin",
+     "fr": "Trait très fin",
+     "en": "Very thin line"
+    },
+    {
+     "k": "line width",
+     "fr": "Épaisseur exacte du trait",
+     "en": "Exact line width",
+     "v": "${1:1pt}"
+    },
+    {
+     "k": "dashed",
+     "fr": "Tirets",
+     "en": "Dashes"
+    },
+    {
+     "k": "dotted",
+     "fr": "Pointillés",
+     "en": "Dots"
+    },
+    {
+     "k": "densely dashed",
+     "fr": "Tirets serrés",
+     "en": "Dense dashes"
+    },
+    {
+     "k": "loosely dotted",
+     "fr": "Pointillés espacés",
+     "en": "Loose dots"
+    },
+    {
+     "k": "dash dot",
+     "fr": "Tiret-point",
+     "en": "Dash-dot"
+    },
+    {
+     "k": "->",
+     "fr": "Flèche à la fin",
+     "en": "Arrow at the end"
+    },
+    {
+     "k": "<-",
+     "fr": "Flèche au début",
+     "en": "Arrow at the start"
+    },
+    {
+     "k": "<->",
+     "fr": "Flèches aux deux bouts",
+     "en": "Arrows at both ends"
+    },
+    {
+     "k": "-stealth",
+     "fr": "Pointe fine (stealth)",
+     "en": "Thin tip (stealth)"
+    },
+    {
+     "k": "-latex",
+     "fr": "Pointe pleine (latex)",
+     "en": "Solid tip (latex)"
+    },
+    {
+     "k": "|-|",
+     "fr": "Barres aux deux bouts (cote)",
+     "en": "Bars at both ends (dimension)"
+    },
+    {
+     "k": ">",
+     "fr": "Forme des pointes de flèche : >=stealth",
+     "en": "Shape of arrow tips: >=stealth",
+     "values": [
+      "stealth",
+      "latex",
+      "to",
+      "Stealth",
+      "Latex"
+     ]
+    },
+    {
+     "k": "opacity",
+     "fr": "Opacité (0 = invisible, 1 = opaque)",
+     "en": "Opacity (0 = invisible, 1 = opaque)",
+     "v": "${1:0.5}"
+    },
+    {
+     "k": "fill opacity",
+     "fr": "Opacité du remplissage",
+     "en": "Opacity of the fill",
+     "v": "${1:0.5}"
+    },
+    {
+     "k": "rounded corners",
+     "fr": "Coins arrondis",
+     "en": "Rounded corners"
+    },
+    {
+     "k": "scale",
+     "fr": "Échelle du dessin",
+     "en": "Scale of the drawing",
+     "v": "${1:1.5}"
+    },
+    {
+     "k": "xscale",
+     "fr": "Échelle horizontale",
+     "en": "Horizontal scale",
+     "v": "${1:2}"
+    },
+    {
+     "k": "yscale",
+     "fr": "Échelle verticale",
+     "en": "Vertical scale",
+     "v": "${1:2}"
+    },
+    {
+     "k": "rotate",
+     "fr": "Rotation en degrés",
+     "en": "Rotation in degrees",
+     "v": "${1:45}"
+    },
+    {
+     "k": "shift",
+     "fr": "Décalage du dessin : {(2,0)}",
+     "en": "Offset of the drawing: {(2,0)}",
+     "v": "{(${1:1},${2:0})}"
+    },
+    {
+     "k": "xshift",
+     "fr": "Décalage horizontal",
+     "en": "Horizontal offset",
+     "v": "${1:1cm}"
+    },
+    {
+     "k": "yshift",
+     "fr": "Décalage vertical",
+     "en": "Vertical offset",
+     "v": "${1:1cm}"
+    },
+    {
+     "k": "above",
+     "fr": "Nœud au-dessus du point",
+     "en": "Node above the point"
+    },
+    {
+     "k": "below",
+     "fr": "Nœud en dessous",
+     "en": "Node below"
+    },
+    {
+     "k": "left",
+     "fr": "Nœud à gauche",
+     "en": "Node on the left"
+    },
+    {
+     "k": "right",
+     "fr": "Nœud à droite",
+     "en": "Node on the right"
+    },
+    {
+     "k": "above right",
+     "fr": "Nœud en haut à droite",
+     "en": "Node above right"
+    },
+    {
+     "k": "above left",
+     "fr": "Nœud en haut à gauche",
+     "en": "Node above left"
+    },
+    {
+     "k": "below right",
+     "fr": "Nœud en bas à droite",
+     "en": "Node below right"
+    },
+    {
+     "k": "below left",
+     "fr": "Nœud en bas à gauche",
+     "en": "Node below left"
+    },
+    {
+     "k": "anchor",
+     "fr": "Point du nœud placé à la position",
+     "en": "Point of the node put at the position",
+     "values": [
+      "north",
+      "south",
+      "east",
+      "west",
+      "center",
+      "north east",
+      "north west",
+      "south east",
+      "south west",
+      "base"
+     ]
+    },
+    {
+     "k": "align",
+     "fr": "Alignement du texte d'un nœud sur plusieurs lignes",
+     "en": "Alignment of multi-line node text",
+     "values": [
+      [
+       "center",
+       "Centré",
+       "Centred"
+      ],
+      [
+       "left",
+       "À gauche",
+       "Left"
+      ],
+      [
+       "right",
+       "À droite",
+       "Right"
+      ]
+     ]
+    },
+    {
+     "k": "text width",
+     "fr": "Largeur du texte d'un nœud (retour à la ligne)",
+     "en": "Width of node text (line breaks)",
+     "v": "${1:3cm}"
+    },
+    {
+     "k": "minimum width",
+     "fr": "Largeur minimale d'un nœud",
+     "en": "Minimum width of a node",
+     "v": "${1:2cm}"
+    },
+    {
+     "k": "minimum height",
+     "fr": "Hauteur minimale d'un nœud",
+     "en": "Minimum height of a node",
+     "v": "${1:1cm}"
+    },
+    {
+     "k": "minimum size",
+     "fr": "Taille minimale d'un nœud",
+     "en": "Minimum size of a node",
+     "v": "${1:1cm}"
+    },
+    {
+     "k": "inner sep",
+     "fr": "Marge entre le texte et le bord du nœud",
+     "en": "Margin between the text and the node's border",
+     "v": "${1:2pt}"
+    },
+    {
+     "k": "outer sep",
+     "fr": "Marge extérieure du nœud",
+     "en": "Outer margin of the node",
+     "v": "${1:0pt}"
+    },
+    {
+     "k": "circle",
+     "fr": "Nœud rond",
+     "en": "Round node"
+    },
+    {
+     "k": "rectangle",
+     "fr": "Nœud rectangulaire",
+     "en": "Rectangular node"
+    },
+    {
+     "k": "ellipse",
+     "fr": "Nœud en ellipse (bibliothèque shapes)",
+     "en": "Elliptic node (shapes library)"
+    },
+    {
+     "k": "diamond",
+     "fr": "Nœud en losange (bibliothèque shapes)",
+     "en": "Diamond node (shapes library)"
+    },
+    {
+     "k": "font",
+     "fr": "Police du texte des nœuds",
+     "en": "Font of node text",
+     "v": "${1:\\small}"
+    },
+    {
+     "k": "node distance",
+     "fr": "Distance entre nœuds placés relativement",
+     "en": "Distance between nodes placed relatively",
+     "v": "${1:2cm}"
+    },
+    {
+     "k": "name",
+     "fr": "Nom du nœud ou du chemin",
+     "en": "Name of the node or path",
+     "v": "${1:A}"
+    },
+    {
+     "k": "label",
+     "fr": "Étiquette autour du nœud : label=above:texte",
+     "en": "Label around the node: label=above:text",
+     "v": "${1:above}:${2:texte}"
+    },
+    {
+     "k": "pin",
+     "fr": "Étiquette reliée par un trait",
+     "en": "Label linked by a line",
+     "v": "${1:above}:${2:texte}"
+    },
+    {
+     "k": "midway",
+     "fr": "Nœud au milieu du segment",
+     "en": "Node halfway along the segment"
+    },
+    {
+     "k": "near start",
+     "fr": "Nœud près du début",
+     "en": "Node near the start"
+    },
+    {
+     "k": "near end",
+     "fr": "Nœud près de la fin",
+     "en": "Node near the end"
+    },
+    {
+     "k": "pos",
+     "fr": "Position du nœud sur le segment (0 à 1)",
+     "en": "Position of the node on the segment (0 to 1)",
+     "v": "${1:0.5}"
+    },
+    {
+     "k": "sloped",
+     "fr": "Texte incliné le long du trait",
+     "en": "Text sloped along the line"
+    },
+    {
+     "k": "bend left",
+     "fr": "Courbe vers la gauche",
+     "en": "Bends to the left",
+     "v": "${1:30}"
+    },
+    {
+     "k": "bend right",
+     "fr": "Courbe vers la droite",
+     "en": "Bends to the right",
+     "v": "${1:30}"
+    },
+    {
+     "k": "out",
+     "fr": "Angle de départ de la courbe (to)",
+     "en": "Leaving angle of the curve (to)",
+     "v": "${1:45}"
+    },
+    {
+     "k": "in",
+     "fr": "Angle d'arrivée de la courbe (to)",
+     "en": "Entering angle of the curve (to)",
+     "v": "${1:135}"
+    },
+    {
+     "k": "looseness",
+     "fr": "Ampleur de la courbe",
+     "en": "Looseness of the curve",
+     "v": "${1:1.5}"
+    },
+    {
+     "k": "smooth",
+     "fr": "Courbe lissée passant par les points",
+     "en": "Smooth curve through the points"
+    },
+    {
+     "k": "domain",
+     "fr": "Intervalle de la variable d'une courbe",
+     "en": "Range of a curve's variable",
+     "v": "${1:-2}:${2:2}"
+    },
+    {
+     "k": "samples",
+     "fr": "Nombre de points calculés",
+     "en": "Number of computed points",
+     "v": "${1:100}"
+    },
+    {
+     "k": "variable",
+     "fr": "Variable des courbes (\\x par défaut)",
+     "en": "Variable of plots (\\x by default)",
+     "v": "${1:\\t}"
+    },
+    {
+     "k": "step",
+     "fr": "Pas d'une grille",
+     "en": "Step of a grid",
+     "v": "${1:1cm}"
+    },
+    {
+     "k": "help lines",
+     "fr": "Traits fins et gris (grilles)",
+     "en": "Thin grey lines (grids)"
+    },
+    {
+     "k": "double",
+     "fr": "Double trait",
+     "en": "Double line"
+    },
+    {
+     "k": "line cap",
+     "fr": "Bout des traits",
+     "en": "Ends of lines",
+     "values": [
+      "round",
+      "rect",
+      "butt"
+     ]
+    },
+    {
+     "k": "line join",
+     "fr": "Jonction des traits",
+     "en": "Joins of lines",
+     "values": [
+      "round",
+      "bevel",
+      "miter"
+     ]
+    },
+    {
+     "k": "top color",
+     "fr": "Dégradé : couleur du haut",
+     "en": "Shading: top colour",
+     "v": "${1:white}"
+    },
+    {
+     "k": "bottom color",
+     "fr": "Dégradé : couleur du bas",
+     "en": "Shading: bottom colour",
+     "v": "${1:blue!30}"
+    },
+    {
+     "k": "left color",
+     "fr": "Dégradé : couleur de gauche",
+     "en": "Shading: left colour",
+     "v": "${1:white}"
+    },
+    {
+     "k": "right color",
+     "fr": "Dégradé : couleur de droite",
+     "en": "Shading: right colour",
+     "v": "${1:blue!30}"
+    },
+    {
+     "k": "ball color",
+     "fr": "Sphère ombrée de cette couleur",
+     "en": "Shaded sphere of this colour",
+     "v": "${1:blue}"
+    },
+    {
+     "k": "pattern",
+     "fr": "Motif de remplissage (bibliothèque patterns)",
+     "en": "Fill pattern (patterns library)",
+     "values": [
+      "north east lines",
+      "north west lines",
+      "horizontal lines",
+      "vertical lines",
+      "grid",
+      "dots",
+      "crosshatch"
+     ]
+    },
+    {
+     "k": "baseline",
+     "fr": "Ligne de base du dessin dans le texte",
+     "en": "Baseline of the drawing in the text",
+     "v": "${1:(0,0)}"
+    },
+    {
+     "k": "remember picture",
+     "fr": "Retient les positions (dessins en superposition)",
+     "en": "Remembers positions (overlaid drawings)"
+    },
+    {
+     "k": "overlay",
+     "fr": "Le dessin ne prend pas de place",
+     "en": "The drawing takes no room"
+    },
+    {
+     "k": "transform shape",
+     "fr": "Les nœuds suivent l'échelle et la rotation",
+     "en": "Nodes follow scale and rotation"
+    },
+    {
+     "k": "on grid",
+     "fr": "Placement relatif depuis les centres",
+     "en": "Relative placement from centres"
+    },
+    {
+     "k": "auto",
+     "fr": "Étiquettes placées automatiquement le long des traits",
+     "en": "Labels placed automatically along lines"
+    },
+    {
+     "k": "swap",
+     "fr": "Étiquette de l'autre côté (avec auto)",
+     "en": "Label on the other side (with auto)"
+    },
+    {
+     "k": "every node/.style",
+     "fr": "Style de tous les nœuds",
+     "en": "Style of every node",
+     "v": "{${1:draw}}"
+    },
+    {
+     "k": "every path/.style",
+     "fr": "Style de tous les chemins",
+     "en": "Style of every path",
+     "v": "{${1:thick}}"
+    },
+    {
+     "k": "x",
+     "fr": "Longueur de l'unité en x",
+     "en": "Length of the x unit",
+     "v": "${1:1cm}"
+    },
+    {
+     "k": "y",
+     "fr": "Longueur de l'unité en y",
+     "en": "Length of the y unit",
+     "v": "${1:1cm}"
+    }
+   ]
+  },
+  {
+   "package": "pgfplots",
+   "for": [
+    "axis[1]",
+    "semilogxaxis[1]",
+    "semilogyaxis[1]",
+    "loglogaxis[1]",
+    "polaraxis[1]",
+    "groupplot[1]",
+    "\\nextgroupplot[1]",
+    "\\pgfplotsset{1}"
+   ],
+   "keys": [
+    {
+     "k": "xlabel",
+     "fr": "Titre de l'axe des x",
+     "en": "Title of the x axis",
+     "v": "{${1:$x$}}"
+    },
+    {
+     "k": "ylabel",
+     "fr": "Titre de l'axe des y",
+     "en": "Title of the y axis",
+     "v": "{${1:$y$}}"
+    },
+    {
+     "k": "zlabel",
+     "fr": "Titre de l'axe des z",
+     "en": "Title of the z axis",
+     "v": "{${1:$z$}}"
+    },
+    {
+     "k": "title",
+     "fr": "Titre du graphique",
+     "en": "Title of the plot",
+     "v": "{${1}}"
+    },
+    {
+     "k": "xmin",
+     "fr": "Borne gauche de l'axe x",
+     "en": "Left bound of the x axis",
+     "v": "${1:0}"
+    },
+    {
+     "k": "xmax",
+     "fr": "Borne droite de l'axe x",
+     "en": "Right bound of the x axis",
+     "v": "${1:10}"
+    },
+    {
+     "k": "ymin",
+     "fr": "Borne basse de l'axe y",
+     "en": "Lower bound of the y axis",
+     "v": "${1:0}"
+    },
+    {
+     "k": "ymax",
+     "fr": "Borne haute de l'axe y",
+     "en": "Upper bound of the y axis",
+     "v": "${1:10}"
+    },
+    {
+     "k": "domain",
+     "fr": "Intervalle des courbes de fonctions",
+     "en": "Range of function plots",
+     "v": "${1:-2}:${2:2}"
+    },
+    {
+     "k": "samples",
+     "fr": "Nombre de points calculés",
+     "en": "Number of computed points",
+     "v": "${1:100}"
+    },
+    {
+     "k": "width",
+     "fr": "Largeur du graphique",
+     "en": "Width of the plot",
+     "v": "${1:0.8\\linewidth}"
+    },
+    {
+     "k": "height",
+     "fr": "Hauteur du graphique",
+     "en": "Height of the plot",
+     "v": "${1:6cm}"
+    },
+    {
+     "k": "grid",
+     "fr": "Grille",
+     "en": "Grid",
+     "values": [
+      [
+       "major",
+       "Aux graduations principales",
+       "At major ticks"
+      ],
+      [
+       "both",
+       "Principales et secondaires",
+       "Major and minor"
+      ],
+      [
+       "none",
+       "Aucune",
+       "None"
+      ]
+     ]
+    },
+    {
+     "k": "axis lines",
+     "fr": "Position des axes",
+     "en": "Position of the axes",
+     "values": [
+      [
+       "middle",
+       "Axes qui se croisent en 0",
+       "Axes crossing at 0"
+      ],
+      [
+       "left",
+       "À gauche et en bas",
+       "Left and bottom"
+      ],
+      [
+       "box",
+       "Cadre",
+       "Box"
+      ],
+      [
+       "center",
+       "Au centre",
+       "Centred"
+      ],
+      [
+       "none",
+       "Aucun",
+       "None"
+      ]
+     ]
+    },
+    {
+     "k": "legend pos",
+     "fr": "Position de la légende",
+     "en": "Position of the legend",
+     "values": [
+      [
+       "north east",
+       "En haut à droite",
+       "Top right"
+      ],
+      [
+       "north west",
+       "En haut à gauche",
+       "Top left"
+      ],
+      [
+       "south east",
+       "En bas à droite",
+       "Bottom right"
+      ],
+      [
+       "south west",
+       "En bas à gauche",
+       "Bottom left"
+      ],
+      [
+       "outer north east",
+       "À l'extérieur, à droite",
+       "Outside, on the right"
+      ]
+     ]
+    },
+    {
+     "k": "legend entries",
+     "fr": "Textes de la légende, dans l'ordre des courbes",
+     "en": "Legend texts, in the order of the plots",
+     "v": "{${1:a},${2:b}}"
+    },
+    {
+     "k": "xtick",
+     "fr": "Graduations de l'axe x : {0,1,...,5}",
+     "en": "Ticks of the x axis: {0,1,...,5}",
+     "v": "{${1:0,1,...,5}}"
+    },
+    {
+     "k": "ytick",
+     "fr": "Graduations de l'axe y",
+     "en": "Ticks of the y axis",
+     "v": "{${1:0,1,...,5}}"
+    },
+    {
+     "k": "xticklabels",
+     "fr": "Textes des graduations x",
+     "en": "Texts of the x ticks",
+     "v": "{${1}}"
+    },
+    {
+     "k": "xmode",
+     "fr": "Échelle de l'axe x",
+     "en": "Scale of the x axis",
+     "values": [
+      [
+       "log",
+       "Logarithmique",
+       "Logarithmic"
+      ],
+      [
+       "normal",
+       "Linéaire",
+       "Linear"
+      ]
+     ]
+    },
+    {
+     "k": "ymode",
+     "fr": "Échelle de l'axe y",
+     "en": "Scale of the y axis",
+     "values": [
+      [
+       "log",
+       "Logarithmique",
+       "Logarithmic"
+      ],
+      [
+       "normal",
+       "Linéaire",
+       "Linear"
+      ]
+     ]
+    },
+    {
+     "k": "ybar",
+     "fr": "Diagramme en barres verticales",
+     "en": "Vertical bar chart"
+    },
+    {
+     "k": "xbar",
+     "fr": "Diagramme en barres horizontales",
+     "en": "Horizontal bar chart"
+    },
+    {
+     "k": "bar width",
+     "fr": "Largeur des barres",
+     "en": "Width of the bars",
+     "v": "${1:10pt}"
+    },
+    {
+     "k": "enlargelimits",
+     "fr": "Marge autour des données",
+     "en": "Margin around the data",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ],
+      [
+       "0.1",
+       "10 %",
+       "10%"
+      ]
+     ]
+    },
+    {
+     "k": "axis equal",
+     "fr": "Même unité sur les deux axes",
+     "en": "Same unit on both axes"
+    },
+    {
+     "k": "scale only axis",
+     "fr": "width et height pour les axes seuls",
+     "en": "width and height for the axes only"
+    },
+    {
+     "k": "colormap/viridis",
+     "fr": "Palette viridis",
+     "en": "viridis colour map"
+    },
+    {
+     "k": "view",
+     "fr": "Angle de vue en 3D",
+     "en": "Viewing angle in 3D",
+     "v": "{${1:30}}{${2:30}}"
+    },
+    {
+     "k": "nodes near coords",
+     "fr": "Valeurs affichées sur les points ou barres",
+     "en": "Values shown on points or bars"
+    },
+    {
+     "k": "cycle list name",
+     "fr": "Suite de styles des courbes",
+     "en": "Sequence of plot styles",
+     "values": [
+      "color",
+      "exotic",
+      "black white",
+      "mark list"
+     ]
+    },
+    {
+     "k": "unbounded coords",
+     "fr": "Points infinis : sauter ou couper",
+     "en": "Infinite points: jump or discard",
+     "values": [
+      "jump",
+      "discard"
+     ]
+    },
+    {
+     "k": "restrict y to domain",
+     "fr": "Ignore les y hors de l'intervalle",
+     "en": "Ignores y outside the range",
+     "v": "${1:-10}:${2:10}"
+    },
+    {
+     "k": "clip",
+     "fr": "Coupe ce qui sort du cadre",
+     "en": "Clips what goes out of the frame",
+     "values": [
+      [
+       "true",
+       "Oui",
+       "Yes"
+      ],
+      [
+       "false",
+       "Non",
+       "No"
+      ]
+     ]
+    },
+    {
+     "k": "legend style",
+     "fr": "Style de la légende",
+     "en": "Style of the legend",
+     "v": "{${1:font=\\small}}"
+    }
+   ]
+  },
+  {
+   "package": "pgfplots",
+   "for": [
+    "\\addplot[1]"
+   ],
+   "keys": [
+    {
+     "k": "domain",
+     "fr": "Intervalle de la variable",
+     "en": "Range of the variable",
+     "v": "${1:-2}:${2:2}"
+    },
+    {
+     "k": "samples",
+     "fr": "Nombre de points",
+     "en": "Number of points",
+     "v": "${1:100}"
+    },
+    {
+     "k": "smooth",
+     "fr": "Courbe lissée",
+     "en": "Smooth curve"
+    },
+    {
+     "k": "mark",
+     "fr": "Marque des points",
+     "en": "Mark of the points",
+     "values": [
+      [
+       "*",
+       "Disque plein",
+       "Filled disc"
+      ],
+      [
+       "o",
+       "Cercle",
+       "Circle"
+      ],
+      [
+       "x",
+       "Croix",
+       "Cross"
+      ],
+      [
+       "+",
+       "Plus",
+       "Plus"
+      ],
+      [
+       "square*",
+       "Carré",
+       "Square"
+      ],
+      [
+       "triangle*",
+       "Triangle",
+       "Triangle"
+      ],
+      [
+       "none",
+       "Aucune",
+       "None"
+      ]
+     ]
+    },
+    {
+     "k": "only marks",
+     "fr": "Seulement les points (nuage)",
+     "en": "Only the marks (scatter)"
+    },
+    {
+     "k": "color",
+     "fr": "Couleur de la courbe",
+     "en": "Colour of the plot",
+     "values": [
+      [
+       "red",
+       "Rouge",
+       "Red"
+      ],
+      [
+       "blue",
+       "Bleu",
+       "Blue"
+      ],
+      [
+       "black",
+       "Noir",
+       "Black"
+      ],
+      [
+       "teal",
+       "Bleu-vert",
+       "Teal"
+      ],
+      [
+       "magenta",
+       "Magenta",
+       "Magenta"
+      ],
+      [
+       "cyan",
+       "Cyan",
+       "Cyan"
+      ],
+      [
+       "violet",
+       "Violet",
+       "Violet"
+      ],
+      [
+       "orange",
+       "Orange",
+       "Orange"
+      ],
+      [
+       "gray",
+       "Gris",
+       "Grey"
+      ],
+      [
+       "green!50!black",
+       "Vert foncé",
+       "Dark green"
+      ],
+      [
+       "blue!70!black",
+       "Bleu foncé",
+       "Dark blue"
+      ]
+     ]
+    },
+    {
+     "k": "thick",
+     "fr": "Trait épais",
+     "en": "Thick line"
+    },
+    {
+     "k": "dashed",
+     "fr": "Tirets",
+     "en": "Dashes"
+    },
+    {
+     "k": "no marks",
+     "fr": "Sans marques",
+     "en": "Without marks"
+    },
+    {
+     "k": "fill",
+     "fr": "Remplissage (barres, aires)",
+     "en": "Fill (bars, areas)",
+     "values": [
+      [
+       "red",
+       "Rouge",
+       "Red"
+      ],
+      [
+       "blue",
+       "Bleu",
+       "Blue"
+      ],
+      [
+       "black",
+       "Noir",
+       "Black"
+      ],
+      [
+       "teal",
+       "Bleu-vert",
+       "Teal"
+      ],
+      [
+       "magenta",
+       "Magenta",
+       "Magenta"
+      ],
+      [
+       "cyan",
+       "Cyan",
+       "Cyan"
+      ],
+      [
+       "violet",
+       "Violet",
+       "Violet"
+      ],
+      [
+       "orange",
+       "Orange",
+       "Orange"
+      ],
+      [
+       "gray",
+       "Gris",
+       "Grey"
+      ],
+      [
+       "green!50!black",
+       "Vert foncé",
+       "Dark green"
+      ],
+      [
+       "blue!70!black",
+       "Bleu foncé",
+       "Dark blue"
+      ]
+     ]
+    },
+    {
+     "k": "variable",
+     "fr": "Nom de la variable",
+     "en": "Name of the variable",
+     "v": "${1:\\t}"
+    },
+    {
+     "k": "forget plot",
+     "fr": "Pas d'entrée dans la légende",
+     "en": "No entry in the legend"
+    },
+    {
+     "k": "const plot",
+     "fr": "Courbe en escalier",
+     "en": "Step plot"
+    },
+    {
+     "k": "ybar",
+     "fr": "Barres verticales",
+     "en": "Vertical bars"
+    },
+    {
+     "k": "error bars/.cd",
+     "fr": "Barres d'erreur (y dir=both, y explicit)",
+     "en": "Error bars (y dir=both, y explicit)"
+    }
+   ]
+  }
+ ]
+}

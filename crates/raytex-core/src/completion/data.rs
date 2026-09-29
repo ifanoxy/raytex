@@ -298,45 +298,6 @@ pub const PLACEMENTS: &[(&str, &str, &str)] = &[
     ),
 ];
 
-/// `\includegraphics` keys.
-pub const GRAPHICS_KEYS: &[(&str, &str, &str)] = &[
-    (
-        "width=\\linewidth",
-        "Full line width",
-        "Toute la largeur de ligne",
-    ),
-    (
-        "width=0.8\\linewidth",
-        "80% of the line width",
-        "80 % de la largeur de ligne",
-    ),
-    (
-        "width=0.5\\linewidth",
-        "Half the line width",
-        "La moitié de la largeur de ligne",
-    ),
-    ("height=", "Height", "Hauteur"),
-    ("scale=", "Scale factor", "Facteur d'échelle"),
-    ("angle=", "Rotation (degrees)", "Rotation (degrés)"),
-    (
-        "keepaspectratio",
-        "Keep proportions with width and height",
-        "Garder les proportions avec width et height",
-    ),
-    (
-        "trim={left bottom right top}",
-        "Crop (with clip)",
-        "Rogner (avec clip)",
-    ),
-    ("clip", "Cut what is outside", "Couper ce qui dépasse"),
-    ("page=", "Page of a PDF", "Page d'un PDF"),
-    (
-        "draft",
-        "Frame instead of the image",
-        "Cadre à la place de l'image",
-    ),
-];
-
 /// A built-in snippet.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Snippet {

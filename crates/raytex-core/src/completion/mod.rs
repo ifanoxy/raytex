@@ -14,6 +14,7 @@
 //! Documentation is fetched lazily for the highlighted item ([`info`]).
 
 pub mod data;
+pub mod keys;
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -220,7 +221,8 @@ pub fn complete(ws: &Workspace, req: &CompletionRequest<'_>) -> Option<Completio
     let mut list = list;
     narrow(&mut list, req.before);
     for item in &mut list.items {
-        if item.snippet && item.kind != ItemKind::Macro {
+        // Values of keys are suggestions to keep (`title={Références}`).
+        if item.snippet && item.kind != ItemKind::Macro && item.kind != ItemKind::Option {
             item.apply = empty_brace_fields(&item.apply);
         }
         if is_command && req.settings.at_shortcuts {
@@ -283,6 +285,13 @@ pub fn empty_brace_fields(snippet: &str) -> String {
         i += ch.len_utf8();
     }
     out
+}
+
+/// A snippet as plain text: `${1:0.8}\\linewidth` gives `0.8\\linewidth`.
+fn snippet_text(snippet: &str) -> String {
+    regex::Regex::new(r"\$\{\d+(?::([^{}]*))?\}")
+        .map(|re| re.replace_all(snippet, "$1").into_owned())
+        .unwrap_or_else(|_| snippet.to_owned())
 }
 
 /// Most items sent for one request: the editor shows about a hundred, and
@@ -751,7 +760,21 @@ impl Completer<'_> {
             }
             ArgumentKind::PackageOptions { package, class } => {
                 let package = package?;
-                let mut items = Vec::new();
+                // Packages configured by keys (geometry, hyperref…): their keys and values.
+                let key_sets: Vec<(usize, &keys::KeySet)> = keys::sets()
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, s)| !class && s.options_of.contains(&package))
+                    .collect();
+                let from_keys = if key_sets.is_empty() {
+                    None
+                } else {
+                    self.key_items(&key_sets, partial)
+                };
+                if partial.contains('=') {
+                    return from_keys;
+                }
+                let mut items = from_keys.map(|l| l.items).unwrap_or_default();
                 let kbp = if class {
                     kb().class(&package)
                 } else {
@@ -782,12 +805,12 @@ impl Completer<'_> {
                 }
                 if let Some(a) = self.ws.packages() {
                     for o in &a.analyze(&package, class).options {
-                        if seen.insert(o.clone()) {
+                        if seen.insert(o.clone()) && !items.iter().any(|i| &i.label == o) {
                             items.push(CompletionItem::new(o.clone(), ItemKind::Option, o.clone()));
                         }
                     }
                 }
-                CompletionList::new(partial, items).valid_for(r"^[^,\]\s]*$")
+                CompletionList::new(partial, items).valid_for(r"^[^,=\]\s]*$")
             }
             ArgumentKind::File(kind) => self.files(command, kind, partial),
             ArgumentKind::Color => {
@@ -854,19 +877,25 @@ impl Completer<'_> {
                     .collect();
                 CompletionList::new(partial, items)
             }
-            ArgumentKind::GraphicsOptions => {
-                let items = data::GRAPHICS_KEYS
+            ArgumentKind::Keys(target) => {
+                let (class, _, loaded) = self.loaded();
+                let available = |package: &str| {
+                    package == "latex"
+                        || match package.strip_prefix("class:") {
+                            Some(c) => class.as_deref() == Some(c),
+                            None => loaded.contains(package),
+                        }
+                };
+                let sets: Vec<(usize, &keys::KeySet)> = keys::sets()
                     .iter()
                     .enumerate()
-                    .map(|(i, (k, en, fr))| {
-                        CompletionItem::new(*k, ItemKind::Option, *k)
-                            .detail(lang.pick(fr, en))
-                            .boost(10 - i as i32)
-                    })
+                    .filter(|(_, s)| s.targets.contains(&target) && available(&s.package))
                     .collect();
-                CompletionList::new(partial, items).valid_for(r"^[^,\]]*$")
+                if sets.is_empty() {
+                    return None;
+                }
+                self.key_items(&sets, partial)?
             }
-            ArgumentKind::Other => return None,
         };
         if list.items.is_empty() {
             return None;
@@ -874,6 +903,68 @@ impl Completer<'_> {
         list.items
             .dedup_by(|a, b| a.label == b.label && a.kind == b.kind);
         Some(list)
+    }
+
+    /// Keys of `sets` (documented first, then those read from the
+    /// packages), or the values of the key typed before `=`.
+    fn key_items(&self, sets: &[(usize, &keys::KeySet)], partial: &str) -> Option<CompletionList> {
+        let lang = self.lang();
+        if let Some((key, value)) = partial.split_once('=') {
+            let key = key.trim();
+            let k = sets
+                .iter()
+                .flat_map(|(_, s)| &s.keys)
+                .find(|k| k.name == key)?;
+            let items: Vec<CompletionItem> = k
+                .values
+                .iter()
+                .enumerate()
+                .map(|(i, v)| {
+                    CompletionItem::new(v.name(), ItemKind::Keyword, v.name())
+                        .detail(v.doc(lang))
+                        .boost(40 - i as i32)
+                })
+                .collect();
+            return (!items.is_empty())
+                .then(|| CompletionList::new(value.trim_start(), items).valid_for(r"^[^,\]}]*$"));
+        }
+        let mut seen = HashSet::new();
+        let mut items = Vec::new();
+        for (index, set) in sets {
+            for (j, k) in set.keys.iter().enumerate() {
+                if !seen.insert(k.name.clone()) {
+                    continue;
+                }
+                let apply = match &k.value {
+                    Some(v) => format!("{}={v}", k.name),
+                    None if !k.values.is_empty() => format!("{}=", k.name),
+                    None => k.name.clone(),
+                };
+                items.push(
+                    CompletionItem::new(k.name.clone(), ItemKind::Option, apply)
+                        .detail(k.doc(lang))
+                        .boost(60 - j as i32)
+                        .info(format!("key:{index}:{}", k.name)),
+                );
+            }
+        }
+        if self.req.settings.learn_from_packages
+            && let Some(analyzer) = self.ws.packages()
+        {
+            for (index, set) in sets {
+                for name in keys::learned(*index, |f| analyzer.index().find(f)) {
+                    if seen.insert(name.clone()) {
+                        items.push(
+                            CompletionItem::new(name.clone(), ItemKind::Option, name.clone())
+                                .detail(set.package.clone())
+                                .boost(-60)
+                                .info(format!("keylearned:{}:{name}", set.package)),
+                        );
+                    }
+                }
+            }
+        }
+        Some(CompletionList::new(partial, items).valid_for(r"^[^,=\]}]*$"))
     }
 
     fn citations(&self, partial: &str) -> CompletionList {
@@ -1204,6 +1295,53 @@ pub fn info(ws: &Workspace, file: &Path, key: &str, lang: Lang) -> Option<String
             let env = kb().environment(name, Some(&HashSet::from([pkg.to_owned()])))?;
             Some(kb().environment_markdown(env, lang))
         }
+        "key" => {
+            let (index, name) = rest.split_once(':')?;
+            let set = keys::sets().get(index.parse::<usize>().ok()?)?;
+            let key = set.keys.iter().find(|k| k.name == name)?;
+            let mut md = format!("**`{name}`**");
+            match &key.value {
+                Some(v) => md.push_str(&format!(" `={}`", snippet_text(v))),
+                None if !key.values.is_empty() => md.push_str(" `=…`"),
+                None => {}
+            }
+            md.push_str(&format!("\n\n{}", key.doc(lang)));
+            if !key.values.is_empty() {
+                md.push_str(&format!("\n\n**{}**\n", lang.pick("Valeurs", "Values")));
+                for v in &key.values {
+                    let doc = v.doc(lang);
+                    md.push_str(&format!(
+                        "\n- `{}`{}",
+                        v.name(),
+                        if doc.is_empty() {
+                            String::new()
+                        } else {
+                            format!(" — {doc}")
+                        }
+                    ));
+                }
+            }
+            let package = set.package.strip_prefix("class:").unwrap_or(&set.package);
+            if package != "latex" {
+                md.push_str(&format!(
+                    "\n\n*{} [{package}](https://ctan.org/pkg/{package})*",
+                    lang.pick("Clé du package", "Key of the package")
+                ));
+            }
+            Some(md)
+        }
+        "keylearned" => {
+            let (package, name) = rest.split_once(':')?;
+            Some(format!(
+                "**`{name}`**\n\n{} `{package}` {}\n\n[{}](https://ctan.org/pkg/{package})",
+                lang.pick("Clé déclarée par le package", "Key declared by the"),
+                lang.pick("(lue dans sa source).", "package (read from its source)."),
+                lang.pick(
+                    "Documentation du package sur CTAN",
+                    "Package documentation on CTAN"
+                )
+            ))
+        }
         "learned" | "learned-env" => {
             let (pkg, name) = rest.split_once(':')?;
             let what = if kind == "learned" {
@@ -1422,6 +1560,49 @@ mod tests {
             "math symbols first in math mode"
         );
         assert!(list.items.iter().any(|i| i.label == "\\begin{itemize}"));
+    }
+
+    #[test]
+    fn keys_and_values_of_arguments() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        std::fs::write(
+            p.join("main.tex"),
+            "\\documentclass{article}\n\\usepackage{graphicx,enumitem,hyperref}\n\\begin{document}\n\\end{document}\n",
+        )
+        .unwrap();
+        let ws = Workspace::open(p);
+        let main = normalize(&p.join("main.tex"));
+        let s = CompletionSettings::default();
+        let labels = |before: &str, after: &str| -> Vec<String> {
+            complete(&ws, &req(&main, before, after, &s))
+                .map(|l| l.items.into_iter().map(|i| i.label).collect())
+                .unwrap_or_default()
+        };
+        let list = complete(
+            &ws,
+            &req(&main, "\\includegraphics[angle=90, wi", "]{a}", &s),
+        )
+        .unwrap();
+        let width = list.items.iter().find(|i| i.label == "width").unwrap();
+        assert_eq!(width.apply, "width=${1:0.8}\\linewidth");
+        assert!(width.detail.as_deref().unwrap().contains("Largeur"));
+        assert!(
+            info(&ws, &main, width.info.as_deref().unwrap(), Lang::Fr)
+                .unwrap()
+                .contains("width")
+        );
+        // After `=`: the values of the key.
+        assert!(labels("\\begin{itemize}[label=", "]").contains(&"\\arabic*.".to_owned()));
+        assert!(labels("\\hypersetup{colorlinks, link", "}").contains(&"linkcolor".to_owned()));
+        assert!(labels("\\hypersetup{linkcolor=", "}").contains(&"blue".to_owned()));
+        // Options of a package configured by keys.
+        let geometry = labels("\\usepackage[margin=2cm, to", "]{geometry}");
+        assert!(geometry.contains(&"top".to_owned()), "{geometry:?}");
+        // Keys of a package that is not loaded are not offered.
+        assert!(labels("\\sisetup{", "}").is_empty());
+        // Positional values of kernel arguments.
+        assert!(labels("\\begin{minipage}[", "]{3cm}").contains(&"t".to_owned()));
     }
 
     #[test]

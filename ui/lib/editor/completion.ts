@@ -57,7 +57,7 @@ function apply(item: CompletionItem, tail: string) {
     }
     if (item.addPackage && hooks.settings().autoAddPackage) void hooks.addPackage(view, item.addPackage);
     // After choosing \ref, \begin… open the next list right away.
-    if (/[{,]$/.test(item.apply) || /^\\(ref|eqref|cref|Cref|cite|citep|citet|parencite|textcite|autocite|usepackage|documentclass|input|include|includegraphics|begin)$/.test(item.label)) {
+    if (/[{,=]$/.test(item.apply) || /^\\(ref|eqref|cref|Cref|cite|citep|citet|parencite|textcite|autocite|usepackage|documentclass|input|include|includegraphics|begin)$/.test(item.label)) {
       setTimeout(() => startCompletion(view), 20);
     }
   };
@@ -117,12 +117,16 @@ async function source(context: CompletionContext): Promise<CompletionResult | nu
   };
 }
 
-/** Arguments completed as soon as the cursor is in their empty braces. */
-const ARGUMENT = /\\(?:begin|end|[a-zA-Z]*ref|[a-zA-Z]*cite[a-zA-Z]*|usepackage|RequirePackage|documentclass|input|include|includeonly|includegraphics|addbibresource|bibliography|bibliographystyle|usetikzlibrary|textcolor|color|colorbox|pagecolor|gls|Gls|glspl|Glspl|acr|ac)\*?(?:\[[^\]\n]*\])*\{(?:[^{}\n]*,)?$/;
+/**
+ * An empty argument of a command, or the place after a comma in it:
+ * `\\begin{|}`, `\\cite{a,|}`, `\\includegraphics[|]`, `\\hypersetup{colorlinks, |}`.
+ * The engine answers only for the arguments it can complete.
+ */
+const ARGUMENT = /\\[a-zA-Z]+\*?(?:\s*(?:\{[^{}\n]*\}|\[[^\]\n]*\]))*\s*[{[](?:[^{}[\]\n]*,\s*)?$/;
 
 /**
- * The cursor put into `\\begin{|}`, `\\ref{|}`, `\\cite{a,|}` (arrows, click):
- * the list opens as if something had been typed.
+ * The cursor put into an empty argument (arrows, click): the list opens
+ * as if something had been typed.
  */
 const openInEmptyArgument = EditorView.updateListener.of((u) => {
   if (u.docChanged || !u.selectionSet || !u.transactions.some((tr) => tr.isUserEvent("select"))) return;
@@ -131,7 +135,7 @@ const openInEmptyArgument = EditorView.updateListener.of((u) => {
   const line = u.state.doc.lineAt(sel.head);
   const before = line.text.slice(0, sel.head - line.from);
   const next = line.text[sel.head - line.from];
-  if ((next === "}" || next === ",") && ARGUMENT.test(before)) setTimeout(() => startCompletion(u.view), 0);
+  if ((next === "}" || next === "]" || next === ",") && ARGUMENT.test(before)) setTimeout(() => startCompletion(u.view), 0);
 });
 
 export function latexCompletion() {

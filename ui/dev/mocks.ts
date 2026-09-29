@@ -318,6 +318,38 @@ function complete(before: string, after = ""): T.CompletionList | null {
       items: ["chap:intro", "eq:chaleur", "fig:courbe", "chap:methodes"].map((l) => ({ label: l, kind: "label", detail: "Chapitre 1", apply: l, snippet: false, boost: 0 })),
     };
   }
+  // Keys of `\begin{itemize}[…]` (enumitem), like the engine's.
+  const keys = /\\begin\{itemize\}\[(?:[^\]]*,\s*)?([^,\]]*)$/.exec(before);
+  if (keys) {
+    const [key, value] = keys[1].split("=");
+    if (value !== undefined) {
+      if (key !== "label") return null;
+      return {
+        from: value.length,
+        toAfter: 0,
+        validFor: "^[^,\\]}]*$",
+        filter: true,
+        incomplete: false,
+        items: [
+          ["\\arabic*.", "1. 2. 3."],
+          ["(\\alph*)", "(a) (b) (c)"],
+          ["\\textbullet", "Puce ronde •"],
+        ].map(([v, d]) => ({ label: v, kind: "keyword", detail: d, apply: v, snippet: false, boost: 0 })),
+      };
+    }
+    return {
+      from: key.length,
+      toAfter: 0,
+      validFor: "^[^,=\\]}]*$",
+      filter: true,
+      incomplete: false,
+      items: [
+        { label: "label", kind: "option", detail: "Étiquette de chaque élément", apply: "label=", snippet: false, boost: 60, info: "label" },
+        { label: "nosep", kind: "option", detail: "Supprime tous les espaces verticaux de la liste", apply: "nosep", snippet: false, boost: 59 },
+        { label: "itemsep", kind: "option", detail: "Espace entre deux éléments", apply: "itemsep=${1:0pt}", snippet: true, boost: 58 },
+      ],
+    };
+  }
   const env = /\\begin\{([^}]*)$/.exec(before);
   if (env) {
     // Like the engine: the closing brace is replaced too.
