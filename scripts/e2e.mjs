@@ -4,7 +4,7 @@
 // ui/dev/selftest.ts on a fresh copy of tests/e2e/rapport, takes a
 // screenshot at each scene and stops at the verdict.
 //
-//   node scripts/e2e.mjs                    # workflow, fixes, files, projects
+//   node scripts/e2e.mjs                    # workflow, fixes, files, projects, media
 //   node scripts/e2e.mjs fixes files        # some groups
 //   E2E_OUT=out node scripts/e2e.mjs        # where logs and screenshots go
 //
@@ -17,10 +17,13 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const groups = process.argv.slice(2).length ? process.argv.slice(2) : ["workflow", "fixes", "files", "projects"];
+const groups = process.argv.slice(2).length ? process.argv.slice(2) : ["workflow", "fixes", "files", "projects", "media"];
 const out = resolve(process.env.E2E_OUT ?? join(root, "e2e-output"));
 const windows = process.platform === "win32";
-const TIMEOUT_MS = Number(process.env.E2E_TIMEOUT_MS ?? 25 * 60_000);
+// Compiling the application the first time can be long (25 min on a CI
+// runner): the time of the scenes only counts once it runs.
+const BUILD_TIMEOUT_MS = Number(process.env.E2E_BUILD_TIMEOUT_MS ?? 60 * 60_000);
+const TIMEOUT_MS = Number(process.env.E2E_TIMEOUT_MS ?? 20 * 60_000);
 
 mkdirSync(out, { recursive: true });
 
@@ -76,9 +79,11 @@ async function run(group) {
   let verdict = null;
   const started = Date.now();
 
+  let running = null;
   const onData = (chunk) => {
     const text = chunk.toString();
     appendFileSync(logFile, text);
+    if (!running && /Running `[^`]*raytex-app/.test(text)) running = Date.now();
     for (const m of text.matchAll(/scene: ([a-z0-9-]+)/g)) {
       if (seen.has(m[1])) continue;
       seen.add(m[1]);
@@ -92,7 +97,8 @@ async function run(group) {
 
   await new Promise((done) => {
     const timer = setInterval(() => {
-      if (verdict || Date.now() - started > TIMEOUT_MS) {
+      const late = running ? Date.now() - running > TIMEOUT_MS : Date.now() - started > BUILD_TIMEOUT_MS;
+      if (verdict || late) {
         clearInterval(timer);
         setTimeout(() => {
           killTree(child);

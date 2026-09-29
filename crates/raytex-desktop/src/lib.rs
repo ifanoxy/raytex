@@ -74,6 +74,9 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                fit_to_screen(&window);
+            }
             commands::tex::start_detection(app.handle().clone());
             // Files passed on the command line ("Open with…" on Windows and Linux).
             let files: Vec<PathBuf> = std::env::args()
@@ -230,4 +233,21 @@ fn request_open(app: &tauri::AppHandle, files: Vec<PathBuf>) {
         .unwrap_or_else(|e| e.into_inner())
         .extend(files);
     let _ = app.emit("app:open-files", ());
+}
+
+/// A window larger than the usable part of its screen (the first start on a
+/// laptop: 1366 × 768, or 1920 × 1080 at 150 %) is brought inside it, so the
+/// status bar is not under the task bar.
+fn fit_to_screen(window: &tauri::WebviewWindow) {
+    let (Ok(Some(monitor)), Ok(size)) = (window.current_monitor(), window.outer_size()) else {
+        return;
+    };
+    let area = monitor.work_area().size;
+    if size.width <= area.width && size.height <= area.height {
+        return;
+    }
+    let width = size.width.min(area.width * 95 / 100);
+    let height = size.height.min(area.height * 95 / 100);
+    let _ = window.set_size(tauri::PhysicalSize::new(width, height));
+    let _ = window.center();
 }

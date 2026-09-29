@@ -158,7 +158,7 @@
 <div class="format-bar" role="toolbar" aria-label={t("format.bar")}>
   <!-- Groups that do not fit are clipped; "See all" always stays visible. -->
   <div class="groups">
-  <div class="group">
+  <div class="group history">
     <button class="icon-btn" disabled={!hasDoc || !editor.canUndo} onmousedown={keep} onclick={() => run("edit.undo")} title={title("edit.undo")} aria-label={t("action.undo")}><Icon name="undo" /></button>
     <button class="icon-btn" disabled={!hasDoc || !editor.canRedo} onmousedown={keep} onclick={() => run("edit.redo")} title={title("edit.redo")} aria-label={t("action.redo")}><Icon name="redo" /></button>
   </div>
@@ -396,14 +396,16 @@
     background: var(--accent-soft);
     border-color: var(--accent);
   }
-  /* When space runs out: alignment and links first, then the name of the
-     macros, the texts of image / table / diagram last. */
-  @media (max-width: 1439px) {
+  /* When space runs out (widths measured with every button): alignment and
+     links first, then the name of the macros, the texts of image / table /
+     matrix / diagram, and at the smallest window undo / redo and macros
+     (shortcuts and the side bar still have them). */
+  @media (max-width: 1509px) {
     .wide-only {
       display: none;
     }
   }
-  @media (max-width: 1220px) {
+  @media (max-width: 1269px) {
     .macros span {
       display: none;
     }
@@ -411,12 +413,18 @@
       width: 112px;
     }
   }
-  @media (max-width: 1080px) {
+  @media (max-width: 1194px) {
     .text-btn:not(.all):not(.macros) span {
       display: none;
     }
     .select-btn.font {
       width: 92px;
+    }
+  }
+  @media (max-width: 979px) {
+    .history,
+    .macros {
+      display: none;
     }
   }
 </style>

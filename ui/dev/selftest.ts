@@ -274,7 +274,10 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     const v = editor.view!;
     v.dispatch({ changes: { from: v.state.doc.length, insert: "\n\n" }, selection: { anchor: v.state.doc.length + 2 } });
     media.openTikz(null);
-    await until(() => !!document.querySelector(".studio .tpl"), 10_000, "tikz studio");
+    // The studio opens on the whiteboard: the templates are in their tab.
+    await until(() => !!document.querySelector(".studio"), 10_000, "tikz studio");
+    clickText('[role="tab"]', "Modèles") || clickText('[role="tab"]', "Templates");
+    await until(() => !!document.querySelector(".studio .tpl"), 5_000, "tikz templates");
     clickText(".cats .cat", "Diagram") || clickText(".cats .cat", "Diagramme");
     await pause(300);
     clickText(".templates .tpl", "Organigramme") || clickText(".templates .tpl", "Flowchart");
@@ -504,8 +507,21 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     await pause(300);
     await scene("table-picker", 1200);
     cells[8 * 2 + 2].click();
+    // The grid editor opens on a 3 × 3 table: a header row with an `&`, then insert.
+    await until(() => document.querySelectorAll(".grid-editor .cm-editor").length === 9, 5_000, "grid editor");
+    await scene("grid-editor", 1200);
+    const cell = (i: number) => EditorView.findFromDOM(document.querySelectorAll<HTMLElement>(".grid-editor .cm-editor")[i])!;
+    ["Produit", "R&D", "Prix"].forEach((text, i) => cell(i).dispatch({ changes: { from: 0, insert: text } }));
+    await pause(300);
+    [...document.querySelectorAll<HTMLButtonElement>(".grid-editor footer .btn.primary")][0].click();
+    await until(() => !document.querySelector(".grid-editor"), 5_000, "grid inserted");
     await pause(600);
-    check("table 3x3", /\\begin\{tabular\}\{lll\}/.test(editor.textOf(main) ?? "") && (editor.textOf(main) ?? "").includes("{booktabs}"));
+    const withTable = editor.textOf(main) ?? "";
+    check(
+      "table 3x3",
+      /\\begin\{tabular\}\{lcc\}/.test(withTable) && withTable.includes("Produit & R\\&D & Prix") && withTable.includes("{booktabs}"),
+      withTable.slice(withTable.indexOf("\\begin{table}"), withTable.indexOf("\\end{table}") + 11),
+    );
     press("Escape");
     document.querySelector<HTMLButtonElement>(".format-bar .all")!.click();
     await until(() => !!document.querySelector(".all-tools .at-item .katex"), 10_000, "all tools");
@@ -868,7 +884,7 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     results[name] = value ? "ok" : `FAILED ${detail}`;
   };
   const mac = navigator.platform.toLowerCase().includes("mac");
-  const row = (name: string) => [...document.querySelectorAll<HTMLElement>(".tree .row")].find((r) => r.dataset.path?.endsWith(`/${name}`))!;
+  const row = (name: string) => [...document.querySelectorAll<HTMLElement>(".tree .row")].find((r) => basename(r.dataset.path ?? "") === name)!;
   const click = (name: string, mods: { shift?: boolean; add?: boolean } = {}) =>
     row(name).dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: !!mods.shift, metaKey: !!mods.add && mac, ctrlKey: !!mods.add && !mac }));
   const names = () => fileSelection.paths.map((p) => basename(p)).join(",");

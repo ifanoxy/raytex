@@ -98,6 +98,13 @@ body,
   overflow: hidden;
 }
 
+/* Check boxes, radio buttons and sliders in the colour of RayTeX, not the system's. */
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+  accent-color: var(--accent);
+}
+
 body {
   background: var(--bg);
   color: var(--text);
