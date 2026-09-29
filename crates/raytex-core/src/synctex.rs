@@ -536,7 +536,7 @@ mod tests {
                 .stdout
                 .lines()
                 .find_map(|l| l.strip_prefix("Page:"))
-                .unwrap()
+                .unwrap_or_else(|| panic!("synctex: {} {}", cli.stdout, cli.stderr))
                 .parse()
                 .unwrap();
             let v: f64 = cli

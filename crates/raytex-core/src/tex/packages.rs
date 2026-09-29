@@ -288,6 +288,10 @@ mod tests {
             index.len(),
             index.packages().len()
         );
+        // MiKTeX installs most packages on first use: only those present
+        // are checked.
+        let installed = |file: &str| index.find(file).is_some();
+        let (siunitx_here, beamer_here) = (installed("siunitx.sty"), installed("beamer.cls"));
         let analyzer = PackageAnalyzer::new(index);
         for (pkg, class) in [
             ("amssymb", false),
@@ -314,13 +318,17 @@ mod tests {
         );
         let tikz = analyzer.analyze("tikz", false);
         assert!(tikz.commands.iter().any(|c| c.name == "draw"));
-        let siunitx = analyzer.analyze("siunitx", false);
-        assert!(siunitx.commands.iter().any(|c| c.name == "qty"));
-        let beamer = analyzer.analyze("beamer", true);
-        assert!(
-            beamer.options.iter().any(|o| o.starts_with("aspectratio")),
-            "{:?}",
-            beamer.options
-        );
+        if siunitx_here {
+            let siunitx = analyzer.analyze("siunitx", false);
+            assert!(siunitx.commands.iter().any(|c| c.name == "qty"));
+        }
+        if beamer_here {
+            let beamer = analyzer.analyze("beamer", true);
+            assert!(
+                beamer.options.iter().any(|o| o.starts_with("aspectratio")),
+                "{:?}",
+                beamer.options
+            );
+        }
     }
 }

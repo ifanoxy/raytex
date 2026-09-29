@@ -145,16 +145,19 @@ pub fn compile(dist: &Distribution, req: &PreviewRequest<'_>) -> PreviewOutcome 
     if let Err(e) = std::fs::create_dir_all(req.out_dir) {
         return fail(outcome, e.to_string());
     }
+    // The long form of the folder: TeX takes the `~` of a Windows short
+    // name (`C:\Users\RUNNER~1\…`) for a space.
+    let out_dir = dunce::canonicalize(req.out_dir).unwrap_or_else(|_| req.out_dir.to_path_buf());
     let (source, body_line) = document(req);
-    let tex = req.out_dir.join(format!("{}.tex", req.job));
-    let pdf = req.out_dir.join(format!("{}.pdf", req.job));
-    let log_path = req.out_dir.join(format!("{}.log", req.job));
+    let tex = out_dir.join(format!("{}.tex", req.job));
+    let pdf = out_dir.join(format!("{}.pdf", req.job));
+    let log_path = out_dir.join(format!("{}.log", req.job));
     let _ = std::fs::remove_file(&pdf);
     if let Err(e) = std::fs::write(&tex, &source) {
         return fail(outcome, e.to_string());
     }
 
-    let out = req.out_dir.to_string_lossy().into_owned();
+    let out = out_dir.to_string_lossy().into_owned();
     let cmd = if req.engine == Engine::Tectonic {
         dist.cmd("tectonic")
             .args(["--keep-logs", "--outdir", &out])
@@ -162,16 +165,22 @@ pub fn compile(dist: &Distribution, req: &PreviewRequest<'_>) -> PreviewOutcome 
     } else {
         let sep = if cfg!(windows) { ";" } else { ":" };
         let workdir = req.workdir.to_string_lossy();
-        dist.engine_cmd(req.engine, req.install_missing)
-            .env("max_print_line", "10000")
-            .env("TEXINPUTS", format!("{workdir}{sep}"))
-            .args([
-                "-interaction=nonstopmode",
-                "-halt-on-error",
-                "-file-line-error",
-            ])
-            .arg(format!("-output-directory={out}"))
-            .arg(tex.to_string_lossy().into_owned())
+        let mut cmd = dist
+            .engine_cmd(req.engine, req.install_missing)
+            .env("max_print_line", "10000");
+        // Not for MiKTeX, which would write the full paths of the files
+        // found there unquoted (see `BuildPlan::engine_env`); the working
+        // directory is the same folder.
+        if dist.kind != crate::tex::DistroKind::MikTex {
+            cmd = cmd.env("TEXINPUTS", format!("{workdir}{sep}"));
+        }
+        cmd.args([
+            "-interaction=nonstopmode",
+            "-halt-on-error",
+            "-file-line-error",
+        ])
+        .arg(format!("-output-directory={out}"))
+        .arg(tex.to_string_lossy().into_owned())
     }
     .cwd(req.workdir);
 
@@ -266,13 +275,15 @@ const DOCUMENT_ONLY: &[&str] = &[
 /// Compiles a whole document once (twice when the table of contents or
 /// references need it), for a picture of its first pages: template
 /// thumbnails. Errors do not stop the run, so a missing bibliography still
-/// gives pages. Returns the PDF.
+/// gives pages. Returns the PDF. MiKTeX installs the missing packages only
+/// with `install_missing`.
 pub fn compile_document(
     dist: &Distribution,
     engine: Engine,
     main: &Path,
     out_dir: &Path,
     timeout: Duration,
+    install_missing: bool,
 ) -> Result<PathBuf, String> {
     std::fs::create_dir_all(out_dir).map_err(|e| e.to_string())?;
     let dir = main.parent().ok_or("no folder")?;
@@ -285,16 +296,20 @@ pub fn compile_document(
         .into_owned();
     let pdf = out_dir.join(format!("{stem}.pdf"));
     let out = out_dir.to_string_lossy().into_owned();
-    let file = main.to_string_lossy().into_owned();
+    // Relative to the working directory: nothing for TeX to misread in the
+    // path (spaces, `~` of Windows short names).
+    let file = main
+        .file_name()
+        .ok_or("no file name")?
+        .to_string_lossy()
+        .into_owned();
     let run = || {
         let cmd = if engine == Engine::Tectonic {
             dist.cmd("tectonic")
                 .args(["--keep-logs", "--outdir", &out])
                 .arg(file.clone())
         } else {
-            // Thumbnails never install anything (all the packages of every
-            // template for pictures).
-            dist.engine_cmd(engine, false)
+            dist.engine_cmd(engine, install_missing)
                 .env("max_print_line", "10000")
                 .args(["-interaction=nonstopmode", "-file-line-error"])
                 .arg(format!("-output-directory={out}"))
@@ -510,7 +525,8 @@ mod tests {
                 job,
                 timeout: Duration::from_secs(120),
                 lang: Lang::En,
-                install_missing: false,
+                // A new MiKTeX has few packages (`standalone` is not there).
+                install_missing: true,
             },
         )
     }
@@ -673,6 +689,7 @@ mod tests {
                     &main,
                     &src.join("out"),
                     Duration::from_secs(120),
+                    true,
                 );
                 assert!(pdf.is_ok(), "{} ({}): {pdf:?}", t.id, lang.code());
                 eprintln!("{} {}: {:?}", t.id, lang.code(), start.elapsed());

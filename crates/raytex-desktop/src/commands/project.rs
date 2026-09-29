@@ -605,12 +605,15 @@ pub async fn template_thumbnail(app: AppHandle, id: String) -> CmdResult<String>
         } else {
             wanted
         };
+        // Thumbnails never install anything (all the packages of every
+        // template for pictures).
         let pdf = raytex_core::preview::compile_document(
             &dist,
             engine,
             &main,
             &out,
             std::time::Duration::from_secs(90),
+            false,
         )?;
         Ok(pdf.to_string_lossy().into_owned())
     })

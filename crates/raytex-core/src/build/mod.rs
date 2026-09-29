@@ -532,6 +532,18 @@ impl BuildPlan {
         }
         env
     }
+
+    /// Environment of the engine itself (run in the folder of the root file).
+    /// MiKTeX replaces a root file found through `TEXINPUTS` by its full path,
+    /// unquoted: `C:/Users/Jean Dupont/…` or `RUNNER~1` then breaks at the
+    /// space or the `~`. The working directory is enough for the engine.
+    fn engine_env(&self, dist: &Distribution) -> Vec<(String, String)> {
+        let mut env = self.env(dist);
+        if dist.kind == DistroKind::MikTex {
+            env.retain(|(k, _)| k != "TEXINPUTS");
+        }
+        env
+    }
 }
 
 impl Runner<'_, '_> {
@@ -604,7 +616,7 @@ impl Runner<'_, '_> {
         let mut cmd = dist
             .engine_cmd(plan.engine, s.miktex_auto_install)
             .cwd(&plan.root_dir);
-        for (k, v) in plan.env(dist) {
+        for (k, v) in plan.engine_env(dist) {
             cmd = cmd.env(k, v);
         }
         if s.synctex {
@@ -677,18 +689,21 @@ impl Runner<'_, '_> {
         {
             return;
         }
+        // TeX's own error (`! I can't find file …`) first.
         let last = self
             .last_output
             .iter()
-            .rev()
-            .find(|l| {
-                // Not the banner, the files read, nor MiKTeX's reminders
-                // ("major issue: … checked for updates", "security risk").
-                !l.starts_with("This is ")
-                    && !l.trim_start().starts_with('(')
-                    && !l.contains("major issue")
-                    && !l.contains("minor issue")
-                    && !l.contains("security risk")
+            .find(|l| l.starts_with("! "))
+            .or_else(|| {
+                self.last_output.iter().rev().find(|l| {
+                    // Not the banner, the files read, nor MiKTeX's reminders
+                    // ("major issue: … checked for updates", "security risk").
+                    !l.starts_with("This is ")
+                        && !l.trim_start().starts_with('(')
+                        && !l.contains("major issue")
+                        && !l.contains("minor issue")
+                        && !l.contains("security risk")
+                })
             })
             .cloned()
             .unwrap_or_default();
@@ -917,7 +932,7 @@ impl Runner<'_, '_> {
             Engine::Tectonic => "-pdf",
         };
         let mut cmd = self.ctx.dist.cmd("latexmk").cwd(&plan.root_dir);
-        for (k, v) in plan.env(self.ctx.dist) {
+        for (k, v) in plan.engine_env(self.ctx.dist) {
             cmd = cmd.env(k, v);
         }
         cmd = cmd.args([mode, "-interaction=nonstopmode", "-file-line-error"]);
