@@ -3,7 +3,7 @@
 import { uid } from "../utils";
 
 export type SidebarView = "files" | "templates" | "outline" | "search" | "symbols" | "snippets" | "packages";
-export type Overlay = null | "settings" | "help" | "newProject" | "setup" | "palette" | "shortcuts" | "image" | "fonts" | "tikz" | "projects" | "convert";
+export type Overlay = null | "settings" | "help" | "newProject" | "setup" | "palette" | "shortcuts" | "image" | "fonts" | "tikz" | "projects" | "convert" | "grid";
 export type BottomTab = "problems" | "output" | "jobs";
 
 export interface Toast {

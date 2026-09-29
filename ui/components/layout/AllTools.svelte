@@ -108,7 +108,7 @@
         snippet("format.sqrt", "formula", "\\sqrt{${1}}", true),
         snippet("format.sum", "sigma", "\\sum_{${1}}^{${2}}", true),
         snippet("format.integral", "formula", "\\int_{${1}}^{${2}} ${3} \\,\\mathrm{d}${4}", true),
-        snippet("format.matrix", "table", "\\begin{pmatrix}\n\t${1} & ${2} \\\\\n\t${3} & ${4}\n\\end{pmatrix}", true),
+        action("insert.matrix", "matrix"),
         action("view.symbols"),
       ],
     },

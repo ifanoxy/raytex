@@ -122,6 +122,12 @@ export async function mathHtml(latex: string): Promise<string> {
   return k.renderToString(tex, { throwOnError: false, displayMode: false });
 }
 
+/** HTML of a displayed formula (grid editor preview). */
+export async function displayHtml(latex: string): Promise<string> {
+  const k = await katex();
+  return k.renderToString(latex, { throwOnError: false, displayMode: true });
+}
+
 const macrosByPath = new Map<string, Record<string, string>>();
 
 /** Refreshes the macros of a document (called after each synchronisation). */

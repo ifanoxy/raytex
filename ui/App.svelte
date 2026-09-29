@@ -46,6 +46,7 @@
     tikz: () => import("./components/views/TikzStudio.svelte"),
     projects: () => import("./components/views/ProjectsWindow.svelte"),
     convert: () => import("./components/views/ConvertProject.svelte"),
+    grid: () => import("./components/views/GridEditor.svelte"),
   } as const;
   type LazyView = keyof typeof VIEWS;
   const lazyView = $derived(ui.overlay && ui.overlay in VIEWS ? VIEWS[ui.overlay as LazyView]() : null);

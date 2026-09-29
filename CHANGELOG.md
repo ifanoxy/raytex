@@ -25,6 +25,10 @@ First version.
 - CI: integration tests with MiKTeX on Windows (packages installed on the fly), next to TeX Live on Linux; [docs/WINDOWS.md](docs/WINDOWS.md) explains how to build, test and check MiKTeX on Windows.
 
 ### Writing and layout
+- **Grid editor** for matrices and tables (buttons *Matrix* and *Table* of the format bar: choose the size, then fill the cells). Enter goes to the next cell (Shift+Enter back), Tab in the last cell adds a row, arrows move between cells, Ctrl/⌘+Enter inserts; cells pasted from a spreadsheet (or LaTeX `&` / `\\`) fill the grid. Matrices: delimiters `( ) [ ] { } | | ‖ ‖`, none or small, with a live preview; inserted in `\[ … \]` outside a formula, amsmath added. Tables: alignment of each column, booktabs, grid or no rules, header row, optional floating table with caption and label; booktabs added.
+- A chip after `\begin{pmatrix}` (and the other matrices), `\begin{tabular}{…}` and `\begin{array}{…}` reopens the environment in the grid editor; Update rewrites it in place, keeping its indentation, option and column specification (`@{}`, `S`… are kept while the number of columns does not change).
+- The editor shows the characters as typed: `->`, `=>`, `<--` are no longer drawn as arrows.
+- Symbols clicked one after another go into the same formula (`$\theta\xi$`), the cursor staying after it.
 - Several files selected in the project tree (Shift + click for a range, Ctrl / ⌘ + click to add or remove, Shift + arrows, Ctrl / ⌘ + A), dragged into a folder or the text, opened, inserted or moved to the trash together (one confirmation).
 - Files opened from the Finder (double click, *Open with*, dropped on the icon) or passed on the command line: a `.tex` opens in light mode, or in its project when it belongs to one; at start-up it takes the place of the last session. Quitting with ⌘Q asks about unsaved files like closing the window. The macOS bundle is signed ad hoc (it opens on another Mac instead of being reported as damaged).
 - Formatting bar: a narrower font box, and the texts of **Image**, **Table** and **Diagram** stay visible (alignment and link buttons go first when the window is narrow).

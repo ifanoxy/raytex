@@ -35,6 +35,7 @@ import { latexCompletion } from "../editor/completion";
 import { docPath, hooks } from "../editor/context";
 import { deleteDollarPair, handleDollar } from "../editor/dollar";
 import { flash, flashField } from "../editor/flash";
+import { gridChips } from "../editor/grid-chip";
 import { latexHover } from "../editor/hover";
 import { bibtex, latex } from "../editor/latex";
 import { findFormula, mathPreview, refreshMacros } from "../editor/math-preview";
@@ -53,6 +54,7 @@ import { basename, debounce, dirname, escapeSnippet, fileKind, type FileKind, in
 import { app } from "./app.svelte";
 import { build } from "./build.svelte";
 import { diagnostics, mapDiagnostic, pathKey, type PositionMap } from "./diagnostics.svelte";
+import { gridStore } from "./grid.svelte";
 import { media, type TikzRequest } from "./media.svelte";
 import { project } from "./project.svelte";
 import { searchStore } from "./search.svelte";
@@ -386,6 +388,15 @@ class EditorStore {
             latexHover(),
             mathPreview(),
             linkedEnvironments(),
+            readOnly
+              ? []
+              : gridChips({
+                  label: (kind) => t(kind === "matrix" ? "grid.matrix" : "grid.table"),
+                  title: (kind) => t(kind === "matrix" ? "grid.chipMatrix" : "grid.chipTable"),
+                  open: (view, from) => {
+                    if (!gridStore.edit(view, path, from)) ui.toast("warning", t("grid.unreadable"));
+                  },
+                }),
             EditorView.inputHandler.of((view, from, to, text) => handleDollar(view, from, to, text)),
             Prec.high(keymap.of([{ key: "Backspace", run: deleteDollarPair }])),
           ]

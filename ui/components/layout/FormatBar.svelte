@@ -3,8 +3,10 @@
   // bold/italic/underline, colour, alignment, lists, maths and insertions.
   // "See all" opens every command, grouped. Buttons never take the focus
   // from the text, so the selection stays and typing goes on.
-  import { getAction, keyFor, runAction } from "$lib/actions";
-  import { HEADINGS, type Heading, setHeading, setSize, SIZES, type Size, tableSnippet } from "$lib/editor/format";
+  import { getAction, keyFor, openGrid, runAction } from "$lib/actions";
+  import { HEADINGS, type Heading, setHeading, setSize, SIZES, type Size } from "$lib/editor/format";
+  import type { GridKind } from "$lib/grid";
+  import { gridStore } from "$lib/state/grid.svelte";
   import { t, type MessageKey } from "$lib/i18n.svelte";
   import { editor } from "$lib/state/editor.svelte";
   import { project } from "$lib/state/project.svelte";
@@ -49,7 +51,7 @@
     return /\\documentclass\s*(\[[^\]]*\])?\s*\{(report|book|memoir|scrbook|scrreprt|thesis|[^}]*these[^}]*)\}/.test(text.slice(0, 4000));
   });
 
-  let pop = $state<{ kind: "color" | "table" | "font"; x: number; y: number } | null>(null);
+  let pop = $state<{ kind: "color" | "table" | "matrix" | "font"; x: number; y: number } | null>(null);
 
   // Fonts of the document shown in the font box.
   $effect(() => {
@@ -106,15 +108,24 @@
   }
 
 
-  async function table(rows: number, cols: number) {
+  /** Size picked: the grid editor opens to fill the cells. */
+  function pickGrid(kind: GridKind, rows: number, cols: number) {
     pop = null;
-    if (!canEdit) return;
-    editor.insertSnippet(tableSnippet(rows, cols), editor.view, { block: true });
-    await editor.addPackage("booktabs", editor.view, true);
-    done();
+    const view = editor.view;
+    if (!canEdit || !view) return;
+    gridStore.openNew(view, kind, rows, cols, editor.inMath());
   }
 
-  function openPop(e: MouseEvent, kind: "color" | "table" | "font") {
+  /** Inside a matrix or table: edits it; otherwise asks for the size of a new one. */
+  function gridButton(e: MouseEvent, kind: GridKind) {
+    const view = editor.view;
+    if (view && gridStore.at(view, kind) !== null) {
+      pop = null;
+      openGrid(view, kind);
+    } else openPop(e, kind);
+  }
+
+  function openPop(e: MouseEvent, kind: "color" | "table" | "matrix" | "font") {
     if (pop?.kind === kind) {
       pop = null;
       return;
@@ -201,8 +212,11 @@
     <button class="text-btn" disabled={!canEdit} onmousedown={keep} onclick={() => run("insert.image")} title={title("insert.image")}>
       <Icon name="image" size={16} /><span>{t("toolbar.image")}</span>
     </button>
-    <button class="text-btn" data-pop disabled={!canEdit} onmousedown={keep} onclick={(e) => openPop(e, "table")} title={t("format.tableHint")}>
+    <button class="text-btn" data-pop disabled={!canEdit} onmousedown={keep} onclick={(e) => gridButton(e, "table")} title={t("format.tableHint")}>
       <Icon name="table" size={16} /><span>{t("format.table")}</span>
+    </button>
+    <button class="text-btn" data-pop disabled={!canEdit} onmousedown={keep} onclick={(e) => gridButton(e, "matrix")} title={t("format.matrixHint")}>
+      <Icon name="matrix" size={16} /><span>{t("format.matrix")}</span>
     </button>
     <button class="text-btn tikz" class:editing={editor.inTikz} disabled={!project.info} onmousedown={keep} onclick={() => run("insert.tikz")} title={title("insert.tikz")}>
       <Icon name="sparkles" size={16} /><span>{editor.inTikz ? t("toolbar.editTikz") : t("format.tikz")}</span>
@@ -231,12 +245,13 @@
   <FontMenu x={pop.x} y={pop.y} onclose={() => (pop = null)} />
 {:else if pop?.kind === "color"}
   <ColorMenu x={pop.x} y={pop.y} onclose={() => (pop = null)} />
-{:else if pop?.kind === "table"}
+{:else if pop?.kind === "table" || pop?.kind === "matrix"}
+  {@const kind = pop.kind}
   <div class="pop tables" style:left="{pop.x}px" style:top="{pop.y}px" role="grid" tabindex="-1" onmouseleave={() => (grid = { rows: 0, cols: 0 })}>
     <div class="cells">
       {#each Array.from({ length: 8 }, (_, r) => r + 1) as r (r)}
         {#each Array.from({ length: 8 }, (_, c) => c + 1) as c (c)}
-          <button class="cell" class:on={r <= grid.rows && c <= grid.cols} aria-label="{r} × {c}" onmouseenter={() => (grid = { rows: r, cols: c })} onmousedown={keep} onclick={() => table(r, c)}></button>
+          <button class="cell" class:on={r <= grid.rows && c <= grid.cols} aria-label="{r} × {c}" onmouseenter={() => (grid = { rows: r, cols: c })} onmousedown={keep} onclick={() => pickGrid(kind, r, c)}></button>
         {/each}
       {/each}
     </div>

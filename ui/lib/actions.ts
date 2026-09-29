@@ -9,6 +9,7 @@ import { toggleComment } from "@codemirror/commands";
 import { gotoLine, openSearchPanel } from "@codemirror/search";
 import { EditorView, type KeyBinding } from "@codemirror/view";
 import { REPOSITORY_URL } from "./constants";
+import type { GridKind } from "./grid";
 import { allDiagnostics, fixable, fixAllAndReport, quickFix } from "./fixes";
 import { matchesKey } from "./keys";
 import { setAlignment, setList } from "./editor/format";
@@ -19,6 +20,7 @@ import * as ipc from "./ipc";
 import { app } from "./state/app.svelte";
 import { build } from "./state/build.svelte";
 import { editor } from "./state/editor.svelte";
+import { gridStore } from "./state/grid.svelte";
 import { media } from "./state/media.svelte";
 import { project } from "./state/project.svelte";
 import { searchStore } from "./state/search.svelte";
@@ -198,12 +200,8 @@ export const actions: Action[] = [
     () =>
       `\\begin{figure}[htbp]\n\t\\centering\n\t\\includegraphics[width=0.8\\linewidth]{\${1:${t("snippet.file")}}}\n\t\\caption{\${2:${t("snippet.caption")}}}\n\t\\label{fig:\${3:label}}\n\\end{figure}\${0}`,
   ),
-  snippetAction(
-    "insert.table",
-    "action.insertTable",
-    () =>
-      `\\begin{table}[htbp]\n\t\\centering\n\t\\caption{\${1:${t("snippet.caption")}}}\n\t\\label{tab:\${2:label}}\n\t\\begin{tabular}{\${3:lcc}}\n\t\t\\toprule\n\t\t\${4:A} & \${5:B} & \${6:C} \\\\\n\t\t\\midrule\n\t\t\${7} &  &  \\\\\n\t\t\\bottomrule\n\t\\end{tabular}\n\\end{table}\${0}`,
-  ),
+  { id: "insert.table", title: "action.insertTable", category: "insert", editor: true, icon: "table", when: hasTex, run: withView((v) => openGrid(v, "table")) },
+  { id: "insert.matrix", title: "action.insertMatrix", category: "insert", editor: true, icon: "matrix", when: hasTex, run: withView((v) => openGrid(v, "matrix")) },
   snippetAction("insert.equation", "action.insertEquation", () => `\\begin{equation}\n\t\${1:\${SELECTION}}\n\t\\label{eq:\${2:label}}\n\\end{equation}\${0}`),
   snippetAction("insert.align", "action.insertAlign", () => `\\begin{align}\n\t\${1:a} &= \${2:b} \\\\\n\t\${3:c} &= \${4:d}\n\\end{align}\${0}`),
   snippetAction("insert.itemize", "action.insertItemize", () => `\\begin{itemize}\n\t\\item \${1:\${SELECTION}}\n\\end{itemize}\${0}`),
@@ -241,6 +239,14 @@ const byId = new Map(actions.map((a) => [a.id, a]));
 
 export function getAction(id: string): Action | undefined {
   return byId.get(id);
+}
+
+/** Opens the grid editor on the matrix or table at the cursor, or on a new one of `rows` × `cols`. */
+export function openGrid(view: EditorView, kind: GridKind, rows = 3, cols = 3) {
+  const path = editor.active;
+  const at = gridStore.at(view, kind);
+  if (at !== null && path && gridStore.edit(view, path, at)) return;
+  gridStore.openNew(view, kind, rows, cols, editor.inMath());
 }
 
 /** Opens the TikZ studio, on the picture under the cursor if there is one. */
@@ -304,6 +310,8 @@ export function matches(e: KeyboardEvent, spec: string): boolean {
 /** Window-level shortcuts. Returns true when an action ran. */
 export function handleGlobalKey(e: KeyboardEvent): boolean {
   if (ui.dialog || e.isComposing) return false;
+  // Windows with shortcuts of their own (the grid editor's Ctrl+Enter).
+  if (e.target instanceof Element && e.target.closest("[data-own-keys]")) return false;
   for (const a of actions) {
     if (a.editor) continue;
     const spec = keyFor(a.id);
