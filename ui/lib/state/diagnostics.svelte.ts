@@ -1,8 +1,10 @@
 // Diagnostics from the linter (live, per file) and from the last build.
 
 import type { Diagnostic, Position, Range } from "../types";
+import { comparablePath } from "../utils";
 
-export const pathKey = (p: string) => p.replace(/\\/g, "/");
+/** Key of a file in maps and comparisons (see `comparablePath`). */
+export const pathKey = (p: string) => comparablePath(p);
 
 /** Where a position of a file is after a change (`assoc`: side it sticks to). */
 export type PositionMap = (p: Position, assoc: -1 | 1) => Position;

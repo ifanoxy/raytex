@@ -115,6 +115,27 @@ pub fn absolute(path: &Path) -> PathBuf {
     }
 }
 
+/// `path` named like the files of the project under `root` (whose real
+/// location is `real_root`, see [`dunce::canonicalize`]): TeX and SyncTeX
+/// may write a path with another case, a Windows short name (`RUNNER~1`),
+/// other slashes or through a link, which would look like another file
+/// (opened read-only, outside the project).
+pub fn project_form(root: &Path, real_root: Option<&Path>, path: PathBuf) -> PathBuf {
+    if path.starts_with(root) {
+        return path;
+    }
+    let Some(real_root) = real_root else {
+        return path;
+    };
+    match dunce::canonicalize(&path) {
+        Ok(real) => match real.strip_prefix(real_root) {
+            Ok(rel) => root.join(rel),
+            Err(_) => path,
+        },
+        Err(_) => path,
+    }
+}
+
 /// The project folder of a file: the nearest ancestor containing
 /// `raytex.toml`, `.latexmkrc` or `.git`, else the file's own folder.
 pub fn project_root_for(file: &Path) -> PathBuf {
@@ -980,6 +1001,35 @@ fn number_from_toc(items: &mut [OutlineItem], toc: &[crate::auxfile::TocEntry]) 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn paths_written_otherwise_are_named_like_the_project() {
+        let dir = tempfile::tempdir().unwrap();
+        let real = dir.path().join("Real");
+        std::fs::create_dir_all(real.join("chapters")).unwrap();
+        std::fs::write(real.join("chapters/a.tex"), "x").unwrap();
+        let root = dir.path().join("link");
+        std::os::unix::fs::symlink(&real, &root).unwrap();
+        let real_root = dunce::canonicalize(&root).unwrap();
+        // TeX wrote the path through the real folder: same file, project name.
+        let written = real.join("chapters/a.tex");
+        assert_eq!(
+            project_form(&root, Some(&real_root), written),
+            root.join("chapters/a.tex")
+        );
+        // Files of the project and files elsewhere are left as they are.
+        assert_eq!(
+            project_form(&root, Some(&real_root), root.join("chapters/a.tex")),
+            root.join("chapters/a.tex")
+        );
+        let elsewhere = dir.path().join("other.sty");
+        std::fs::write(&elsewhere, "x").unwrap();
+        assert_eq!(
+            project_form(&root, Some(&real_root), elsewhere.clone()),
+            elsewhere
+        );
+    }
 
     fn project() -> (tempfile::TempDir, Workspace) {
         let dir = tempfile::tempdir().unwrap();

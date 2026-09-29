@@ -109,10 +109,12 @@ pub fn parse_log(log: &str, root_dir: &Path, main_file: &Path, lang: Lang) -> Lo
     } else {
         log.lines().map(str::to_owned).collect()
     };
+    let real_root = dunce::canonicalize(root_dir).ok();
     let mut parser = Parser {
         lines: &lines,
         i: 0,
         root_dir,
+        real_root: real_root.as_deref(),
         main_file,
         stack: Vec::new(),
         report: LogReport::default(),
@@ -137,6 +139,8 @@ struct Parser<'a> {
     lines: &'a [String],
     i: usize,
     root_dir: &'a Path,
+    /// Real location of `root_dir`, to recognise its files written otherwise.
+    real_root: Option<&'a Path>,
     main_file: &'a Path,
     stack: Vec<Frame>,
     report: LogReport,
@@ -248,7 +252,7 @@ impl Parser<'_> {
         } else {
             self.root_dir.join(p)
         };
-        normalize(&abs)
+        crate::workspace::project_form(self.root_dir, self.real_root, normalize(&abs))
     }
 
     /// Updates the file stack from the parentheses of an ordinary line.

@@ -3188,6 +3188,7 @@ name = "raytex-desktop"
 version = "0.1.0"
 dependencies = [
  "directories",
+ "dunce",
  "notify",
  "raytex-core",
  "serde",

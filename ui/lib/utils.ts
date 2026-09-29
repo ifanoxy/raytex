@@ -38,17 +38,28 @@ export function stem(path: string): string {
 }
 
 /** `path` relative to `base` with `/` separators, or the path itself when outside. */
+/** Windows file names ignore case: `C:\\Users\\A\\x.tex` and `c:/users/a/X.tex` are one file. */
+const CASE_INSENSITIVE = typeof navigator !== "undefined" && /Windows/.test(navigator.userAgent ?? "");
+
+/** A path in a form to compare with another: `/` separators, lower case on Windows. */
+export function comparablePath(path: string): string {
+  const p = path.replace(/\\/g, "/");
+  return CASE_INSENSITIVE ? p.toLowerCase() : p;
+}
+
 export function relative(base: string, path: string): string {
   const b = base.replace(/\\/g, "/").replace(/\/+$/, "");
   const p = path.replace(/\\/g, "/");
-  if (p === b) return "";
-  if (p.startsWith(b + "/")) return p.slice(b.length + 1);
+  const cb = comparablePath(b);
+  const cp = comparablePath(p);
+  if (cp === cb) return "";
+  if (cp.startsWith(cb + "/")) return p.slice(b.length + 1);
   return p;
 }
 
 export function samePath(a: string | null | undefined, b: string | null | undefined): boolean {
   if (!a || !b) return false;
-  return a.replace(/\\/g, "/") === b.replace(/\\/g, "/");
+  return comparablePath(a) === comparablePath(b);
 }
 
 export type FileKind = "tex" | "bib" | "code" | "image" | "pdf" | "text" | "binary";

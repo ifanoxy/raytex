@@ -191,7 +191,10 @@ pub fn compile(dist: &Distribution, req: &PreviewRequest<'_>) -> PreviewOutcome 
         .map(|b| String::from_utf8_lossy(&b).into_owned())
         .unwrap_or_default();
     let report = log::parse_log(&log_text, req.workdir, &tex, req.lang);
-    let tex_norm = log::normalize(&tex);
+    // Named like the log parser names it (the working directory's form).
+    let real_workdir = dunce::canonicalize(req.workdir).ok();
+    let tex_norm =
+        crate::workspace::project_form(req.workdir, real_workdir.as_deref(), log::normalize(&tex));
     for mut d in report.diagnostics {
         if d.severity == Severity::Info
             || d.code.as_deref().is_some_and(|c| c.starts_with("badbox"))

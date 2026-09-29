@@ -21,6 +21,7 @@ crate-type = ["rlib"]
 tauri-build.workspace = true
 
 [dependencies]
+dunce.workspace = true
 raytex-core.workspace = true
 tauri.workspace = true
 tauri-plugin-dialog.workspace = true

@@ -66,7 +66,15 @@ pub async fn synctex_inverse(
     let pdf = abs(&pdf);
     blocking(&app, move |_, state| {
         let data = state.synctex(&synctex_for_pdf(&pdf)?)?;
-        data.inverse(page, x, y)
+        let mut found = data.inverse(page, x, y)?;
+        // The file as the project names it (not a second, read-only copy).
+        if let Some(pr) = state.project().as_ref() {
+            let root = &pr.ws.root_dir;
+            let real_root = dunce::canonicalize(root).ok();
+            found.file =
+                raytex_core::workspace::project_form(root, real_root.as_deref(), found.file);
+        }
+        Some(found)
     })
     .await
 }
