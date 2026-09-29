@@ -22,7 +22,7 @@ jobs:
       # (even with an extension), nor names with < > : " | ? * or a final dot.
       - name: File names valid on Windows
         run: |
-          bad=$(git ls-files | tr '/' '\n' | grep -iE '^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$|[<>:"|?*]|[. ]$' || true)
+          bad=$(git ls-files -z | tr '\0/' '\n\n' | grep -iE '^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$|[<>:"|?*]|[. ]$' || true)
           if [ -n "$bad" ]; then echo "Names Windows refuses: $bad"; exit 1; fi
       - uses: actions/setup-node@v4
         with:
