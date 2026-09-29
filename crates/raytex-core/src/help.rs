@@ -182,7 +182,7 @@ pub fn reference(query: &str, lang: Lang, limit: usize) -> Vec<ReferenceEntry> {
 /// A symbol of the palette.
 #[derive(Debug, Clone, Serialize)]
 pub struct Symbol {
-    /// Command without backslash.
+    /// Command as typed (`\theta`).
     pub command: String,
     /// Unicode rendering.
     pub glyph: String,
@@ -236,7 +236,12 @@ pub fn symbols(lang: Lang) -> Vec<SymbolCategory> {
         }
         if let Some(group) = out.iter_mut().find(|g| &g.id == cat) {
             group.symbols.push(Symbol {
-                command: c.name.clone(),
+                // What is typed: `\theta`, not the name `theta`.
+                command: if c.name.starts_with('\\') {
+                    c.name.clone()
+                } else {
+                    format!("\\{}", c.name)
+                },
                 glyph: glyph.clone(),
                 package: (c.package != KERNEL).then(|| c.package.clone()),
                 math: c.mode == Mode::Math,
@@ -331,7 +336,7 @@ mod tests {
         assert!(
             s[0].symbols
                 .iter()
-                .any(|x| x.command == "alpha" && x.glyph == "α")
+                .any(|x| x.command == "\\alpha" && x.glyph == "α")
         );
         assert!(
             errors(Lang::Fr)
