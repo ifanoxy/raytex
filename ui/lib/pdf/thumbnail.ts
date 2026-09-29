@@ -2,8 +2,13 @@
 
 import * as ipc from "../ipc";
 
-/** Renders the first page of a PDF `width` CSS pixels wide (sharp on retina screens). */
+/**
+ * Renders the first page of a PDF `width` CSS pixels wide (sharp on retina
+ * screens). An image (the thumbnails shipped with the application) is shown
+ * as it is.
+ */
 export async function renderFirstPage(pdf: string, width: number): Promise<{ url: string; landscape: boolean }> {
+  if (/\.png$/i.test(pdf)) return picture(pdf);
   const { closePdf, loadPdf } = await import("./pdfjs");
   const doc = await loadPdf(await ipc.readBinaryFile(pdf));
   try {
@@ -25,4 +30,12 @@ export async function renderFirstPage(pdf: string, width: number): Promise<{ url
   } finally {
     closePdf(doc);
   }
+}
+
+async function picture(path: string): Promise<{ url: string; landscape: boolean }> {
+  const url = URL.createObjectURL(new Blob([await ipc.readBinaryFile(path)], { type: "image/png" }));
+  const img = new Image();
+  img.src = url;
+  await img.decode();
+  return { url, landscape: img.naturalWidth > img.naturalHeight };
 }

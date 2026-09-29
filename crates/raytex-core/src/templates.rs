@@ -56,6 +56,26 @@ fn main_tex() -> String {
     "main.tex".into()
 }
 
+/// Stable fingerprint of a template's files (FNV-1a), to tell whether a
+/// thumbnail shipped with the application still shows it.
+pub fn fingerprint(files: &BTreeMap<String, Vec<u8>>) -> String {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for (name, bytes) in files {
+        for b in name.as_bytes().iter().chain([0u8].iter()).chain(bytes) {
+            h ^= u64::from(*b);
+            h = h.wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+    format!("{h:016x}")
+}
+
+/// File name of the thumbnail of a built-in template shipped with the
+/// application (`crates/raytex-desktop/thumbnails`): its first page as an
+/// image.
+pub fn thumbnail_name(id: &str, lang: Lang) -> String {
+    format!("{id}-{}.png", lang.code())
+}
+
 /// Values for the placeholders.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -501,6 +521,107 @@ mod tests {
             "\\item of \\qty{1}{\\ohm}"
         );
         assert!(current_year() >= 2025);
+    }
+
+    fn thumbnails_dir() -> std::path::PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../raytex-desktop/thumbnails")
+    }
+
+    /// Writes the thumbnails shipped with the application (first pages of
+    /// the built-in templates, in French and English) and their manifest:
+    /// `RAYTEX_WRITE_THUMBNAILS=1 cargo test -p raytex-core --release -- --ignored write_bundled_thumbnails`.
+    #[test]
+    #[ignore = "needs a TeX distribution; run to refresh the shipped thumbnails"]
+    fn write_bundled_thumbnails() {
+        if std::env::var_os("RAYTEX_WRITE_THUMBNAILS").is_none() {
+            return;
+        }
+        let dist = crate::tex::detect(&[]).into_iter().next().expect("no TeX");
+        let out = thumbnails_dir();
+        std::fs::create_dir_all(&out).unwrap();
+        let tmp = tempfile::tempdir().unwrap();
+        let mut manifest = std::collections::BTreeMap::new();
+        for t in list(None) {
+            let files = files(&t.id, None).unwrap();
+            manifest.insert(t.id.clone(), fingerprint(&files));
+            for lang in [Lang::Fr, Lang::En] {
+                let src = tmp.path().join(format!("{}-{}", t.id, lang.code()));
+                let main = write_files(&t.id, &src, &example_values(lang), None).unwrap();
+                let engine = t
+                    .engine
+                    .as_deref()
+                    .and_then(crate::tex::Engine::parse)
+                    .unwrap_or(crate::tex::Engine::Pdflatex);
+                let pdf = crate::preview::compile_document(
+                    &dist,
+                    engine,
+                    &main,
+                    &src.join("out"),
+                    std::time::Duration::from_secs(180),
+                    true,
+                )
+                .unwrap_or_else(|e| panic!("{} ({}): {e}", t.id, lang.code()));
+                // First page, 600 px on its long side: sips (macOS), else Ghostscript.
+                let png = out.join(thumbnail_name(&t.id, lang));
+                let done = std::process::Command::new("sips")
+                    .args(["-s", "format", "png", "-Z", "600"])
+                    .arg(&pdf)
+                    .arg("--out")
+                    .arg(&png)
+                    .output()
+                    .is_ok_and(|o| o.status.success())
+                    || std::process::Command::new("gs")
+                        .args([
+                            "-q",
+                            "-dSAFER",
+                            "-dBATCH",
+                            "-dNOPAUSE",
+                            "-sDEVICE=png16m",
+                            "-r72",
+                        ])
+                        .args([
+                            "-dTextAlphaBits=4",
+                            "-dGraphicsAlphaBits=4",
+                            "-dFirstPage=1",
+                            "-dLastPage=1",
+                        ])
+                        .arg(format!("-sOutputFile={}", png.display()))
+                        .arg(&pdf)
+                        .output()
+                        .is_ok_and(|o| o.status.success());
+                assert!(done, "{}: neither sips nor gs could make the image", t.id);
+            }
+        }
+        std::fs::write(
+            out.join("manifest.json"),
+            serde_json::to_string_pretty(&manifest).unwrap() + "\n",
+        )
+        .unwrap();
+    }
+
+    /// Every built-in template has its shipped thumbnails, made from its
+    /// current files (otherwise: run `write_bundled_thumbnails`).
+    #[test]
+    fn bundled_thumbnails_are_up_to_date() {
+        let dir = thumbnails_dir();
+        let manifest: std::collections::BTreeMap<String, String> =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("manifest.json")).unwrap())
+                .unwrap();
+        for t in list(None) {
+            assert_eq!(
+                manifest.get(&t.id),
+                Some(&fingerprint(&files(&t.id, None).unwrap())),
+                "thumbnail of {} is missing or old: RAYTEX_WRITE_THUMBNAILS=1 cargo test -p raytex-core --release -- --ignored write_bundled_thumbnails",
+                t.id
+            );
+            for lang in [Lang::Fr, Lang::En] {
+                assert!(
+                    dir.join(thumbnail_name(&t.id, lang)).is_file(),
+                    "{}",
+                    thumbnail_name(&t.id, lang)
+                );
+            }
+        }
     }
 
     #[test]

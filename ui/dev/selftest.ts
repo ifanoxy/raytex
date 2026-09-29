@@ -574,7 +574,8 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     check("build with the format", await buildOk(log, "with format"));
     const usedFormat = build.output.some((l) => l.stream === "cmd" && l.text.includes("-fmt="));
     results.formatBuildMs = `${Date.now() - t1} ms (format ${usedFormat ? "used" : "not used"})`;
-    check("format used", usedFormat);
+    // MiKTeX does not use precompiled preambles (see build::preamble).
+    check("format used", usedFormat || tex.active?.kind === "miktex");
 
     await editor.open(main);
     const selectText = (needle: string) => {
@@ -996,7 +997,14 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     results.window = `${window.innerWidth}px`;
     results.barTexts = texts.join(" | ");
     check("one @ on the macros button", (document.querySelector(".format-bar .macros")?.textContent?.match(/@/g) ?? []).length === 0);
-    check("image, table, diagram texts", ["Image", "Tableau", "Schéma"].every((x) => texts.some((s) => s?.startsWith(x))) || ["Image", "Table", "Diagram"].every((x) => texts.some((s) => s?.startsWith(x))), texts.join(","));
+    // The texts are shown from 1195 px on (smaller windows keep the icons).
+    check(
+      "image, table, diagram texts",
+      window.innerWidth < 1195 ||
+        ["Image", "Tableau", "Schéma"].every((x) => texts.some((s) => s?.startsWith(x))) ||
+        ["Image", "Table", "Diagram"].every((x) => texts.some((s) => s?.startsWith(x))),
+      texts.join(","),
+    );
     const font = document.querySelector<HTMLElement>(".format-bar .select-btn.font");
     results.fontButton = `${font?.offsetWidth}px`;
     check("small font button", !!font && font.offsetWidth <= 120, font?.offsetWidth);

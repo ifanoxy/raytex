@@ -63,7 +63,9 @@ async function run(group) {
   cpSync(join(root, "tests/e2e/rapport"), project, { recursive: true });
   cpSync(join(root, "tests/e2e/assets"), assets, { recursive: true });
   mkdirSync(config, { recursive: true });
-  writeFileSync(join(config, "settings.toml"), '[build]\nautoBuild = "onSave"\n');
+  // E2E_LANG=en runs the scenes in English (the language of the CI runners).
+  const lang = process.env.E2E_LANG ? `[general]\nlanguage = "${process.env.E2E_LANG}"\n` : "";
+  writeFileSync(join(config, "settings.toml"), `${lang}[build]\nautoBuild = "onSave"\n`);
   const logFile = join(out, `${group}.log`);
   writeFileSync(logFile, "");
 

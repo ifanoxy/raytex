@@ -95,6 +95,9 @@
       "webviewInstallMode": {
         "type": "downloadBootstrapper"
       }
+    },
+    "resources": {
+      "thumbnails/*.png": "thumbnails/"
     }
   }
 }

@@ -545,14 +545,26 @@ pub async fn apply_template(
 #[tauri::command]
 pub async fn template_thumbnail(app: AppHandle, id: String) -> CmdResult<String> {
     use std::hash::{DefaultHasher, Hash, Hasher};
-    blocking(&app, move |_, state| {
-        let dist = state.active_distribution().ok_or("no TeX distribution")?;
+    blocking(&app, move |app, state| {
         let lang = state.lang();
         let user_dir = state.paths.templates.clone();
         let info = templates::list(Some(&user_dir))
             .into_iter()
             .find(|t| t.id == id)
             .ok_or("unknown template")?;
+        // Built-in templates come with their picture: nothing to compile,
+        // whatever the distribution (and its packages) is.
+        if !info.user
+            && let Ok(dir) = app.path().resource_dir()
+        {
+            let shipped = dir
+                .join("thumbnails")
+                .join(templates::thumbnail_name(&id, lang));
+            if shipped.is_file() {
+                return Ok(shipped.to_string_lossy().into_owned());
+            }
+        }
+        let dist = state.active_distribution().ok_or("no TeX distribution")?;
         let files = templates::files(&id, Some(&user_dir)).ok_or("unknown template")?;
         let mut hasher = DefaultHasher::new();
         (&files, lang.code(), &dist.id, &info.engine).hash(&mut hasher);

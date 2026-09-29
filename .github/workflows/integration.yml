@@ -111,6 +111,10 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Scenes of the application
+        # The runner's session is not interactive: without these, WebView2
+        # takes the window for hidden and stops drawing (no PDF, no preview).
+        env:
+          WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: --disable-features=CalculateNativeWinOcclusion --disable-renderer-backgrounding --disable-background-timer-throttling --disable-backgrounding-occluded-windows
         run: node scripts/e2e.mjs workflow fixes files projects media
       - name: Logs and screenshots
         if: always()
