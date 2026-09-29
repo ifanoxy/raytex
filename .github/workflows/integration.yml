@@ -104,7 +104,11 @@ jobs:
           & "$bin\miktex.exe" --admin packages update-package-database
           & "$bin\initexmf.exe" --admin --update-fndb
       - uses: dtolnay/rust-toolchain@stable
+      # Kept even when a scene fails: without it, every run compiles the
+      # application from scratch (about 25 minutes).
       - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
       - uses: actions/setup-node@v4
         with:
           node-version: 22
