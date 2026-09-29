@@ -430,7 +430,7 @@ class ProjectStore {
     if (paths.length > 8) names.push(t("project.andMore", { n: paths.length - 8 }));
     const ok = await ui.confirm({
       title: t("project.deleteManyTitle", { n: paths.length }),
-      message: `${names.join("\n")}\n\n${t("project.deleteMessage")}`,
+      message: `${names.join("\n")}\n\n${t("project.deleteManyMessage")}`,
       okLabel: t("common.delete"),
       danger: true,
     });

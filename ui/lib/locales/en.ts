@@ -1125,6 +1125,7 @@ const en = {
   "files.copyPaths": "Copy the paths",
   "files.copyRelativePaths": "Copy the relative paths",
   "files.clearSelection": "Clear the selection",
+  "project.deleteManyMessage": "You can restore them from the system trash.",
   "project.deleteManyTitle": "Delete {n} items?",
   "project.andMore": "… and {n} more",
   "files.moveTo": "Move to…",

@@ -1127,6 +1127,7 @@ const fr: Record<keyof typeof en, string> = {
   "files.copyPaths": "Copier les chemins",
   "files.copyRelativePaths": "Copier les chemins relatifs",
   "files.clearSelection": "Désélectionner",
+  "project.deleteManyMessage": "Vous pourrez les récupérer dans la corbeille du système.",
   "project.deleteManyTitle": "Supprimer {n} éléments ?",
   "project.andMore": "… et {n} autres",
   "files.moveTo": "Déplacer vers…",

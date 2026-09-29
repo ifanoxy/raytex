@@ -29,7 +29,11 @@ import { basename, samePath } from "../lib/utils";
 async function until(check: () => boolean, timeoutMs: number, what: string) {
   const start = Date.now();
   while (!check()) {
-    if (Date.now() - start > timeoutMs) throw new Error(`timeout: ${what}`);
+    if (Date.now() - start > timeoutMs) {
+      // What the application said meanwhile (an error toast explains most time-outs).
+      const toasts = ui.toasts.map((t) => `${t.kind}: ${t.message}${t.detail ? ` (${t.detail})` : ""}`);
+      throw new Error(`timeout: ${what}${toasts.length ? ` — ${toasts.join(" | ")}` : ""}`);
+    }
     await new Promise((r) => setTimeout(r, 100));
   }
   return Date.now() - start;
@@ -276,7 +280,7 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     media.openTikz(null);
     // The studio opens on the whiteboard: the templates are in their tab.
     await until(() => !!document.querySelector(".studio"), 10_000, "tikz studio");
-    clickText('[role="tab"]', "Modèles") || clickText('[role="tab"]', "Templates");
+    clickText('[role="dialog"] [role="tab"]', "Modèles") || clickText('[role="dialog"] [role="tab"]', "Templates");
     await until(() => !!document.querySelector(".studio .tpl"), 5_000, "tikz templates");
     clickText(".cats .cat", "Diagram") || clickText(".cats .cat", "Diagramme");
     await pause(300);

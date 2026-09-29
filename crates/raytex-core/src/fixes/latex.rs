@@ -2486,12 +2486,33 @@ static BABEL_UNKNOWN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"Unknown option '([^']+)'|haven't defined the language '([^']+)'").unwrap()
 });
 
+/// Names of languages that babel no longer knows, with their current name.
+const BABEL_OLD_NAMES: &[(&str, &str)] = &[
+    ("francais", "french"),
+    ("frenchb", "french"),
+    ("canadien", "french"),
+    ("acadian", "french"),
+    ("germanb", "german"),
+    ("ngermanb", "ngerman"),
+    ("portuges", "portuguese"),
+    ("brazil", "brazilian"),
+    ("magyar", "hungarian"),
+    ("bahasa", "indonesian"),
+];
+
 fn babel_language(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     let (old, new) = if let Some(m) = BABEL_DEPRECATED.captures(&d.message) {
         (m[1].to_owned(), m[2].to_owned())
     } else if let Some(m) = BABEL_UNKNOWN.captures(&d.message) {
         let old = m.get(1).or(m.get(2)).unwrap().as_str().to_owned();
-        let Some(best) = closest(&old, BABEL_LANGUAGES.iter().copied(), 3) else {
+        // Old names first (recent babel no longer knows `francais`), then
+        // the closest known language.
+        let renamed = BABEL_OLD_NAMES
+            .iter()
+            .find(|(o, _)| o.eq_ignore_ascii_case(&old))
+            .map(|(_, n)| *n);
+        let Some(best) = renamed.or_else(|| closest(&old, BABEL_LANGUAGES.iter().copied(), 3))
+        else {
             return Vec::new();
         };
         (old, best.to_owned())
