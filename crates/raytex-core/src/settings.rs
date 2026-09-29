@@ -462,7 +462,25 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
             .unwrap_or_default()
     ));
     std::fs::write(&tmp, bytes)?;
-    std::fs::rename(&tmp, path)
+    // Windows refuses to replace a file another program has open (TeX
+    // reading it during a build, an antivirus, an indexer): try again for a
+    // moment, then write in place, which these programs allow.
+    let busy = |e: &std::io::Error| cfg!(windows) && matches!(e.raw_os_error(), Some(5 | 32 | 33));
+    let mut delay = std::time::Duration::from_millis(25);
+    for _ in 0..4 {
+        match std::fs::rename(&tmp, path) {
+            Ok(()) => return Ok(()),
+            Err(e) if busy(&e) => std::thread::sleep(delay),
+            Err(e) => {
+                let _ = std::fs::remove_file(&tmp);
+                return Err(e);
+            }
+        }
+        delay *= 2;
+    }
+    let written = std::fs::write(path, bytes);
+    let _ = std::fs::remove_file(&tmp);
+    written
 }
 
 // ---------------------------------------------------------------- project

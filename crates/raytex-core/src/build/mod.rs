@@ -689,24 +689,7 @@ impl Runner<'_, '_> {
         {
             return;
         }
-        // TeX's own error (`! I can't find file …`) first.
-        let last = self
-            .last_output
-            .iter()
-            .find(|l| l.starts_with("! "))
-            .or_else(|| {
-                self.last_output.iter().rev().find(|l| {
-                    // Not the banner, the files read, nor MiKTeX's reminders
-                    // ("major issue: … checked for updates", "security risk").
-                    !l.starts_with("This is ")
-                        && !l.trim_start().starts_with('(')
-                        && !l.contains("major issue")
-                        && !l.contains("minor issue")
-                        && !l.contains("security risk")
-                })
-            })
-            .cloned()
-            .unwrap_or_default();
+        let last = telling_line(&self.last_output).unwrap_or_default();
         let mut d = Diagnostic::new(
             Severity::Error,
             Source::Build,
@@ -1198,9 +1181,54 @@ pub fn clean(out_dir: &Path, job: &str) -> usize {
     removed
 }
 
+/// The line of an engine's output that says why it stopped: TeX's own
+/// error (`! I can't find file …`), else the last line that is not the
+/// banner, a file read or one of MiKTeX's reminders ("major issue: … checked
+/// for updates", "security risk").
+pub(crate) fn telling_line<S: AsRef<str>>(lines: &[S]) -> Option<String> {
+    let lines = || lines.iter().map(AsRef::as_ref);
+    lines()
+        .find(|l| l.starts_with("! "))
+        .or_else(|| {
+            lines().rev().find(|l| {
+                !l.trim().is_empty()
+                    && !l.starts_with("This is ")
+                    && !l.trim_start().starts_with('(')
+                    && !l.contains("major issue")
+                    && !l.contains("minor issue")
+                    && !l.contains("security risk")
+            })
+        })
+        .map(str::to_owned)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_telling_line_of_an_output() {
+        let tex_error = [
+            "This is pdfTeX",
+            "(./a.tex",
+            "! I can't find file `x'.",
+            "l.3",
+        ];
+        assert_eq!(
+            telling_line(&tex_error).as_deref(),
+            Some("! I can't find file `x'.")
+        );
+        let miktex = [
+            "pdflatex: the font roboto could not be installed",
+            "pdflatex: major issue: So far, no MiKTeX administrator has checked for updates.",
+            "",
+        ];
+        assert_eq!(
+            telling_line(&miktex).as_deref(),
+            Some("pdflatex: the font roboto could not be installed")
+        );
+        assert_eq!(telling_line::<&str>(&[]), None);
+    }
     use std::collections::BTreeMap;
 
     fn fake_dist(engines: &[Engine], kind: DistroKind) -> Distribution {

@@ -184,9 +184,10 @@ pub fn compile(dist: &Distribution, req: &PreviewRequest<'_>) -> PreviewOutcome 
     }
     .cwd(req.workdir);
 
-    if let Err(e) = process::output(&cmd, req.timeout) {
-        return fail(outcome, format!("{}: {e}", req.engine.label()));
-    }
+    let run = match process::output(&cmd, req.timeout) {
+        Ok(run) => run,
+        Err(e) => return fail(outcome, format!("{}: {e}", req.engine.label())),
+    };
     let log_text = std::fs::read(&log_path)
         .map(|b| String::from_utf8_lossy(&b).into_owned())
         .unwrap_or_default();
@@ -225,6 +226,47 @@ pub fn compile(dist: &Distribution, req: &PreviewRequest<'_>) -> PreviewOutcome 
     outcome.bbox = bbox_from_log(&log_text);
     if pdf.is_file() {
         outcome.pdf = Some(pdf);
+    } else if !outcome
+        .diagnostics
+        .iter()
+        .any(|d| d.severity == Severity::Error)
+    {
+        // Never an empty preview without a word.
+        let fr = req.lang == Lang::Fr;
+        let message = if run.cancelled {
+            let secs = req.timeout.as_secs();
+            let installing = dist.kind == crate::tex::DistroKind::MikTex;
+            match (fr, installing) {
+                (true, true) => format!(
+                    "{} n'a pas fini en {secs} s : MiKTeX installe peut-être un paquet, réessayez dans un instant.",
+                    req.engine.label()
+                ),
+                (true, false) => format!("{} n'a pas fini en {secs} s.", req.engine.label()),
+                (false, true) => format!(
+                    "{} did not finish within {secs} s: MiKTeX may be installing a package, try again in a moment.",
+                    req.engine.label()
+                ),
+                (false, false) => {
+                    format!("{} did not finish within {secs} s.", req.engine.label())
+                }
+            }
+        } else {
+            let lines: Vec<&str> = run.stdout.lines().chain(run.stderr.lines()).collect();
+            let why = crate::build::telling_line(&lines).unwrap_or_default();
+            let what = if fr {
+                "s'est arrêté sans produire de PDF"
+            } else {
+                "stopped without producing a PDF"
+            };
+            format!(
+                "{} {what}{}{why}",
+                req.engine.label(),
+                if why.is_empty() { "" } else { ": " }
+            )
+        };
+        outcome
+            .diagnostics
+            .push(Diagnostic::new(Severity::Error, Source::Build, message));
     }
     outcome.duration_ms = start.elapsed().as_millis() as u64;
     outcome
@@ -526,7 +568,8 @@ mod tests {
                 workdir: out,
                 out_dir: out,
                 job,
-                timeout: Duration::from_secs(120),
+                // MiKTeX may download a font package first.
+                timeout: Duration::from_secs(300),
                 lang: Lang::En,
                 // A new MiKTeX has few packages (`standalone` is not there).
                 install_missing: true,

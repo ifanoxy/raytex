@@ -5,6 +5,7 @@
 //! converted to PNG by the interface, which already decodes them.
 
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, OnceLock};
 
 use svg2pdf::usvg;
 
@@ -96,10 +97,30 @@ pub fn unique_path(dir: &Path, file_name: &str) -> PathBuf {
         .expect("an unused name exists")
 }
 
+/// Whether an SVG has text, which needs the fonts of the system.
+fn has_text(data: &[u8]) -> bool {
+    data.windows(5).any(|w| w == b"<text" || w == b":text")
+}
+
+/// The fonts of the system, read once: reading them takes seconds on
+/// Windows.
+fn system_fonts() -> Arc<usvg::fontdb::Database> {
+    static FONTS: OnceLock<Arc<usvg::fontdb::Database>> = OnceLock::new();
+    FONTS
+        .get_or_init(|| {
+            let mut db = usvg::fontdb::Database::new();
+            db.load_system_fonts();
+            Arc::new(db)
+        })
+        .clone()
+}
+
 /// Converts an SVG drawing to a PDF page of the same size, keeping it vector.
 pub fn svg_to_pdf(data: &[u8]) -> Result<Vec<u8>, String> {
     let mut options = usvg::Options::default();
-    options.fontdb_mut().load_system_fonts();
+    if has_text(data) {
+        options.fontdb = system_fonts();
+    }
     let tree = usvg::Tree::from_data(data, &options).map_err(|e| e.to_string())?;
     svg2pdf::to_pdf(
         &tree,

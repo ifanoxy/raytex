@@ -155,15 +155,13 @@
   let busy = $state(false);
   let libraryInput = $state("");
   let rootDir = $state("");
+  let rootReady: Promise<void> = Promise.resolve();
 
   const editing = $derived(!!(request?.range || request?.file));
 
-  onMount(async () => {
-    const [tpl, libs] = await Promise.all([ipc.tikzTemplates(), ipc.tikzLibraries()]);
-    templates = tpl;
-    allLibraries = libs;
-    const root = await editor.rootOf();
-    rootDir = root ? dirname(root) : "";
+  onMount(() => {
+    // The board and the tabs first: what is fetched below arrives later
+    // (slowly on a busy machine) and must not undo a first stroke or tab.
     request = media.tikzRequest;
     media.tikzRequest = null;
     if (request) {
@@ -185,6 +183,13 @@
     }
     createEditor();
     void refresh();
+    void Promise.all([ipc.tikzTemplates(), ipc.tikzLibraries()]).then(([tpl, libs]) => {
+      templates = tpl;
+      allLibraries = libs;
+    });
+    rootReady = editor.rootOf().then((root) => {
+      rootDir = root ? dirname(root) : "";
+    });
   });
 
   onDestroy(() => {
@@ -527,6 +532,7 @@
         let inserted = body;
         if (destination === "file") {
           const rel = fileName.replace(/\\/g, "/").replace(/^\/+/, "") || "figures/schema.tikz";
+          await rootReady;
           const target = join(rootDir, rel);
           if (await ipc.pathExists(target)) {
             const ok = await ui.confirm({ title: t("tikz.overwriteTitle", { file: rel }), okLabel: t("tikz.overwrite"), danger: true });
