@@ -321,6 +321,19 @@ mod tests {
     }
 
     #[test]
+    fn bitmap_font_with_microtype_is_explained() {
+        let mut d = Diagnostic::new(
+            Severity::Error,
+            Source::Latex,
+            "pdfTeX error (font expansion): auto expansion is only possible with scalable fonts.",
+        );
+        enrich(&mut d, Lang::En);
+        let hint = d.hint.unwrap();
+        assert_eq!(hint.title, "Font not installed as a vector font");
+        assert!(hint.explanation.contains("expansion=false"));
+    }
+
+    #[test]
     fn catalog_is_valid() {
         assert!(catalog().len() > 30);
         assert_eq!(levenshtein("textbff", "textbf"), 1);

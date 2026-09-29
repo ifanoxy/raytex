@@ -1032,6 +1032,18 @@
     }
   },
   {
+    "id": "font-not-scalable",
+    "match": "auto expansion is only possible with scalable fonts",
+    "title": {
+      "en": "Font not installed as a vector font",
+      "fr": "Police non installée en version vectorielle"
+    },
+    "explanation": {
+      "en": "A font of the document is only available as a bitmap, and microtype can only stretch vector (Type 1) fonts. With MiKTeX, the font's package may have just been installed (or still be installing, for a preview): build again. Otherwise install the vector version of the font (its `-type1` package), or load microtype with the option `expansion=false`.",
+      "fr": "Une police du document n'existe qu'en version bitmap, et microtype ne sait étirer que les polices vectorielles (Type 1). Avec MiKTeX, le paquet de la police vient peut-être d'être installé (ou s'installe encore, pour un aperçu) : recompilez. Sinon installez la version vectorielle de la police (son paquet `-type1`), ou chargez microtype avec l'option `expansion=false`."
+    }
+  },
+  {
     "id": "font-size",
     "match": "in size <[\\d.]+> not available|Size substitutions with differences",
     "title": {

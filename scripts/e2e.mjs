@@ -113,7 +113,12 @@ async function run(group) {
       done();
     });
   });
-  rmSync(work, { recursive: true, force: true, maxRetries: 3 });
+  try {
+    rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
+  } catch (e) {
+    // A TeX run still ending holds a file (Windows): the folder stays.
+    console.log(`${group}: ${work} not removed (${e.code ?? e})`);
+  }
   const result = verdict ?? "TIMEOUT";
   console.log(`${group}: ${result} (${Math.round((Date.now() - started) / 1000)} s, ${seen.size} scenes) — ${logFile}`);
   return result === "PASSED";

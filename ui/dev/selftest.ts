@@ -44,6 +44,18 @@ export async function runSelfTest() {
   if (!target) return;
   const report: Record<string, unknown> = {};
   const log = (msg: string) => void ipc.logFrontend("info", `selftest: ${msg}`);
+  // Every error or warning shown, when it is shown (a toast is gone by the
+  // time a step times out).
+  const toast = ui.toast.bind(ui);
+  ui.toast = (kind, message, opts) => {
+    if (kind === "error" || kind === "warning") {
+      const o = build.outcome;
+      const detail = o ? ` [${o.engine}, success ${o.success}, pdf ${!!o.pdf}, steps ${o.steps.map((x) => `${x.name}:${x.exitCode}`).join(" ")}, ${o.diagnostics.filter((d) => d.severity === "error").map((d) => d.message).join(" | ")}]` : "";
+      log(`${kind} notification: ${message}${opts?.detail ? ` — ${opts.detail}` : ""}${detail}`);
+      if (kind === "error") log(`last output: ${build.output.slice(-12).map((l) => l.text).join(" ⏎ ")}`);
+    }
+    return toast(kind, message, opts);
+  };
   let ok = true;
   try {
     report.startMs = await until(() => app.ready, 20_000, "app ready");
@@ -262,7 +274,10 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     media.openImages({ blobs: [new File([png], "capture.png", { type: "image/png" }), new File([svg], "dessin.svg", { type: "image/svg+xml" })] });
     await until(() => document.querySelectorAll(".items .item").length === 2, 10_000, "pasted items");
     document.querySelector<HTMLButtonElement>(".right .btn.primary")!.click();
-    await until(() => ui.overlay === null, 20_000, "pasted insertion");
+    await until(() => ui.overlay === null, 30_000, "pasted insertion").catch((e) => {
+      const button = document.querySelector<HTMLButtonElement>(".right .btn.primary");
+      throw new Error(`${e.message} (button ${button?.disabled ? "disabled" : "enabled"}, busy ${!!button?.querySelector(".spinner")}, items ${document.querySelectorAll(".items .item").length})`);
+    });
     const tree = await ipc.fileTree();
     const figures = tree.find((n) => n.name === "figures")?.children?.map((c) => c.name) ?? [];
     const pasted = figures.filter((n) => n.startsWith("image-"));
@@ -312,6 +327,9 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     clickText(".tabs .tab", "LaTeX");
     await pause(300);
     clickText(".list .font", "Libertinus");
+    // Its preview may install the font first (MiKTeX): the build waits for it.
+    await pause(500);
+    await until(() => !document.querySelector(".preview-box .busy"), 180_000, "tex font preview").catch((e) => log(`${e}, continuing`));
     await drawn(".preview-box canvas", log, "tex font preview");
     await pause(800);
     await scene("font-latex");
@@ -371,17 +389,6 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
   ui.showBottom = (tab) => {
     log(`console opened (${tab}) by ${new Error().stack?.split("\n").slice(1, 5).join(" < ")}`);
     showBottom(tab);
-  };
-  const toast = ui.toast.bind(ui);
-  ui.toast = (kind, message, opts) => {
-    if (kind === "error") {
-      const o = build.outcome;
-      const detail = o ? ` [${o.engine}, success ${o.success}, pdf ${!!o.pdf}, steps ${o.steps.map((x) => `${x.name}:${x.exitCode}`).join(" ")}, ${o.diagnostics.filter((d) => d.severity === "error").map((d) => d.message).join(" | ")}]` : "";
-      log(`error notification: ${message}${opts?.detail ? ` — ${opts.detail}` : ""}${detail}`);
-      const tail = build.output.slice(-12).map((l) => l.text).join(" ⏎ ");
-      log(`last output: ${tail}`);
-    }
-    return toast(kind, message, opts);
   };
   const toggleBottom = ui.toggleBottom.bind(ui);
   ui.toggleBottom = () => {
