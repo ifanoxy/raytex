@@ -74,11 +74,23 @@ The logo is built from LaTeX and a small script: see [assets/logo/README.md](ass
 
 Formats are described in [docs/knowledge-base.md](docs/knowledge-base.md).
 
+## Website
+
+The website (landing page, downloads, versions, guide, FAQ, legal pages), in English and French, is in `site/`: plain HTML written by `site/build.mjs` from the pages in `site/src/pages`, no dependency.
+
+```bash
+npm run site          # build and serve it at http://localhost:4173/raytex/, with sample versions
+npm run site:build    # build it into site/dist
+```
+
+The *Website* workflow publishes it on GitHub Pages (Settings → Pages → Source: *GitHub Actions*) at each change of `site/` and each time a release is published: the download pages then list every published version and its files, which stay hosted in the GitHub releases. For a custom domain, set the repository variable `SITE_URL` and add the domain in the Pages settings.
+
 ## Releasing
 
 1. Update the version in `Cargo.toml` (`[workspace.package]`), `package.json` and `crates/raytex-desktop/tauri.conf.json`, and give the *Unreleased* section of `CHANGELOG.md` its version and date.
 2. Commit, then tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
 3. The *Release* workflow builds macOS (Apple silicon and Intel), Windows and Linux and prepares a draft release with the installers; check it, write the notes from the changelog, and publish it.
+4. Publishing the release rebuilds the website: its download page offers the new version (the notes written in the release are shown on its *Versions* page).
 
 ## Reporting a bug
 

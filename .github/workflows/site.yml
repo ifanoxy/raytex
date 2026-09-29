@@ -1,0 +1,61 @@
+name: Website
+
+# The site (site/) on GitHub Pages: built at each change of its sources and
+# each time a release is published, edited or removed, so that the download
+# pages always list the current versions.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "docs/screenshots/**"
+      - "assets/logo.svg"
+      - "assets/logo/**"
+      - "ui/components/common/Icon.svelte"
+      - "crates/raytex-desktop/tauri.conf.json"
+      - ".github/workflows/site.yml"
+  release:
+    types: [published, edited, unpublished, deleted]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the site, with the published releases
+        run: node site/build.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Set the repository variable SITE_URL for a custom domain.
+          SITE_URL: ${{ vars.SITE_URL || format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+  # GitHub Pages needs a public repository (or a paid plan): while the
+  # repository is private, the site is only built.
+  deploy:
+    name: Deploy
+    if: ${{ !github.event.repository.private }}
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

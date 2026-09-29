@@ -89,7 +89,7 @@ The interface is available in English and French.
 
 ## Install
 
-Download the installer for your system from the [releases page](https://github.com/ifanoxy/raytex/releases) (`.dmg` for macOS, `.msi` or `.exe` for Windows, `.AppImage` or `.deb` for Linux), then open RayTeX: if no TeX distribution is found, the setup assistant helps you install one.
+Download the installer for your system from the [website](https://ifanoxy.github.io/raytex/download/) or the [releases page](https://github.com/ifanoxy/raytex/releases) (`.dmg` for macOS, `.msi` or `.exe` for Windows, `.AppImage` or `.deb` for Linux), then open RayTeX: if no TeX distribution is found, the setup assistant helps you install one.
 
 The builds are not signed yet:
 

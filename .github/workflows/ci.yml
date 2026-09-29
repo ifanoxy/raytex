@@ -32,6 +32,8 @@ jobs:
       - run: npm test
       - run: npm run check
       - run: npm run build
+      - name: Website
+        run: node site/build.mjs
 
   rust:
     name: Rust (${{ matrix.os }})

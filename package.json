@@ -18,6 +18,8 @@
     "tauri": "tauri",
     "app:dev": "tauri dev",
     "app:build": "tauri build",
+    "site": "node site/serve.mjs --mock",
+    "site:build": "node site/build.mjs",
     "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --test \"ui/**/*.test.ts\""
   },
   "engines": {

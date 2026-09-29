@@ -4,6 +4,7 @@
 # Node / frontend
 /node_modules/
 /dist/
+/site/dist/
 *.tsbuildinfo
 
 # Tauri generated schemas
