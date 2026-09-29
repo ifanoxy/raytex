@@ -165,7 +165,8 @@ fn cases() -> Vec<Case> {
         case("inputenc-utf-8", "file-not-found", doc("\\usepackage[utf-8]{inputenc}", "Texte.")),
         case("option-clash", "option-clash", doc("\\usepackage{amsmath}\n\\usepackage[fleqn]{amsmath}", "\\[ a = b \\]")),
         case("geometry-key", "keyval-undefined", doc("\\usepackage[marging=2cm]{geometry}", "Texte.")),
-        case("babel-francais", "babel-option", doc("\\usepackage[T1]{fontenc}\n\\usepackage[francais]{babel}", "Texte.")),
+        // Recent babel (MiKTeX) no longer knows `francais` at all.
+        case("babel-francais", "babel-option|babel-unknown", doc("\\usepackage[T1]{fontenc}\n\\usepackage[francais]{babel}", "Texte.")),
         case("babel-unknown", "babel-unknown", doc("\\usepackage[T1]{fontenc}\n\\usepackage[frensh]{babel}", "Texte.")),
         case("fontenc-french", "french-fontenc", doc("\\usepackage[french]{babel}", "Texte.")),
         case("fontspec-pdflatex", "fontspec-engine", format!("% !TEX program = pdflatex\n{}", doc("\\usepackage{fontspec}", "Texte."))),
@@ -265,16 +266,31 @@ fn compile(dist: &Distribution, index: &TexmfIndex, main: &Path, badboxes: bool)
         &plan.out_dir.join(format!("{}.aux", plan.job)),
     );
     ws.set_aux(&root, aux);
-    let opts = LintOptions {
-        lang: Lang::Fr,
-        style_hints: true,
-        installed: Some(index),
-        ..Default::default()
-    };
     let files: Vec<PathBuf> = ws.documents().map(|d| d.path.clone()).collect();
-    for f in files {
-        diagnostics.extend(lint::lint(&ws, &f, &opts));
+    let checks = |installed: &TexmfIndex| {
+        let opts = LintOptions {
+            lang: Lang::Fr,
+            style_hints: true,
+            installed: Some(installed),
+            ..Default::default()
+        };
+        files
+            .iter()
+            .flat_map(|f| lint::lint(&ws, f, &opts))
+            .collect::<Vec<_>>()
+    };
+    let mut live = checks(index);
+    // MiKTeX installed packages during the build: the application reads
+    // the installed files again after such a build, and so does the test.
+    if dist.kind == raytex_core::tex::DistroKind::MikTex
+        && outcome.success
+        && live
+            .iter()
+            .any(|d| d.code.as_deref() == Some("missing-package"))
+    {
+        live = checks(&TexmfIndex::build(dist));
     }
+    diagnostics.extend(live);
     Built {
         diagnostics,
         success: outcome.success,
@@ -318,12 +334,19 @@ fn describe(d: &Diagnostic) -> String {
 
 /// Problems that matter after a fix: errors and warnings (bad boxes only
 /// when the case is about them).
+/// `code` may list the codes of several versions of a package: `a|b`.
+fn has_code(d: &Diagnostic, code: &str) -> bool {
+    d.code
+        .as_deref()
+        .is_some_and(|c| code.split('|').any(|x| x == c))
+}
+
 fn remaining<'a>(built: &'a Built, case: &Case) -> Vec<&'a Diagnostic> {
     built
         .diagnostics
         .iter()
         .filter(|d| {
-            (d.severity <= Severity::Warning || d.code.as_deref() == Some(case.code))
+            (d.severity <= Severity::Warning || has_code(d, case.code))
                 && !case
                     .allow_after
                     .iter()
@@ -369,7 +392,7 @@ fn run_case(dist: &Distribution, index: &TexmfIndex, case: &Case, probe: bool) -
     let matching: Vec<&Diagnostic> = before
         .diagnostics
         .iter()
-        .filter(|d| d.code.as_deref() == Some(case.code) && case.from.is_none_or(|s| d.source == s))
+        .filter(|d| has_code(d, case.code) && case.from.is_none_or(|s| d.source == s))
         .collect();
     let Some(d) = matching
         .iter()
