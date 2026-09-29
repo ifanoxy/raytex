@@ -10,6 +10,12 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/ifanoxy/raytex/actions/workflows/ci.yml"><img src="https://github.com/ifanoxy/raytex/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="#licence"><img src="https://img.shields.io/badge/licence-MIT%20%2F%20Apache--2.0-blue" alt="Licence : MIT ou Apache-2.0" /></a>
+  <a href="https://github.com/ifanoxy/raytex/releases"><img src="https://img.shields.io/github/v/release/ifanoxy/raytex?include_prereleases" alt="Dernière version" /></a>
+</p>
+
+<p align="center">
   <a href="README.md">English</a> · Français
 </p>
 
@@ -17,12 +23,18 @@
 
 RayTeX aide les débutants à apprendre et laisse les experts aller vite : aperçu en direct, autocomplétion apprise de **tous** les packages installés, console d'erreurs précise qui explique chaque problème et corrige les plus courants en un clic (ou tous à la fois), SyncTeX, modèles, macros et configuration guidée de **n'importe quelle** distribution TeX.
 
+<p align="center">
+  <img src="docs/screenshots/fr/editor.png" width="900" alt="RayTeX : l'éditeur, le PDF en direct et le panneau des raccourcis @" />
+</p>
+
 ## Fonctionnalités
 
 **Écrire**
 - Une barre de mise en forme comme dans un traitement de texte : annuler / rétablir, style de la ligne (titres), taille du texte, gras, italique, souligné, couleur, alignement, listes, formules, image, tableau (taille choisie sur une grille), schéma TikZ, liens et renvois ; **Tout voir** liste toutes les commandes avec leur raccourci. La barre du haut garde le projet, la compilation et un menu **Affichage** ; l'aperçu PDF et la console se ferment par une croix.
 - Autocomplétion selon le contexte : commandes et environnements du noyau LaTeX, de chaque package chargé par le document (lus dans la source du package, quel qu'il soit), de vos `\newcommand` ; étiquettes avec leur numéro, citations avec auteurs et titre, fichiers, options, couleurs.
 - L'autocomplétion crée les accolades et les laisse vides, à vous de les remplir ; choisir une commande d'un package non chargé ajoute le `\usepackage`.
+- Les clés et valeurs des arguments, avec leur documentation : `\includegraphics[width=…]`, `\begin{itemize}[label=…]`, `\hypersetup{…}`, `\geometry{…}`, siunitx, listings, minted, tcolorbox, fontspec, TikZ, pgfplots, beamer… (environ 520 clés documentées, plus celles que déclare chaque package installé). Dans un argument libre, une info-bulle dit ce qu'on y met (`\item[terme]` : le texte affiché à la place de la puce).
+- Un éditeur de matrices et de tableaux rempli case par case (Entrée pour passer à la case suivante, collage depuis un tableur, mise en forme LaTeX et macros dans les cases, aperçu en direct) ; une pastille après `\begin{pmatrix}`, `\begin{tabular}`, `\includegraphics` ou `\begin{tikzpicture}` rouvre l'éditeur correspondant sur ce code.
 - Aperçu des formules en direct (KaTeX, avec vos macros), documentation au survol, aperçu des images.
 - Les polices depuis la barre de mise en forme : polices du texte, des titres, du code et des maths d'un coup d'œil, chacune changée ou remise par défaut en un clic, et des polices pour un passage appliquées à la sélection ; des couleurs qui suivent le document (toutes celles de `xcolor`, `dvipsnames` et SVG quand xcolor est chargé, les couleurs du document, toute couleur au choix).
 - Console et problèmes dont le texte se sélectionne et se copie.
@@ -62,7 +74,7 @@ RayTeX aide les débutants à apprendre et laisse les experts aller vite : aper�
 **Projets**
 - Un dossier des projets (`Documents/RayTeX` par défaut) et un navigateur **Mes projets** avec l'aperçu de chaque PDF, une recherche, les projets et fichiers récents.
 - Mode léger : ouvrir un seul fichier `.tex`, le modifier et exporter son PDF sans créer aucun fichier à côté ; en faire un projet en une étape quand il faut des images ou d'autres fichiers.
-- Les nouveaux projets commencent vides ; le panneau **Modèles** montre chaque modèle par sa première page (compilée une fois, gardée en cache) et le place dans le document en un clic, annulable.
+- Les nouveaux projets commencent vides ; le panneau **Modèles** montre chaque modèle par sa première page (fournie avec l'application, quelle que soit votre distribution) et le place dans le document en un clic, annulable.
 - 16 modèles (article, rapport, thèse, article de recherche, diaporama, poster, notes de cours, examen, fiche d'exercices, devoir, compte rendu de TP, lettre, CV, figure TikZ…), qui compilent tous sans avertissement, en français et en anglais.
 - Réglages du projet dans `raytex.toml`, versionné avec le projet.
 - Palette de commandes, ouverture rapide, recherche et remplacement dans le projet, plan avec les vrais numéros, liste des TODO, restauration de session.
@@ -70,13 +82,23 @@ RayTeX aide les débutants à apprendre et laisse les experts aller vite : aper�
 
 L'interface est disponible en français et en anglais.
 
+<p align="center">
+  <img src="docs/screenshots/fr/problems.png" width="440" alt="Les problèmes expliqués, avec leurs corrections" />
+  <img src="docs/screenshots/fr/tikz.png" width="440" alt="Le studio TikZ : dessinez à la souris, le code s'écrit tout seul" />
+</p>
+
 ## Installation
 
-Téléchargez l'installateur de votre système sur la page des versions, puis ouvrez RayTeX : si aucune distribution TeX n'est trouvée, l'assistant vous aide à en installer une.
+Téléchargez l'installateur de votre système sur la [page des versions](https://github.com/ifanoxy/raytex/releases) (`.dmg` pour macOS, `.msi` ou `.exe` pour Windows, `.AppImage` ou `.deb` pour Linux), puis ouvrez RayTeX : si aucune distribution TeX n'est trouvée, l'assistant vous aide à en installer une.
+
+Les versions ne sont pas encore signées :
+
+- **macOS** : la première fois, clic droit sur RayTeX dans *Applications* puis *Ouvrir* (ou `xattr -dr com.apple.quarantine /Applications/RayTeX.app`).
+- **Windows** : si SmartScreen bloque l'installateur, cliquez sur *Informations complémentaires* puis *Exécuter quand même*.
 
 ## Compiler depuis les sources
 
-Prérequis : [Rust](https://rustup.rs) 1.88 ou plus récent (stable), [Node.js](https://nodejs.org) 20+ et les [prérequis de Tauri](https://v2.tauri.app/start/prerequisites/) pour votre système (WebKitGTK sous Linux, WebView2 sous Windows).
+Prérequis : [Rust](https://rustup.rs) 1.88 ou plus récent (stable), [Node.js](https://nodejs.org) 22.12+ et les [prérequis de Tauri](https://v2.tauri.app/start/prerequisites/) pour votre système (WebKitGTK sous Linux, WebView2 et les outils de compilation C++ sous Windows — voir [docs/WINDOWS.md](docs/WINDOWS.md)).
 
 ```bash
 npm install
@@ -89,8 +111,10 @@ Autres commandes utiles :
 ```bash
 cargo test --workspace                       # tests du moteur
 cargo test -p raytex-core -- --ignored   # tests qui demandent une distribution TeX ou le réseau
+npm test                                     # tests de l'interface
 npm run check                                # vérification des types de l'interface
 npm run dev                                  # interface seule dans un navigateur, moteur simulé
+node scripts/e2e.mjs                         # scénarios de bout en bout dans la vraie application
 ```
 
 ## En ligne de commande
@@ -117,11 +141,18 @@ crates/
   raytex-desktop/  l'application de bureau (Tauri 2) : commandes IPC, événements, surveillance des fichiers
 ui/                    l'interface (Svelte 5 + TypeScript + CodeMirror 6 + pdf.js)
 assets/                sources du logo
-docs/                  documentation de l'architecture et des formats de données
+docs/                  architecture, Windows, formats de données, captures d'écran
+tests/e2e/             projet utilisé par les scénarios de bout en bout
 ```
 
 Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (en anglais) pour l'architecture, [docs/knowledge-base.md](docs/knowledge-base.md) pour documenter un package ou ajouter un modèle, et [CONTRIBUTING.md](CONTRIBUTING.md) pour contribuer.
 
+## Contribuer
+
+Rapports de bugs, idées, documentation de packages, modèles, traductions et code sont les bienvenus : lisez [CONTRIBUTING.md](CONTRIBUTING.md) (en anglais). Merci de respecter le [code de conduite](CODE_OF_CONDUCT.md) ; les problèmes de sécurité se signalent en privé, comme expliqué dans [SECURITY.md](SECURITY.md). Les changements de chaque version sont dans [CHANGELOG.md](CHANGELOG.md).
+
 ## Licence
 
-RayTeX est un logiciel libre, sous double licence [MIT](LICENSE-MIT) et [Apache 2.0](LICENSE-APACHE), au choix.
+RayTeX est un logiciel libre, sous double licence [MIT](LICENSE-MIT) et [Apache 2.0](LICENSE-APACHE), au choix. Sauf mention contraire, toute contribution que vous proposez est placée sous ces mêmes licences.
+
+Les composants tiers fournis avec l'application (polices, pdf.js, KaTeX…) gardent leur propre licence : voir [THIRD_PARTY.md](THIRD_PARTY.md).

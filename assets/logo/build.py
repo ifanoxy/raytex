@@ -1,20 +1,42 @@
 #!/usr/bin/env python3
-"""Builds the RayTeX logos from letters typeset by LaTeX.
+"""Builds the RayTeX logos: a manta ray (the "Ray") gliding with the \\TeX
+logo (the "TeX").
 
 1. `latex letters.tex && dvisvgm --no-fonts --exact-bbox --precision=3 letters.dvi -o letters.svg`
-   (R, raised small caps AY, T, lowered E and X in Latin Modern, in the
-   style of the \\LaTeX command);
-2. `python3 build.py letters.svg` writes ../logo.svg (app icon),
-   logo-mark-dark.svg and logo-mark-light.svg (transparent wordmarks),
-   replacing the X by two crossed rays of light with a flare where they meet.
+   (T, lowered E and X in bold Latin Modern, like the \\TeX command);
+2. `python3 build.py letters.svg` writes ../logo.svg (app icon: the ray above
+   the letters on the night background), logo-mark-dark.svg and
+   logo-mark-light.svg (wordmarks: the ray, then the letters).
 """
 
-import math
 import re
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+
+# The ray seen from above, in a 1000-wide box (centre line x = 500):
+# cephalic fins in front, pointed wings swept back, thin tail.
+RAY_BODY = (
+    "M500 172"
+    " C484 172 466 170 452 166"  # the wide mouth, between the cephalic fins
+    " C458 140 456 112 444 92"  # left fin, inner edge
+    " C428 92 412 128 408 186"  # its outer edge, back to the head
+    " C300 140 120 206 30 330"  # leading edge of the left wing
+    " C170 348 330 380 424 430"  # trailing edge
+    " C444 456 470 484 490 494"  # to the base of the tail
+    " L510 494"
+    " C530 484 556 456 576 430"
+    " C670 380 830 348 970 330"
+    " C880 206 700 140 592 186"
+    " C588 128 572 92 556 92"
+    " C544 112 542 140 548 166"
+    " C534 170 516 172 500 172 Z"
+)
+RAY_TAIL = "M493 488 C492 560 498 610 486 660 C505 610 509 560 507 488 Z"
+# A ridge along the back, for depth.
+RAY_RIDGE = "M500 196 C494 270 494 360 500 462 C506 360 506 270 500 196 Z"
+RAY_BOX = (30, 92, 970, 660)
 
 
 def parse(svg: str):
@@ -60,137 +82,111 @@ def bbox(d: str):
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def ray(cx: float, cy: float, length: float, angle: float, glow: bool) -> str:
-    """A ray of light centred at (cx, cy); geometry defined for length 800."""
-    s = length / 800
-    halo = '<path d="M-420 0 Q 0 -120 420 0 Q 0 120 -420 0 Z" fill="url(#beam)" filter="url(#blur)" opacity="0.8"/>' if glow else ""
-    core = '<path d="M-330 0 Q 0 -22 330 0 Q 0 22 -330 0 Z" fill="url(#core)"/>' if glow else ""
-    return f"""<g transform="translate({cx:.2f} {cy:.2f}) rotate({angle:.1f}) scale({s:.4f})">
-    {halo}
-    <path d="M-400 0 Q 0 -64 400 0 Q 0 64 -400 0 Z" fill="url(#beam)"/>
-    {core}
-  </g>"""
-
-
-def flare(cx: float, cy: float, length: float, glow: bool) -> str:
-    """The spark where the rays cross: a glow and a small four-pointed star."""
-    r = length * 0.2
-    star = length * 0.26
-    w = length * 0.03
-    return f"""<g transform="translate({cx:.2f} {cy:.2f})">
-    {f'<circle r="{r:.2f}" fill="url(#spark)"/>' if glow else ""}
-    <path d="M{-star:.2f} 0 Q 0 {-w:.2f} {star:.2f} 0 Q 0 {w:.2f} {-star:.2f} 0 Z" fill="url(#star)"/>
-    <path d="M0 {-star:.2f} Q {-w:.2f} 0 0 {star:.2f} Q {w:.2f} 0 0 {-star:.2f} Z" fill="url(#star)"/>
-  </g>"""
-
-
 def defs(dark: bool) -> str:
-    """Gradients: bright light on the night background, amber on a light one."""
-    if dark:
-        edge, mid, centre, star = "#ffae3b", "#ffcf6e", "#fff4d8", "#ffffff"
-    else:
-        edge, mid, centre, star = "#e07b00", "#f29a12", "#f7b733", "#f7b733"
+    """Night background; the ray in amber light (brighter on the dark side)."""
+    centre, edge = ("#fff1cf", "#ffa53a") if dark else ("#ffc766", "#e07b00")
     return f"""<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#26335f"/>
       <stop offset="1" stop-color="#111831"/>
     </linearGradient>
-    <linearGradient id="beam" gradientUnits="userSpaceOnUse" x1="-400" y1="0" x2="400" y2="0">
-      <stop offset="0" stop-color="{edge}" stop-opacity="0"/>
-      <stop offset="0.14" stop-color="{mid}" stop-opacity="0.95"/>
-      <stop offset="0.5" stop-color="{centre}"/>
-      <stop offset="0.86" stop-color="{mid}" stop-opacity="0.95"/>
-      <stop offset="1" stop-color="{edge}" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="core" gradientUnits="userSpaceOnUse" x1="-310" y1="0" x2="310" y2="0">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.95"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-    <radialGradient id="spark">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
-      <stop offset="0.25" stop-color="#fff0c4" stop-opacity="0.75"/>
-      <stop offset="1" stop-color="#ffb347" stop-opacity="0"/>
+    <radialGradient id="ray" gradientUnits="userSpaceOnUse" cx="500" cy="300" r="480">
+      <stop offset="0" stop-color="{centre}"/>
+      <stop offset="0.45" stop-color="#ffcf6e"/>
+      <stop offset="1" stop-color="{edge}"/>
     </radialGradient>
-    <radialGradient id="star">
-      <stop offset="0" stop-color="{star}"/>
-      <stop offset="1" stop-color="{mid}" stop-opacity="0.2"/>
-    </radialGradient>
-    <filter id="blur" x="-20%" y="-300%" width="140%" height="700%">
-      <feGaussianBlur stdDeviation="18"/>
+    <linearGradient id="tail" gradientUnits="userSpaceOnUse" x1="0" y1="494" x2="0" y2="770">
+      <stop offset="0" stop-color="#ffcf6e"/>
+      <stop offset="1" stop-color="{edge}" stop-opacity="0.15"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-30%" width="140%" height="160%">
+      <feGaussianBlur stdDeviation="26"/>
     </filter>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
       <feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#000" flood-opacity="0.35"/>
     </filter>"""
 
 
-def compose(letters_svg: str):
-    paths, uses = parse(letters_svg)
-    glyphs = []
-    x_box = None
+def ray(glow: bool) -> str:
+    """The ray in its 1000-wide box (with a halo on dark backgrounds)."""
+    halo = f'<path d="{RAY_BODY}" fill="#ffb347" opacity="0.45" filter="url(#glow)"/>' if glow else ""
+    return f"""{halo}
+    <path d="{RAY_TAIL}" fill="url(#tail)"/>
+    <path d="{RAY_BODY}" fill="url(#ray)"/>
+    <path d="{RAY_RIDGE}" fill="#ffffff" opacity="0.28"/>
+"""
+
+
+def letters(svg: str):
+    """Glyph definitions, the letters, and their box."""
+    paths, uses = parse(svg)
+    boxes = []
     for x, y, g in uses:
         b = bbox(paths[g])
-        box = (x + b[0], y + b[1], x + b[2], y + b[3])
-        if g.endswith("-88"):  # the X
-            x_box = box
-        else:
-            glyphs.append((x, y, g, box))
-    assert x_box, "no X glyph found"
-    cx, cy = (x_box[0] + x_box[2]) / 2, (x_box[1] + x_box[3]) / 2
-    w, h = x_box[2] - x_box[0], x_box[3] - x_box[1]
-    angle = math.degrees(math.atan2(h, w))
-    length = math.hypot(w, h) * 1.12
-    minx = min(b[0] for *_, b in glyphs)
-    miny = min(min(b[1] for *_, b in glyphs), x_box[1])
-    maxx = x_box[2] + 2
-    maxy = max(max(b[3] for *_, b in glyphs), x_box[3])
-    used = {g for _, _, g, _ in glyphs}
-    glyph_defs = "\n    ".join(f'<path id="{g}" d="{paths[g]}"/>' for g in sorted(used))
-    letters = "\n    ".join(f'<use href="#{g}" x="{x}" y="{y}"/>' for x, y, g, _ in glyphs)
-    def content(glow: bool) -> str:
-        return f"""<g filter="url(#shadow)">
-    <g fill="LETTERS" stroke="LETTERS" stroke-width="1.7" stroke-linejoin="round">
-    {letters}
-    </g>
-  </g>
-  {ray(cx, cy, length, angle, glow)}
-  {ray(cx, cy, length, -angle, glow)}
-  {flare(cx, cy, length, glow)}"""
-    return glyph_defs, content, (minx, miny, maxx, maxy)
+        boxes.append((x + b[0], y + b[1], x + b[2], y + b[3]))
+    box = (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+    used = sorted({g for _, _, g in uses})
+    glyph_defs = "\n    ".join(f'<path id="{g}" d="{paths[g]}"/>' for g in used)
+    body = "\n    ".join(f'<use href="#{g}" x="{x}" y="{y}"/>' for x, y, g in uses)
+    return glyph_defs, body, box
 
 
 def main():
-    src = Path(sys.argv[1] if len(sys.argv) > 1 else HERE / "letters.svg").read_text()
-    glyph_defs, content, (minx, miny, maxx, maxy) = compose(src)
-    w, h = maxx - minx, maxy - miny
+    glyph_defs, body, (lx0, ly0, lx1, ly1) = letters(Path(sys.argv[1] if len(sys.argv) > 1 else HERE / "letters.svg").read_text())
+    lw, lh = lx1 - lx0, ly1 - ly0
+    rx0, ry0, rx1, ry1 = RAY_BOX
+    rw, rh = rx1 - rx0, ry1 - ry0
 
-    # App icon: 1024×1024, night background.
-    size = 1024
-    scale = 880 / w
-    tx = size / 2 - scale * (minx + maxx) / 2
-    ty = size / 2 - scale * (miny + maxy) / 2 + 8
-    icon = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}" width="{size}" height="{size}">
+    def text(color: str, scale: float, x: float, y: float) -> str:
+        return f"""<g filter="url(#shadow)" transform="translate({x:.2f} {y:.2f}) scale({scale:.4f}) translate({-lx0:.2f} {-ly0:.2f})">
+    <g fill="{color}" stroke="{color}" stroke-width="1.2" stroke-linejoin="round">
+    {body}
+    </g>
+  </g>"""
+
+    # App icon, 1024×1024: the ray gliding above the letters, the whole
+    # centred in the square.
+    ray_w = 720
+    rs = ray_w / rw
+    text_w = 520
+    ts = text_w / lw
+    gap = 36
+    total = rh * rs + gap + lh * ts
+    ray_x = 512 - ray_w / 2
+    ray_y = 512 - total / 2
+    text_x = 512 - text_w / 2
+    text_y = ray_y + rh * rs + gap
+    icon = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
     {defs(True)}
     {glyph_defs}
   </defs>
   <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#bg)"/>
   <rect x="32" y="32" width="960" height="960" rx="216" fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="4"/>
-  <g transform="translate({tx:.2f} {ty:.2f}) scale({scale:.4f})">
-  {content(True).replace("LETTERS", "#f6ead3")}
+  <g transform="translate({ray_x:.2f} {ray_y:.2f}) scale({rs:.4f}) translate({-rx0} {-ry0})">
+    {ray(True)}
   </g>
+  {text("#f6ead3", ts, text_x, text_y)}
 </svg>
 """
     (HERE.parent / "logo.svg").write_text(icon)
 
-    # Wordmarks with transparent background.
-    pad = 6
+    # Wordmarks, transparent: the ray, then the letters, on one line.
+    height = 100
+    rs2 = height * 1.25 / rh
+    ts2 = height / lh
+    gap = 14
+    ray_w2 = rw * rs2
+    width = ray_w2 + gap + lw * ts2
     for name, color, dark in [("logo-mark-dark.svg", "#f6ead3", True), ("logo-mark-light.svg", "#1d2233", False)]:
-        mark = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="{minx - pad:.2f} {miny - pad:.2f} {w + 2 * pad:.2f} {h + 2 * pad:.2f}" width="{(w + 2 * pad) * 2:.0f}" height="{(h + 2 * pad) * 2:.0f}">
+        mark = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -22 {width + 16:.2f} {height * 1.25 + 30:.2f}" width="{(width + 16) * 2:.0f}" height="{(height * 1.25 + 30) * 2:.0f}">
   <defs>
     {defs(dark)}
     {glyph_defs}
   </defs>
-  {content(dark).replace("LETTERS", color)}
+  <g transform="scale({rs2:.4f}) translate({-rx0} {-ry0})">
+    {ray(False)}
+  </g>
+  {text(color, ts2, ray_w2 + gap, height * 0.18)}
 </svg>
 """
         (HERE / name).write_text(mark)

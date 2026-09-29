@@ -1,0 +1,21 @@
+name: Idea or feature request
+description: Suggest something RayTeX could do better
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What would you like to do?
+      description: The situation and what you are trying to achieve (you can write in English or French).
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could RayTeX help?
+      description: Your idea of the feature, if you have one.
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Packages involved, examples from other editors, screenshots.

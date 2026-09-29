@@ -1,0 +1,46 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for the report! You can write in English or French.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: document
+    attributes:
+      label: A minimal document
+      description: The smallest `.tex` that shows the problem, if it is about a document.
+      render: latex
+  - type: input
+    id: version
+    attributes:
+      label: RayTeX version
+      description: In Settings › About.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS, Windows, Linux]
+    validations:
+      required: true
+  - type: input
+    id: distribution
+    attributes:
+      label: TeX distribution
+      description: Shown at the bottom left of the window (for example "MiKTeX 25.12", "TeX Live 2025").
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output or screenshots
+      description: The console output (Output tab) or screenshots, if useful.

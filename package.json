@@ -4,6 +4,12 @@
   "version": "0.1.0",
   "description": "RayTeX — a modern LaTeX IDE (user interface)",
   "license": "MIT OR Apache-2.0",
+  "homepage": "https://github.com/ifanoxy/raytex",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ifanoxy/raytex.git"
+  },
+  "bugs": "https://github.com/ifanoxy/raytex/issues",
   "type": "module",
   "scripts": {
     "dev": "vite",

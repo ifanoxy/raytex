@@ -10,6 +10,12 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/ifanoxy/raytex/actions/workflows/ci.yml"><img src="https://github.com/ifanoxy/raytex/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="#license"><img src="https://img.shields.io/badge/license-MIT%20%2F%20Apache--2.0-blue" alt="License: MIT or Apache-2.0" /></a>
+  <a href="https://github.com/ifanoxy/raytex/releases"><img src="https://img.shields.io/github/v/release/ifanoxy/raytex?include_prereleases" alt="Latest release" /></a>
+</p>
+
+<p align="center">
   English · <a href="README.fr.md">Français</a>
 </p>
 
@@ -17,11 +23,17 @@
 
 RayTeX is a LaTeX editor that helps beginners learn and lets experts go fast: live preview, completion learned from **every** installed package, a precise error console that explains every problem and fixes the common ones in one click (or all at once), SyncTeX, templates, macros and a guided setup of **any** TeX distribution.
 
+<p align="center">
+  <img src="docs/screenshots/en/editor.png" width="900" alt="RayTeX: the editor, the live PDF and the @ shortcuts panel" />
+</p>
+
 ## Features
 
 **Writing**
 - A formatting bar like a word processor's: undo / redo, heading style of the line, text size, bold, italic, underline, colour, alignment, lists, formulas, image, table (size picked on a grid), TikZ drawing, links and references; **See all** lists every command with its shortcut. The top bar keeps the project, the build and a **View** menu; the PDF preview and the console close with a cross.
 - Context-aware completion: commands and environments of the LaTeX kernel, of every package your document loads (read from the package source, whatever the package), of your own `\newcommand`s; labels with their number, citations with authors and title, files, options, colours.
+- Keys and values of arguments, with their documentation: `\includegraphics[width=…]`, `\begin{itemize}[label=…]`, `\hypersetup{…}`, `\geometry{…}`, siunitx, listings, minted, tcolorbox, fontspec, TikZ, pgfplots, beamer… (about 520 documented keys, plus the keys each installed package declares). In a free argument, a hint says what goes there (`\item[term]`: the text shown instead of the bullet).
+- A matrix and table editor filled cell by cell (Enter to the next cell, paste from a spreadsheet, LaTeX formatting and macros in the cells, live preview); a chip after `\begin{pmatrix}`, `\begin{tabular}`, `\includegraphics` or `\begin{tikzpicture}` reopens the matching editor on that code.
 - Completion creates the braces and leaves them empty for you to type; choosing a command from a package that is not loaded adds the `\usepackage`.
 - Live math preview (KaTeX, with your macros), documentation on hover, image previews.
 - Fonts from the formatting bar: the main, sans-serif, code and maths fonts of the document at a glance, each changed or reset in one click, plus fonts for passages applied to the selection; colours that follow the document (all `xcolor`, `dvipsnames` and SVG colours when xcolor is loaded, the document's own colours, any custom colour).
@@ -62,7 +74,7 @@ RayTeX is a LaTeX editor that helps beginners learn and lets experts go fast: li
 **Projects**
 - A projects folder (`Documents/RayTeX` by default) and a **My projects** browser with previews of each PDF, search, recent projects and files.
 - Light mode: open a single `.tex` file, edit it and export its PDF without creating any file next to it; make it a project in one step when images or other files are needed.
-- New projects start empty; the **Templates** panel shows each template by its first page (compiled once, cached) and puts it in the document in one undoable click.
+- New projects start empty; the **Templates** panel shows each template by its first page (shipped with the application, whatever your distribution) and puts it in the document in one undoable click.
 - 16 templates (article, report, thesis, research article, slides, poster, course notes, exam, exercise sheet, homework, lab report, letter, CV, TikZ figure…), all building without warnings, in English and French.
 - Project settings in `raytex.toml`, versioned with the project.
 - Command palette, quick open, project search and replace, outline with real numbers, TODO list, session restore.
@@ -70,13 +82,23 @@ RayTeX is a LaTeX editor that helps beginners learn and lets experts go fast: li
 
 The interface is available in English and French.
 
+<p align="center">
+  <img src="docs/screenshots/en/problems.png" width="440" alt="Problems explained, with their fixes" />
+  <img src="docs/screenshots/en/tikz.png" width="440" alt="The TikZ studio: draw with the mouse, the code writes itself" />
+</p>
+
 ## Install
 
-Download the installer for your system from the releases page, then open RayTeX: if no TeX distribution is found, the setup assistant helps you install one.
+Download the installer for your system from the [releases page](https://github.com/ifanoxy/raytex/releases) (`.dmg` for macOS, `.msi` or `.exe` for Windows, `.AppImage` or `.deb` for Linux), then open RayTeX: if no TeX distribution is found, the setup assistant helps you install one.
+
+The builds are not signed yet:
+
+- **macOS**: the first time, right-click RayTeX in *Applications* and choose *Open* (or run `xattr -dr com.apple.quarantine /Applications/RayTeX.app`).
+- **Windows**: if SmartScreen stops the installer, click *More info* then *Run anyway*.
 
 ## Build from source
 
-Requirements: [Rust](https://rustup.rs) 1.88 or newer (stable), [Node.js](https://nodejs.org) 20+, and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) of your OS (WebKitGTK on Linux, WebView2 on Windows).
+Requirements: [Rust](https://rustup.rs) 1.88 or newer (stable), [Node.js](https://nodejs.org) 22.12+, and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) of your OS (WebKitGTK on Linux, WebView2 and the C++ build tools on Windows — see [docs/WINDOWS.md](docs/WINDOWS.md)).
 
 ```bash
 npm install
@@ -89,8 +111,10 @@ Other useful commands:
 ```bash
 cargo test --workspace                 # engine tests
 cargo test -p raytex-core -- --ignored   # tests that need a TeX distribution / the network
+npm test                               # interface tests
 npm run check                          # type-check the interface
 npm run dev                            # interface alone in a browser, with a simulated engine
+node scripts/e2e.mjs                   # end-to-end scenes of the real application
 ```
 
 ## Command line
@@ -117,11 +141,18 @@ crates/
   raytex-desktop/  the desktop application (Tauri 2): IPC commands, events, file watcher
 ui/                    the interface (Svelte 5 + TypeScript + CodeMirror 6 + pdf.js)
 assets/                logo sources
-docs/                  architecture and data format documentation
+docs/                  architecture, Windows, data formats, screenshots
+tests/e2e/             project used by the end-to-end scenes
 ```
 
 Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit together, [docs/knowledge-base.md](docs/knowledge-base.md) to add package documentation or templates, and [CONTRIBUTING.md](CONTRIBUTING.md) to contribute.
 
+## Contributing
+
+Bug reports, ideas, package documentation, templates, translations and code are all welcome: read [CONTRIBUTING.md](CONTRIBUTING.md). Please follow the [code of conduct](CODE_OF_CONDUCT.md); report security problems privately as explained in [SECURITY.md](SECURITY.md). The changes of each version are in [CHANGELOG.md](CHANGELOG.md).
+
 ## License
 
-RayTeX is free software, dual-licensed under the [MIT](LICENSE-MIT) and [Apache 2.0](LICENSE-APACHE) licenses, at your option.
+RayTeX is free software, dual-licensed under the [MIT](LICENSE-MIT) and [Apache 2.0](LICENSE-APACHE) licenses, at your option. Unless you state otherwise, any contribution you submit is licensed the same way.
+
+The third-party components shipped with the application (fonts, pdf.js, KaTeX…) keep their own licenses: see [THIRD_PARTY.md](THIRD_PARTY.md).

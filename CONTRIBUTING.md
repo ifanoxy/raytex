@@ -27,8 +27,12 @@ With a TeX distribution installed, also run the integration tests and the end-to
 
 ```bash
 cargo test -p raytex-core --release -- --ignored
-RAYTEX_SELFTEST=/path/to/a/project npm run app:dev   # prints PASSED or FAILED and quits
+node scripts/e2e.mjs            # the scenes of the real application, with a screenshot at each step (e2e-output/)
+node scripts/e2e.mjs fixes      # one group: workflow, fixes, files, projects or media
+E2E_LANG=en node scripts/e2e.mjs  # the scenes with the interface in English
 ```
+
+`scripts/e2e.mjs` runs `npm run app:dev` on a fresh copy of `tests/e2e/rapport` with a fresh configuration, so it never touches an installed RayTeX (stop any other `npm run dev` first: the port 1420 must be free).
 
 `tests/common_mistakes.rs` compiles about 110 documents made of common commands, each with a common mistake: every one must be reported with an explanation and an automatic fix, and the document must compile without error or warning once the fix is applied. Add a case there when you add a fix. `LBT_PROBE=1` prints the diagnostics instead of checking (to write a new case), `LBT_CASE=<text>` runs only the matching cases.
 
@@ -57,8 +61,24 @@ The continuous integration runs the same checks on Linux, macOS and Windows, and
 - A help guide: `crates/raytex-core/data/help/{en,fr}/NN-id.md`
 - An error explanation: `crates/raytex-core/data/errors.json`
 - A snippet: `crates/raytex-core/data/snippets.json`
+- Keys and values of an argument (completion with documentation): `crates/raytex-core/data/keys.json`
+- What a free argument expects (hint above the cursor): `crates/raytex-core/data/arguments.json`
+
+After changing a built-in template, make its thumbnails again (macOS, or any system with Ghostscript):
+
+```bash
+RAYTEX_WRITE_THUMBNAILS=1 cargo test -p raytex-core --release -- --ignored write_bundled_thumbnails
+```
+
+The logo is built from LaTeX and a small script: see [assets/logo/README.md](assets/logo/README.md).
 
 Formats are described in [docs/knowledge-base.md](docs/knowledge-base.md).
+
+## Releasing
+
+1. Update the version in `Cargo.toml` (`[workspace.package]`), `package.json` and `crates/raytex-desktop/tauri.conf.json`, and give the *Unreleased* section of `CHANGELOG.md` its version and date.
+2. Commit, then tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
+3. The *Release* workflow builds macOS (Apple silicon and Intel), Windows and Linux and prepares a draft release with the installers; check it, write the notes from the changelog, and publish it.
 
 ## Reporting a bug
 

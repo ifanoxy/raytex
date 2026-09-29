@@ -99,7 +99,7 @@
   onmousedown={(e) => appWindow.drag(e)}
 >
   <div class="brand">
-    <img src={logo} alt="" width="26" height="26" />
+    <img src={logo} alt="RayTeX" height="22" />
   </div>
 
   {#if project.info}
@@ -209,8 +209,11 @@
   }
   .brand {
     display: flex;
-    width: 28px;
+    flex-shrink: 0;
     margin-right: 8px;
+  }
+  .brand img {
+    width: auto;
   }
   .project {
     display: flex;

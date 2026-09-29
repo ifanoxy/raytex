@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security problem
+    url: https://github.com/ifanoxy/raytex/security/advisories/new
+    about: Report vulnerabilities privately, not in a public issue.

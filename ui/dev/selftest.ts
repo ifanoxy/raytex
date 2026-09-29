@@ -578,17 +578,22 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     check("format used", usedFormat || tex.active?.kind === "miktex");
 
     await editor.open(main);
+    // The templates are in the language of the interface.
+    const en = document.documentElement.lang === "en";
+    const paragraph = en ? "Here is a paragraph" : "Voici un paragraphe";
+    const summary = en ? "Summarise your article here" : "Résumez ici";
     const selectText = (needle: string) => {
       const v = editor.view!;
       const at = v.state.doc.toString().indexOf(needle);
+      if (at < 0) return false;
       v.dispatch({ selection: { anchor: at, head: at + needle.length }, scrollIntoView: true });
       v.focus();
-      return at >= 0;
+      return true;
     };
 
     // --------------------------------------------------------- colours
     await colors.refresh();
-    check("select for colour", selectText("Voici un paragraphe"));
+    check("select for colour", selectText(paragraph));
     document.querySelector<HTMLButtonElement>(".format-bar .split .caret")!.click();
     await until(() => document.querySelectorAll(".color-menu .grid.big .swatch").length >= 68, 5_000, "colour menu");
     results.colors = document.querySelectorAll(".color-menu .swatch").length;
@@ -596,13 +601,13 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     document.querySelector<HTMLButtonElement>('.color-menu .swatch[title="Emerald"]')!.click();
     await pause(600);
     const withColor = editor.textOf(main) ?? "";
-    check("dvipsnames colour", withColor.includes("\\textcolor{Emerald}{Voici un paragraphe}") && withColor.includes("\\usepackage[dvipsnames]{xcolor}"));
+    check("dvipsnames colour", withColor.includes(`\\textcolor{Emerald}{${paragraph}}`) && withColor.includes("\\usepackage[dvipsnames]{xcolor}"));
     check("coloured build", await buildOk(log, "colours"));
 
     // ----------------------------------------------------------- fonts
     await fonts.refresh();
     check("main font read", !!fonts.current?.main.name.startsWith("Latin Modern"), fonts.current?.main.name);
-    check("select for font", selectText("Résumez ici"));
+    check("select for font", selectText(summary));
     document.querySelector<HTMLButtonElement>(".format-bar .select-btn.font")!.click();
     await until(() => !!document.querySelector(".font-menu .add"), 5_000, "font menu");
     await scene("font-menu", 1500);
@@ -616,7 +621,7 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     await until(() => ui.overlay === null, 20_000, "font applied");
     await pause(500);
     const withFont = editor.textOf(main) ?? "";
-    check("extra font defined and applied", withFont.includes("\\newfontfamily\\fontGeorgia") && withFont.includes("{\\fontGeorgia Résumez ici"), withFont.slice(0, 300));
+    check("extra font defined and applied", withFont.includes("\\newfontfamily\\fontGeorgia") && withFont.includes(`{\\fontGeorgia ${summary}`), withFont.slice(0, 300));
     await fonts.refresh();
     check("extra font listed", !!fonts.current?.extra.some((e) => e.command === "fontGeorgia"));
     check("font build (LuaLaTeX)", await buildOk(log, "fonts"));

@@ -1,12 +1,11 @@
-% The letters of the RayTeX logo, typeset by LaTeX itself (Latin Modern, in
-% the style of the \LaTeX command: R, raised small caps AY, T, lowered E).
-% The X is drawn separately as two crossed rays of light.
-% Rebuild: see assets/logo/README.md.
+% The letters of the RayTeX logo: the \TeX logo (T, lowered E, X) typeset
+% by LaTeX itself in bold Latin Modern; the ray (the fish) is drawn next to
+% it by build.py. Rebuild: see assets/logo/README.md.
 \documentclass{article}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \pagestyle{empty}
 \begin{document}
-\fontsize{100}{120}\selectfont
-R\kern-.26em\raise.3ex\hbox{\scshape ay}\kern-.12em T\kern-.1667em\lower.5ex\hbox{E}\kern-.125em X
+\fontsize{100}{120}\selectfont\bfseries
+T\kern-.1667em\lower.5ex\hbox{E}\kern-.125em X
 \end{document}
