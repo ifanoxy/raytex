@@ -26,11 +26,29 @@
   async function insert(s: SymbolCategory["symbols"][number]) {
     const view = editor.view;
     if (!view || editor.activeTab?.kind !== "tex" || view.state.readOnly) return;
+    const doc = view.state.doc;
     const pos = view.state.selection.main.head;
-    const inMath = !!findFormula(view.state.doc, pos);
+    const f = findFormula(doc, pos);
+    const inMath = !!f && pos > f.from && pos < f.to;
     const next = view.state.sliceDoc(pos, pos + 1);
     const cmd = s.command + (/[a-zA-Z]$/.test(s.command) && /[a-zA-Z]/.test(next) ? " " : "");
-    editor.insertText(s.math && !inMath ? `$${cmd}$` : cmd);
+    // Right after `$…$` or `\(…\)` (the symbol clicked before): the new one
+    // joins that formula, and the cursor stays after it.
+    const close = f && pos === f.to && !f.display ? (doc.sliceString(f.to - 2, f.to) === "\\)" ? 2 : 1) : 0;
+    if (s.math && close) {
+      const at = f!.to - close;
+      const before = doc.sliceString(at - 1, at);
+      const joined = (/[a-zA-Z]/.test(before) && /^[a-zA-Z]/.test(s.command) ? " " : "") + s.command;
+      view.dispatch({
+        changes: { from: at, insert: joined },
+        selection: { anchor: pos + joined.length },
+        scrollIntoView: true,
+        userEvent: "input",
+      });
+      view.focus();
+    } else {
+      editor.insertText(s.math && !inMath ? `$${cmd}$` : cmd);
+    }
     if (s.package) await editor.addPackage(s.package);
   }
 </script>

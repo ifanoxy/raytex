@@ -129,5 +129,7 @@ jobs:
           exit 0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      # One test at a time: two compilations installing the same package
+      # at once make one of them fail (MiKTeX locks its package database).
       - name: Engine tests needing TeX
-        run: cargo test -p raytex-core --release -- --ignored --skip ctan --nocapture
+        run: cargo test -p raytex-core --release -- --ignored --skip ctan --nocapture --test-threads=1

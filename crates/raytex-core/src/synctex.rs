@@ -521,17 +521,24 @@ mod tests {
         let st = SyncTex::load(&dir.path().join("s.synctex.gz")).unwrap();
         for line in [4u32, 6, 8, 11] {
             let ours = st.forward(&tex, line).unwrap();
-            let cli = crate::process::output(
-                &dist.cmd("synctex").cwd(dir.path()).args([
-                    "view",
-                    "-i",
-                    &format!("{line}:1:s.tex"),
-                    "-o",
-                    "s.pdf",
-                ]),
-                std::time::Duration::from_secs(10),
-            )
-            .unwrap();
+            // TeX Live records `s.tex`, MiKTeX the full path.
+            let view = |name: &str| {
+                crate::process::output(
+                    &dist.cmd("synctex").cwd(dir.path()).args([
+                        "view",
+                        "-i",
+                        &format!("{line}:1:{name}"),
+                        "-o",
+                        "s.pdf",
+                    ]),
+                    std::time::Duration::from_secs(10),
+                )
+                .unwrap()
+            };
+            let mut cli = view("s.tex");
+            if !cli.stdout.contains("Page:") {
+                cli = view(&tex.to_string_lossy());
+            }
             let page: u32 = cli
                 .stdout
                 .lines()

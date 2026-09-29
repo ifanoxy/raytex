@@ -16,6 +16,10 @@ export function editorTheme(fontFamily: string, fontSize: number, lineHeight: nu
       fontFamily,
       lineHeight: String(lineHeight),
       overflow: "auto",
+      // The characters as typed: no ligature turns `->`, `=>` or `<--`
+      // into an arrow (JetBrains Mono, Fira Code…).
+      fontVariantLigatures: "none",
+      fontFeatureSettings: '"liga" 0, "calt" 0',
     },
     ".cm-content": {
       caretColor: "var(--accent)",
