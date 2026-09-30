@@ -551,22 +551,74 @@ body.menu-open .menu-btn span:nth-child(3) {
 
 /* ----------------------------------------------------------------- hero */
 .hero {
-  padding: clamp(40px, 7vw, 88px) 0 clamp(40px, 6vw, 72px);
+  padding: 6px 0 clamp(28px, 4vw, 48px);
 }
-.hero-grid {
+/* A large rounded panel, dotted like a sheet of paper, with the tools of
+   RayTeX floating in its corners. */
+.hero-panel {
+  --dot: rgba(140, 160, 210, 0.16);
+  position: relative;
+  width: min(100% - 32px, 1600px);
+  min-height: clamp(700px, 90vh, 900px);
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
-  gap: clamp(32px, 5vw, 64px);
-  align-items: center;
+  place-items: center;
+  padding: 120px 24px;
+  border-radius: 34px;
+  border: 1px solid var(--border);
+  background: radial-gradient(var(--dot) 1.1px, transparent 1.4px) 0 0 / 16px 16px,
+    radial-gradient(ellipse 60% 55% at 50% 45%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%),
+    color-mix(in srgb, var(--surface-solid) 70%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), var(--shadow);
+  overflow: hidden;
+  isolation: isolate;
+}
+[data-theme="light"] .hero-panel {
+  --dot: rgba(70, 55, 30, 0.13);
+  background: radial-gradient(var(--dot) 1.1px, transparent 1.4px) 0 0 / 16px 16px,
+    radial-gradient(ellipse 60% 55% at 50% 45%, rgba(255, 255, 255, 0.9), transparent 70%), #f1eee8;
+}
+.hero-center {
+  position: relative;
+  z-index: 2;
+  max-width: 1180px;
+  text-align: center;
+}
+.hero-icon {
+  width: 112px;
+  height: 112px;
+  margin: 0 auto 34px;
+  filter: drop-shadow(0 22px 40px rgba(20, 24, 45, 0.35)) drop-shadow(0 0 40px rgba(255, 165, 58, 0.18));
+  animation: float 6s ease-in-out infinite;
 }
 .hero h1 {
-  margin-bottom: 22px;
+  font-size: clamp(2.3rem, 4.5vw, 4.35rem);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  margin-bottom: 26px;
+}
+.h1-a,
+.h1-b {
+  display: block;
+}
+.h1-b {
+  color: var(--faint);
+}
+[data-theme="light"] .h1-b {
+  color: #9a9a9a;
+}
+.hero .lead {
+  margin: 0 auto;
+  color: var(--text);
+  opacity: 0.86;
+  max-width: 58ch;
 }
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin: 30px 0 16px;
+  margin: 34px 0 16px;
 }
 .hero-actions.center {
   justify-content: center;
@@ -574,18 +626,6 @@ body.menu-open .menu-btn span:nth-child(3) {
 .hero-meta {
   color: var(--faint);
   font-size: 0.92rem;
-}
-.hero-visual {
-  position: relative;
-}
-.hero-ray {
-  position: absolute;
-  z-index: 2;
-  bottom: -48px;
-  right: -36px;
-  width: 116px;
-  height: 116px;
-  filter: drop-shadow(0 18px 40px rgba(255, 165, 58, 0.35));
 }
 .float {
   animation: float 6s ease-in-out infinite;
@@ -596,71 +636,296 @@ body.menu-open .menu-btn span:nth-child(3) {
   }
 }
 
-/* ------------------------------------------------ new generation badge */
-@property --angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
+/* The floating things: a wrapper follows the pointer (depth), the inside
+   tilts and bobs. */
+.floater {
+  position: absolute;
+  z-index: 1;
+  translate: calc(var(--px, 0) * var(--depth, 12) * -2px) calc(var(--py, 0) * var(--depth, 12) * -2px);
+  transition: translate 0.7s var(--ease-out), opacity 0.9s var(--ease-out), scale 0.9s var(--ease-out);
 }
-.hero-badges {
-  flex-wrap: wrap;
-  gap: 10px;
+.js .floater {
+  opacity: 0;
+  scale: 0.86;
 }
-.badge-gen {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: 999px;
-  border: 1.5px solid transparent;
-  background: linear-gradient(var(--surface-solid), var(--surface-solid)) padding-box,
-    conic-gradient(from var(--angle), #ffe3a8, var(--accent-3), #6f8cff, #b58cff, #ffe3a8) border-box;
-  color: var(--text);
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  animation: turn 4s linear infinite;
-  box-shadow: 0 0 24px rgba(255, 179, 71, 0.18);
+.js .floater.visible {
+  opacity: 1;
+  scale: 1;
 }
-.badge-gen .icon {
-  color: var(--accent);
+.fl-inner {
+  rotate: var(--rot, 0deg);
+  animation: bob 7s ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
 }
-@keyframes turn {
-  to {
-    --angle: 360deg;
+@keyframes bob {
+  50% {
+    transform: translateY(-10px);
   }
 }
-.hero-badges .pill {
+.fl-note {
+  top: 6%;
+  left: 4%;
+  width: 250px;
+}
+.fl-check {
+  top: 24%;
+  left: 2.5%;
+}
+.fl-problems {
+  top: 5%;
+  right: -26px;
+  width: 320px;
+}
+.fl-sigma {
+  top: 19%;
+  right: 20%;
+}
+.fl-build {
+  bottom: -34px;
+  left: 5%;
+  width: 360px;
+}
+.fl-systems {
+  bottom: -40px;
+  right: 6%;
+  width: 330px;
+}
+
+/* sticky note */
+.note {
+  position: relative;
+  padding: 30px 24px 26px;
+  background: linear-gradient(180deg, #fff2a3, #fbe57f);
+  color: #2b2a24;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.04), 0 26px 44px rgba(20, 16, 0, 0.22);
+  border-radius: 3px 3px 22px 3px;
+  font-family: "Bradley Hand", "Segoe Print", "Ink Free", "Noteworthy", "Comic Sans MS", cursive;
+  font-size: 1.22rem;
+  line-height: 1.4;
+}
+.note p {
+  margin: 0;
+}
+.pin {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff9a8a, #e0352b 55%, #9c1f18);
+  box-shadow: 0 5px 8px rgba(0, 0, 0, 0.3);
+}
+.pin::after {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 14px;
+  width: 2px;
+  height: 10px;
+  background: #8b8b8b;
+  border-radius: 1px;
+}
+
+/* tiles: soft squares holding one icon */
+.tile {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  border-radius: 24px;
+  background: linear-gradient(160deg, #222b47, #161d31);
+  border: 1px solid rgba(140, 160, 210, 0.2);
+  box-shadow: 0 24px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+[data-theme="light"] .tile {
+  background: linear-gradient(160deg, #ffffff, #efefef);
+  border-color: rgba(0, 0, 0, 0.05);
+  box-shadow: 0 24px 40px rgba(40, 30, 10, 0.14), inset 0 1px 0 #fff;
+}
+.tile-badge {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 13px;
+  background: linear-gradient(145deg, #ffd88a, var(--accent-3));
+  color: #1d1405;
+  box-shadow: 0 8px 18px rgba(255, 165, 58, 0.4);
+}
+.tile-badge .icon {
+  stroke-width: 3;
+}
+.tile-sigma {
+  font-family: var(--serif);
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--accent);
+}
+
+/* folder cards */
+.fcard {
+  position: relative;
+  padding: 18px 18px 20px;
+  border-radius: 6px 20px 20px 20px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  box-shadow: 0 34px 60px rgba(0, 0, 0, 0.38);
+  color: var(--text);
+  text-align: left;
+}
+[data-theme="light"] .fcard {
+  background: #f7f6f3;
+  box-shadow: 0 34px 60px rgba(40, 30, 10, 0.13);
+}
+/* the tab of the folder */
+.fcard::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: -18px;
+  width: 42%;
+  height: 20px;
+  border-radius: 12px 16px 0 0;
+  background: inherit;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+}
+.fcard-title {
+  margin: 0 0 12px;
+  font-weight: 650;
+  font-size: 1.12rem;
+}
+.fcard-tab {
+  margin: 0 0 8px;
+  text-align: right;
+  color: var(--faint);
+  font-size: 0.72rem;
+}
+.fcard-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  font-size: 0.86rem;
+}
+[data-theme="light"] .fcard-item {
+  background: #fff;
+}
+.fcard-item strong {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--accent);
+  color: var(--error);
 }
-.hero-badges .pill:hover {
-  text-decoration: none;
-  border-color: var(--accent);
-}
-.hero-os {
+.fcard-sub {
   color: var(--muted);
-  font-weight: 600;
 }
-.hero-sub {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 22px;
-  margin: -6px 0 18px;
-  font-size: clamp(1.05rem, 1.7vw, 1.25rem);
-  font-weight: 650;
-  color: var(--text);
+.fcard-sub code {
+  font-size: 0.82rem;
 }
-.hero-sub span {
+.fix-chip {
+  justify-self: start;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 650;
+  font-size: 0.8rem;
 }
-.hero-sub .icon {
-  color: var(--success);
+.fcard-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  font-size: 0.86rem;
+}
+[data-theme="light"] .fcard-row {
+  background: #fff;
+}
+.sq {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--c);
+  color: #10131c;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.row-name {
+  font-weight: 600;
+}
+.row-time {
+  color: var(--faint);
+  font-size: 0.8rem;
+}
+.bar {
+  grid-column: 2 / -1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+.bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--c);
+  transform-origin: left;
+  animation: fill 2.4s var(--ease-out) both;
+}
+@keyframes fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+.os-tiles {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 38px;
+}
+.os-tiles .tile {
+  width: 84px;
+  height: 84px;
+  margin: 0 -6px;
+}
+.os-tiles .tile:nth-child(1) {
+  rotate: -8deg;
+  color: #3aa0ff;
+}
+.os-tiles .tile:nth-child(2) {
+  rotate: 3deg;
+  translate: 0 -8px;
+  color: var(--text);
+  z-index: 1;
+}
+.os-tiles .tile:nth-child(3) {
+  rotate: 10deg;
+}
+
+/* the demo, below the hero */
+.demo-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+}
+.demo-wrap .demo {
+  transform: perspective(1800px) rotateX(4deg);
+}
+.demo-wrap .demo:hover {
+  transform: none;
 }
 
 /* ----------------------------------------------------- new generation */
@@ -1470,28 +1735,6 @@ html:not(.js) .gen-old span::after {
 .platform.is-detected {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
   box-shadow: 0 0 0 4px var(--accent-soft);
-}
-
-/* ---------------------------------------------------------- open source */
-.open-source {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 32px;
-  padding: clamp(28px, 5vw, 52px);
-  overflow: hidden;
-}
-.open-source h2 {
-  font-size: clamp(1.5rem, 2.8vw, 2.1rem);
-}
-.open-source .lead {
-  margin: 0;
-}
-.open-source-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  flex: none;
 }
 
 /* ------------------------------------------------------------------ faq */
@@ -2336,6 +2579,27 @@ details > p:first-of-type {
 }
 
 /* ----------------------------------------------------------- responsive */
+@media (max-width: 1320px) {
+  .fl-sigma,
+  .fl-check {
+    display: none;
+  }
+  .fl-note {
+    width: 210px;
+  }
+  .note {
+    font-size: 1.05rem;
+    padding: 26px 20px 22px;
+  }
+  .fl-problems {
+    width: 270px;
+    right: -40px;
+  }
+  .fl-build,
+  .fl-systems {
+    width: 300px;
+  }
+}
 @media (max-width: 1060px) {
   .main-nav {
     position: fixed;
@@ -2377,28 +2641,18 @@ details > p:first-of-type {
   .menu-btn {
     display: inline-grid;
   }
-  .hero-grid,
   .split {
     grid-template-columns: 1fr;
   }
-  .hero-text {
-    text-align: center;
+  .hero-panel {
+    min-height: 0;
+    padding: 64px 20px 72px;
   }
-  .hero .eyebrow {
-    justify-content: center;
+  .floater {
+    display: none;
   }
-  .hero-text .lead {
-    margin-inline: auto;
-  }
-  .hero-actions {
-    justify-content: center;
-  }
-  .hero-visual {
-    max-width: 680px;
-    margin: 36px auto 0;
-    width: 100%;
-  }
-  .demo {
+  .demo,
+  .demo-wrap .demo {
     transform: none;
   }
   .bento,
@@ -2410,9 +2664,6 @@ details > p:first-of-type {
   }
   .oss-terminal {
     transform: none;
-  }
-  .hero-sub {
-    justify-content: center;
   }
   .feature.wide {
     grid-column: span 1;
@@ -2468,13 +2719,9 @@ details > p:first-of-type {
   .code {
     font-size: 11px;
   }
-  .hero-ray {
-    display: none;
-  }
   .problems-visual .problem:nth-child(n) {
     margin-left: 0;
   }
-  .open-source,
   .dl-hero {
     flex-direction: column;
     align-items: stretch;
@@ -2483,7 +2730,6 @@ details > p:first-of-type {
     align-items: stretch;
     text-align: left;
   }
-  .open-source-actions .btn,
   .dl-hero-actions .btn {
     width: 100%;
   }

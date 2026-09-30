@@ -92,6 +92,29 @@
     { passive: true },
   );
 
+  // ------------------------------------------------------------- hero
+  // The floating cards arrive one after the other, then follow the pointer
+  // a little, each at its own depth.
+  const panel = $("[data-hero]");
+  if (panel) {
+    $$(".floater", panel).forEach((f, i) => setTimeout(() => f.classList.add("visible"), 150 + i * 120));
+    if (!reduced && matchMedia("(pointer: fine)").matches) {
+      let frame = 0;
+      panel.addEventListener("pointermove", (e) => {
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => {
+          const r = panel.getBoundingClientRect();
+          panel.style.setProperty("--px", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
+          panel.style.setProperty("--py", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
+        });
+      });
+      panel.addEventListener("pointerleave", () => {
+        panel.style.setProperty("--px", "0");
+        panel.style.setProperty("--py", "0");
+      });
+    }
+  }
+
   // ---------------------------------------------------- screenshot tabs
   $$("[data-shot]").forEach((tab) =>
     tab.addEventListener("click", () => {

@@ -83,6 +83,8 @@ export default {
     const shot = (id, label) => `<button type="button" role="tab" data-shot="${id}" aria-selected="${id === "editor"}">${label}</button>`;
     const problem = (kind, title, text, fix) =>
       `<div class="problem ${kind}" data-reveal><div class="problem-head">${icon(kind === "error" ? "alert-circle" : "alert-triangle", 15)} <strong>${title}</strong></div><p>${text}</p>${fix ? `<span class="problem-fix">${icon("wand", 13)} ${fix}</span>` : ""}</div>`;
+    const build = (n, color, name, time, pct) =>
+      `<div class="fcard-row"><span class="sq" style="--c: ${color}">${n}</span><span class="row-name">${name}</span><span class="row-time">${time}</span><span class="bar"><i style="width: ${pct}%; --c: ${color}"></i></span></div>`;
     const gen = (ic, before, after) =>
       `<article class="card gen-card" data-reveal data-spotlight><span class="feature-icon">${icon(ic, 20)}</span><p class="gen-old"><span>${before}</span></p><p class="gen-new">${icon("check", 17)}<span>${after}</span></p></article>`;
     const stat = (n, suffix, label) => `<div class="stat" data-reveal><strong><span data-count="${n}">${n}</span>${suffix}</strong><span>${label}</span></div>`;
@@ -91,24 +93,53 @@ export default {
 
     return `
 <section class="hero">
-  <div class="container hero-grid">
-    <div class="hero-text">
-      <p class="eyebrow hero-badges" data-reveal><span class="badge-gen">${icon("sparkles", 14)} ${T("New generation", "Nouvelle génération")}</span><a class="pill" href="${GITHUB}">${icon("github", 14)} Open source</a><span class="hero-os">Windows · macOS · Linux</span></p>
-      <h1 data-reveal>${T('The <span class="gradient-text">next-generation</span> LaTeX&nbsp;IDE.', 'L\'IDE LaTeX <span class="gradient-text">nouvelle génération</span>.')}</h1>
-      <p class="hero-sub" data-reveal><span>${icon("check", 18)} Open source</span><span>${icon("check", 18)} ${T("Free", "Gratuit")}</span><span>${icon("check", 18)} ${T("Every error explained", "Chaque erreur expliquée")}</span></p>
-      <p class="lead" data-reveal>${T(
-        "RayTeX compiles as you type, completes the commands of every package you load, and explains each error in plain words — with the fix one click away.",
-        "RayTeX compile pendant que vous écrivez, complète les commandes de chaque package chargé et explique chaque erreur avec des mots simples — la correction à un clic.",
-      )}</p>
-      <div class="hero-actions" data-reveal>
-        <a class="btn btn-primary btn-lg" href="${url("download/")}" data-download-primary>${icon("download", 19)}<span data-download-label>${T("Download RayTeX", "Télécharger RayTeX")}</span></a>
-        <a class="btn btn-ghost btn-lg" href="${GITHUB}">${icon("github", 19)} GitHub</a>
-      </div>
-      <p class="hero-meta" data-reveal><span data-download-meta>${T("MIT or Apache 2.0 · no account · no telemetry", "MIT ou Apache 2.0 · sans compte · sans télémétrie")}</span> · <a href="${url("download/")}">${T("Other systems", "Autres systèmes")}</a></p>
+  <div class="hero-panel" data-hero>
+    <div class="floater fl-note" style="--depth: 14; --rot: -5deg; --delay: 0s">
+      <div class="fl-inner"><div class="note"><span class="pin" aria-hidden="true"></span><p>${T("Just write. RayTeX compiles, explains and fixes the rest.", "Écrivez. RayTeX compile, explique et corrige le reste.")}</p></div></div>
     </div>
-    <div class="hero-visual" data-reveal>
-      <img class="hero-ray float" src="${asset("img/logo.svg")}" alt="" width="132" height="132" />
-      ${demo(ctx)}
+    <div class="floater fl-check" style="--depth: 24; --rot: -8deg; --delay: -2s" aria-hidden="true">
+      <div class="fl-inner"><div class="tile"><span class="tile-badge">${icon("check", 30)}</span></div></div>
+    </div>
+    <div class="floater fl-problems" style="--depth: 16; --rot: 6deg; --delay: -1s" aria-hidden="true">
+      <div class="fl-inner"><div class="fcard">
+        <p class="fcard-title">${T("Problems", "Problèmes")}</p>
+        <p class="fcard-tab">${T("Error", "Erreur")} · main.tex:6</p>
+        <div class="fcard-item">
+          <strong>${icon("alert-circle", 14)} ${T("Undefined control sequence", "Commande inconnue")}</strong>
+          <span class="fcard-sub"><code>\\textbff</code> → <code>\\textbf</code></span>
+          <span class="fix-chip">${icon("wand", 13)} ${T("Fix", "Corriger")}</span>
+        </div>
+      </div></div>
+    </div>
+    <div class="floater fl-sigma" style="--depth: 28; --rot: 7deg; --delay: -3s" aria-hidden="true">
+      <div class="fl-inner"><div class="tile"><span class="tile-sigma">∑</span></div></div>
+    </div>
+    <div class="floater fl-build" style="--depth: 12; --rot: -3deg; --delay: -4s" aria-hidden="true">
+      <div class="fl-inner"><div class="fcard">
+        <p class="fcard-title">${T("Compilation", "Compilation")}</p>
+        ${build("1", "#e3a857", "pdfLaTeX", T("0.4 s", "0,4 s"), 100)}
+        ${build("2", "#5fb4ff", "Biber", T("0.2 s", "0,2 s"), 100)}
+        ${build("3", "#4cc38a", T("PDF · 7 pages", "PDF · 7 pages"), "✓", 100)}
+      </div></div>
+    </div>
+    <div class="floater fl-systems" style="--depth: 18; --rot: 4deg; --delay: -2.5s" aria-hidden="true">
+      <div class="fl-inner"><div class="fcard">
+        <p class="fcard-title">${T("On every system", "Sur tous les systèmes")}</p>
+        <div class="os-tiles"><span class="tile os-win">${icon("windows", 34)}</span><span class="tile os-mac">${icon("apple", 36)}</span><span class="tile os-linux">${icon("linux", 36)}</span></div>
+      </div></div>
+    </div>
+
+    <div class="hero-center hero-text">
+      <img class="hero-icon" data-reveal src="${asset("img/logo.svg")}" alt="" width="112" height="112" />
+      <h1 data-reveal><span class="h1-a">${T("The next-generation LaTeX IDE,", "L'IDE LaTeX nouvelle génération,")}</span> <span class="h1-b">${T("open source and free", "open source et gratuit")}</span></h1>
+      <p class="lead" data-reveal>${T(
+        "Compiled as you type, completion from every package you load, and every error explained — with its fix one click away.",
+        "Compilé pendant la frappe, complété par chaque package chargé, et chaque erreur expliquée — avec sa correction à un clic.",
+      )}</p>
+      <div class="hero-actions center" data-reveal>
+        <a class="btn btn-primary btn-lg" href="${url("download/")}" data-download-primary>${icon("download", 19)}<span data-download-label>${T("Download RayTeX", "Télécharger RayTeX")}</span></a>
+      </div>
+      <p class="hero-meta" data-reveal><span data-download-meta>${T("MIT or Apache 2.0 · no account · no telemetry", "MIT ou Apache 2.0 · sans compte · sans télémétrie")}</span> · <a href="${url("download/")}">${T("Other systems", "Autres systèmes")}</a> · <a href="${GITHUB}">GitHub</a></p>
     </div>
   </div>
 </section>
@@ -117,6 +148,13 @@ export default {
   <div class="container strip-inner" data-reveal>
     <span class="strip-label">${T("Works with every TeX distribution", "Fonctionne avec toutes les distributions TeX")}</span>
     <ul class="chips"><li>TeX Live</li><li>MiKTeX</li><li>MacTeX</li><li>TinyTeX</li><li>Tectonic</li></ul>
+  </div>
+</section>
+
+<section class="section demo-section">
+  <div class="container">
+    ${heading(T("Live", "En direct"), T("An error, explained and fixed while you type", "Une erreur, expliquée et corrigée pendant que vous écrivez"))}
+    <div class="demo-wrap" data-reveal>${demo(ctx)}</div>
   </div>
 </section>
 
