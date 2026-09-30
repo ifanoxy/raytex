@@ -12,7 +12,6 @@ export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", 
 
 const NAV = [
   ["features", "features/", "Features", "Fonctionnalités"],
-  ["download", "download/", "Download", "Télécharger"],
   ["releases", "releases/", "Versions", "Versions"],
   ["guide", "guide/", "Guide", "Guide"],
   ["faq", "faq/", "FAQ", "FAQ"],
@@ -151,7 +150,7 @@ ${head({ title, description, lang, canonical: `${siteUrl}/${path}`, alternates, 
 </head>
 <body data-page="${p.id}">
 <a class="skip" href="#main">${T("Skip to content", "Aller au contenu")}</a>
-<div class="backdrop" aria-hidden="true"><div class="glow glow-a"></div><div class="glow glow-b"></div><div class="grid-lines"></div></div>
+<div class="backdrop" aria-hidden="true"><div class="glow glow-a"></div><div class="glow glow-b"></div></div>
 <header class="site-header">
   <div class="container header-inner">
     <a class="brand" href="${url("")}" aria-label="RayTeX — ${T("home", "accueil")}">
@@ -162,8 +161,7 @@ ${head({ title, description, lang, canonical: `${siteUrl}/${path}`, alternates, 
     <div class="header-actions">
       <a class="icon-btn" href="${url(p.path, other)}" hreflang="${other}" lang="${other}" data-lang-switch="${other}" title="${T("Version française", "English version")}">${other.toUpperCase()}</a>
       <button class="icon-btn" type="button" data-theme-toggle title="${T("Light or dark theme", "Thème clair ou sombre")}" aria-label="${T("Light or dark theme", "Thème clair ou sombre")}">${icon("sun", 17, "when-dark")}${icon("moon", 17, "when-light")}</button>
-      <a class="icon-btn" href="${GITHUB}" title="GitHub" aria-label="GitHub">${icon("github", 18)}</a>
-      <a class="btn btn-primary btn-sm header-cta" href="${url("download/")}">${icon("download", 16)}<span>${T("Download", "Télécharger")}</span></a>
+      <a class="btn btn-outline btn-sm header-cta" href="${url("download/")}"${p.id === "download" ? ' aria-current="page"' : ""}>${icon("download", 16)}<span>${T("Download", "Télécharger")}</span></a>
       <button class="icon-btn menu-btn" type="button" data-menu aria-expanded="false" aria-controls="main-nav" aria-label="${T("Menu", "Menu")}"><span></span><span></span><span></span></button>
     </div>
   </div>
@@ -222,7 +220,7 @@ export function notFound({ base, siteUrl }) {
 ${head({ title: "Page not found — RayTeX", description: "This page does not exist.", lang: "en", rel: base, siteUrl })}
 </head>
 <body data-page="404">
-<div class="backdrop" aria-hidden="true"><div class="glow glow-a"></div><div class="glow glow-b"></div><div class="grid-lines"></div></div>
+<div class="backdrop" aria-hidden="true"><div class="glow glow-a"></div><div class="glow glow-b"></div></div>
 <main id="main" class="not-found">
   <img src="${base}assets/img/logo.svg" alt="" width="120" height="120" class="float" />
   <p class="eyebrow">404</p>
