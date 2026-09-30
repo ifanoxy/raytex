@@ -73,8 +73,8 @@ export default {
   path: "",
   title: { en: "Home", fr: "Accueil" },
   description: {
-    en: "RayTeX is a free, open-source LaTeX editor for Windows, macOS and Linux: live preview, completion that knows every package, and every error explained with its fix.",
-    fr: "RayTeX est un éditeur LaTeX libre et gratuit pour Windows, macOS et Linux : aperçu en direct, complétion qui connaît chaque package, et chaque erreur expliquée avec sa correction.",
+    en: "RayTeX is the next-generation LaTeX IDE: open source and free, for Windows, macOS and Linux. Live preview, completion that knows every package, and every error explained with its fix.",
+    fr: "RayTeX est l'IDE LaTeX nouvelle génération : open source et gratuit, pour Windows, macOS et Linux. Aperçu en direct, complétion qui connaît chaque package, et chaque erreur expliquée avec sa correction.",
   },
   body(ctx) {
     const { T, url, asset, icon, lang, GITHUB } = ctx;
@@ -83,6 +83,8 @@ export default {
     const shot = (id, label) => `<button type="button" role="tab" data-shot="${id}" aria-selected="${id === "editor"}">${label}</button>`;
     const problem = (kind, title, text, fix) =>
       `<div class="problem ${kind}" data-reveal><div class="problem-head">${icon(kind === "error" ? "alert-circle" : "alert-triangle", 15)} <strong>${title}</strong></div><p>${text}</p>${fix ? `<span class="problem-fix">${icon("wand", 13)} ${fix}</span>` : ""}</div>`;
+    const gen = (ic, before, after) =>
+      `<article class="card gen-card" data-reveal data-spotlight><span class="feature-icon">${icon(ic, 20)}</span><p class="gen-old"><span>${before}</span></p><p class="gen-new">${icon("check", 17)}<span>${after}</span></p></article>`;
     const stat = (n, suffix, label) => `<div class="stat" data-reveal><strong><span data-count="${n}">${n}</span>${suffix}</strong><span>${label}</span></div>`;
     const platform = (id, ic, name, formats) =>
       `<a class="card platform" href="${url("download/")}#${id}" data-reveal data-spotlight data-platform="${id}">${icon(ic, 30)}<h3>${name}</h3><p>${formats}</p><span class="more">${T("Download", "Télécharger")} ${icon("arrow-right", 15)}</span></a>`;
@@ -91,8 +93,9 @@ export default {
 <section class="hero">
   <div class="container hero-grid">
     <div class="hero-text">
-      <p class="eyebrow" data-reveal><span class="pill">${T("Free & open source", "Libre et gratuit")}</span> Windows · macOS · Linux</p>
-      <h1 data-reveal>${T("Write LaTeX.", "Écrivez en LaTeX.")}<br /><span class="gradient-text">${T("Understand every error.", "Comprenez chaque erreur.")}</span></h1>
+      <p class="eyebrow hero-badges" data-reveal><span class="badge-gen">${icon("sparkles", 14)} ${T("New generation", "Nouvelle génération")}</span><a class="pill" href="${GITHUB}">${icon("github", 14)} Open source</a><span class="hero-os">Windows · macOS · Linux</span></p>
+      <h1 data-reveal>${T('The <span class="gradient-text">next-generation</span> LaTeX&nbsp;IDE.', 'L\'IDE LaTeX <span class="gradient-text">nouvelle génération</span>.')}</h1>
+      <p class="hero-sub" data-reveal><span>${icon("check", 18)} Open source</span><span>${icon("check", 18)} ${T("Free", "Gratuit")}</span><span>${icon("check", 18)} ${T("Every error explained", "Chaque erreur expliquée")}</span></p>
       <p class="lead" data-reveal>${T(
         "RayTeX compiles as you type, completes the commands of every package you load, and explains each error in plain words — with the fix one click away.",
         "RayTeX compile pendant que vous écrivez, complète les commandes de chaque package chargé et explique chaque erreur avec des mots simples — la correction à un clic.",
@@ -101,7 +104,7 @@ export default {
         <a class="btn btn-primary btn-lg" href="${url("download/")}" data-download-primary>${icon("download", 19)}<span data-download-label>${T("Download RayTeX", "Télécharger RayTeX")}</span></a>
         <a class="btn btn-ghost btn-lg" href="${GITHUB}">${icon("github", 19)} GitHub</a>
       </div>
-      <p class="hero-meta" data-reveal><span data-download-meta>${T("Free · no account · no telemetry", "Gratuit · sans compte · sans télémétrie")}</span> · <a href="${url("download/")}">${T("Other systems", "Autres systèmes")}</a></p>
+      <p class="hero-meta" data-reveal><span data-download-meta>${T("MIT or Apache 2.0 · no account · no telemetry", "MIT ou Apache 2.0 · sans compte · sans télémétrie")}</span> · <a href="${url("download/")}">${T("Other systems", "Autres systèmes")}</a></p>
     </div>
     <div class="hero-visual" data-reveal>
       <img class="hero-ray float" src="${asset("img/logo.svg")}" alt="" width="132" height="132" />
@@ -114,6 +117,48 @@ export default {
   <div class="container strip-inner" data-reveal>
     <span class="strip-label">${T("Works with every TeX distribution", "Fonctionne avec toutes les distributions TeX")}</span>
     <ul class="chips"><li>TeX Live</li><li>MiKTeX</li><li>MacTeX</li><li>TinyTeX</li><li>Tectonic</li></ul>
+  </div>
+</section>
+
+<section class="section new-gen">
+  <div class="container">
+    ${heading(T("New generation", "Nouvelle génération"), T("LaTeX, the way it should always have worked", "LaTeX, comme il aurait toujours dû fonctionner"), T("RayTeX keeps the power and the quality of LaTeX, and takes away what made it painful.", "RayTeX garde la puissance et la qualité de LaTeX, et retire ce qui le rendait pénible."))}
+    <div class="gen-grid">
+      ${gen("lightbulb", T("Cryptic logs to decipher", "Des journaux cryptiques à déchiffrer"), T("Every error explained in plain words, and fixed in one click", "Chaque erreur expliquée simplement, et corrigée en un clic"))}
+      ${gen("bolt", T("Compile, wait, look for your page", "Compiler, attendre, chercher sa page"), T("Compiled as you type, the PDF stays where you are", "Compilé pendant la frappe, le PDF reste où vous êtes"))}
+      ${gen("sparkles", T("Completion from a fixed list", "Une complétion figée dans une liste"), T("Completion read from every installed package, with its documentation", "Une complétion lue dans chaque package installé, avec sa documentation"))}
+      ${gen("draw", T("Tables and drawings in raw code", "Tableaux et dessins en code brut"), T("Visual editors for tables, matrices, TikZ drawings and images", "Des éditeurs visuels pour les tableaux, matrices, dessins TikZ et images"))}
+      ${gen("packages", T("Installing LaTeX: an ordeal", "Installer LaTeX : un parcours du combattant"), T("Any distribution detected or installed for you, missing packages too", "Toute distribution détectée ou installée pour vous, les packages manquants aussi"))}
+      ${gen("shield", T("Your documents on someone else's server", "Vos documents sur le serveur d'un autre"), T("Native, offline and open source: your documents stay on your computer", "Natif, hors ligne et open source : vos documents restent sur votre ordinateur"))}
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container oss card" data-reveal data-spotlight>
+    <div class="oss-text">
+      <p class="eyebrow">${icon("github", 15)} Open source</p>
+      <h2>${T("100&nbsp;% open source. Free, forever.", "100&nbsp;% open source. Gratuit, pour toujours.")}</h2>
+      <p class="lead">${T("Every line of RayTeX is public, under the MIT or Apache 2.0 license: read it, change it, share it. No account, no subscription, no telemetry — and anyone can make it better.", "Chaque ligne de RayTeX est publique, sous licence MIT ou Apache 2.0 : lisez-la, modifiez-la, partagez-la. Pas de compte, pas d'abonnement, pas de télémétrie — et tout le monde peut l'améliorer.")}</p>
+      <ul class="oss-badges">
+        <li>${icon("shield", 15)} MIT / Apache 2.0</li>
+        <li>${icon("cpu", 15)} ${T("Written in Rust", "Écrit en Rust")}</li>
+        <li>${icon("eye", 15)} ${T("No telemetry", "Sans télémétrie")}</li>
+        <li>${icon("user", 15)} ${T("Contributions welcome", "Contributions bienvenues")}</li>
+      </ul>
+      <div class="actions">
+        <a class="btn btn-primary" href="${GITHUB}">${icon("github", 18)} ${T("Star it on GitHub", "Mettre une étoile sur GitHub")}</a>
+        <a class="btn btn-ghost" href="${url("about/")}">${T("Contribute", "Contribuer")} ${icon("arrow-right", 16)}</a>
+      </div>
+    </div>
+    <div class="oss-terminal" aria-label="${T("Build RayTeX from its source", "Compiler RayTeX depuis ses sources")}">
+      <div class="demo-titlebar"><span class="dots"><i></i><i></i><i></i></span><span class="demo-title">${T("Terminal", "Terminal")}</span></div>
+      <pre><code><span class="prompt">$</span> git clone ${GITHUB}.git
+<span class="prompt">$</span> cd raytex
+<span class="prompt">$</span> npm install
+<span class="prompt">$</span> npm run app:dev
+<span class="out">${icon("check", 13)} ${T("RayTeX is running — from your own build.", "RayTeX tourne — depuis votre propre compilation.")}</span></code></pre>
+    </div>
   </div>
 </section>
 
@@ -192,19 +237,6 @@ export default {
   </div>
 </section>
 
-<section class="section">
-  <div class="container open-source card" data-reveal data-spotlight>
-    <div>
-      <p class="eyebrow">${T("Open source", "Open source")}</p>
-      <h2>${T("Free, open, and your documents stay yours", "Libre, ouvert, et vos documents restent à vous")}</h2>
-      <p class="lead">${T("RayTeX is written in Rust, under the MIT or Apache 2.0 license. No account, no telemetry: your documents never leave your computer.", "RayTeX est écrit en Rust, sous licence MIT ou Apache 2.0. Sans compte ni télémétrie : vos documents ne quittent jamais votre ordinateur.")}</p>
-    </div>
-    <div class="open-source-actions">
-      <a class="btn btn-primary" href="${GITHUB}">${icon("github", 18)} ${T("Source code", "Code source")}</a>
-      <a class="btn btn-ghost" href="${url("about/")}">${T("Contribute", "Contribuer")} ${icon("arrow-right", 16)}</a>
-    </div>
-  </div>
-</section>
 
 <section class="section">
   <div class="container narrow">

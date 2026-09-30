@@ -22,7 +22,7 @@
   <rect width="1200" height="630" fill="url(#glow)"/>
   <image xlink:href="../../../assets/logo.svg" x="86" y="165" width="300" height="300"/>
   <image xlink:href="../../../assets/logo/logo-mark-dark.svg" x="452" y="150" width="360" height="123"/>
-  <text x="462" y="352" font-family="Inter, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="46" font-weight="800" fill="#e8ebf4">The LaTeX editor that</text>
-  <text x="462" y="410" font-family="Inter, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="46" font-weight="800" fill="url(#amber)">explains your errors.</text>
-  <text x="462" y="470" font-family="Inter, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="26" fill="#a3acc2">Free &amp; open source · Windows · macOS · Linux</text>
+  <text x="462" y="352" font-family="Inter, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="46" font-weight="800" fill="#e8ebf4">The next-generation</text>
+  <text x="462" y="410" font-family="Inter, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="46" font-weight="800" fill="url(#amber)">open-source LaTeX IDE.</text>
+  <text x="462" y="470" font-family="Inter, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="26" fill="#a3acc2">Every error explained · Windows · macOS · Linux</text>
 </svg>

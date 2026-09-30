@@ -132,7 +132,7 @@ export function page(p, { lang, path, siteUrl, version, prefix }) {
   const T = (en, fr) => (lang === "fr" ? fr : en);
   const ctx = { lang, T, url, rel, asset: (a) => `${rel}assets/${a}`, icon, esc, version, GITHUB, REPO, YEAR };
 
-  const title = p.id === "home" ? T("RayTeX — the LaTeX editor that explains your errors", "RayTeX — l'éditeur LaTeX qui explique vos erreurs") : `${T(p.title.en, p.title.fr)} — RayTeX`;
+  const title = p.id === "home" ? T("RayTeX — the next-generation, open-source LaTeX IDE", "RayTeX — l'IDE LaTeX nouvelle génération, open source") : `${T(p.title.en, p.title.fr)} — RayTeX`;
   const description = T(p.description.en, p.description.fr);
   const alternates = ["en", "fr"].map((l) => `<link rel="alternate" hreflang="${l}" href="${siteUrl}/${prefix(l)}${p.path}" />`).join("\n") + `\n<link rel="alternate" hreflang="x-default" href="${siteUrl}/${p.path}" />`;
   // French readers arriving on the English home page go to theirs, once.

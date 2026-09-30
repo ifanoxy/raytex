@@ -596,6 +596,200 @@ body.menu-open .menu-btn span:nth-child(3) {
   }
 }
 
+/* ------------------------------------------------ new generation badge */
+@property --angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.hero-badges {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.badge-gen {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  background: linear-gradient(var(--surface-solid), var(--surface-solid)) padding-box,
+    conic-gradient(from var(--angle), #ffe3a8, var(--accent-3), #6f8cff, #b58cff, #ffe3a8) border-box;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  animation: turn 4s linear infinite;
+  box-shadow: 0 0 24px rgba(255, 179, 71, 0.18);
+}
+.badge-gen .icon {
+  color: var(--accent);
+}
+@keyframes turn {
+  to {
+    --angle: 360deg;
+  }
+}
+.hero-badges .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+}
+.hero-badges .pill:hover {
+  text-decoration: none;
+  border-color: var(--accent);
+}
+.hero-os {
+  color: var(--muted);
+  font-weight: 600;
+}
+.hero-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: -6px 0 18px;
+  font-size: clamp(1.05rem, 1.7vw, 1.25rem);
+  font-weight: 650;
+  color: var(--text);
+}
+.hero-sub span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.hero-sub .icon {
+  color: var(--success);
+}
+
+/* ----------------------------------------------------- new generation */
+.gen-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.gen-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+}
+.gen-card .feature-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 4px;
+}
+.gen-old {
+  margin: 0;
+  color: var(--faint);
+  font-size: 0.95rem;
+}
+.gen-old span {
+  position: relative;
+}
+/* The old way is crossed out when the card appears. */
+.gen-old span::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 55%;
+  height: 1.5px;
+  width: 0;
+  background: color-mix(in srgb, var(--error) 70%, transparent);
+  transition: width 0.7s var(--ease-out) calc(var(--d, 0s) + 0.35s);
+}
+.gen-card.visible .gen-old span::after,
+html:not(.js) .gen-old span::after {
+  width: 100%;
+}
+.gen-new {
+  display: flex;
+  gap: 9px;
+  margin: 0;
+  font-weight: 650;
+  font-size: 1.05rem;
+  line-height: 1.45;
+}
+.gen-new .icon {
+  margin-top: 3px;
+  color: var(--success);
+}
+
+/* -------------------------------------------------------- open source */
+.oss {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: clamp(28px, 5vw, 56px);
+  align-items: center;
+  padding: clamp(28px, 5vw, 56px);
+  overflow: hidden;
+  background: radial-gradient(ellipse at 0% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%), var(--surface);
+}
+.oss h2 {
+  font-size: clamp(1.7rem, 3.2vw, 2.5rem);
+}
+.oss .eyebrow {
+  gap: 7px;
+}
+.oss-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 26px;
+  padding: 0;
+  list-style: none;
+}
+.oss-badges li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-solid);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.oss-badges .icon {
+  color: var(--accent);
+}
+.oss-terminal {
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0f1424;
+  border: 1px solid rgba(140, 160, 210, 0.22);
+  box-shadow: var(--shadow-lg);
+  transform: perspective(1400px) rotateY(-6deg);
+  transition: transform 0.8s var(--ease-out);
+}
+.oss:hover .oss-terminal {
+  transform: none;
+}
+.oss-terminal pre {
+  margin: 0;
+  padding: 18px 20px 20px;
+  color: #e6e9f2;
+  font: 13.5px/1.9 var(--mono);
+  overflow-x: auto;
+}
+.oss-terminal code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+.oss-terminal .prompt {
+  color: #e3a857;
+  margin-right: 6px;
+}
+.oss-terminal .out {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4cc38a;
+}
+
 /* ------------------------------------------------------------ the demo */
 .demo {
   position: relative;
@@ -2207,8 +2401,18 @@ details > p:first-of-type {
   .demo {
     transform: none;
   }
-  .bento {
+  .bento,
+  .gen-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .oss {
+    grid-template-columns: 1fr;
+  }
+  .oss-terminal {
+    transform: none;
+  }
+  .hero-sub {
+    justify-content: center;
   }
   .feature.wide {
     grid-column: span 1;
@@ -2245,6 +2449,7 @@ details > p:first-of-type {
     height: 30px;
   }
   .bento,
+  .gen-grid,
   .feature-items,
   .link-cards,
   .link-cards.four,
