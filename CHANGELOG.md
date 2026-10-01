@@ -2,7 +2,7 @@
 
 All notable changes to RayTeX are documented here. The format follows [Keep a Changelog](https://keepachangelog.com), and versions follow [Semantic Versioning](https://semver.org).
 
-## [0.1.0] — Unreleased
+## [0.1.0] — 2026-10-01
 
 First version.
 
@@ -90,3 +90,5 @@ First version.
 ### Application
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
+
+[0.1.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.1.0
