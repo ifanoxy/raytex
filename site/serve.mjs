@@ -46,6 +46,7 @@ function sampleReleases() {
       [`RayTeX_${v}_amd64.deb`, 12.4],
       [`RayTeX-${v}-1.x86_64.rpm`, 12.5],
       [`RayTeX_aarch64.app.tar.gz`, 13.9],
+      ["SHA256SUMS.txt", 0.001],
     ].map(([name, mb]) => ({ name, size: Math.round(mb * 1048576), url: `https://example.invalid/${name}`, digest: "sha256:3b0f5c0a9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a" }));
   return [
     { tag: "v0.2.0-beta.1", name: "RayTeX 0.2.0 beta 1", date: "2026-10-20T10:00:00Z", prerelease: true, url: "https://github.com/ifanoxy/raytex/releases", notes: "<p>Sample pre-release (local preview only).</p>", assets: files("0.2.0-beta.1") },

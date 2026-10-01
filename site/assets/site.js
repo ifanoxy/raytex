@@ -382,6 +382,12 @@
     const render = () => {
       const release = list.find((r) => r.tag === select.value);
       notes.href = `${C.rel}${C.lang === "fr" ? "fr/" : ""}releases/#${encodeURIComponent(release.tag)}`;
+      const sums = release.assets.find((a) => a.name === "SHA256SUMS.txt");
+      const sumsLink = $("[data-version-sums]");
+      if (sumsLink) {
+        sumsLink.hidden = !sums;
+        if (sums) sumsLink.href = sums.url;
+      }
       for (const box of $$("[data-dl-files]")) {
         const os = box.dataset.dlFiles;
         const files = filesFor(release, os, os === env.os ? env.arch : os === "macos" ? "arm64" : "x64");

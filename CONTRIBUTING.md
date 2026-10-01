@@ -92,6 +92,8 @@ The *Website* workflow publishes it on GitHub Pages (Settings → Pages → Sour
 3. The *Release* workflow builds macOS (Apple silicon and Intel), Windows and Linux and prepares a draft release with the installers; check it, write the notes from the changelog, and publish it.
 4. Publishing the release rebuilds the website: its download page offers the new version (the notes written in the release are shown on its *Versions* page).
 
+The installers are signed (Windows by SignPath, macOS by Apple) once the secrets described in [docs/SIGNING.md](docs/SIGNING.md) are set; every release also gets `SHA256SUMS.txt` and a build provenance attestation.
+
 ## Reporting a bug
 
 Please include your operating system, your TeX distribution (the output of `raytex doctor` helps), what you expected, what happened, and if possible a small `.tex` file that reproduces the problem.

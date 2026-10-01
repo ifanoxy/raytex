@@ -2329,6 +2329,50 @@ details > p:first-of-type {
   }
 }
 
+.verify {
+  margin-top: 28px;
+  padding: clamp(20px, 3.5vw, 32px);
+}
+.verify-head {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.verify-head > .icon {
+  margin-top: 4px;
+  color: var(--success);
+}
+.verify-head h2 {
+  margin: 0 0 4px;
+}
+.verify-head p {
+  margin: 0;
+}
+.verify-steps {
+  margin: 0;
+  padding-left: 1.3em;
+  display: grid;
+  gap: 18px;
+}
+.verify-steps li::marker {
+  color: var(--accent);
+  font-weight: 700;
+}
+.verify-steps h3 {
+  margin: 0 0 4px;
+}
+.verify-steps p {
+  margin: 0 0 10px;
+  color: var(--muted);
+}
+.verify-steps .code-label {
+  margin: 0 0 4px;
+  color: var(--faint);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
 /* ------------------------------------------------------------- releases */
 .releases-tools {
   display: flex;

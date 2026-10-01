@@ -39,6 +39,7 @@ export default {
         <select data-version-select aria-label="${T("Version", "Version")}"><option>…</option></select>
       </label>
       <a class="link-arrow" data-version-notes href="${url("releases/")}">${T("Release notes", "Notes de version")} ${icon("arrow-right", 15)}</a>
+      <a class="link-arrow" data-version-sums href="#verify" hidden>${icon("shield", 15)} SHA256SUMS.txt</a>
       <a class="link-arrow" href="${GITHUB}/releases">${icon("github", 15)} ${T("All files on GitHub", "Tous les fichiers sur GitHub")}</a>
     </div>
     <div class="dl-state" data-dl-state hidden></div>
@@ -78,10 +79,20 @@ export default {
         ${code(`git clone ${GITHUB}.git && cd raytex && npm install && npm run app:build`)}
       </details>
     </div>
-    <p class="muted small" data-reveal>${T(
-      'Checking a download: each file has its SHA-256 fingerprint (the copy button next to it); compare it with <code>certutil -hashfile FILE SHA256</code> on Windows or <code>shasum -a 256 FILE</code> on macOS and Linux.',
-      "Vérifier un téléchargement : chaque fichier a son empreinte SHA-256 (le bouton de copie à côté) ; comparez-la avec <code>certutil -hashfile FICHIER SHA256</code> sous Windows ou <code>shasum -a 256 FICHIER</code> sous macOS et Linux.",
-    )}</p>
+    <div class="card verify" id="verify" data-reveal>
+      <div class="verify-head">${icon("shield", 22)}<div><h2 class="h3">${T("Verify a file", "Vérifier un fichier")}</h2><p class="muted">${T("Make sure the file you downloaded is exactly the one published, built from the public source code.", "Assurez-vous que le fichier téléchargé est exactement celui qui a été publié, compilé depuis le code source public.")}</p></div></div>
+      <ol class="verify-steps">
+        <li><h3>${T("Its fingerprint", "Son empreinte")}</h3><p>${T("Each file of the list above has its SHA-256 fingerprint (the copy button next to its size). Compute the one of your file and compare:", "Chaque fichier de la liste ci-dessus a son empreinte SHA-256 (le bouton de copie à côté de sa taille). Calculez celle de votre fichier et comparez :")}</p>
+          <p class="code-label">Windows</p>
+          ${code(T("certutil -hashfile FILE SHA256", "certutil -hashfile FICHIER SHA256"))}
+          <p class="code-label">macOS, Linux</p>
+          ${code(T("shasum -a 256 FILE", "shasum -a 256 FICHIER"))}</li>
+        <li><h3>${T("Every fingerprint at once", "Toutes les empreintes d'un coup")}</h3><p>${T("Each version also contains <code>SHA256SUMS.txt</code>, the list of the fingerprints of all its files. In the folder of the download:", "Chaque version contient aussi <code>SHA256SUMS.txt</code>, la liste des empreintes de tous ses fichiers. Dans le dossier du téléchargement :")}</p>
+          ${code("sha256sum --ignore-missing -c SHA256SUMS.txt")}</li>
+        <li><h3>${T("Its origin", "Son origine")}</h3><p>${T(`GitHub certifies that each file was built by the release workflow of the <a href="${GITHUB}">public repository</a>, from the source of that version (with the <a href="https://cli.github.com">GitHub command line</a>):`, `GitHub certifie que chaque fichier a été compilé par le processus de publication du <a href="${GITHUB}">dépôt public</a>, depuis les sources de cette version (avec la <a href="https://cli.github.com">ligne de commande GitHub</a>) :`)}</p>
+          ${code(T("gh attestation verify FILE --repo ifanoxy/raytex", "gh attestation verify FICHIER --repo ifanoxy/raytex"))}</li>
+      </ol>
+    </div>
   </div>
 </section>`;
   },
