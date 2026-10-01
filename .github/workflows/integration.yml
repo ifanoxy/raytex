@@ -43,7 +43,14 @@ jobs:
       - name: MiKTeX (packages installed on the fly)
         shell: pwsh
         run: |
-          choco install miktex --no-progress -y
+          # The installer sometimes fails to download its packages: up to three tries.
+          foreach ($try in 1..3) {
+            choco install miktex --no-progress -y
+            if (Test-Path "C:\Program Files\MiKTeX\miktex\bin\x64\pdflatex.exe") { break }
+            Write-Host "MiKTeX not installed (try $try), trying again"
+            choco uninstall miktex miktex.install -y --force 2>$null
+            Start-Sleep -Seconds 20
+          }
           $bin = "C:\Program Files\MiKTeX\miktex\bin\x64"
           if (-not (Test-Path "$bin\pdflatex.exe")) { Get-ChildItem -Recurse -Filter pdflatex.exe "C:\Program Files" | Select-Object -First 3 | Format-List FullName; exit 1 }
           Add-Content -Path $env:GITHUB_PATH -Value $bin
@@ -96,7 +103,14 @@ jobs:
       - name: MiKTeX (packages installed on the fly)
         shell: pwsh
         run: |
-          choco install miktex --no-progress -y
+          # The installer sometimes fails to download its packages: up to three tries.
+          foreach ($try in 1..3) {
+            choco install miktex --no-progress -y
+            if (Test-Path "C:\Program Files\MiKTeX\miktex\bin\x64\pdflatex.exe") { break }
+            Write-Host "MiKTeX not installed (try $try), trying again"
+            choco uninstall miktex miktex.install -y --force 2>$null
+            Start-Sleep -Seconds 20
+          }
           $bin = "C:\Program Files\MiKTeX\miktex\bin\x64"
           Add-Content -Path $env:GITHUB_PATH -Value $bin
           & "$bin\initexmf.exe" --admin --set-config-value="[MPM]AutoInstall=1"
