@@ -1189,17 +1189,75 @@ pub(crate) fn telling_line<S: AsRef<str>>(lines: &[S]) -> Option<String> {
     let lines = || lines.iter().map(AsRef::as_ref);
     lines()
         .find(|l| l.starts_with("! "))
-        .or_else(|| {
-            lines().rev().find(|l| {
-                !l.trim().is_empty()
-                    && !l.starts_with("This is ")
-                    && !l.trim_start().starts_with('(')
-                    && !l.contains("major issue")
-                    && !l.contains("minor issue")
-                    && !l.contains("security risk")
-            })
-        })
         .map(str::to_owned)
+        .or_else(|| miktex_failure(lines()).map(|why| format!("MiKTeX: {why}")))
+        .or_else(|| {
+            lines()
+                .rev()
+                .find(|l| {
+                    !l.trim().is_empty()
+                        && !l.starts_with("This is ")
+                        && !l.trim_start().starts_with('(')
+                        && !l.contains("major issue")
+                        && !l.contains("minor issue")
+                        && !l.contains("security risk")
+                        // MiKTeX's own words around the path of its log.
+                        && !l.contains("hopefully contains")
+                        && !l.trim_start().starts_with("Sorry, but")
+                        && miktex_log_path(l).is_none()
+                })
+                .map(str::to_owned)
+        })
+}
+
+/// The path of one of MiKTeX's logs, when `line` is one.
+fn miktex_log_path(line: &str) -> Option<&Path> {
+    let l = line.trim().trim_matches('"');
+    let lower = l.to_ascii_lowercase();
+    (lower.ends_with(".log") && lower.contains("miktex")).then(|| Path::new(l))
+}
+
+/// Why MiKTeX stopped an engine: its output only gives the path of its log
+/// ("The log file hopefully contains the information to get MiKTeX going
+/// again"), where the reason is, on `FATAL` lines.
+fn miktex_failure<'a>(lines: impl Iterator<Item = &'a str>) -> Option<String> {
+    let path = lines.filter_map(miktex_log_path).last()?;
+    let log = String::from_utf8_lossy(&std::fs::read(path).ok()?).into_owned();
+    miktex_log_reason(&log)
+}
+
+/// The first message of the last `FATAL` block of a MiKTeX log, with its
+/// `Info:`/`Data:` detail; only in the last process the log tells about.
+fn miktex_log_reason(log: &str) -> Option<String> {
+    let lines: Vec<&str> = log.lines().collect();
+    let start = lines
+        .iter()
+        .rposition(|l| l.contains("this process (") && l.contains(") started"))
+        .unwrap_or(0);
+    let last = start + lines[start..].iter().rposition(|l| l.contains(" FATAL "))?;
+    let mut first = last;
+    while first > start && lines[first - 1].contains(" FATAL ") {
+        first -= 1;
+    }
+    let messages: Vec<&str> = lines[first..=last]
+        .iter()
+        .filter_map(|l| l.split_once(" - ").map(|(_, m)| m.trim()))
+        .collect();
+    let is_detail = |m: &&str| {
+        ["Data:", "Info:", "Source:", "Line:"]
+            .iter()
+            .any(|p| m.starts_with(p))
+    };
+    let message = messages.iter().find(|m| !is_detail(m))?;
+    let detail = messages
+        .iter()
+        .find_map(|m| m.strip_prefix("Info:").or_else(|| m.strip_prefix("Data:")))
+        .map(str::trim)
+        .filter(|d| !d.is_empty());
+    Some(match detail {
+        Some(d) => format!("{message} ({d})"),
+        None => (*message).to_owned(),
+    })
 }
 
 #[cfg(test)]
@@ -1228,6 +1286,44 @@ mod tests {
             Some("pdflatex: the font roboto could not be installed")
         );
         assert_eq!(telling_line::<&str>(&[]), None);
+    }
+
+    #[test]
+    fn why_miktex_stopped_an_engine() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = dir.path().join("MiKTeX").join("pdflatex.log");
+        std::fs::create_dir_all(log.parent().unwrap()).unwrap();
+        std::fs::write(
+            &log,
+            "2026-10-01 16:20:11,545Z INFO  pdflatex - this process (100) started by raytex\n\
+             2026-10-01 16:20:12,001Z FATAL pdflatex - The memory dump file could not be found.\n\
+             2026-10-01 16:20:12,001Z FATAL pdflatex - Info: fileName=\"old.fmt\"\n\
+             2026-10-01 16:21:49,000Z INFO  pdflatex - this process (200) started by raytex\n\
+             2026-10-01 16:21:49,453Z ERROR pdflatex - major issue: So far, no MiKTeX administrator has checked for updates.\n\
+             2026-10-01 16:21:49,453Z FATAL pdflatex.core - The memory dump file could not be found.\n\
+             2026-10-01 16:21:49,453Z FATAL pdflatex.core - Data: fileName=\"pdflatex.fmt\"\n\
+             2026-10-01 16:21:49,454Z FATAL pdflatex - Source: Libraries\\MiKTeX\\texmfapp.cpp\n\
+             2026-10-01 16:21:49,454Z INFO  pdflatex - this process (200) finishes with exit code 1\n",
+        )
+        .unwrap();
+        let output = [
+            "Sorry, but \"MiKTeX Compiler Driver\" did not succeed.".to_owned(),
+            String::new(),
+            "The log file hopefully contains the information to get MiKTeX going again:".to_owned(),
+            String::new(),
+            format!("  {}", log.display()),
+        ];
+        assert_eq!(
+            telling_line(&output).as_deref(),
+            Some("MiKTeX: The memory dump file could not be found. (fileName=\"pdflatex.fmt\")")
+        );
+        // Without its log, the boilerplate still says what happened.
+        let gone = [
+            output[0].clone(),
+            output[2].clone(),
+            "  C:\\Users\\x\\MiKTeX\\log\\none.log".to_owned(),
+        ];
+        assert_eq!(telling_line(&gone), None);
     }
     use std::collections::BTreeMap;
 

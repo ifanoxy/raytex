@@ -437,7 +437,18 @@ fn run_case(dist: &Distribution, index: &TexmfIndex, case: &Case, probe: bool) -
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, text).unwrap();
     }
-    let after = compile(dist, index, &main, case.badboxes);
+    let mut after = compile(dist, index, &main, case.badboxes);
+    // MiKTeX may fail to fetch a package from its repository (network,
+    // mirror): one more try before calling the fix wrong.
+    if dist.kind == raytex_core::tex::DistroKind::MikTex
+        && after
+            .diagnostics
+            .iter()
+            .any(|d| d.code.as_deref() == Some("engine-no-log"))
+    {
+        std::thread::sleep(std::time::Duration::from_secs(10));
+        after = compile(dist, index, &main, case.badboxes);
+    }
     let left = remaining(&after, case);
     let title = fixes::title(fix, Lang::Fr);
     let empty_allowed = case.allow_after.contains(&"no-output");
