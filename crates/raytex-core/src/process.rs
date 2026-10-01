@@ -32,6 +32,9 @@ pub struct Cmd {
     pub env: Vec<(String, String)>,
     /// Directories prepended to `PATH`.
     pub path_prefix: Vec<PathBuf>,
+    /// Stopped by [`stop_all`] when the application quits (TeX runs; never
+    /// installations, which must not be cut short).
+    pub stop_with_app: bool,
 }
 
 impl Cmd {
@@ -41,6 +44,12 @@ impl Cmd {
             program: program.into(),
             ..Self::default()
         }
+    }
+
+    /// Stops this command when the application quits ([`stop_all`]).
+    pub fn stopping_with_app(mut self) -> Self {
+        self.stop_with_app = true;
+        self
     }
 
     /// Appends an argument.
@@ -198,6 +207,7 @@ pub fn run_streaming(
     let mut command = cmd.to_command();
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = command.spawn()?;
+    let running = cmd.stop_with_app.then(|| Running::add(child.id()));
     let (tx, rx) = mpsc::channel::<(Stream, String)>();
     let readers: Vec<_> = [
         child
@@ -256,6 +266,7 @@ pub fn run_streaming(
         let _ = r.join();
     }
     let status = child.wait()?;
+    drop(running);
     Ok(Status {
         code: if cancelled { None } else { status.code() },
         cancelled,
@@ -264,21 +275,56 @@ pub fn run_streaming(
 
 /// Kills a child and all its descendants.
 pub fn kill_tree(child: &mut Child) {
+    kill_pid_tree(child.id());
+    let _ = child.kill();
+}
+
+/// Kills a process and all its descendants.
+fn kill_pid_tree(pid: u32) {
     #[cfg(unix)]
-    {
-        let pid = child.id() as i32;
-        signal_group(pid);
-    }
+    signal_group(pid as i32);
     #[cfg(windows)]
     {
         let _ = Command::new("taskkill")
-            .args(["/PID", &child.id().to_string(), "/T", "/F"])
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status();
     }
-    let _ = child.kill();
+    #[cfg(not(any(unix, windows)))]
+    let _ = pid;
+}
+
+/// The commands to stop with the application, while they run.
+static RUNNING: std::sync::Mutex<Vec<u32>> = std::sync::Mutex::new(Vec::new());
+
+/// A command in [`RUNNING`], removed when dropped.
+struct Running(u32);
+
+impl Running {
+    fn add(pid: u32) -> Self {
+        RUNNING.lock().unwrap_or_else(|e| e.into_inner()).push(pid);
+        Self(pid)
+    }
+}
+
+impl Drop for Running {
+    fn drop(&mut self) {
+        RUNNING
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .retain(|p| *p != self.0);
+    }
+}
+
+/// Stops the TeX runs still going (builds, previews): called when the
+/// application quits, so that none goes on alone holding files open.
+pub fn stop_all() {
+    let pids: Vec<u32> = std::mem::take(&mut *RUNNING.lock().unwrap_or_else(|e| e.into_inner()));
+    for pid in pids {
+        kill_pid_tree(pid);
+    }
 }
 
 #[cfg(unix)]
@@ -430,6 +476,36 @@ pub fn login_shell_path() -> Vec<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+
+    /// A command that waits about 30 seconds.
+    fn long() -> super::Cmd {
+        if cfg!(windows) {
+            super::Cmd::new("ping").args(["-n", "30", "127.0.0.1"])
+        } else {
+            super::Cmd::new("sleep").arg("30")
+        }
+    }
+
+    #[test]
+    fn runs_stop_with_the_application() {
+        use std::time::{Duration, Instant};
+        let start = Instant::now();
+        let run = std::thread::spawn(|| {
+            super::output(&long().stopping_with_app(), Duration::from_secs(60))
+        });
+        // Once it runs, quitting stops it.
+        while super::RUNNING.lock().unwrap().is_empty() {
+            assert!(start.elapsed() < Duration::from_secs(10), "never started");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        super::stop_all();
+        run.join().unwrap().unwrap();
+        assert!(
+            start.elapsed() < Duration::from_secs(15),
+            "still running after stop_all"
+        );
+        assert!(super::RUNNING.lock().unwrap().is_empty());
+    }
 
     #[test]
     #[cfg(windows)]

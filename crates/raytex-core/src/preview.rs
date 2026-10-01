@@ -182,7 +182,8 @@ pub fn compile(dist: &Distribution, req: &PreviewRequest<'_>) -> PreviewOutcome 
         .arg(format!("-output-directory={out}"))
         .arg(tex.to_string_lossy().into_owned())
     }
-    .cwd(req.workdir);
+    .cwd(req.workdir)
+    .stopping_with_app();
 
     let run = match process::output(&cmd, req.timeout) {
         Ok(run) => run,
@@ -360,7 +361,8 @@ pub fn compile_document(
                 .arg(format!("-output-directory={out}"))
                 .arg(file.clone())
         }
-        .cwd(dir);
+        .cwd(dir)
+        .stopping_with_app();
         process::output(&cmd, timeout).map_err(|e| format!("{}: {e}", engine.label()))
     };
     run()?;

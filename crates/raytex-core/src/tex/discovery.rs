@@ -446,12 +446,32 @@ pub fn examine(dir: &Path, canonical: &Path) -> Option<Distribution> {
 }
 
 fn version_line(program: &Path, flag: &str) -> Option<String> {
-    let out = process::output(&Cmd::new(program).arg(flag), Duration::from_secs(8)).ok()?;
-    out.stdout
+    banner(&version_output(program, flag, Duration::from_secs(8))?).map(str::to_owned)
+}
+
+/// Everything `program flag` prints (standard output, then errors).
+fn version_output(program: &Path, flag: &str, timeout: Duration) -> Option<String> {
+    let out = process::output(&Cmd::new(program).arg(flag), timeout).ok()?;
+    Some(format!("{}\n{}", out.stdout, out.stderr))
+}
+
+/// The version line of a program's output, past MiKTeX's reminders
+/// (`pdflatex: major issue: So far, no MiKTeX administrator…`).
+fn banner(output: &str) -> Option<&str> {
+    output.lines().find(|l| {
+        !l.trim().is_empty()
+            && !l.contains(": major issue")
+            && !l.contains(": minor issue")
+            && !l.contains(": security risk")
+    })
+}
+
+/// The version of MiKTeX in any line of an output (`… (MiKTeX 26.5)`).
+fn miktex_version_in(output: &str) -> Option<String> {
+    output
         .lines()
-        .chain(out.stderr.lines())
-        .find(|l| !l.trim().is_empty())
-        .map(str::to_owned)
+        .filter(|l| l.contains("(MiKTeX "))
+        .find_map(miktex_version)
 }
 
 /// Version of MiKTeX in the banner of its engines:
@@ -473,12 +493,23 @@ fn identify(
     let engine = ["pdflatex", "xelatex", "lualatex", "latex"]
         .iter()
         .find_map(|e| tools.get(*e));
-    let banner = engine
-        .and_then(|e| version_line(e, "--version"))
+    // The first run of a freshly installed MiKTeX can take a while.
+    let output = engine
+        .and_then(|e| version_output(e, "--version", Duration::from_secs(20)))
         .unwrap_or_default();
+    let banner = banner(&output).unwrap_or_default().to_owned();
     let lower_path = canonical.to_string_lossy().to_lowercase();
     if banner.contains("MiKTeX") || tools.contains_key("miktex") || tools.contains_key("initexmf") {
-        let version = miktex_version(&banner);
+        // MiKTeX's own tools say its version too, when the engine did not.
+        let version = miktex_version_in(&output).or_else(|| {
+            ["miktex", "initexmf", "mpm"]
+                .iter()
+                .filter_map(|t| tools.get(*t))
+                .find_map(|t| {
+                    version_output(t, "--version", Duration::from_secs(20))
+                        .and_then(|o| miktex_version_in(&o))
+                })
+        });
         let name = format!("MiKTeX {}", version.clone().unwrap_or_default())
             .trim()
             .to_owned();
@@ -591,6 +622,28 @@ mod tests {
             Some("26.5")
         );
         assert_eq!(miktex_version("MiKTeX-pdfTeX 4.27"), None);
+    }
+
+    #[test]
+    fn miktex_version_after_its_reminders() {
+        // A MiKTeX nobody has updated yet speaks before giving its banner.
+        let output = "pdflatex: major issue: So far, no MiKTeX administrator has checked for updates.\n\
+                      pdflatex: security risk: running with elevated privileges\n\
+                      MiKTeX-pdfTeX 4.27 (MiKTeX 26.5)\n\
+                      © 2026 Han The Thanh\n";
+        assert_eq!(banner(output), Some("MiKTeX-pdfTeX 4.27 (MiKTeX 26.5)"));
+        assert_eq!(miktex_version_in(output).as_deref(), Some("26.5"));
+        // `miktex --version`, the fallback.
+        assert_eq!(
+            miktex_version_in("One MiKTeX Utility 1.12 (MiKTeX 26.5)\nCopyright (C) 2021-2026")
+                .as_deref(),
+            Some("26.5")
+        );
+        assert_eq!(miktex_version_in("pdflatex: major issue: …"), None);
+        assert_eq!(
+            banner("\npdfTeX 3.141592653-2.6-1.40.27 (TeX Live 2025)\nkpathsea version 6.4.1"),
+            Some("pdfTeX 3.141592653-2.6-1.40.27 (TeX Live 2025)")
+        );
     }
 
     use super::*;

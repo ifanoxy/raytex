@@ -557,6 +557,7 @@ impl Runner<'_, '_> {
 
     /// Runs one command, streaming its output.
     fn step(&mut self, name: String, cmd: Cmd) -> Option<i32> {
+        let cmd = cmd.stopping_with_app();
         if self.cancelled() {
             self.cancelled = true;
             return None;

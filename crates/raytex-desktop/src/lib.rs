@@ -197,6 +197,10 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building RayTeX")
         .run(|app, event| {
+            // No TeX run goes on after RayTeX (holding files open).
+            if let tauri::RunEvent::Exit = &event {
+                raytex_core::process::stop_all();
+            }
             // Files opened from the Finder (double click, "Open with…", dropped on the icon).
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Opened { urls } = &event {

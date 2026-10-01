@@ -312,7 +312,7 @@ pub fn build_format(
     for (k, v) in env {
         cmd = cmd.env(k.clone(), v.clone());
     }
-    let cmd = cmd.args([
+    let cmd = cmd.stopping_with_app().args([
         "&pdflatex".to_owned(),
         "mylatexformat.ltx".to_owned(),
         plan.root
