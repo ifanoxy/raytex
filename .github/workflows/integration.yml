@@ -34,13 +34,36 @@ jobs:
       - name: Engine tests needing TeX
         run: cargo test -p raytex-core --release -- --ignored --skip ctan
 
-  miktex:
-    name: Integration tests with MiKTeX (Windows)
+  # Windows, with two distributions. TeX Live is the reference: installed
+  # with every package before the tests, and kept in the cache. MiKTeX
+  # (the most common on Windows) is tested as it is first installed, with
+  # packages downloaded while the tests run: a failure of its servers must
+  # not make the run red, so its jobs are for information.
+  windows-engine:
+    name: Integration tests on Windows (${{ matrix.label }})
     runs-on: windows-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
+    continue-on-error: ${{ matrix.dist == 'miktex' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dist: texlive
+            label: TeX Live
+          - dist: miktex
+            label: MiKTeX, for information
     steps:
       - uses: actions/checkout@v4
+      - name: TeX Live
+        if: matrix.dist == 'texlive'
+        uses: TeX-Live/setup-texlive-action@v4
+        with:
+          package-file: .github/texlive-packages.txt
+      - name: Fonts of LuaLaTeX
+        if: matrix.dist == 'texlive'
+        run: luaotfload-tool --update --force
       - name: MiKTeX (packages installed on the fly)
+        if: matrix.dist == 'miktex'
         shell: pwsh
         run: |
           # The installer sometimes fails to download its packages: up to three tries.
@@ -52,21 +75,13 @@ jobs:
             Start-Sleep -Seconds 20
           }
           $bin = "C:\Program Files\MiKTeX\miktex\bin\x64"
-          if (-not (Test-Path "$bin\pdflatex.exe")) { Get-ChildItem -Recurse -Filter pdflatex.exe "C:\Program Files" | Select-Object -First 3 | Format-List FullName; exit 1 }
+          if (-not (Test-Path "$bin\pdflatex.exe")) { exit 1 }
           Add-Content -Path $env:GITHUB_PATH -Value $bin
           & "$bin\initexmf.exe" --admin --set-config-value="[MPM]AutoInstall=1"
           & "$bin\initexmf.exe" --set-config-value="[MPM]AutoInstall=1"
           & "$bin\miktex.exe" --admin packages update-package-database
           & "$bin\initexmf.exe" --admin --update-fndb
           & "$bin\pdflatex.exe" --version
-      - name: First compilation with MiKTeX, shown in full
-        shell: pwsh
-        run: |
-          Set-Content -Path smoke.tex -Value '\documentclass{article}\begin{document}Hello\end{document}'
-          pdflatex -interaction=nonstopmode --enable-installer smoke.tex
-          Write-Output "exit code: $LASTEXITCODE"
-          if (Test-Path smoke.log) { Get-Content smoke.log -Tail 40 } else { Write-Output "no log" }
-          if (Test-Path smoke.pdf) { Write-Output "PDF written" } else { Write-Output "no PDF" }
       # RayTeX's command lines in a folder with a space and an accent, like
       # C:\Users\Jean Dupont\Documents: a build (root file relative to the
       # working directory) and a preview (absolute path of the file).
@@ -75,32 +90,52 @@ jobs:
         run: |
           $dir = Join-Path $env:RUNNER_TEMP "Projet de thèse"
           New-Item -ItemType Directory -Force (Join-Path $dir "build") | Out-Null
-          Copy-Item smoke.tex $dir
+          Set-Content -Path (Join-Path $dir "smoke.tex") -Value '\documentclass{article}\begin{document}Hello\end{document}'
           Set-Location $dir
-          $env:BIBINPUTS = "$dir;"
-          pdflatex --enable-installer -synctex=1 -interaction=nonstopmode -file-line-error "-output-directory=$dir\build" smoke.tex
+          $installer = @()
+          if ("${{ matrix.dist }}" -eq "miktex") { $installer = @("--enable-installer") }
+          pdflatex @installer -synctex=1 -interaction=nonstopmode -file-line-error "-output-directory=$dir\build" smoke.tex
           Write-Output "build, exit code: $LASTEXITCODE"
           if (Test-Path build\smoke.pdf) { Write-Output "build: PDF written" } else { Write-Output "build: no PDF" }
-          pdflatex --enable-installer -interaction=nonstopmode -halt-on-error -file-line-error "-output-directory=$dir\build" "$dir\smoke.tex"
+          pdflatex @installer -interaction=nonstopmode -halt-on-error -file-line-error "-output-directory=$dir\build" "$dir\smoke.tex"
           Write-Output "preview, exit code: $LASTEXITCODE"
           Get-ChildItem build | Format-Table Name, Length
           exit 0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      # One test at a time: two compilations installing the same package
-      # at once make one of them fail (MiKTeX locks its package database).
+      # With MiKTeX, one test at a time: two compilations installing the same
+      # package at once make one of them fail (MiKTeX locks its database).
       - name: Engine tests needing TeX
-        run: cargo test -p raytex-core --release -- --ignored --skip ctan --nocapture --test-threads=1
+        run: cargo test -p raytex-core --release -- --ignored --skip ctan --nocapture ${{ matrix.dist == 'miktex' && '--test-threads=1' || '' }}
 
-  # The application itself on Windows, with MiKTeX: the scenes of
-  # ui/dev/selftest.ts (scripts/e2e.mjs), with a screenshot at each step.
+  # The application itself on Windows: the scenes of ui/dev/selftest.ts
+  # (scripts/e2e.mjs), with a screenshot at each step; same two
+  # distributions as above.
   windows-app:
-    name: Application on Windows (end to end, MiKTeX)
+    name: Application on Windows (end to end, ${{ matrix.label }})
     runs-on: windows-latest
     timeout-minutes: 120
+    continue-on-error: ${{ matrix.dist == 'miktex' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dist: texlive
+            label: TeX Live
+          - dist: miktex
+            label: MiKTeX, for information
     steps:
       - uses: actions/checkout@v4
+      - name: TeX Live
+        if: matrix.dist == 'texlive'
+        uses: TeX-Live/setup-texlive-action@v4
+        with:
+          package-file: .github/texlive-packages.txt
+      - name: Fonts of LuaLaTeX
+        if: matrix.dist == 'texlive'
+        run: luaotfload-tool --update --force
       - name: MiKTeX (packages installed on the fly)
+        if: matrix.dist == 'miktex'
         shell: pwsh
         run: |
           # The installer sometimes fails to download its packages: up to three tries.
@@ -136,7 +171,7 @@ jobs:
         run: node scripts/e2e.mjs workflow fixes files projects media
       # Why MiKTeX could not install a package on the fly, when that happens.
       - name: MiKTeX logs
-        if: always()
+        if: always() && matrix.dist == 'miktex'
         shell: pwsh
         run: |
           foreach ($pair in @(@("user", "$env:LOCALAPPDATA\MiKTeX\miktex\log"), @("admin", "$env:ProgramData\MiKTeX\miktex\log"))) {
@@ -148,7 +183,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: windows-app-screenshots
+          name: windows-app-${{ matrix.dist }}
           path: e2e-output/
           retention-days: 14
 

@@ -1,0 +1,18 @@
+# TeX Live of the Windows tests (TeX-Live/setup-texlive-action): the same
+# collections as the Linux job (texlive-latex-extra, -lang-french,
+# -lang-cyrillic, -science, -pictures, -bibtex-extra, -fonts-extra, -luatex,
+# -xetex), installed before the tests and kept in the cache.
+scheme-basic
+collection-latexrecommended
+collection-latexextra
+collection-fontsrecommended
+collection-fontsextra
+collection-langfrench
+collection-langcyrillic
+collection-mathscience
+collection-pictures
+collection-bibtexextra
+collection-luatex
+collection-xetex
+biber
+latexmk

@@ -42,7 +42,7 @@ Optional variables of the end-to-end check (development builds only):
 - `RAYTEX_CONFIG_DIR=<folder>`: settings, session and cache in that folder, so the check never touches those of an installed RayTeX.
 - `RAYTEX_SELFTEST_KEEP=1`: leaves the window open at the end.
 
-The continuous integration runs the same checks on Linux, macOS and Windows, and the tests needing TeX with TeX Live (Linux) and MiKTeX (Windows). On Windows, see [docs/WINDOWS.md](docs/WINDOWS.md) (prerequisites, PowerShell syntax of the variables, what to check by hand).
+The continuous integration runs the same checks on Linux, macOS and Windows, and the tests needing TeX (engine and end-to-end scenes of the application) with TeX Live on Linux and Windows; MiKTeX on Windows runs the same tests for information (it downloads packages while they run, so a failure of its servers does not make the run red). On Windows, see [docs/WINDOWS.md](docs/WINDOWS.md) (prerequisites, PowerShell syntax of the variables, what to check by hand).
 
 ## Guidelines
 
