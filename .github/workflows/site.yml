@@ -24,12 +24,27 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.event_name == 'release' && 'relay' || 'deploy' }}
   cancel-in-progress: true
 
 jobs:
+  # A release event runs on its tag, and GitHub Pages only takes deployments
+  # from main: the site is built again from main (a workflow_dispatch, which
+  # the token of a workflow may start).
+  relay:
+    name: Rebuild from main
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - run: gh workflow run site.yml --repo "$GITHUB_REPOSITORY" --ref main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build:
     name: Build
+    if: github.event_name != 'release'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +65,7 @@ jobs:
   # repository is private, the site is only built.
   deploy:
     name: Deploy
-    if: ${{ !github.event.repository.private }}
+    if: ${{ github.event_name != 'release' && !github.event.repository.private }}
     needs: build
     runs-on: ubuntu-latest
     environment:
