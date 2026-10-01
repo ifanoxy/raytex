@@ -16,3 +16,5 @@ collection-luatex
 collection-xetex
 biber
 latexmk
+# The synctex command, reference of RayTeX's own SyncTeX reader in the tests.
+synctex

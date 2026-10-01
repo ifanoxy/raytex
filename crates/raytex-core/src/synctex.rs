@@ -505,6 +505,11 @@ mod tests {
     #[ignore = "depends on the local TeX installation"]
     fn agrees_with_synctex_cli() {
         let dist = crate::tex::detect(&[]).into_iter().next().expect("no TeX");
+        // The reference: TeX's own `synctex` command (not in every install).
+        if dist.tool("synctex").is_none() {
+            eprintln!("no synctex command in {}: comparison skipped", dist.name);
+            return;
+        }
         let dir = tempfile::tempdir().unwrap();
         let tex = dir.path().join("s.tex");
         std::fs::write(&tex, "\\documentclass{article}\n\\begin{document}\n\\section{Hello}\nFirst paragraph with some text that is long enough to wrap onto a second line of the page, hopefully yes indeed.\n\nSecond paragraph $x^2+y^2=z^2$ here.\n\\begin{equation}\na = b + c\n\\end{equation}\n\\newpage\nPage two text.\n\\end{document}\n").unwrap();
