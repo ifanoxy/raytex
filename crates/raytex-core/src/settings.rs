@@ -452,14 +452,24 @@ impl Settings {
 
 /// Writes a file atomically (temporary file + rename).
 pub fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    // Two saves at once (the editor's and the one before a build) come one
+    // after the other, each with its own temporary file: sharing one, the
+    // second found it already moved ("cannot find the file specified").
+    static WRITES: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let _turn = WRITES.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
+    // Still ending in `.lbt-tmp`: the file tree and the watcher ignore it.
     let tmp = path.with_extension(format!(
-        "{}.lbt-tmp",
+        "{}.{}-{}.lbt-tmp",
         path.extension()
             .map(|e| e.to_string_lossy().into_owned())
-            .unwrap_or_default()
+            .unwrap_or_default(),
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::Relaxed)
     ));
     std::fs::write(&tmp, bytes)?;
     // Windows refuses to replace a file another program has open (TeX
@@ -626,6 +636,34 @@ impl ProjectConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn saves_of_one_file_at_the_same_time() {
+        // A save from the editor and one before a build, say: each must
+        // succeed, the file must hold one of the texts whole, and no
+        // temporary file may stay behind.
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("main.tex");
+        std::thread::scope(|scope| {
+            for t in 0..12 {
+                let file = &file;
+                scope.spawn(move || {
+                    for n in 0..25 {
+                        let text = format!("thread {t}, save {n}\n").repeat(200);
+                        write_atomic(file, text.as_bytes()).expect("save");
+                    }
+                });
+            }
+        });
+        let text = std::fs::read_to_string(&file).unwrap();
+        let first = text.lines().next().unwrap();
+        assert!(text.lines().all(|l| l == first), "mixed texts");
+        let names: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, ["main.tex"]);
+    }
 
     #[test]
     fn partial_files_load_with_defaults() {
