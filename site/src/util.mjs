@@ -16,3 +16,12 @@ export function latex(src) {
   }
   return out + esc(src.slice(last));
 }
+
+/** The download button that ends a page: centred on the sheet, a hand-written
+ *  word and an arrow pointing at it. */
+export const ctaEnd = ({ T, url, icon }, note) =>
+  `<div class="cta-end" data-reveal>
+  <span class="cta-hand" aria-hidden="true"><span class="hand">${note}</span><svg viewBox="0 0 90 50"><path class="draw-me" d="M4 10 C 30 4, 60 14, 76 38 M76 38 l -2 -13 M76 38 l -12 -4"/></svg></span>
+  <a class="fbox-link big solid" href="${url("download/")}" data-download-primary>${icon("download", 18)}<span data-download-label>${T("Download RayTeX", "Télécharger RayTeX")}</span></a>
+  <p class="cta-meta"><span data-download-meta>${T("Free · MIT or Apache 2.0 · no account", "Gratuit · MIT ou Apache 2.0 · sans compte")}</span></p>
+</div>`;

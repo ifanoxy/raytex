@@ -10,10 +10,11 @@ export default {
   },
   body({ T, GITHUB, tex }) {
     return `${tex.chapter("H", T("Privacy policy", "Politique de confidentialité"), {
+      stamp: [T("0 trackers", "0 traceur"), "green", -8],
       epigraph: [T("What we know about you: ∅.", "Ce que nous savons de vous : ∅."), T("this policy, in one line", "cette politique, en une ligne")],
       lead: T(`In short: we collect nothing about you. Last updated: ${UPDATED.en}.`, `En bref : nous ne collectons rien sur vous. Dernière mise à jour : ${UPDATED.fr}.`),
     })}
-${tex.eq(String.raw`\#\,\text{${T("cookies", "cookies")}} \;=\; \#\,\text{${T("trackers", "traceurs")}} \;=\; \#\,\text{${T("telemetry events", "événements de télémétrie")}} \;=\; 0`)}
+${tex.eq(String.raw`\#\,\text{${T("cookies", "cookies")}} \;=\; \#\,\text{${T("trackers", "traceurs")}} \;=\; \#\,\text{${T("telemetry events", "événements de télémétrie")}} \;=\; \htmlClass{hbox hbox-green}{\htmlClass{tx-green}{0}}`)}
 
 ${tex.section(T("The website", "Le site"), "website")}
 <p data-reveal>${T(

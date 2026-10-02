@@ -1,3 +1,5 @@
+import { ctaEnd } from "../util.mjs";
+
 export default {
   id: "guide",
   path: "guide/",
@@ -28,6 +30,7 @@ export default {
     )}</p></div>`;
 
     return `${tex.chapter("D", T("Getting started", "Prise en main"), {
+      stamp: [T("Step by step", "Pas à pas"), "violet", -6],
       epigraph: [
         T("To learn LaTeX, write. To like it, stop seeing the errors.", "Pour apprendre LaTeX, il suffit d'écrire. Pour l'aimer, il suffit de ne plus voir les erreurs."),
         T("the ray", "la raie"),
@@ -62,15 +65,15 @@ ${tex.section(T("Create a project", "Créer un projet"), "project")}
 ${tex.section(T("Write", "Écrire"), "write")}
 ${tex.note(T("in a formula, @e gives ε and @/ a fraction", "dans une formule, @e donne ε et @/ une fraction"), { arrow: "left", tilt: -2 })}
 <p data-reveal>${T(
-  "Type as usual: completion proposes the commands of the packages you load, with their documentation. The formatting bar does the rest — styles, lists, formulas, images, tables, drawings.",
-  "Tapez comme d'habitude : la complétion propose les commandes des packages chargés, avec leur documentation. La barre de mise en forme fait le reste — styles, listes, formules, images, tableaux, dessins.",
+  `Type as usual: ${tex.hl("completion proposes the commands of the packages you load")}, with their documentation. The formatting bar does the rest — styles, lists, formulas, images, tables, drawings.`,
+  `Tapez comme d'habitude : ${tex.hl("la complétion propose les commandes des packages chargés")}, avec leur documentation. La barre de mise en forme fait le reste — styles, listes, formules, images, tableaux, dessins.`,
 )}</p>
 ${tex.figure(`<div class="srcpdf">${tex.listing(sample, "main.tex")}${output}</div>`, T("The source, and the PDF that follows it.", "La source, et le PDF qui la suit."))}
 
 ${tex.section(T("Compile and read the PDF", "Compiler et lire le PDF"), "compile")}
 <p data-reveal>${T(
-  "The document is compiled after each pause in typing, and the PDF stays at the same place. Double-click in the PDF to jump to the source; <kbd>Ctrl/⌘</kbd> + <kbd>Alt</kbd> + <kbd>J</kbd> goes the other way.",
-  "Le document est compilé à chaque pause dans la frappe, et le PDF reste au même endroit. Double-cliquez dans le PDF pour aller à la source ; <kbd>Ctrl/⌘</kbd> + <kbd>Alt</kbd> + <kbd>J</kbd> fait le chemin inverse.",
+  `The document is compiled ${tex.underline("after each pause in typing", "violet", true)}, and the PDF stays at the same place. Double-click in the PDF to jump to the source; <kbd>Ctrl/⌘</kbd> + <kbd>Alt</kbd> + <kbd>J</kbd> goes the other way.`,
+  `Le document est compilé ${tex.underline("à chaque pause dans la frappe", "violet", true)}, et le PDF reste au même endroit. Double-cliquez dans le PDF pour aller à la source ; <kbd>Ctrl/⌘</kbd> + <kbd>Alt</kbd> + <kbd>J</kbd> fait le chemin inverse.`,
 )}</p>
 
 ${tex.section(T("Fix the errors", "Corriger les erreurs"), "fix")}
@@ -92,6 +95,6 @@ ${tex.itemize([
   `<a href="${url("faq/")}">${T("Frequently asked questions", "Questions fréquentes")}</a> — ${T("distributions, offline use, privacy, updates (appendix E).", "distributions, hors ligne, confidentialité, mises à jour (annexe E).")}`,
   `<a href="${GITHUB}#command-line">${T("The command line", "La ligne de commande")}</a> — <code>raytex build</code>, <code>lint</code>, <code>doctor</code>, <code>new</code>…`,
 ])}
-<p class="cta center" data-reveal><a class="fbox-link big" href="${url("download/")}" data-download-primary>${icon("download", 18)}<span data-download-label>${T("Download RayTeX", "Télécharger RayTeX")}</span></a></p>`;
+${ctaEnd({ T, url, icon }, T("let's go!", "c'est parti !"))}`;
   },
 };

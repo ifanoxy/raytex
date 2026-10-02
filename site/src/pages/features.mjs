@@ -1,3 +1,5 @@
+import { ctaEnd } from "../util.mjs";
+
 export default {
   id: "features",
   path: "features/",
@@ -9,6 +11,7 @@ export default {
   body({ T, icon, url, tex }) {
     const items = (list) => tex.description(list);
     return `${tex.chapter("A", T("Every feature", "Toutes les fonctionnalités"), {
+      stamp: [T("100 % free", "100 % libre"), "violet", 8],
       epigraph: [T("It compiles while I type? Then I'm going to sleep.", "Il compile pendant que j'écris ? Alors je vais dormir."), T("a PhD student, 3 a.m.", "un doctorant, 3 h du matin")],
       lead: T(
         "A LaTeX editor that helps beginners learn and lets experts go fast. This appendix lists what RayTeX does, part by part; Table A.1 sums it up in numbers.",
@@ -18,12 +21,12 @@ export default {
 ${tex.table(
   [T("What", "Quoi"), T("How many", "Combien")],
   [
-    [T("LaTeX, package, BibTeX and Biber messages explained", "Messages de LaTeX, des packages, de BibTeX et de Biber expliqués"), "≈ 110"],
+    [T("LaTeX, package, BibTeX and Biber messages explained", "Messages de LaTeX, des packages, de BibTeX et de Biber expliqués"), tex.boxed("≈ 110")],
     [T("Option keys documented (graphicx, hyperref, geometry, TikZ…)", "Clés d'options documentées (graphicx, hyperref, geometry, TikZ…)"), "≈ 520"],
     [T("Drawings to start from in the TikZ studio", "Dessins pour démarrer dans le studio TikZ"), "22"],
     [T("Templates, in English and French", "Modèles, en français et en anglais"), "16"],
     [T("Faster passes with the precompiled preamble", "Passes plus rapides avec le préambule précompilé"), "35–60 %"],
-    [T("Accounts, telemetry, cookies", "Comptes, télémétrie, cookies"), "0"],
+    [tex.hl(T("Accounts, telemetry, cookies", "Comptes, télémétrie, cookies"), "green"), tex.circled("0", "green")],
   ],
   T("RayTeX in numbers.", "RayTeX en chiffres."),
   "lr",
@@ -47,7 +50,7 @@ ${tex.note(T("RayTeX: “<code>_</code> only works in a formula — write <code>
 ${items([
   [T("Every message explained", "Chaque message expliqué"), T("About 110 LaTeX, package, BibTeX and Biber messages explained in plain words, in English and French, and an explanation for the others.", "Environ 110 messages de LaTeX, des packages, de BibTeX et de Biber expliqués simplement, en français et en anglais, et une explication pour les autres.")],
   [T("Fixes computed from your sources", "Des corrections tirées de vos sources"), T("Misspelt commands, environments, labels and keys; missing packages and TikZ libraries; unclosed braces and formulas; <code>_ ^ &amp; #</code> in text; table columns; float placement…", "Commandes, environnements, labels et clés mal orthographiés ; packages et bibliothèques TikZ manquants ; accolades et formules non fermées ; <code>_ ^ &amp; #</code> dans le texte ; colonnes de tableau ; placement des flottants…")],
-  [T("One key, or all at once", "Une touche, ou tout d'un coup"), T("<kbd>Alt</kbd> + <kbd>Enter</kbd> fixes what is under the cursor; <b>Fix all</b> applies the first fix of each problem, then compiles.", "<kbd>Alt</kbd> + <kbd>Entrée</kbd> corrige ce qui est sous le curseur ; <b>Tout corriger</b> applique la première correction de chaque problème, puis compile.")],
+  [T("One key, or all at once", "Une touche, ou tout d'un coup"), T(`<kbd>Alt</kbd> + <kbd>Enter</kbd> fixes what is under the cursor; ${tex.hl("<b>Fix all</b> applies the first fix of each problem", "green")}, then compiles.`, `<kbd>Alt</kbd> + <kbd>Entrée</kbd> corrige ce qui est sous le curseur ; ${tex.hl("<b>Tout corriger</b> applique la première correction de chaque problème", "green")}, puis compile.`)],
   [T("Checked while typing", "Vérifié pendant la frappe"), T("Undefined references and citations, duplicate labels, unbalanced braces, missing files, obsolete commands and typography — before any compilation.", "Références et citations indéfinies, labels en double, accolades déséquilibrées, fichiers manquants, commandes obsolètes et typographie — avant toute compilation.")],
 ])}
 
@@ -57,7 +60,7 @@ ${tex.eq(String.raw`T_{\text{${T("page", "page")}}} = \underbrace{t_{\text{pause
 ${items([
   [T("Live by default", "En direct par défaut"), T("A build after each pause in typing, or on <kbd>Ctrl/⌘</kbd> + <kbd>Enter</kbd>, or on save.", "Une compilation à chaque pause dans la frappe, ou avec <kbd>Ctrl/⌘</kbd> + <kbd>Entrée</kbd>, ou à l'enregistrement.")],
   [T("A smart build driver", "Un pilote de compilation malin"), T("Biber, BibTeX, makeindex and glossaries only when their inputs changed, reruns until references are stable; or latexmk, or your own steps.", "Biber, BibTeX, makeindex et glossaries seulement quand leurs entrées ont changé, relances jusqu'à des références stables ; ou latexmk, ou vos propres étapes.")],
-  [T("Faster passes", "Des passes plus rapides"), T("The preamble is precompiled in the background (pdfLaTeX): passes 35–60 % faster. The right engine is chosen for you.", "Le préambule est précompilé en arrière-plan (pdfLaTeX) : des passes 35 à 60 % plus rapides. Le bon moteur est choisi pour vous.")],
+  [T("Faster passes", "Des passes plus rapides"), T(`The preamble is precompiled in the background (pdfLaTeX): passes ${tex.underline("35–60 % faster", "red", true)}. The right engine is chosen for you.`, `Le préambule est précompilé en arrière-plan (pdfLaTeX) : des passes ${tex.underline("35 à 60 % plus rapides", "red", true)}. Le bon moteur est choisi pour vous.`)],
   [T("Built-in PDF viewer", "Lecteur PDF intégré"), T("Only the visible pages are drawn, reloads keep your place, text selection, dark mode; SyncTeX both ways.", "Seules les pages visibles sont dessinées, les rechargements gardent votre position, sélection du texte, mode sombre ; SyncTeX dans les deux sens.")],
 ])}
 
@@ -65,7 +68,7 @@ ${tex.section(T("Images, drawings, tables and fonts", "Images, dessins, tableaux
 ${tex.note(T("the hard parts of LaTeX, made visual", "les parties difficiles de LaTeX, rendues visuelles"), { arrow: "left", tilt: 2 })}
 ${items([
   [T("Insert images", "Insérer des images"), T("Choose, paste or drop images: LaTeX-safe names, width with a page preview, caption, label, sub-figures. SVG becomes vector PDF; WebP, HEIC, GIF… become PNG.", "Choisissez, collez ou déposez des images : noms sûrs pour LaTeX, largeur avec aperçu de la page, légende, label, sous-figures. Le SVG devient un PDF vectoriel ; WebP, HEIC, GIF… deviennent PNG.")],
-  [T("TikZ studio", "Studio TikZ"), T("A whiteboard to draw with the mouse — the code follows the drawing both ways — and 22 drawings to start from, with a live preview compiled with your preamble.", "Un tableau blanc pour dessiner à la souris — le code suit le dessin dans les deux sens — et 22 dessins pour démarrer, avec un aperçu compilé avec votre préambule.")],
+  [T("TikZ studio", "Studio TikZ"), T(`A whiteboard to draw with the mouse — ${tex.hl("the code follows the drawing both ways", "pink")} — and 22 drawings to start from, with a live preview compiled with your preamble.`, `Un tableau blanc pour dessiner à la souris — ${tex.hl("le code suit le dessin dans les deux sens", "pink")} — et 22 dessins pour démarrer, avec un aperçu compilé avec votre préambule.`)],
   [T("Tables and matrices", "Tableaux et matrices"), T("Filled cell by cell (<kbd>Enter</kbd> goes to the next), pasted from a spreadsheet, with LaTeX formatting and macros in the cells.", "Remplis case par case (<kbd>Entrée</kbd> passe à la suivante), collés depuis un tableur, avec mise en forme LaTeX et macros dans les cases.")],
   [T("Fonts", "Polices"), T("Any font of your computer (fontspec, LuaLaTeX) or LaTeX font packages that work with pdfLaTeX, each with a compiled preview.", "N'importe quelle police de votre ordinateur (fontspec, LuaLaTeX) ou les packages de polices LaTeX qui fonctionnent avec pdfLaTeX, chacun avec un aperçu compilé.")],
 ])}
@@ -87,6 +90,6 @@ ${items([
   [T("Updates", "Mises à jour"), T("At start, RayTeX offers the new version when there is one — its notes, <b>Update now</b>, <b>Later</b> or <b>Skip</b>.", "Au démarrage, RayTeX propose la nouvelle version quand il y en a une — ses notes, <b>Mettre à jour</b>, <b>Plus tard</b> ou <b>Ignorer</b>.")],
   [T("Help centre", "Centre d'aide"), T("Guides, command reference, symbol palette, common errors, shortcuts — in English and French.", "Guides, référence des commandes, palette de symboles, erreurs courantes, raccourcis — en français et en anglais.")],
 ])}
-<p class="cta center" data-reveal><a class="fbox-link big" href="${url("download/")}" data-download-primary>${icon("download", 18)}<span data-download-label>${T("Download RayTeX", "Télécharger RayTeX")}</span></a></p>`;
+${ctaEnd({ T, url, icon }, T("convinced?", "convaincu ?"))}`;
   },
 };

@@ -421,7 +421,7 @@
   });
 
   // ---------------------------------------------------------- downloads
-  const needsReleases = $("[data-download-primary], [data-dl-files], [data-releases]");
+  const needsReleases = $("[data-download-primary], [data-os-panel], [data-releases]");
   if (!needsReleases) return;
 
   async function detect() {
@@ -520,17 +520,10 @@
     const armLinux = f.info.os !== "macos" && f.info.arch === "arm64" ? " · ARM64" : "";
     return [label + armLinux, desc];
   };
-  const archLabel = (env) => (env.os === "macos" ? T.arch[env.arch] : "");
 
   (async () => {
     const env = await detect();
     document.documentElement.dataset.os = env.os;
-    $$(`[data-dl-platform="${env.os}"]`).forEach((el) => el.classList.add("is-detected"));
-    const grid = $(".dl-grid");
-    if (grid) {
-      const detected = $(`[data-dl-platform="${env.os}"]`);
-      if (detected) grid.prepend(detected);
-    }
 
     let list;
     try {
@@ -539,7 +532,7 @@
       list = null;
     }
     primaryButtons(list, env);
-    if ($("[data-dl-files]")) downloadPage(list, env);
+    if ($("[data-os-panel]")) downloadPage(list, env);
     if ($("[data-releases]")) releasesPage(list);
   })();
 
@@ -547,7 +540,6 @@
     const latest = list && list.length ? latestOf(list) : null;
     const best = latest && env.os !== "mobile" && env.os !== "unknown" ? filesFor(latest, env.os, env.arch)[0] : null;
     for (const btn of $$("[data-download-primary]")) {
-      if (btn.closest("[data-dl-hero]")) continue;
       const label = $("[data-download-label]", btn);
       const meta = $("[data-download-meta]", btn.parentElement);
       if (best) {
@@ -573,24 +565,52 @@
   }
 
   function downloadPage(list, env) {
+    const tabs = $$("[data-os-tab]");
+    const panels = $$("[data-os-panel]");
+    const known = OS_ORDER.includes(env.os);
+
+    // The tabs: the reader's system first, the others one click (or arrow) away.
+    const show = (os, focus = false) => {
+      for (const t of tabs) {
+        const on = t.dataset.osTab === os;
+        t.setAttribute("aria-selected", String(on));
+        t.tabIndex = on ? 0 : -1;
+        if (on && focus) t.focus();
+      }
+      for (const p of panels) {
+        p.hidden = p.dataset.osPanel !== os;
+        if (!p.hidden) prepareStrokes(p);
+      }
+    };
+    tabs.forEach((t, i) => {
+      t.addEventListener("click", () => show(t.dataset.osTab));
+      t.addEventListener("keydown", (e) => {
+        const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+        if (!step) return;
+        e.preventDefault();
+        show(tabs[(i + step + tabs.length) % tabs.length].dataset.osTab, true);
+      });
+    });
+    if (known) $(`[data-os-tab="${env.os}"]`)?.classList.add("is-you");
+    if (env.os === "mobile") $("[data-dl-mobile]").hidden = false;
+    show(known ? env.os : "windows");
+
     const select = $("[data-version-select]");
     const state = $("[data-dl-state]");
-    const title = $("[data-dl-title]");
-    const subtitle = $("[data-dl-subtitle]");
-    const detectedLabel = $("[data-dl-detected]");
+    const versionLine = $("[data-dl-version]");
     const notes = $("[data-version-notes]");
-    const heroBtn = $("[data-dl-hero] [data-download-primary]");
-    const heroMeta = $("[data-dl-hero] [data-download-meta]");
 
     if (!list || !list.length) {
       state.hidden = false;
       state.innerHTML = list
         ? `<p><strong>${esc(T.noRelease)}</strong></p><p class="muted">${esc(T.noReleaseHint)} <a href="https://github.com/${C.repo}">${esc(T.onGithub)}</a></p>`
         : `<p><strong>${esc(T.loadFailed)}</strong></p><p class="muted">${esc(T.loadFailedHint)} <a href="https://github.com/${C.repo}/releases">${esc(T.onGithub)}</a></p>`;
-      title.textContent = list ? T.noRelease : T.loadFailed;
+      versionLine.hidden = true;
       select.closest("label").hidden = true;
-      heroBtn.href = `https://github.com/${C.repo}/releases`;
-      $("[data-download-label]", heroBtn).textContent = T.onGithub;
+      for (const btn of $$("[data-dl-main]")) {
+        btn.href = `https://github.com/${C.repo}/releases`;
+        $("[data-dl-main-label]", btn).textContent = T.onGithub;
+      }
       $$("[data-dl-files]").forEach((el) => (el.innerHTML = `<p class="dl-empty">—</p>`));
       return;
     }
@@ -604,6 +624,7 @@
 
     const render = () => {
       const release = list.find((r) => r.tag === select.value);
+      versionLine.textContent = fill(T.versionLine, { v: version(release), date: date(release.date) });
       notes.href = `${C.rel}${C.lang === "fr" ? "fr/" : ""}releases/#${encodeURIComponent(release.tag)}`;
       const sums = release.assets.find((a) => a.name === "SHA256SUMS.txt");
       const sumsLink = $("[data-version-sums]");
@@ -611,24 +632,30 @@
         sumsLink.hidden = !sums;
         if (sums) sumsLink.href = sums.url;
       }
-      for (const box of $$("[data-dl-files]")) {
-        const os = box.dataset.dlFiles;
+      for (const os of OS_ORDER) {
         const files = filesFor(release, os, os === env.os ? env.arch : os === "macos" ? "arm64" : "x64");
-        box.innerHTML = files.length ? files.map((f, i) => fileRow(f, i === 0 && os === env.os)).join("") : `<p class="dl-empty">${esc(T.noFile)}</p>`;
-      }
-      const known = env.os !== "mobile" && env.os !== "unknown";
-      const best = known ? filesFor(release, env.os, env.arch)[0] : null;
-      detectedLabel.textContent = known ? `${T.detected} · ${[T.os[env.os], archLabel(env)].filter(Boolean).join(" · ")}` : T.downloadAll;
-      title.textContent = known ? `RayTeX ${version(release)} — ${T.os[env.os]}` : `RayTeX ${version(release)}`;
-      subtitle.textContent = known ? fill(T.released, { date: date(release.date) }) : T.mobile;
-      if (best) {
-        heroBtn.href = best.url;
-        $("[data-download-label]", heroBtn).textContent = fill(T.downloadFor, { os: T.os[env.os] });
-        heroMeta.textContent = [kindLabel(best)[0], size(best.size)].join(" · ");
-      } else {
-        heroBtn.href = "#platforms";
-        $("[data-download-label]", heroBtn).textContent = T.downloadAll;
-        heroMeta.textContent = "";
+        const [main, ...rest] = files;
+        const btn = $(`[data-dl-main="${os}"]`);
+        const meta = $(`[data-dl-main-meta="${os}"]`);
+        if (!btn) continue;
+        if (main) {
+          btn.href = main.url;
+          $("[data-dl-main-label]", btn).textContent = fill(T.downloadFor, { os: T.os[os] });
+          meta.textContent = [kindLabel(main)[0], size(main.size)].join(" · ");
+          $$(`[data-dl-filename="${os}"]`).forEach((el) => (el.textContent = main.name));
+        } else {
+          btn.href = release.url;
+          $("[data-dl-main-label]", btn).textContent = T.onGithub;
+          meta.textContent = T.noFile;
+        }
+        $(`[data-dl-files="${os}"]`).innerHTML = rest.length ? rest.map((f) => fileRow(f, false)).join("") : `<p class="dl-empty">—</p>`;
+        // macOS: the other kind of Mac, right under the button.
+        const alt = $(`[data-dl-alt="${os}"]`);
+        if (alt) {
+          const other = main && rest.find((f) => f.info.kind !== main.info.kind && f.info.kind.startsWith("dmg"));
+          alt.hidden = !other;
+          if (other) alt.innerHTML = `${esc(T.macOther[other.info.kind] || "")} <a href="${esc(other.url)}" download>${esc(kindLabel(other)[0])}</a> <small>${esc(size(other.size))}</small>`;
+        }
       }
     };
     select.addEventListener("change", () => {

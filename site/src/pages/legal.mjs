@@ -10,7 +10,7 @@ export default {
     fr: "Mentions légales du site de RayTeX : éditeur, hébergeur, propriété intellectuelle et responsabilité.",
   },
   body({ T, url, GITHUB, lang, tex }) {
-    return `${tex.chapter("G", T("Legal notice", "Mentions légales"), { lead: T(`Last updated: ${UPDATED.en}.`, `Dernière mise à jour : ${UPDATED.fr}.`) })}
+    return `${tex.chapter("G", T("Legal notice", "Mentions légales"), { stamp: [T("Filed", "Classé"), "violet", -6], lead: T(`Last updated: ${UPDATED.en}.`, `Dernière mise à jour : ${UPDATED.fr}.`) })}
 ${tex.section(T("Publisher", "Éditeur du site"), "publisher")}
 <p data-reveal>${T(
       `This website presents RayTeX, a free and open-source software project. It is published by <b>ifanoxy</b>, maintainer of the project, as a private individual and on a non-commercial basis. Director of publication: ifanoxy.`,

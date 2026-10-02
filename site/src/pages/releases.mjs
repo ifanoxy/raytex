@@ -8,6 +8,7 @@ export default {
   },
   body({ T, icon, GITHUB, tex }) {
     return `${tex.chapter("C", T("Every version", "Toutes les versions"), {
+      stamp: [T("Changelog", "Journal"), "violet", 6],
       epigraph: [T("Version 0.1: one has to start somewhere.", "Version 0.1 : il faut bien commencer quelque part."), T("the changelog", "le journal des modifications")],
       lead: T(
         "What changed in each version, and its files for every system. Older versions stay available; RayTeX itself offers the new ones when it starts.",

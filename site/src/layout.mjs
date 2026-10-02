@@ -1,8 +1,20 @@
 // The frame of every page: head, navigation bar, footer, and the texts the
 // scripts of the site need (downloads, releases).
 
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { icon } from "./icons.mjs";
 import { texContext } from "./tex.mjs";
+
+// The style and the script carry the hash of their content, so that a new
+// version of the site is never shown with the previous ones from the cache.
+const ASSETS = join(dirname(fileURLToPath(import.meta.url)), "../assets");
+const stamp = (file) => createHash("sha256").update(readFileSync(join(ASSETS, file))).digest("hex").slice(0, 10);
+const CSS_V = stamp("site.css");
+const JS_V = stamp("site.js");
 
 export const REPO = "ifanoxy/raytex";
 export const GITHUB = `https://github.com/${REPO}`;
@@ -41,6 +53,8 @@ const SCRIPT_TEXTS = {
     files: "{n} files",
     otherFiles: "Other files",
     version: "Version",
+    versionLine: "Version {v}, released on {date}",
+    macOther: { "dmg-x64": "A Mac with an Intel processor?", "dmg-arm64": "A Mac with an Apple chip (M1, M2…)?" },
     os: { windows: "Windows", macos: "macOS", linux: "Linux", mobile: "a computer", unknown: "your computer" },
     arch: { arm64: "Apple silicon", x64: "Intel" },
     kinds: {
@@ -76,6 +90,8 @@ const SCRIPT_TEXTS = {
     files: "{n} fichiers",
     otherFiles: "Autres fichiers",
     version: "Version",
+    versionLine: "Version {v}, publiée le {date}",
+    macOther: { "dmg-x64": "Un Mac avec un processeur Intel ?", "dmg-arm64": "Un Mac avec une puce Apple (M1, M2…) ?" },
     os: { windows: "Windows", macos: "macOS", linux: "Linux", mobile: "un ordinateur", unknown: "votre ordinateur" },
     arch: { arm64: "Apple silicon", x64: "Intel" },
     kinds: {
@@ -92,7 +108,8 @@ const SCRIPT_TEXTS = {
   },
 };
 
-const THEME_SCRIPT = `(function(){var t,d=document.documentElement;try{t=localStorage.getItem("raytex-theme")}catch(e){}d.dataset.theme=t||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");d.classList.add("js")})();`;
+// Paper by day unless the reader turned the page to night (the button).
+const THEME_SCRIPT = `(function(){var t,d=document.documentElement;try{t=localStorage.getItem("raytex-theme")}catch(e){}d.dataset.theme=t==="dark"?"dark":"light";d.classList.add("js")})();`;
 
 /** Icons the scripts insert (download lists). */
 const SCRIPT_ICONS = Object.fromEntries(["windows", "apple", "linux", "download", "copy", "github"].map((n) => [n, icon(n, n === "copy" ? 13 : 16)]));
@@ -106,7 +123,7 @@ function head({ title, description, lang, canonical, alternates, rel, siteUrl, e
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}" />
 <meta name="theme-color" content="#fbfaf6" />
-<meta name="color-scheme" content="light dark" />
+<meta name="color-scheme" content="light" />
 ${canonical ? `<link rel="canonical" href="${canonical}" />` : ""}
 ${alternates ?? ""}
 <meta property="og:type" content="website" />
@@ -122,10 +139,10 @@ ${alternates ?? ""}
 <link rel="preload" href="${rel}assets/fonts/lm-roman-regular.woff" as="font" type="font/woff" crossorigin />
 <link rel="preload" href="${rel}assets/fonts/caveat-latin.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="${rel}assets/katex/katex.min.css" />
-<link rel="stylesheet" href="${rel}assets/site.css" />
+<link rel="stylesheet" href="${rel}assets/site.css?v=${CSS_V}" />
 <script>${THEME_SCRIPT}</script>
 ${extra}
-<script src="${rel}assets/site.js" defer></script>`;
+<script src="${rel}assets/site.js?v=${JS_V}" defer></script>`;
 }
 
 /** A whole page. `p` is a page module, `path` its place in the site. */
@@ -141,11 +158,10 @@ export function page(p, { lang, path, siteUrl, version, prefix }) {
   const title = p.id === "home" ? T("RayTeX — the next-generation, open-source LaTeX IDE", "RayTeX — l'IDE LaTeX nouvelle génération, open source") : `${T(p.title.en, p.title.fr)} — RayTeX`;
   const description = T(p.description.en, p.description.fr);
   const alternates = ["en", "fr"].map((l) => `<link rel="alternate" hreflang="${l}" href="${siteUrl}/${prefix(l)}${p.path}" />`).join("\n") + `\n<link rel="alternate" hreflang="x-default" href="${siteUrl}/${p.path}" />`;
-  // French readers arriving on the English home page go to theirs, once.
-  const redirect =
-    p.id === "home" && lang === "en"
-      ? `<script>try{if(!localStorage.getItem("raytex-lang")&&/^fr\\b/i.test(navigator.language||""))location.replace("fr/")}catch(e){}</script>`
-      : "";
+  // Every page in the reader's language: the one chosen with the switch, or
+  // else the first of the browser's languages that the site speaks (English
+  // otherwise). Robots stay on the page they asked for.
+  const redirect = `<script>(function(){try{if(/bot|crawl|spider|slurp|lighthouse|preview/i.test(navigator.userAgent))return;var w=localStorage.getItem("raytex-lang");if(!w){var l=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||"en"];w="en";for(var i=0;i<l.length;i++){var c=String(l[i]).slice(0,2).toLowerCase();if(c==="fr"||c==="en"){w=c;break}}}if(w!=="${lang}"&&(w==="fr"||w==="en"))location.replace("${url(p.path, other)}"+location.search+location.hash)}catch(e){}})();</script>`;
   const body = p.body(ctx);
 
   const nav = NAV.map(([id, to, en, fr]) => `<a href="${url(to)}"${id === p.id ? ' aria-current="page"' : ""}>${T(en, fr)}</a>`).join("");
@@ -167,7 +183,7 @@ ${head({ title, description, lang, canonical: `${siteUrl}/${path}`, alternates, 
     <div class="topbar-actions">
       <a class="tool" href="${url(p.path, other)}" hreflang="${other}" lang="${other}" data-lang-switch="${other}" title="${T("Version française", "English version")}">${other.toUpperCase()}</a>
       <button class="tool" type="button" data-theme-toggle title="${T("Paper by day, paper by night", "Papier de jour, papier de nuit")}" aria-label="${T("Light or dark theme", "Thème clair ou sombre")}">${icon("sun", 16, "when-dark")}${icon("moon", 16, "when-light")}</button>
-      <a class="fbox-link" href="${url("download/")}"${p.id === "download" ? ' aria-current="page"' : ""}>${icon("download", 15)}<span>${T("Download", "Télécharger")}</span></a>
+      <a class="fbox-link solid" href="${url("download/")}"${p.id === "download" ? ' aria-current="page"' : ""}>${icon("download", 15)}<span>${T("Download", "Télécharger")}</span></a>
       <button class="tool menu-btn" type="button" data-menu aria-expanded="false" aria-controls="main-nav" aria-label="${T("Menu", "Menu")}"><span></span><span></span><span></span></button>
     </div>
   </div>

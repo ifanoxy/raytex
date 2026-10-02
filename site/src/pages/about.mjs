@@ -19,6 +19,7 @@ export default {
       ["KaTeX", T("the live maths preview (and the formulas of this site)", "l'aperçu des formules (et les formules de ce site)")],
     ];
     return `${tex.chapter("F", T("About and contributing", "À propos et contribuer"), {
+      stamp: [T("Hand-made", "Fait main"), "violet", 7],
       epigraph: [T("A ray is a Bézier curve that learnt to swim.", "Une raie, c'est une courbe de Bézier qui a appris à nager."), T("the logo", "le logo")],
       lead: T(
         "LaTeX gives beautiful documents, but its error messages scare beginners and slow everyone down. RayTeX was made so that every error is understood, and most are fixed in one click.",

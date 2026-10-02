@@ -1,7 +1,9 @@
 // The building blocks of the pages, borrowed from LaTeX: numbered sections,
 // equations (KaTeX, rendered when the site is built), figures, theorems,
 // tables, listings, footnotes, a table of contents, and the handwriting of
-// the margin (notes, arrows, circled and crossed-out words).
+// the reader: notes and arrows in the margin, words circled, boxed,
+// underlined, highlighted or crossed out, ticks, stamps and sticky notes.
+// The strokes draw themselves when they come into view (site.js).
 
 import katex from "katex";
 
@@ -16,23 +18,38 @@ export function texContext(lang) {
   const num = (k) => (n.chapter ? `${n.chapter}.${k}` : `${k}`);
   const footnotes = [];
 
-  /** Mathematics: inline, or displayed. */
+  /** Mathematics: inline, or displayed. \htmlClass{tx-violet}{…} colours a
+   *  part (tx-violet, tx-red, tx-green), \htmlClass{strike}{…} crosses it out
+   *  and \htmlClass{hbox}{…} boxes it, by hand. */
   const math = (tex, display = false) =>
-    katex.renderToString(tex, { displayMode: display, throwOnError: true, strict: "ignore", output: "html" });
+    katex.renderToString(tex, {
+      displayMode: display,
+      throwOnError: true,
+      strict: "ignore",
+      output: "html",
+      trust: (c) => c.command === "\\htmlClass",
+    });
+
+  /** A stroke drawn by hand in an SVG stretched over a word. */
+  const stroke = (cls, viewBox, d) =>
+    `<svg class="${cls}" viewBox="${viewBox}" preserveAspectRatio="none" aria-hidden="true"><path class="draw-me" d="${d}"/></svg>`;
+  // A wave, like the red line under a spelling mistake.
+  const WAVE = `M0 4 ${Array.from({ length: 14 }, (_, i) => `q 3.5 ${i % 2 ? 3.5 : -3.5} 7 0`).join(" ")}`;
 
   return {
     math: (tex) => `<span class="m" data-tex="${esc(`$${tex}$`)}">${math(tex)}</span>`,
 
     /** A displayed equation, numbered (1), (2)… (double-click: its source). */
-    eq(tex, { label = true } = {}) {
+    eq(tex, { label = true, cls = "" } = {}) {
       const k = label ? num(++n.equation) : null;
-      return `<div class="equation" data-reveal data-tex="${esc(`\\begin{equation}\n  ${tex}\n\\end{equation}`)}"><div class="eq-body">${math(tex, true)}</div>${k ? `<span class="eq-num">(${k})</span>` : ""}</div>`;
+      return `<div class="equation ${cls}" data-reveal data-tex="${esc(`\\begin{equation}\n  ${tex}\n\\end{equation}`)}"><div class="eq-body">${math(tex, true)}</div>${k ? `<span class="eq-num">(${k})</span>` : ""}</div>`;
     },
 
     /** \chapter of an appendix: « Annexe B », its title, an epigraph, a lead. */
-    chapter(letter, title, { epigraph = null, lead = "" } = {}) {
+    chapter(letter, title, { epigraph = null, lead = "", stamp = null } = {}) {
       n.chapter = letter;
-      return `<header class="chapter" data-reveal><p class="chapter-label">${fr ? "Annexe" : "Appendix"} <span>${letter}</span></p><h1 class="chapter-title">${title}</h1>${
+      const mark = stamp ? `<span class="stamp stamp-${stamp[1] ?? "red"} stamp-chapter" data-reveal style="--tilt: ${stamp[2] ?? 7}deg">${stamp[0]}</span>` : "";
+      return `<header class="chapter" data-reveal>${mark}<p class="chapter-label">${fr ? "Annexe" : "Appendix"} <span>${letter}</span></p><h1 class="chapter-title">${title}</h1>${
         epigraph ? `<blockquote class="epigraph"><p>${epigraph[0]}</p><footer>— ${epigraph[1]}</footer></blockquote>` : ""
       }${lead ? `<p class="chapter-lead">${lead}</p>` : ""}</header>`;
     },
@@ -84,8 +101,8 @@ export function texContext(lang) {
     /** \begin{description}. */
     description: (items) => `<dl class="description" data-reveal>${items.map(([t, d]) => `<dt>${t}</dt><dd>${d}</dd>`).join("")}</dl>`,
 
-    /** A note in the margin, by hand, in violet ink. */
-    note(text, { arrow = "left", tilt = -2 } = {}) {
+    /** A note in the margin, by hand: violet ink, or red, or green. */
+    note(text, { arrow = "left", tilt = -2, color = "violet" } = {}) {
       const id = ++n.note;
       const arrows = {
         left: '<path d="M70 8 C 48 4, 24 10, 6 26 M6 26 l 3 -12 M6 26 l 12 -2"/>',
@@ -94,16 +111,44 @@ export function texContext(lang) {
         none: "",
       };
       const svg = arrows[arrow] ? `<svg class="note-arrow arrow-${arrow}" viewBox="0 0 76 48" aria-hidden="true"><g class="draw">${arrows[arrow]}</g></svg>` : "";
-      return `<aside class="marginnote" data-reveal style="--tilt: ${tilt}deg" id="note-${id}">${svg}<span class="hand">${text}</span></aside>`;
+      return `<aside class="marginnote ink-${color}" data-reveal style="--tilt: ${tilt}deg" id="note-${id}">${svg}<span class="hand">${text}</span></aside>`;
     },
 
-    /** A word circled by hand. */
-    circled: (text) =>
-      `<span class="circled">${text}<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path class="draw-me" d="M8 22 C 6 8, 40 3, 62 5 C 86 7, 98 14, 95 24 C 92 34, 60 38, 36 36 C 16 34, 4 28, 10 16 C 14 10, 24 6, 34 5"/></svg></span>`,
+    /** A sticky note in the margin, a bit of tape on top. */
+    sticky: (text, { tilt = 3, color = "yellow" } = {}) =>
+      `<aside class="sticky sticky-${color}" data-reveal style="--tilt: ${tilt}deg"><span class="hand">${text}</span></aside>`,
 
-    /** A word underlined by hand. */
-    underline: (text) =>
-      `<span class="scribble">${text}<svg viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><path class="draw-me" d="M2 6 C 20 3, 40 8, 60 5 S 90 4, 98 6"/></svg></span>`,
+    /** A word circled by hand. */
+    circled: (text, color = "violet") =>
+      `<span class="circled ink-${color}">${text}${stroke("", "0 0 100 40", "M8 22 C 6 8, 40 3, 62 5 C 86 7, 98 14, 95 24 C 92 34, 60 38, 36 36 C 16 34, 4 28, 10 16 C 14 10, 24 6, 34 5")}</span>`,
+
+    /** A word boxed by hand. */
+    boxed: (text, color = "violet") =>
+      `<span class="handbox ink-${color}">${text}${stroke("", "0 0 100 40", "M5 4 C 30 2, 70 5, 97 3 C 99 14, 98 27, 97 37 C 68 39, 32 38, 3 37 C 1 26, 2 14, 7 1")}</span>`,
+
+    /** A word underlined by hand (twice, to insist). */
+    underline: (text, color = "violet", twice = false) =>
+      `<span class="scribble ink-${color}${twice ? " twice" : ""}">${text}${stroke("", "0 0 100 10", twice ? "M2 4 C 20 2, 40 6, 60 3 S 90 3, 98 4 M6 8 C 30 6, 60 9, 95 7" : "M2 6 C 20 3, 40 8, 60 5 S 90 4, 98 6")}</span>`,
+
+    /** A word underlined with a red wave, like a spelling mistake. */
+    squiggle: (text) => `<span class="scribble squiggle ink-red">${text}${stroke("", "0 0 100 8", WAVE)}</span>`,
+
+    /** A phrase gone over with a highlighter (yellow, pink, green, violet). */
+    hl: (text, color = "yellow") => `<mark class="hl hl-${color}">${text}</mark>`,
+
+    /** A rubber stamp, pressed on the page when it comes into view. */
+    stamp: (text, { color = "red", tilt = -8, cls = "" } = {}) =>
+      `<span class="stamp stamp-${color} ${cls}" data-reveal style="--tilt: ${tilt}deg">${text}</span>`,
+
+    /** A small star drawn in the margin of a line. */
+    star: (color = "violet") =>
+      `<svg class="doodle-star ink-${color}" viewBox="0 0 24 24" aria-hidden="true"><path class="draw-me" d="M12 2.5 L14.3 9.4 L21.5 9.6 L15.7 13.9 L17.9 21 L12 16.7 L6.2 21 L8.3 13.9 L2.5 9.6 L9.7 9.4 Z"/></svg>`,
+
+    /** A list whose items are ticked by hand, one after the other. */
+    checklist: (items, color = "green") =>
+      `<ul class="checklist ink-${color}" data-reveal>${items
+        .map((i, k) => `<li style="--k: ${k}"><svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path class="draw-me" d="M3 13 C 6 15, 8 18, 9.5 20.5 C 12 13, 16 7, 22 2.5"/></svg>${i}</li>`)
+        .join("")}</ul>`,
 
     /** A word crossed out in red, corrected above by hand. */
     fix: (wrong, right) =>

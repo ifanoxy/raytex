@@ -8,10 +8,11 @@ export default {
   },
   body({ T, icon, GITHUB, tex }) {
     return `${tex.chapter("I", T("License", "Licence"), {
+      stamp: ["MIT ∨ Apache", "violet", 7],
       epigraph: [T("Free as in freedom — twice over.", "Libre comme l'air — deux fois plutôt qu'une."), T("the ray", "la raie")],
       lead: T("RayTeX is distributed under the MIT license <b>or</b> the Apache License 2.0, at your choice — the usual pair of the Rust world.", "RayTeX est distribué sous la licence MIT <b>ou</b> la licence Apache 2.0, au choix — le duo habituel du monde Rust."),
     })}
-${tex.eq(String.raw`\mathcal{L}(\text{RayTeX}) \;=\; \text{MIT} \;\lor\; \text{Apache-2.0}`)}
+${tex.eq(String.raw`\mathcal{L}(\text{RayTeX}) \;=\; \htmlClass{tx-violet}{\text{MIT} \;\lor\; \text{Apache-2.0}}`)}
 
 ${tex.section(T("What you can do", "Ce que vous pouvez faire"), "can")}
 ${tex.theorem(
