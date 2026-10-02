@@ -741,23 +741,23 @@
     pointer-events: all;
   }
   .shape.sel :not(.hit):not(.head) {
-    filter: drop-shadow(0 0 2px rgba(227, 168, 87, 0.9));
+    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--accent) 90%, transparent));
   }
   .head {
     pointer-events: none;
   }
   .handle {
     fill: #fff;
-    stroke: #e3a857;
+    stroke: var(--accent);
     stroke-width: 2;
     cursor: grab;
   }
   .vertex {
-    fill: #e3a857;
+    fill: var(--accent);
   }
   .cursor {
     fill: none;
-    stroke: #e3a857;
+    stroke: var(--accent);
     stroke-width: 1.5;
     pointer-events: none;
   }
@@ -788,7 +788,7 @@
     border-radius: 50%;
   }
   .node.sel {
-    outline: 2px solid rgba(227, 168, 87, 0.9);
+    outline: 2px solid color-mix(in srgb, var(--accent) 90%, transparent);
     outline-offset: 2px;
   }
   .node :global(.katex) {
