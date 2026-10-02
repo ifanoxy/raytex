@@ -21,7 +21,7 @@ RAY = json.loads((HERE / "ray.json").read_text())
 
 # The two violets of the drawing, and brighter ones for dark backgrounds.
 ON_LIGHT = ("#7e87d9", "#6d4fd8")
-ON_DARK = ("#c7b6ff", "#9b74ff")
+ON_DARK = ("#a9b0f2", "#9479f4")
 
 
 def ray(colors=ON_LIGHT) -> str:
@@ -108,7 +108,7 @@ def main():
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="0.4" y2="1">
       <stop offset="0" stop-color="#fdfcff"/>
-      <stop offset="1" stop-color="#e9e1ff"/>
+      <stop offset="1" stop-color="#e4e6fb"/>
     </linearGradient>
     <filter id="shade" x="-10%" y="-10%" width="120%" height="130%">
       <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#4b2aa8" flood-opacity="0.22"/>
@@ -136,8 +136,8 @@ def main():
     ray_w = rw * rs
     width = ray_w + gap + lw * ts
     for name, text, accent, colors in [
-        ("logo-mark-dark.svg", "#efeaff", "#b89dff", ON_DARK),
-        ("logo-mark-light.svg", "#1d1636", "#6a3ce0", ON_LIGHT),
+        ("logo-mark-dark.svg", "#eceefc", "#a9b0f2", ON_DARK),
+        ("logo-mark-light.svg", "#1d1636", "#6d4fd8", ON_LIGHT),
     ]:
         mark = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="-6 -16 {width + 12:.2f} {height * 1.5 + 24:.2f}" width="{(width + 12) * 2:.0f}" height="{(height * 1.5 + 24) * 2:.0f}">
   <defs>

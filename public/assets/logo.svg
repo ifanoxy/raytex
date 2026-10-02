@@ -2,7 +2,7 @@
   <defs>
     <linearGradient id="tile" x1="0" y1="0" x2="0.4" y2="1">
       <stop offset="0" stop-color="#fdfcff"/>
-      <stop offset="1" stop-color="#e9e1ff"/>
+      <stop offset="1" stop-color="#e4e6fb"/>
     </linearGradient>
     <filter id="shade" x="-10%" y="-10%" width="120%" height="130%">
       <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#4b2aa8" flood-opacity="0.22"/>

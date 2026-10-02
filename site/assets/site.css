@@ -87,6 +87,8 @@
   --rule: #1c1b20;
   --violet: #6a3ce0;
   --lavender: #b7a2f5;
+  --ray-1: #7e87d9;
+  --ray-2: #6d4fd8;
   --violet-soft: rgba(106, 60, 224, 0.09);
   --red: #c4303d;
   --green: #1f7a5a;
@@ -105,6 +107,8 @@
   --rule: #ddd6f0;
   --violet: #b9a3ff;
   --lavender: #8c74d8;
+  --ray-1: #a9b0f2;
+  --ray-2: #9479f4;
   --violet-soft: rgba(185, 163, 255, 0.1);
   --red: #ff7b88;
   --green: #7fd3ad;
@@ -654,16 +658,10 @@ main {
   stroke-opacity: 0;
 }
 .ray-sketch .ray-light {
-  fill: var(--lavender);
+  fill: var(--ray-1);
 }
 .ray-sketch .ray-dark {
-  fill: var(--violet);
-}
-[data-theme="dark"] .ray-sketch .ray-light {
-  fill: #c7b6ff;
-}
-[data-theme="dark"] .ray-sketch .ray-dark {
-  fill: #9b74ff;
+  fill: var(--ray-2);
 }
 .js .ray-sketch path {
   fill-opacity: 0;
@@ -2560,10 +2558,10 @@ html.opening .intro {
   transition: stroke-dashoffset 0.9s cubic-bezier(0.4, 0, 0.3, 1), fill-opacity 0.6s var(--ease) 0.5s, stroke-opacity 0.5s var(--ease) 0.85s;
 }
 .intro-ray .ray-light {
-  fill: var(--lavender);
+  fill: var(--ray-1);
 }
 .intro-ray .ray-dark {
-  fill: var(--violet);
+  fill: var(--ray-2);
 }
 .intro.s-ink .intro-ray path {
   stroke-dashoffset: 0;
