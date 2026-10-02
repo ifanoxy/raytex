@@ -8,9 +8,10 @@
 //   SITE_URL=https://example.org        address of the site (canonical links,
 //                                       sitemap); default: GitHub Pages
 //
-// No dependency: pages are functions returning HTML (site/src/pages).
+// Pages are functions returning HTML (site/src/pages); the formulas are
+// rendered by KaTeX (from node_modules: `npm ci` first).
 
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -48,6 +49,14 @@ cpSync(join(here, "assets"), join(out, "assets"), { recursive: true });
 cpSync(join(root, "assets/logo.svg"), join(out, "assets/img/logo.svg"));
 cpSync(join(root, "assets/logo/logo-mark-dark.svg"), join(out, "assets/img/logo-mark-dark.svg"));
 cpSync(join(root, "assets/logo/logo-mark-light.svg"), join(out, "assets/img/logo-mark-light.svg"));
+cpSync(join(root, "assets/logo/ray.svg"), join(out, "assets/img/ray.svg"));
+// KaTeX's style and fonts (the formulas are rendered to HTML when building).
+const katex = join(root, "node_modules/katex/dist");
+mkdirSync(join(out, "assets/katex/fonts"), { recursive: true });
+cpSync(join(katex, "katex.min.css"), join(out, "assets/katex/katex.min.css"));
+for (const font of readdirSync(join(katex, "fonts")).filter((f) => f.endsWith(".woff2"))) {
+  cpSync(join(katex, "fonts", font), join(out, "assets/katex/fonts", font));
+}
 for (const lang of LANGS) cpSync(join(root, "docs/screenshots", lang), join(out, "assets/screenshots", lang), { recursive: true });
 writeFileSync(join(out, ".nojekyll"), "");
 

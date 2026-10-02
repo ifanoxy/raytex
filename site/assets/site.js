@@ -1,14 +1,18 @@
-// RayTeX website: theme, menu, animations, the editor demo, and the
-// downloads (system detection, versions from GitHub's releases).
+// RayTeX website: theme, menu, the life of the page (figures that draw
+// themselves, notes written in the margin, the ray), a few surprises, and
+// the downloads (system detection, versions from GitHub's releases).
 (() => {
   "use strict";
   const C = window.RAYTEX || { lang: "en", rel: "", texts: {}, icons: {} };
   const T = C.texts;
+  const fr = (document.documentElement.lang || C.lang) === "fr";
+  const L = (en, frText) => (fr ? frText : en);
   const $ = (s, root = document) => root.querySelector(s);
   const $$ = (s, root = document) => [...root.querySelectorAll(s)];
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const fill = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? "");
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const rand = (a, b) => a + Math.random() * (b - a);
   const store = {
     get: (k) => {
       try {
@@ -27,8 +31,8 @@
   };
 
   // --------------------------------------------------------- header, menu
-  const header = $(".site-header");
-  const onScroll = () => header && header.classList.toggle("scrolled", scrollY > 8);
+  const topbar = $(".topbar");
+  const onScroll = () => topbar && topbar.classList.toggle("scrolled", scrollY > 8);
   addEventListener("scroll", onScroll, { passive: true });
   onScroll();
 
@@ -39,16 +43,93 @@
   });
   $$(".main-nav a").forEach((a) => a.addEventListener("click", () => document.body.classList.remove("menu-open")));
 
-  $("[data-theme-toggle]")?.addEventListener("click", () => {
-    const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+  // Paper by day, paper by night: the ink spreads from the button.
+  $("[data-theme-toggle]")?.addEventListener("click", (e) => {
+    const root = document.documentElement;
+    const next = root.dataset.theme === "light" ? "dark" : "light";
     const apply = () => {
-      document.documentElement.dataset.theme = next;
+      root.dataset.theme = next;
       store.set("raytex-theme", next);
     };
-    if (document.startViewTransition && !reduced) document.startViewTransition(apply).ready.catch(() => {});
-    else apply();
+    if (!document.startViewTransition || reduced) return apply();
+    const x = e.clientX || innerWidth - 60;
+    const y = e.clientY || 30;
+    const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    root.classList.add("theme-vt");
+    const vt = document.startViewTransition(apply);
+    vt.ready
+      .then(() =>
+        root.animate({ clipPath: [`circle(0 at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] }, { duration: 650, easing: "cubic-bezier(.22,.7,.2,1)", pseudoElement: "::view-transition-new(root)" }),
+      )
+      .catch(() => {});
+    vt.finished.catch(() => {}).finally(() => root.classList.remove("theme-vt"));
   });
   $$("[data-lang-switch]").forEach((a) => a.addEventListener("click", () => store.set("raytex-lang", a.dataset.langSwitch)));
+
+  // \today, in the reader's language.
+  $$("[data-today]").forEach((el) => (el.textContent = new Intl.DateTimeFormat(fr ? "fr" : "en", { dateStyle: "long" }).format(new Date())));
+
+  // ------------------------------------------------------- the strokes
+  // Each stroke knows its length, so that it can trace itself; the steps of
+  // a figure (data-step) follow one another.
+  function strokeLength(el) {
+    let len = 0;
+    try {
+      len = el.getTotalLength();
+      // Strokes that do not scale are dashed in screen pixels.
+      if (getComputedStyle(el).vectorEffect === "non-scaling-stroke") {
+        const m = el.getScreenCTM();
+        if (m) {
+          let prev = null;
+          len = 0;
+          const total = el.getTotalLength();
+          for (let i = 0; i <= 40; i++) {
+            const p = el.getPointAtLength((total * i) / 40).matrixTransform(m);
+            if (prev) len += Math.hypot(p.x - prev.x, p.y - prev.y);
+            prev = p;
+          }
+        }
+      }
+    } catch {
+      len = 400;
+    }
+    return Math.ceil(len) + 2;
+  }
+  function prepareStrokes(root = document) {
+    for (const el of $$(".note-arrow path, .draw-me, svg .draw:not(.dashed), .ray-sketch path", root)) {
+      el.style.setProperty("--len", strokeLength(el));
+    }
+    for (const el of $$("svg [data-step]", root)) {
+      const step = Number(el.dataset.step);
+      el.style.setProperty("--delay", `${0.25 + step * 0.6}s`);
+    }
+    // Labels and handwriting once the last stroke is drawn.
+    for (const svg of $$("svg.tikz", root)) {
+      const last = Math.max(0, ...$$("[data-step]", svg).map((e) => Number(e.dataset.step)));
+      $$(".tikz-labels, .tikz-label, .tikz-hand", svg).forEach((el) => el.style.setProperty("--delay", `${0.6 + last * 0.6}s`));
+    }
+  }
+  prepareStrokes();
+
+  // A figure drawn again when clicked.
+  $$(".figure-tikz svg").forEach((svg) => {
+    svg.style.cursor = "pointer";
+    svg.addEventListener("click", () => {
+      if (reduced) return;
+      const parts = $$(".draw, .tikz-dot, .tikz-labels, .tikz-label, .tikz-hand", svg);
+      parts.forEach((el) => {
+        el.style.transition = "none";
+        if (el.classList.contains("draw") && !el.classList.contains("dashed")) el.style.strokeDashoffset = "var(--len)";
+        else el.style.opacity = "0";
+      });
+      svg.getBoundingClientRect();
+      parts.forEach((el) => {
+        el.style.transition = "";
+        el.style.strokeDashoffset = "";
+        el.style.opacity = "";
+      });
+    });
+  });
 
   // ------------------------------------------------------------ reveals
   const reveal = new IntersectionObserver(
@@ -56,72 +137,264 @@
       let i = 0;
       for (const e of entries) {
         if (!e.isIntersecting) continue;
-        e.target.style.setProperty("--d", `${Math.min(i++, 6) * 0.07}s`);
+        e.target.style.setProperty("--d", `${Math.min(i++, 6) * 0.08}s`);
         e.target.classList.add("visible");
         reveal.unobserve(e.target);
-        const counter = $("[data-count]", e.target);
-        if (counter) count(counter);
       }
     },
     { rootMargin: "0px 0px -8% 0px", threshold: 0.08 },
   );
   $$("[data-reveal]").forEach((el) => reveal.observe(el));
 
-  function count(el) {
-    const n = Number(el.dataset.count);
-    if (reduced || n === 0) return;
-    const start = performance.now();
-    const step = (now) => {
-      const t = Math.min(1, (now - start) / 1300);
-      el.textContent = String(Math.round(n * (1 - Math.pow(1 - t, 3))));
-      if (t < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
+  // --------------------------------------------------------------- the ray
+  const hero = $("[data-ray]");
+  if (hero) {
+    const sketch = $(".ray-sketch", hero);
+    requestAnimationFrame(() => sketch.classList.add("inked"));
+    let swimming = false;
+    hero.addEventListener("click", () => {
+      if (swimming || reduced) return;
+      swimming = true;
+      hero.classList.add("swim");
+      bubbles(hero);
+      setTimeout(() => {
+        hero.classList.remove("swim");
+        swimming = false;
+      }, 3500);
+    });
   }
-
-  // Cards lit where the pointer is.
-  document.addEventListener(
-    "pointermove",
-    (e) => {
-      const card = e.target.closest?.("[data-spotlight]");
-      if (!card) return;
-      const r = card.getBoundingClientRect();
-      card.style.setProperty("--mx", `${e.clientX - r.left}px`);
-      card.style.setProperty("--my", `${e.clientY - r.top}px`);
-    },
-    { passive: true },
-  );
-
-  // ------------------------------------------------------------- hero
-  // The floating cards arrive one after the other, then follow the pointer
-  // a little, each at its own depth.
-  const panel = $("[data-hero]");
-  if (panel) {
-    $$(".floater", panel).forEach((f, i) => setTimeout(() => f.classList.add("visible"), 150 + i * 120));
-    if (!reduced && matchMedia("(pointer: fine)").matches) {
-      let frame = 0;
-      panel.addEventListener("pointermove", (e) => {
-        cancelAnimationFrame(frame);
-        frame = requestAnimationFrame(() => {
-          const r = panel.getBoundingClientRect();
-          panel.style.setProperty("--px", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
-          panel.style.setProperty("--py", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
-        });
-      });
-      panel.addEventListener("pointerleave", () => {
-        panel.style.setProperty("--px", "0");
-        panel.style.setProperty("--py", "0");
-      });
+  function bubbles(el) {
+    const r = el.getBoundingClientRect();
+    for (let i = 0; i < 9; i++) {
+      const b = document.createElement("span");
+      b.className = "ray-bubble";
+      b.style.cssText = `left:${r.left + scrollX + rand(0.2, 0.8) * r.width}px;top:${r.top + scrollY + rand(0.3, 0.7) * r.height}px;--s:${rand(5, 14)}px;--dx:${rand(-30, 30)}px;animation-delay:${i * 0.18}s`;
+      document.body.append(b);
+      setTimeout(() => b.remove(), 2400 + i * 180);
     }
   }
 
-  // ---------------------------------------------------- screenshot tabs
-  $$("[data-shot]").forEach((tab) =>
-    tab.addEventListener("click", () => {
-      $$("[data-shot]").forEach((t) => t.setAttribute("aria-selected", String(t === tab)));
-      $$("[data-shot-img]").forEach((img) => img.classList.toggle("active", img.dataset.shotImg === tab.dataset.shot));
-    }),
-  );
+  // ------------------------------------------------------------ the text
+  // Double-click on a formula: its source; again: the formula.
+  $$(".equation").forEach((eq) => {
+    eq.title = L("Double-click: the LaTeX source", "Double-clic : la source LaTeX");
+    eq.addEventListener("dblclick", () => {
+      eq.classList.toggle("source");
+      getSelection()?.removeAllRanges();
+    });
+  });
+
+  // The end of a proof turns into the ray.
+  $$("[data-qed]").forEach((q) => {
+    q.dataset.said = L("Q.E.D.", "C.Q.F.D.");
+    q.addEventListener("click", () => {
+      const on = q.classList.toggle("flipped");
+      q.innerHTML = on ? `<img src="${C.rel}assets/img/ray.svg" alt="" width="40" height="27" />` : "";
+    });
+  });
+
+  // The page number, in every style LaTeX knows.
+  const folio = $("[data-folio]");
+  if (folio) {
+    const n = Number(folio.textContent) || 1;
+    const roman = (k) =>
+      [
+        [10, "x"],
+        [9, "ix"],
+        [5, "v"],
+        [4, "iv"],
+        [1, "i"],
+      ].reduce((acc, [v, s]) => {
+        while (k >= v) {
+          acc += s;
+          k -= v;
+        }
+        return acc;
+      }, "");
+    const styles = [
+      ["arabic", String(n)],
+      ["roman", roman(n)],
+      ["Roman", roman(n).toUpperCase()],
+      ["alph", "abcdefghij"[n - 1] || String(n)],
+      ["Alph", "ABCDEFGHIJ"[n - 1] || String(n)],
+      ["fnsymbol", ["*", "†", "‡", "§", "¶", "‖", "**", "††", "‡‡", "§§"][n - 1] || "*"],
+    ];
+    let k = 0;
+    let timer = 0;
+    folio.addEventListener("click", () => {
+      k = (k + 1) % styles.length;
+      folio.textContent = styles[k][1];
+      const note = Object.assign(document.createElement("span"), { className: "folio-note", textContent: `\\pagenumbering{${styles[k][0]}}` });
+      $(".folio-note", folio)?.remove();
+      folio.append(note);
+      clearTimeout(timer);
+      timer = setTimeout(() => note.remove(), 2200);
+    });
+  }
+
+  // ------------------------------------------------------------ surprises
+  function toast(text, ms = 3200) {
+    $(".toast")?.remove();
+    const t = Object.assign(document.createElement("div"), { className: "toast", textContent: text });
+    t.setAttribute("role", "status");
+    document.body.append(t);
+    setTimeout(() => {
+      t.classList.add("out");
+      setTimeout(() => t.remove(), 400);
+    }, ms);
+  }
+
+  // \TeX: mathematics rains on the page.
+  function confetti() {
+    if (reduced) return toast("\\TeX");
+    const symbols = ["∑", "∫", "∂", "∇", "∞", "π", "α", "β", "γ", "λ", "∮", "√", "≈", "≠", "∈", "∀", "∃", "ℵ", "ℝ", "⊗", "∅", "θ", "Ω", "ζ", "ε", "∏", "TeX", "{ }", "$"];
+    for (let i = 0; i < 46; i++) {
+      const s = document.createElement("span");
+      s.className = `confetti${Math.random() < 0.35 ? " ink" : ""}`;
+      s.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+      s.style.cssText = `left:${rand(0, 100)}vw;font-size:${rand(16, 40)}px;--t:${rand(2.2, 4.2)}s;--dx:${rand(-80, 80)}px;--r:${rand(-360, 360)}deg;animation-delay:${rand(0, 0.9)}s;font-style:${Math.random() < 0.5 ? "italic" : "normal"}`;
+      document.body.append(s);
+      setTimeout(() => s.remove(), 5400);
+    }
+  }
+
+  // knuth: a reward cheque of one hexadecimal dollar (0x100 cents).
+  function cheque() {
+    $(".cheque")?.remove();
+    const c = document.createElement("div");
+    c.className = "cheque";
+    c.setAttribute("role", "status");
+    c.innerHTML = `<div class="cheque-top"><span>${L("Bank of San Serriffe", "Banque de San Serriffe")}</span><span>N° 0x100</span></div>
+      <span class="cheque-amount">$2.56</span>
+      ${L("Pay to the order of <b>you</b>, for a bug found in this document: two dollars and fifty-six cents — one hexadecimal dollar.", "Payez à l'ordre de <b>vous</b>, pour une erreur trouvée dans ce document : deux dollars et cinquante-six cents — un dollar hexadécimal.")}
+      <span class="hand">${L("— the ray", "— la raie")}</span>
+      <small>${L("In the manner of the cheques D. E. Knuth sends to whoever finds an error in his books. Not cashable.", "À la manière des chèques que D. E. Knuth envoie à qui trouve une erreur dans ses livres. Non encaissable.")}</small>`;
+    c.addEventListener("click", () => c.remove());
+    document.body.append(c);
+    setTimeout(() => c.remove(), 12000);
+  }
+
+  // Konami code: \documentclass[draft].
+  function draft() {
+    const on = document.body.classList.toggle("draft");
+    document.body.dataset.draft = L("DRAFT", "BROUILLON");
+    $$(".figure .shot").forEach((img) => (img.closest(".figure").dataset.file = (img.getAttribute("src") || "").split("/").slice(-2).join("/")));
+    toast(on ? "\\documentclass[draft]{article}" : "\\documentclass[final]{article}");
+  }
+
+  // ray: a ray crosses the page.
+  function swimmer() {
+    if (reduced) return;
+    const img = Object.assign(document.createElement("img"), { src: `${C.rel}assets/img/ray.svg`, alt: "" });
+    img.style.cssText = `position:fixed;z-index:90;width:120px;left:-140px;top:${rand(25, 70)}vh;pointer-events:none;transition:transform 6s cubic-bezier(.4,.1,.5,1)`;
+    document.body.append(img);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        img.style.transform = `translate(${innerWidth + 300}px, ${rand(-120, 120)}px) rotate(${rand(-8, 8)}deg)`;
+      }),
+    );
+    setTimeout(() => img.remove(), 6400);
+  }
+
+  const words = [
+    ["\\tex", confetti],
+    ["\\latex", confetti],
+    ["knuth", cheque],
+    ["\\bye", () => toast(L("Output written on raytex.pdf (1 page). Goodbye!", "Output written on raytex.pdf (1 page). Au revoir !"))],
+    ["raytex", swimmer],
+  ];
+  const konami = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
+  let typed = "";
+  let keys = [];
+  addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.target.closest?.("input, textarea, select, [contenteditable]") || $("[data-terminal]")) return;
+    keys = [...keys, e.key.length === 1 ? e.key.toLowerCase() : e.key].slice(-konami.length);
+    if (keys.join() === konami.join()) {
+      keys = [];
+      return draft();
+    }
+    if (e.key.length !== 1) return;
+    typed = (typed + e.key.toLowerCase()).slice(-12);
+    for (const [w, run] of words) {
+      if (typed.endsWith(w)) {
+        typed = "";
+        run();
+      }
+    }
+  });
+
+  // For those who open the console.
+  if (!$("[data-terminal]")) {
+    console.log(
+      "%cThis is RayTeX, Version 0.1 (preloaded format=site)\n%c" +
+        L(
+          "Entering extended mode.\nPsst: type \\TeX, knuth or raytex on the page, try ↑↑↓↓←→←→BA, double-click a formula, and click everything that looks like a square.",
+          "Entering extended mode.\nPsst : tapez \\TeX, knuth ou raytex sur la page, essayez ↑↑↓↓←→←→BA, double-cliquez sur une formule, et cliquez sur tout ce qui ressemble à un carré.",
+        ),
+      "font: 15px 'LM Mono', monospace; color: #6a3ce0",
+      "font: 12px 'LM Mono', monospace",
+    );
+  }
+
+  // ------------------------------------------------- 404: TeX has stopped
+  const term = $("[data-terminal]");
+  if (term) terminal(term);
+
+  function terminal(root) {
+    const home = fr ? root.dataset.homeFr : root.dataset.homeEn;
+    const segs = location.pathname.split("/").filter(Boolean);
+    $("[data-path]", root).textContent = `${segs.join("/") || "index"}.tex`;
+    $("[data-path-word]", root).textContent = `{${segs[segs.length - 1] || ""}}`;
+    const input = $("[data-input]", root);
+    const prompt = $(".t-prompt", root);
+    const say = (lines, cls = "t-dim") => {
+      const out = document.createElement("span");
+      out.innerHTML = lines.map((l) => `<span class="${cls}">${esc(l)}</span>\n`).join("");
+      prompt.before(out);
+    };
+    const go = (ms) => setTimeout(() => (location.href = home), ms);
+    const run = (cmd) => {
+      say([`? ${cmd}`], "");
+      const c = cmd.trim().toLowerCase();
+      if (c === "") {
+        say([L("Back home…", "Retour à l'accueil…")]);
+        go(500);
+      } else if (c === "h") {
+        say(
+          L(
+            "I can't find the page you asked for. Maybe it moved, or the link has a typo:\nthe pages are features, download, releases, guide, faq and about.\nType <return> and I'll take you home.",
+            "Je ne trouve pas la page demandée. Elle a peut-être changé de place, ou le lien a une faute :\nles pages sont features, download, releases, guide, faq et about.\nTapez <Entrée> et je vous ramène à l'accueil.",
+          ).split("\n"),
+        );
+      } else if (c === "x") {
+        say(["No pages of output.", "Transcript written on 404.log."]);
+        go(1400);
+      } else if (c === "e") {
+        say([L("You want to edit file 404.tex? Download RayTeX: it explains errors better than this.", "Vous voulez modifier 404.tex ? Téléchargez RayTeX : il explique les erreurs mieux que ça.")]);
+      } else if (c === "q" || c === "r" || c === "s") {
+        say([`OK, entering \\${{ q: "batchmode", r: "nonstopmode", s: "scrollmode" }[c]}...`]);
+        go(1000);
+      } else if (c === "i") {
+        say(["insert>"]);
+      } else {
+        say([L("Type <return> to proceed, H for help, X to quit.", "Tapez <Entrée> pour continuer, H pour l'aide, X pour quitter.")]);
+      }
+    };
+    addEventListener("keydown", (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const cmd = input.textContent;
+        input.textContent = "";
+        run(cmd);
+      } else if (e.key === "Backspace") {
+        input.textContent = input.textContent.slice(0, -1);
+      } else if (e.key.length === 1 && input.textContent.length < 30) {
+        e.preventDefault();
+        input.textContent += e.key;
+      }
+    });
+  }
 
   // --------------------------------------------------------------- copy
   async function copy(text, button) {
@@ -147,59 +420,8 @@
     if (b) copy(b.dataset.copy, b);
   });
 
-  // ---------------------------------------------------------- the demo
-  const demo = $("[data-demo]");
-  if (demo) runDemo(demo);
-
-  function runDemo(root) {
-    const lines = $$(".code-line .txt", root);
-    const set = (s) => (root.dataset.state = s);
-    if (reduced) {
-      lines.forEach((l) => (l.style.width = "auto"));
-      set("built");
-      return;
-    }
-    let visible = false;
-    new IntersectionObserver(([e]) => (visible = e.isIntersecting), { threshold: 0.2 }).observe(root);
-    const sleep = (ms) =>
-      new Promise((done) => {
-        const tick = () => (visible && !document.hidden ? setTimeout(done, ms) : setTimeout(tick, 250));
-        tick();
-      });
-    const caret = Object.assign(document.createElement("span"), { className: "caret" });
-
-    (async () => {
-      for (;;) {
-        set("typing");
-        lines.forEach((l) => (l.style.width = "0ch"));
-        await sleep(600);
-        for (const line of lines) {
-          line.after(caret);
-          const n = Number(line.dataset.n);
-          for (let k = 1; k <= n; k++) {
-            line.style.width = `${k}ch`;
-            await sleep(line.textContent[k - 1] === " " ? 12 : 18 + Math.random() * 30);
-          }
-          await sleep(140);
-        }
-        caret.remove();
-        await sleep(500);
-        set("error");
-        await sleep(900);
-        set("card");
-        await sleep(2200);
-        set("press");
-        await sleep(260);
-        set("fixed");
-        await sleep(900);
-        set("built");
-        await sleep(5200);
-      }
-    })();
-  }
-
   // ---------------------------------------------------------- downloads
-  const needsReleases = $("[data-download-primary], [data-dl-files], [data-releases], [data-platform]");
+  const needsReleases = $("[data-download-primary], [data-dl-files], [data-releases]");
   if (!needsReleases) return;
 
   async function detect() {
@@ -303,7 +525,7 @@
   (async () => {
     const env = await detect();
     document.documentElement.dataset.os = env.os;
-    $$(`[data-platform="${env.os}"], [data-dl-platform="${env.os}"]`).forEach((el) => el.classList.add("is-detected"));
+    $$(`[data-dl-platform="${env.os}"]`).forEach((el) => el.classList.add("is-detected"));
     const grid = $(".dl-grid");
     if (grid) {
       const detected = $(`[data-dl-platform="${env.os}"]`);
@@ -325,8 +547,9 @@
     const latest = list && list.length ? latestOf(list) : null;
     const best = latest && env.os !== "mobile" && env.os !== "unknown" ? filesFor(latest, env.os, env.arch)[0] : null;
     for (const btn of $$("[data-download-primary]")) {
+      if (btn.closest("[data-dl-hero]")) continue;
       const label = $("[data-download-label]", btn);
-      const meta = $("[data-download-meta]", btn.closest(".hero-text") || btn.parentElement);
+      const meta = $("[data-download-meta]", btn.parentElement);
       if (best) {
         btn.href = best.url;
         if (label) label.textContent = fill(T.downloadFor, { os: T.os[env.os] });
@@ -421,7 +644,7 @@
     const box = $("[data-releases]");
     const toggle = $("[data-show-prereleases]");
     if (!list || !list.length) {
-      box.innerHTML = `<div class="card dl-state"><p><strong>${esc(list ? T.noRelease : T.loadFailed)}</strong></p><p class="muted">${esc(list ? T.noReleaseHint : T.loadFailedHint)} <a href="https://github.com/${C.repo}/releases">${esc(T.onGithub)}</a></p></div>`;
+      box.innerHTML = `<div class="dl-state"><p><strong>${esc(list ? T.noRelease : T.loadFailed)}</strong></p><p class="muted">${esc(list ? T.noReleaseHint : T.loadFailedHint)} <a href="https://github.com/${C.repo}/releases">${esc(T.onGithub)}</a></p></div>`;
       toggle.closest("label").hidden = true;
       return;
     }
@@ -440,7 +663,7 @@
             .map((a) => `<a class="asset-chip" href="${esc(a.url)}" title="${esc(a.name)}">${C.icons[osIcon[a.info.os]]} ${esc(kindLabel(a)[0])} <small>${esc(size(a.size))}</small></a>`)
             .join("");
           const others = r.assets.filter((a) => !classify(a.name)).length;
-          return `<article class="card release${r === latest ? " is-latest" : ""}" id="${esc(r.tag)}" data-reveal>
+          return `<article class="release${r === latest ? " is-latest" : ""}" id="${esc(r.tag)}" data-reveal>
             <div class="release-head"><h2>${esc(r.name || r.tag)}</h2>${r === latest ? `<span class="badge latest">${esc(T.latest)}</span>` : ""}${r.prerelease ? `<span class="badge pre">${esc(T.prerelease)}</span>` : ""}<span class="release-date">${esc(fill(T.released, { date: date(r.date) }))}</span></div>
             <div class="release-notes">${r.notes}</div>
             <div class="release-assets">${chips}${others ? `<a class="asset-chip" href="${esc(r.url)}">${esc(T.otherFiles)} <small>${others}</small></a>` : ""}<a class="asset-chip" href="${esc(r.url)}">${C.icons.github} GitHub</a></div>

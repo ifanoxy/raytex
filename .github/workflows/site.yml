@@ -51,6 +51,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+      # KaTeX renders the formulas of the pages.
+      - run: npm ci
       - name: Build the site, with the published releases
         run: node site/build.mjs
         env:

@@ -16,11 +16,3 @@ export function latex(src) {
   }
   return out + esc(src.slice(last));
 }
-
-/** A section title with its small label above. */
-export const heading = (eyebrow, title, lead = "", cls = "") =>
-  `<div class="section-head ${cls}" data-reveal><p class="eyebrow">${eyebrow}</p><h2>${title}</h2>${lead ? `<p class="lead">${lead}</p>` : ""}</div>`;
-
-/** A page title band (inner pages). */
-export const pageHead = (eyebrow, title, lead = "") =>
-  `<section class="page-head"><div class="container narrow" data-reveal><p class="eyebrow">${eyebrow}</p><h1>${title}</h1>${lead ? `<p class="lead">${lead}</p>` : ""}</div></section>`;

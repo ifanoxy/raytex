@@ -2,6 +2,7 @@
 // scripts of the site need (downloads, releases).
 
 import { icon } from "./icons.mjs";
+import { texContext } from "./tex.mjs";
 
 export const REPO = "ifanoxy/raytex";
 export const GITHUB = `https://github.com/${REPO}`;
@@ -91,18 +92,21 @@ const SCRIPT_TEXTS = {
   },
 };
 
-const THEME_SCRIPT = `(function(){var t,d=document.documentElement;try{t=localStorage.getItem("raytex-theme")}catch(e){}d.dataset.theme=t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");d.classList.add("js")})();`;
+const THEME_SCRIPT = `(function(){var t,d=document.documentElement;try{t=localStorage.getItem("raytex-theme")}catch(e){}d.dataset.theme=t||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");d.classList.add("js")})();`;
 
 /** Icons the scripts insert (download lists). */
 const SCRIPT_ICONS = Object.fromEntries(["windows", "apple", "linux", "download", "copy", "github"].map((n) => [n, icon(n, n === "copy" ? 13 : 16)]));
+
+/** The page numbers, like those of a printed document (the table of contents shows them). */
+export const FOLIO = { home: 1, features: 2, download: 3, releases: 4, guide: 5, faq: 6, about: 7, legal: 8, privacy: 9, license: 10 };
 
 function head({ title, description, lang, canonical, alternates, rel, siteUrl, extra = "" }) {
   return `<meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}" />
-<meta name="theme-color" content="#0e1220" />
-<meta name="color-scheme" content="dark light" />
+<meta name="theme-color" content="#fbfaf6" />
+<meta name="color-scheme" content="light dark" />
 ${canonical ? `<link rel="canonical" href="${canonical}" />` : ""}
 ${alternates ?? ""}
 <meta property="og:type" content="website" />
@@ -112,10 +116,12 @@ ${alternates ?? ""}
 <meta property="og:image" content="${siteUrl}/assets/img/og.png" />
 <meta property="og:locale" content="${lang === "fr" ? "fr_FR" : "en_US"}" />
 <meta name="twitter:card" content="summary_large_image" />
-<link rel="icon" href="${rel}assets/img/logo.svg" type="image/svg+xml" />
+<link rel="icon" href="${rel}assets/img/ray.svg" type="image/svg+xml" />
 <link rel="icon" href="${rel}assets/img/favicon-32.png" sizes="32x32" type="image/png" />
 <link rel="apple-touch-icon" href="${rel}assets/img/apple-touch-icon.png" />
-<link rel="preload" href="${rel}assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="${rel}assets/fonts/lm-roman-regular.woff" as="font" type="font/woff" crossorigin />
+<link rel="preload" href="${rel}assets/fonts/caveat-latin.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="${rel}assets/katex/katex.min.css" />
 <link rel="stylesheet" href="${rel}assets/site.css" />
 <script>${THEME_SCRIPT}</script>
 ${extra}
@@ -129,7 +135,8 @@ export function page(p, { lang, path, siteUrl, version, prefix }) {
   const other = lang === "en" ? "fr" : "en";
   const url = (to, l = lang) => `${rel}${prefix(l)}${to}` || "./";
   const T = (en, fr) => (lang === "fr" ? fr : en);
-  const ctx = { lang, T, url, rel, asset: (a) => `${rel}assets/${a}`, icon, esc, version, GITHUB, REPO, YEAR };
+  const tex = texContext(lang);
+  const ctx = { lang, T, url, rel, asset: (a) => `${rel}assets/${a}`, icon, esc, version, GITHUB, REPO, YEAR, tex, FOLIO };
 
   const title = p.id === "home" ? T("RayTeX — the next-generation, open-source LaTeX IDE", "RayTeX — l'IDE LaTeX nouvelle génération, open source") : `${T(p.title.en, p.title.fr)} — RayTeX`;
   const description = T(p.description.en, p.description.fr);
@@ -150,24 +157,28 @@ ${head({ title, description, lang, canonical: `${siteUrl}/${path}`, alternates, 
 </head>
 <body data-page="${p.id}">
 <a class="skip" href="#main">${T("Skip to content", "Aller au contenu")}</a>
-<div class="backdrop" aria-hidden="true"><div class="glow glow-a"></div><div class="glow glow-b"></div></div>
-<header class="site-header">
-  <div class="container header-inner">
+<header class="topbar">
+  <div class="topbar-inner">
     <a class="brand" href="${url("")}" aria-label="RayTeX — ${T("home", "accueil")}">
-      <img class="brand-dark" src="${rel}assets/img/logo-mark-dark.svg" alt="RayTeX" width="116" height="40" />
-      <img class="brand-light" src="${rel}assets/img/logo-mark-light.svg" alt="" width="116" height="40" />
+      <img class="brand-light" src="${rel}assets/img/logo-mark-light.svg" alt="RayTeX" width="132" height="44" />
+      <img class="brand-dark" src="${rel}assets/img/logo-mark-dark.svg" alt="" width="132" height="44" />
     </a>
     <nav class="main-nav" id="main-nav" aria-label="${T("Main", "Principale")}">${nav}</nav>
-    <div class="header-actions">
-      <a class="icon-btn" href="${url(p.path, other)}" hreflang="${other}" lang="${other}" data-lang-switch="${other}" title="${T("Version française", "English version")}">${other.toUpperCase()}</a>
-      <button class="icon-btn" type="button" data-theme-toggle title="${T("Light or dark theme", "Thème clair ou sombre")}" aria-label="${T("Light or dark theme", "Thème clair ou sombre")}">${icon("sun", 17, "when-dark")}${icon("moon", 17, "when-light")}</button>
-      <a class="btn btn-outline btn-sm header-cta" href="${url("download/")}"${p.id === "download" ? ' aria-current="page"' : ""}>${icon("download", 16)}<span>${T("Download", "Télécharger")}</span></a>
-      <button class="icon-btn menu-btn" type="button" data-menu aria-expanded="false" aria-controls="main-nav" aria-label="${T("Menu", "Menu")}"><span></span><span></span><span></span></button>
+    <div class="topbar-actions">
+      <a class="tool" href="${url(p.path, other)}" hreflang="${other}" lang="${other}" data-lang-switch="${other}" title="${T("Version française", "English version")}">${other.toUpperCase()}</a>
+      <button class="tool" type="button" data-theme-toggle title="${T("Paper by day, paper by night", "Papier de jour, papier de nuit")}" aria-label="${T("Light or dark theme", "Thème clair ou sombre")}">${icon("sun", 16, "when-dark")}${icon("moon", 16, "when-light")}</button>
+      <a class="fbox-link" href="${url("download/")}"${p.id === "download" ? ' aria-current="page"' : ""}>${icon("download", 15)}<span>${T("Download", "Télécharger")}</span></a>
+      <button class="tool menu-btn" type="button" data-menu aria-expanded="false" aria-controls="main-nav" aria-label="${T("Menu", "Menu")}"><span></span><span></span><span></span></button>
     </div>
   </div>
 </header>
 <main id="main">
+  <article class="paper${p.id === "home" ? " paper-home" : ""}">
+    <div class="runninghead" aria-hidden="true"><span>RayTeX</span><span>${p.id === "home" ? T("the next-generation LaTeX IDE", "l'IDE LaTeX nouvelle génération") : T(p.title.en, p.title.fr)}</span></div>
 ${body}
+${tex.footnotes()}
+    <button type="button" class="folio" data-folio title="${T("Page", "Page")} ${FOLIO[p.id] ?? ""}">${FOLIO[p.id] ?? ""}</button>
+  </article>
 </main>
 ${footer(ctx, p, other)}
 <script>window.RAYTEX=${JSON.stringify({ repo: REPO, lang, rel, texts: SCRIPT_TEXTS[lang], icons: SCRIPT_ICONS })}</script>
@@ -176,43 +187,27 @@ ${footer(ctx, p, other)}
 `;
 }
 
-function footer({ T, url, rel, icon, YEAR }, p, other) {
-  const col = (title, links) => `<div class="footer-col"><h2>${title}</h2><ul>${links.map(([href, text]) => `<li><a href="${href}">${text}</a></li>`).join("")}</ul></div>`;
-  return `<footer class="site-footer">
-  <div class="container footer-grid">
-    <div class="footer-brand">
-      <img class="brand-dark" src="${rel}assets/img/logo-mark-dark.svg" alt="RayTeX" width="128" height="44" />
-      <img class="brand-light" src="${rel}assets/img/logo-mark-light.svg" alt="" width="128" height="44" />
-      <p>${T("A modern LaTeX editor for students, teachers and researchers. Free and open source.", "Un éditeur LaTeX moderne pour les étudiants, les enseignants et les chercheurs. Libre et gratuit.")}</p>
-      <a class="footer-gh" href="${GITHUB}">${icon("github", 16)} ${REPO}</a>
-    </div>
-    ${col(T("Product", "Produit"), [
-      [url("features/"), T("Features", "Fonctionnalités")],
-      [url("download/"), T("Download", "Télécharger")],
-      [url("releases/"), T("Versions", "Versions")],
-      [url("guide/"), T("Getting started", "Prise en main")],
-      [url("faq/"), "FAQ"],
-    ])}
-    ${col(T("Project", "Projet"), [
-      [url("about/"), T("About and contributing", "À propos et contribuer")],
-      [`${GITHUB}/issues/new/choose`, T("Report a problem", "Signaler un problème")],
-      [`${GITHUB}/blob/main/CHANGELOG.md`, T("Changelog", "Journal des modifications")],
-      [`${GITHUB}/security/policy`, T("Security", "Sécurité")],
-    ])}
-    ${col(T("Legal", "Informations légales"), [
-      [url("legal/"), T("Legal notice", "Mentions légales")],
-      [url("privacy/"), T("Privacy", "Confidentialité")],
-      [url("license/"), T("License", "Licence")],
-    ])}
-  </div>
-  <div class="container footer-bottom">
-    <span>© ${YEAR} ${T("The RayTeX contributors", "Les contributeurs de RayTeX")} · ${T("MIT or Apache 2.0 license", "Licence MIT ou Apache 2.0")}</span>
-    <a href="${url(p.path, other)}" hreflang="${other}" lang="${other}" data-lang-switch="${other}">${icon("globe", 15)} ${other === "fr" ? "Français" : "English"}</a>
+function footer({ T, url, icon, YEAR }, p, other) {
+  const link = (href, text) => `<a href="${href}">${text}</a>`;
+  return `<footer class="colophon">
+  <div class="colophon-inner">
+    <p class="colophon-title">${T("Colophon", "Colophon")}</p>
+    <p>${T(
+      "This site is typeset in Latin Modern, the font of LaTeX, with handwritten notes in the margin. RayTeX is free and open-source software.",
+      "Ce site est composé en Latin Modern, la police de LaTeX, avec des notes manuscrites dans la marge. RayTeX est un logiciel libre et gratuit.",
+    )}</p>
+    <p class="colophon-links">
+      ${link(url("features/"), T("Features", "Fonctionnalités"))} · ${link(url("download/"), T("Download", "Télécharger"))} · ${link(url("releases/"), T("Versions", "Versions"))} · ${link(url("guide/"), T("Getting started", "Prise en main"))} · ${link(url("faq/"), "FAQ")} · ${link(url("about/"), T("About and contributing", "À propos et contribuer"))}
+    </p>
+    <p class="colophon-links">
+      ${link(url("legal/"), T("Legal notice", "Mentions légales"))} · ${link(url("privacy/"), T("Privacy", "Confidentialité"))} · ${link(url("license/"), T("License", "Licence"))} · ${link(GITHUB, `${icon("github", 13)} GitHub`)} · ${link(`${GITHUB}/issues/new/choose`, T("Report a problem", "Signaler un problème"))}
+    </p>
+    <p class="colophon-small">© ${YEAR} ${T("The RayTeX contributors", "Les contributeurs de RayTeX")} · ${T("MIT or Apache 2.0 license", "Licence MIT ou Apache 2.0")} · <a href="${url(p.path, other)}" hreflang="${other}" lang="${other}" data-lang-switch="${other}">${other === "fr" ? "Français" : "English"}</a></p>
   </div>
 </footer>`;
 }
 
-/** The page GitHub Pages shows for a missing address (any depth: absolute links). */
+/** The page GitHub Pages shows for a missing address (any depth: absolute links). TeX stops on it. */
 export function notFound({ base, siteUrl }) {
   return `<!doctype html>
 <html lang="en">
@@ -220,22 +215,22 @@ export function notFound({ base, siteUrl }) {
 ${head({ title: "Page not found — RayTeX", description: "This page does not exist.", lang: "en", rel: base, siteUrl })}
 </head>
 <body data-page="404">
-<div class="backdrop" aria-hidden="true"><div class="glow glow-a"></div><div class="glow glow-b"></div></div>
-<main id="main" class="not-found">
-  <img src="${base}assets/img/logo.svg" alt="" width="120" height="120" class="float" />
-  <p class="eyebrow">404</p>
-  <div data-lang-block="en">
-    <h1>This page swam away.</h1>
-    <p class="lead">The address may be wrong, or the page has moved.</p>
-    <p class="actions"><a class="btn btn-primary" href="${base}">${icon("home", 17)} Home</a> <a class="btn btn-ghost" href="${base}download/">${icon("download", 17)} Download</a></p>
-  </div>
-  <div data-lang-block="fr" hidden>
-    <h1>Cette page s'est éloignée à la nage.</h1>
-    <p class="lead">L'adresse est peut-être erronée, ou la page a changé de place.</p>
-    <p class="actions"><a class="btn btn-primary" href="${base}fr/">${icon("home", 17)} Accueil</a> <a class="btn btn-ghost" href="${base}fr/download/">${icon("download", 17)} Télécharger</a></p>
-  </div>
+<main id="main" class="texstop">
+  <article class="paper paper-terminal" data-terminal data-home-en="${base}" data-home-fr="${base}fr/">
+    <pre class="terminal"><span class="t-dim">This is RayTeX, Version 0.1 (preloaded format=site)</span>
+<span class="t-dim">(./<span data-path></span></span>
+<span class="t-err">! Undefined control sequence.</span>
+<span>l.404 \\page</span><span class="t-err" data-path-word></span>
+<span data-lang-block="en">
+<span class="t-dim">The page you asked for does not exist (or has moved).</span>
+<span class="t-dim">Type &lt;return&gt; to go back home, H for help, or X to quit.</span></span><span data-lang-block="fr" hidden>
+<span class="t-dim">La page demandée n'existe pas (ou a changé de place).</span>
+<span class="t-dim">Tapez &lt;Entrée&gt; pour revenir à l'accueil, H pour l'aide, ou X pour quitter.</span></span>
+<span class="t-prompt">? </span><span class="t-input" data-input></span><span class="t-caret"></span></pre>
+    <p class="terminal-actions"><a class="fbox-link" data-home href="${base}">${icon("home", 15)}<span data-lang-block="en">Home</span><span data-lang-block="fr" hidden>Accueil</span></a></p>
+  </article>
 </main>
-<script>(function(){var fr=/\\/fr\\//.test(location.pathname)||/^fr\\b/i.test(navigator.language||"");if(fr){document.documentElement.lang="fr";document.title="Page introuvable — RayTeX";document.querySelector('[data-lang-block="en"]').hidden=true;document.querySelector('[data-lang-block="fr"]').hidden=false}})();</script>
+<script>(function(){var fr=/\\/fr\\//.test(location.pathname)||/^fr\\b/i.test(navigator.language||"");if(fr){document.documentElement.lang="fr";document.title="Page introuvable — RayTeX";document.querySelectorAll('[data-lang-block="en"]').forEach(function(e){e.hidden=true});document.querySelectorAll('[data-lang-block="fr"]').forEach(function(e){e.hidden=false});document.querySelector("[data-home]").href="${base}fr/"}})();</script>
 <script>window.RAYTEX=${JSON.stringify({ repo: REPO, lang: "en", rel: base, texts: SCRIPT_TEXTS.en, icons: SCRIPT_ICONS })}</script>
 </body>
 </html>
