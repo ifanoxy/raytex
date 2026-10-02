@@ -12,9 +12,9 @@
 // group fails.
 
 import { spawn, spawnSync } from "node:child_process";
-import { appendFileSync, cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { delimiter, join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const groups = process.argv.slice(2).length ? process.argv.slice(2) : ["workflow", "fixes", "files", "projects", "media"];
@@ -88,8 +88,13 @@ async function run(group) {
   const logFile = join(out, `${group}.log`);
   writeFileSync(logFile, "");
 
+  // Cargo and TeX where they are usually installed, for a shell whose PATH
+  // does not have them (rustup in ~/.cargo or from Homebrew, MacTeX).
+  const usual = [join(homedir(), ".cargo", "bin"), "/opt/homebrew/opt/rustup/bin", "/opt/homebrew/bin", "/Library/TeX/texbin"].filter((d) => existsSync(d));
+  const path = (process.env.PATH ?? "").split(delimiter);
   const env = {
     ...process.env,
+    PATH: [...path, ...usual.filter((d) => !path.includes(d))].join(delimiter),
     RAYTEX_CONFIG_DIR: config,
     RAYTEX_SELFTEST: project,
     RAYTEX_SELFTEST_SCENES: group,
@@ -138,8 +143,14 @@ async function run(group) {
     // A TeX run still ending holds a file (Windows): the folder stays.
     console.log(`${group}: ${work} not removed (${e.code ?? e})`);
   }
-  const result = verdict ?? "TIMEOUT";
+  // Without a verdict: the application never ran (its build failed: the
+  // last lines say why), or the scenes did not end in time.
+  const result = verdict ?? (running ? "TIMEOUT" : "NOT STARTED");
   console.log(`${group}: ${result} (${Math.round((Date.now() - started) / 1000)} s, ${seen.size} scenes) — ${logFile}`);
+  if (!running) {
+    const tail = readFileSync(logFile, "utf8").trim().split("\n").slice(-6).join("\n");
+    console.log(`The application did not start:\n${tail}`);
+  }
   return result === "PASSED";
 }
 
