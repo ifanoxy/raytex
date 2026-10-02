@@ -7,55 +7,55 @@
   src: url("fonts/lm-roman-regular.woff") format("woff");
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 @font-face {
   font-family: "LM Roman";
   src: url("fonts/lm-roman-italic.woff") format("woff");
   font-weight: 400;
   font-style: italic;
-  font-display: swap;
+  font-display: block;
 }
 @font-face {
   font-family: "LM Roman";
   src: url("fonts/lm-roman-bold.woff") format("woff");
   font-weight: 700;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 @font-face {
   font-family: "LM Roman";
   src: url("fonts/lm-roman-bolditalic.woff") format("woff");
   font-weight: 700;
   font-style: italic;
-  font-display: swap;
+  font-display: block;
 }
 @font-face {
   font-family: "LM Roman 17";
   src: url("fonts/lm-roman17-regular.woff") format("woff");
-  font-display: swap;
+  font-display: block;
 }
 @font-face {
   font-family: "LM Roman Caps";
   src: url("fonts/lm-roman-caps.woff") format("woff");
-  font-display: swap;
+  font-display: block;
 }
 @font-face {
   font-family: "LM Mono";
   src: url("fonts/lm-mono-regular.woff") format("woff");
-  font-display: swap;
+  font-display: block;
 }
 @font-face {
   font-family: "Caveat";
   font-weight: 400 700;
-  font-display: swap;
+  font-display: block;
   src: url("fonts/caveat-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Caveat";
   font-weight: 400 700;
-  font-display: swap;
+  font-display: block;
   src: url("fonts/caveat-latin-ext.woff2") format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20AB, U+20AD-20C0, U+2C60-2C7F, U+A720-A7FF;
 }
@@ -92,7 +92,6 @@
   --green: #1f7a5a;
   --grid: rgba(106, 60, 224, 0.1);
   --shadow: 0 1px 2px rgba(40, 30, 80, 0.06), 0 26px 70px -10px rgba(40, 30, 80, 0.18);
-  --topbar: rgba(232, 230, 239, 0.84);
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
@@ -111,7 +110,6 @@
   --green: #7fd3ad;
   --grid: rgba(185, 163, 255, 0.09);
   --shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
-  --topbar: rgba(11, 9, 21, 0.84);
 }
 
 /* ------------------------------------------------------------------ base */
@@ -254,9 +252,7 @@ strong {
   top: 0;
   z-index: 60;
   height: var(--header-h);
-  background: var(--topbar);
-  backdrop-filter: blur(10px) saturate(140%);
-  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  background: var(--desk);
   border-bottom: 0.8px solid transparent;
   transition: border-color 0.3s, background-color 0.4s;
 }
@@ -1991,8 +1987,11 @@ details > :not(summary) {
   margin-top: 8px !important;
   text-indent: 0 !important;
 }
-.os-panel {
-  animation: unfold 0.45s var(--ease);
+/* A panel chosen with its tab: everything at once (site.js). */
+.instant,
+.instant * {
+  transition: none !important;
+  animation: none !important;
 }
 /* Three steps, each number circled by hand, joined by a pencil line. */
 .steps {

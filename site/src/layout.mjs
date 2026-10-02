@@ -150,7 +150,7 @@ ${alternates ?? ""}
 <link rel="icon" href="${rel}assets/img/ray.svg" type="image/svg+xml" />
 <link rel="icon" href="${rel}assets/img/favicon-32.png" sizes="32x32" type="image/png" />
 <link rel="apple-touch-icon" href="${rel}assets/img/apple-touch-icon.png" />
-<link rel="preload" href="${rel}assets/fonts/lm-roman-regular.woff" as="font" type="font/woff" crossorigin />
+${["lm-roman-regular", "lm-roman-bold", "lm-roman-italic", "lm-roman-caps", "lm-roman17-regular"].map((f) => `<link rel="preload" href="${rel}assets/fonts/${f}.woff" as="font" type="font/woff" crossorigin />`).join("\n")}
 <link rel="preload" href="${rel}assets/fonts/caveat-latin.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="${rel}assets/katex/katex.min.css" />
 <link rel="stylesheet" href="${rel}assets/site.css?v=${CSS_V}" />

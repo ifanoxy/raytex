@@ -625,7 +625,10 @@
     const known = OS_ORDER.includes(env.os);
 
     // The tabs: the reader's system first, the others one click (or arrow) away.
-    const show = (os, focus = false) => {
+    // The first panel comes into view like the rest of the page; another
+    // one, chosen with its tab, shows at once, already written and drawn
+    // (no fade, nothing that blinks).
+    const show = (os, focus = false, instant = false) => {
       for (const t of tabs) {
         const on = t.dataset.osTab === os;
         t.setAttribute("aria-selected", String(on));
@@ -634,16 +637,25 @@
       }
       for (const p of panels) {
         p.hidden = p.dataset.osPanel !== os;
-        if (!p.hidden) prepareStrokes(p);
+        if (p.hidden) continue;
+        if (instant) {
+          p.classList.add("instant");
+          for (const el of $$("[data-reveal]", p)) {
+            el.classList.add("visible");
+            reveal.unobserve(el);
+          }
+        }
+        prepareStrokes(p);
+        if (instant) requestAnimationFrame(() => requestAnimationFrame(() => p.classList.remove("instant")));
       }
     };
     tabs.forEach((t, i) => {
-      t.addEventListener("click", () => show(t.dataset.osTab));
+      t.addEventListener("click", () => show(t.dataset.osTab, false, true));
       t.addEventListener("keydown", (e) => {
         const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
         if (!step) return;
         e.preventDefault();
-        show(tabs[(i + step + tabs.length) % tabs.length].dataset.osTab, true);
+        show(tabs[(i + step + tabs.length) % tabs.length].dataset.osTab, true, true);
       });
     });
     if (known) $(`[data-os-tab="${env.os}"]`)?.classList.add("is-you");
