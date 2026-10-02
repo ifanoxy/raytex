@@ -20,7 +20,7 @@ HERE = Path(__file__).resolve().parent
 RAY = json.loads((HERE / "ray.json").read_text())
 
 # The two violets of the drawing, and brighter ones for dark backgrounds.
-ON_LIGHT = ("#b7a2f5", "#7a49ef")
+ON_LIGHT = ("#7e87d9", "#6d4fd8")
 ON_DARK = ("#c7b6ff", "#9b74ff")
 
 
