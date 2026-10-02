@@ -126,8 +126,8 @@
   // the head sets "opening"): the source of the title page is written at
   // full speed and scrolls, the ray is constructed, sketched in pencil and
   // inked, the title typeset, then the title page arrives like a book
-  // (about 9 s; Skip or Escape
-  // ends it at once). Not in a tab opened in the background.
+  // (about 9 s; Skip or Escape ends it at once). Not in a tab opened in the
+  // background.
   const introBox = $("[data-intro]");
   try {
     sessionStorage.setItem("raytex-visited", "1");
