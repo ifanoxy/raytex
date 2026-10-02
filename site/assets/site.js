@@ -67,12 +67,23 @@
   $$("[data-lang-switch]").forEach((a) => a.addEventListener("click", () => store.set("raytex-lang", a.dataset.langSwitch)));
 
   // ------------------------------------------------------ turning the page
-  // A link to another page of the site: the page turns over from its left
-  // edge (or, going back to an earlier page, sinks), then the link is
-  // followed; the next page arrives (its head reads "raytex-turn").
+  // Where the browser plays transitions between documents (site.css), it
+  // shows both pages at once; the page number of the page that goes tells
+  // the next one which way to turn (the script in its head). Elsewhere, a
+  // link to another page of the site: the page turns over from its left
+  // edge (or sinks, going back; or falls, going to the title page), then
+  // the link is followed and the next page arrives ("raytex-turn").
   const root = document.documentElement;
-  if (!reduced) {
-    const here = Number(root.dataset.pageno) || 0;
+  const here = Number(root.dataset.pageno) || 0;
+  addEventListener("pageswap", (e) => {
+    if (!e.viewTransition) return;
+    try {
+      sessionStorage.setItem("raytex-from", String(here));
+    } catch {
+      /* private mode */
+    }
+  });
+  if (!reduced && !("CSSViewTransitionRule" in window)) {
     const base = new URL(C.rel || "./", location.href).pathname;
     const folioOf = (url) => {
       const path = url.pathname.startsWith(base) ? url.pathname.slice(base.length) : "";
@@ -87,28 +98,28 @@
       if (!/\/$|\.html$/.test(to.pathname)) return;
       e.preventDefault();
       const there = folioOf(to);
-      const back = here > 0 && there > 0 && there < here;
+      const way = there === 1 ? "book" : here > 0 && there > 0 && there < here ? "back" : "forward";
       try {
-        sessionStorage.setItem("raytex-turn", back ? "back" : "forward");
+        sessionStorage.setItem("raytex-turn", way);
       } catch {
         /* private mode */
       }
       // The page turns around the middle of what is on screen.
       const paper = $(".paper");
-      if (paper) paper.style.transformOrigin = `${back ? "50%" : "0"} ${Math.round(innerHeight / 2 - paper.getBoundingClientRect().top)}px`;
-      root.classList.add(back ? "leaving-back" : "leaving");
-      setTimeout(() => location.assign(to.href), back ? 600 : 800);
+      if (paper) paper.style.transformOrigin = `${way === "forward" ? "0" : "50%"} ${Math.round(innerHeight / 2 - paper.getBoundingClientRect().top)}px`;
+      root.classList.add({ forward: "leaving", back: "leaving-back", book: "leaving-down" }[way]);
+      setTimeout(() => location.assign(to.href), way === "back" ? 600 : 750);
     });
     // Back with the history: the page comes back as it was, turning in.
     addEventListener("pageshow", (e) => {
       if (!e.persisted) return;
-      root.classList.remove("leaving", "leaving-back");
+      root.classList.remove("leaving", "leaving-back", "leaving-down");
       $(".paper")?.style.removeProperty("transform-origin");
       root.classList.add("arriving-back");
       setTimeout(() => root.classList.remove("arriving-back"), 1100);
     });
   }
-  setTimeout(() => root.classList.remove("arriving", "arriving-back"), 1100);
+  setTimeout(() => root.classList.remove("arriving", "arriving-back", "arriving-book"), 1600);
 
   // \today, in the reader's language.
   $$("[data-today]").forEach((el) => (el.textContent = new Intl.DateTimeFormat(fr ? "fr" : "en", { dateStyle: "long" }).format(new Date())));

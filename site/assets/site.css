@@ -2540,28 +2540,65 @@ body.draft .figure[data-file]::before {
 .js .marginnote[data-reveal].visible {
   transform: rotate(var(--tilt, -2deg));
 }
-/* From one page to another, the page turns (site.js): the old one lifts
-   from its left edge and turns over; the new one is underneath and comes
-   up. Going back to an earlier page (a smaller page number), the old one
-   sinks and the new one turns over onto it. The top bar stays. */
-html.leaving .paper {
-  animation: turn-over 0.8s cubic-bezier(0.55, 0.02, 0.3, 1) forwards;
+/* From one page to another, the page turns, both pages seen at once: the
+   old one lifts from its left edge and turns over, the new one is
+   underneath. Going back to an earlier page (a smaller page number), the
+   new one turns over onto the old. To the title page, the old page falls
+   and the title page arrives from the side, small and turned, like a book
+   brought before the eyes, then fills the view (its sheet: "book"). The
+   top bar stays in place. */
+@view-transition {
+  navigation: auto;
 }
-html.leaving-back .paper {
-  animation: sink-under 0.6s cubic-bezier(0.3, 0.1, 0.25, 1) forwards;
+.topbar {
+  view-transition-name: topbar;
 }
-html.leaving .colophon,
-html.leaving-back .colophon {
-  opacity: 0;
-  transition: opacity 0.3s;
+::view-transition-old(root),
+::view-transition-new(root) {
+  mix-blend-mode: normal;
+  transform-origin: 0 50%;
+  backface-visibility: hidden;
+  animation-duration: 1.5s;
+  animation-fill-mode: both;
 }
-html.arriving .paper {
-  transform-origin: 50% 40vh;
-  animation: lie-under 0.9s cubic-bezier(0.3, 0.1, 0.25, 1) both;
+::view-transition-old(root) {
+  z-index: 2;
+  animation-name: turn-over;
+  animation-timing-function: cubic-bezier(0.55, 0.02, 0.3, 1);
 }
-html.arriving-back .paper {
-  transform-origin: 0 40vh;
-  animation: turn-back 0.95s cubic-bezier(0.45, 0, 0.2, 1) both;
+::view-transition-new(root) {
+  z-index: 1;
+  animation-name: lie-under;
+  animation-timing-function: cubic-bezier(0.3, 0.1, 0.25, 1);
+}
+.vt-back::view-transition-old(root) {
+  z-index: 1;
+  animation-name: sink-under;
+  animation-timing-function: cubic-bezier(0.3, 0.1, 0.25, 1);
+}
+.vt-back::view-transition-new(root) {
+  z-index: 2;
+  animation-name: turn-back;
+  animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+}
+.vt-book::view-transition-old(root) {
+  z-index: 2;
+  transform-origin: 50% 100%;
+  animation-name: fall-away;
+  animation-duration: 1.1s;
+  animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.4);
+}
+.vt-book::view-transition-new(root) {
+  z-index: 1;
+  animation: none;
+}
+.vt-book::view-transition-group(book) {
+  animation-duration: 2s;
+}
+.vt-book::view-transition-new(book) {
+  mix-blend-mode: normal;
+  transform-origin: 50% 45vh;
+  animation: book-in 2s cubic-bezier(0.25, 0.7, 0.25, 1) both;
 }
 @keyframes turn-over {
   0% {
@@ -2580,21 +2617,10 @@ html.arriving-back .paper {
     opacity: 0;
   }
 }
-@keyframes sink-under {
-  to {
-    transform: scale(0.93);
-    filter: brightness(0.72);
-    opacity: 0;
-  }
-}
 @keyframes lie-under {
-  0% {
+  from {
     transform: scale(0.93);
     filter: brightness(0.72);
-    opacity: 0;
-  }
-  25% {
-    opacity: 1;
   }
 }
 @keyframes turn-back {
@@ -2611,13 +2637,103 @@ html.arriving-back .paper {
     filter: brightness(1);
   }
 }
-/* The theme: the new ink spreads from the button (site.js). */
+@keyframes sink-under {
+  to {
+    transform: scale(0.93);
+    filter: brightness(0.72);
+  }
+}
+/* The page falls off the bottom of the screen. */
+@keyframes fall-away {
+  0% {
+    transform: none;
+  }
+  18% {
+    transform: translateY(-1.5vh) rotate(-0.6deg) scale(0.985);
+  }
+  100% {
+    transform: translateY(110vh) rotate(5deg) scale(0.92);
+    opacity: 0.6;
+  }
+}
+/* The book: from the side, small and turned, to the middle, then large. */
+@keyframes book-in {
+  0% {
+    transform: perspective(1800px) translate(82vw, 14vh) rotateY(-58deg) rotateZ(9deg) scale(0.38);
+    filter: drop-shadow(0 40px 46px rgba(30, 20, 80, 0.45));
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  52% {
+    transform: perspective(1800px) translate(0, 7vh) rotateY(-10deg) rotateZ(0.5deg) scale(0.6);
+    filter: drop-shadow(0 40px 46px rgba(30, 20, 80, 0.45));
+  }
+  66% {
+    transform: perspective(1800px) translate(0, 6vh) rotateY(0deg) scale(0.62);
+  }
+  100% {
+    transform: none;
+    filter: drop-shadow(0 0 0 rgba(30, 20, 80, 0));
+  }
+}
+/* Browsers without transitions between documents (site.js): the old page
+   goes first, then the new one arrives. */
+html.leaving .paper {
+  animation: turn-over 0.8s cubic-bezier(0.55, 0.02, 0.3, 1) forwards;
+}
+html.leaving-back .paper {
+  animation: sink-under 0.6s cubic-bezier(0.3, 0.1, 0.25, 1) forwards;
+}
+html.leaving-down .paper {
+  animation: fall-away 0.75s cubic-bezier(0.55, 0, 0.8, 0.4) forwards;
+}
+html.leaving .colophon,
+html.leaving-back .colophon,
+html.leaving-down .colophon {
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+html.arriving .paper {
+  transform-origin: 50% 40vh;
+  animation: arrive-under 0.9s cubic-bezier(0.3, 0.1, 0.25, 1) both;
+}
+html.arriving-back .paper {
+  transform-origin: 0 40vh;
+  animation: turn-back 0.95s cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+html.arriving-book .paper {
+  transform-origin: 50% 45vh;
+  animation: book-in 1.6s cubic-bezier(0.25, 0.7, 0.25, 1) both;
+}
+@keyframes arrive-under {
+  0% {
+    transform: scale(0.93);
+    filter: brightness(0.72);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+}
+/* The theme: no page turns, the new ink spreads from the button (site.js). */
+.theme-vt .topbar {
+  view-transition-name: none;
+}
 .theme-vt::view-transition-old(root),
 .theme-vt::view-transition-new(root) {
   animation: none;
-  mix-blend-mode: normal;
+  transform: none;
+  filter: none;
+}
+.theme-vt::view-transition-new(root) {
+  z-index: 3;
 }
 @media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
   *,
   *::before,
   *::after {

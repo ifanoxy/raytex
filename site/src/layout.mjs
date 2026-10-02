@@ -113,10 +113,14 @@ const SCRIPT_TEXTS = {
 // Paper by day unless the reader turned the page to night (the button).
 const THEME_SCRIPT = `(function(){var t,d=document.documentElement;try{t=localStorage.getItem("raytex-theme")}catch(e){}d.dataset.theme=t==="dark"?"dark":"light";d.classList.add("js")})();`;
 
-// Turning the page from one page of the site to the next (site.js turns the
-// page that goes; this script, before the first paint, makes the next one
-// arrive: from underneath, or turning over the old one when going back).
-const TURN_SCRIPT = `(function(){var d=document.documentElement;try{var t=sessionStorage.getItem("raytex-turn");if(t){sessionStorage.removeItem("raytex-turn");d.classList.add(t==="back"?"arriving-back":"arriving")}}catch(x){}})();`;
+// From one page of the site to the next (site.css). Where the browser plays
+// transitions between documents, both pages are seen at once: this script,
+// before the first paint of the new page, chooses the way (to the title
+// page: the book arrives, its sheet named "book"; to an earlier page: back),
+// from the page number of the old one (kept by site.js when it goes).
+// Elsewhere site.js turns the old page, and this script makes the new one
+// arrive ("raytex-turn").
+const TURN_SCRIPT = `(function(){var d=document.documentElement,n=+d.dataset.pageno||0;addEventListener("pagereveal",function(e){if(!e.viewTransition)return;var f=0;try{f=+sessionStorage.getItem("raytex-from")||0}catch(x){}var c=n===1?"vt-book":f&&n&&n<f?"vt-back":"";if(!c)return;var p=document.getElementById("sheet");if(c==="vt-book"&&p)p.style.viewTransitionName="book";d.classList.add(c);var off=function(){d.classList.remove(c);if(p)p.style.viewTransitionName=""};e.viewTransition.finished.then(off,off)});try{var t=sessionStorage.getItem("raytex-turn");if(t){sessionStorage.removeItem("raytex-turn");d.classList.add(t==="back"?"arriving-back":t==="book"?"arriving-book":"arriving")}}catch(x){}})();`;
 
 /** Icons the scripts insert (download lists). */
 const SCRIPT_ICONS = Object.fromEntries(["windows", "apple", "linux", "download", "copy", "github"].map((n) => [n, icon(n, n === "copy" ? 13 : 16)]));
@@ -129,6 +133,7 @@ const FOLIOS = Object.fromEntries(Object.entries(FOLIO).map(([id, n]) => [id ===
 function head({ title, description, lang, canonical, alternates, rel, siteUrl, extra = "" }) {
   return `<meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>${THEME_SCRIPT}${TURN_SCRIPT}</script>
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}" />
 <meta name="theme-color" content="#fbfaf6" />
@@ -149,7 +154,7 @@ ${alternates ?? ""}
 <link rel="preload" href="${rel}assets/fonts/caveat-latin.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="${rel}assets/katex/katex.min.css" />
 <link rel="stylesheet" href="${rel}assets/site.css?v=${CSS_V}" />
-<script>${THEME_SCRIPT}${TURN_SCRIPT}</script>
+<link rel="expect" href="#sheet" blocking="render" />
 ${extra}
 <script src="${rel}assets/site.js?v=${JS_V}" defer></script>`;
 }
@@ -198,7 +203,7 @@ ${head({ title, description, lang, canonical: `${siteUrl}/${path}`, alternates, 
   </div>
 </header>
 <main id="main">
-  <article class="paper${p.id === "home" ? " paper-home" : ""}">
+  <article class="paper${p.id === "home" ? " paper-home" : ""}" id="sheet">
     <div class="runninghead" aria-hidden="true"><span>RayTeX</span><span>${p.id === "home" ? T("the next-generation LaTeX IDE", "l'IDE LaTeX nouvelle génération") : T(p.title.en, p.title.fr)}</span></div>
 ${body}
 ${tex.footnotes()}
@@ -241,7 +246,7 @@ ${head({ title: "Page not found · RayTeX", description: "This page does not exi
 </head>
 <body data-page="404">
 <main id="main" class="texstop">
-  <article class="paper paper-terminal" data-terminal data-home-en="${base}" data-home-fr="${base}fr/">
+  <article class="paper paper-terminal" id="sheet" data-terminal data-home-en="${base}" data-home-fr="${base}fr/">
     <pre class="terminal"><span class="t-dim">This is RayTeX, Version 0.1 (preloaded format=site)</span>
 <span class="t-dim">(./<span data-path></span></span>
 <span class="t-err">! Undefined control sequence.</span>
