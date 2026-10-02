@@ -99,5 +99,16 @@
     "resources": {
       "thumbnails/*.png": "thumbnails/"
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJGRTY3MUE1NzM4QzAzNUQKUldSZEE0eHpwWEhtTDU3TTZKdUZwbEZ2aUNHWFY3ZmZDajRKZU0welIreUIwRjl6V2lqa1lCeEkK",
+      "endpoints": [
+        "https://github.com/ifanoxy/raytex/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

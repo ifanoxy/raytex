@@ -2,6 +2,11 @@
 
 All notable changes to RayTeX are documented here. The format follows [Keep a Changelog](https://keepachangelog.com), and versions follow [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+- **Updates**: at start, RayTeX looks for a new version on GitHub and offers it (its notes, *Update now*, *Later*, *Skip this version*); the files open are saved, the new version is downloaded with a progress bar, installed, and RayTeX restarts. *Settings → About* checks by hand or turns the check at start off. Only files signed with the project's update key are installed.
+- **New identity**: a violet manta ray, drawn with calligraphic strokes, next to Ray\TeX typeset by LaTeX; new icons; the interface takes its violets, in the dark and the light theme.
+
 ## [0.1.0] — 2026-10-01
 
 First version.

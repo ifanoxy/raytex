@@ -52,6 +52,9 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        // New versions, offered at start (ui/lib/state/updates.svelte.ts).
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         // Size and position come back; the title bar is the one of the
         // configuration (drawn by RayTeX on Windows).
         .plugin(

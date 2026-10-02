@@ -26,6 +26,7 @@ import { project } from "./state/project.svelte";
 import { searchStore } from "./state/search.svelte";
 import { tex } from "./state/tex.svelte";
 import { ui } from "./state/ui.svelte";
+import { updates } from "./state/updates.svelte";
 import { viewer } from "./state/viewer.svelte";
 import { fileKind, isMac } from "./utils";
 
@@ -229,6 +230,7 @@ export const actions: Action[] = [
 
   // ------------------------------------------------------------- help
   { id: "help.open", title: "action.help", category: "help", keys: "F1", icon: "help", run: () => ui.openHelp() },
+  { id: "help.updates", title: "action.checkUpdates", category: "help", icon: "download", run: () => void updates.check(true) },
   { id: "help.shortcuts", title: "action.shortcuts", category: "help", icon: "keyboard", run: () => ui.openHelp("shortcuts") },
   { id: "help.symbols", title: "action.symbolReference", category: "help", icon: "sigma", run: () => ui.openHelp("symbols") },
   { id: "help.errors", title: "action.errorReference", category: "help", icon: "bug", run: () => ui.openHelp("errors") },

@@ -5,7 +5,9 @@ name: Release
 # - macOS: Developer ID signature and Apple notarization (APPLE_* secrets);
 # - Windows: signature by SignPath (SIGNPATH_* variables and secret).
 # Every release also gets SHA256SUMS.txt and a build provenance attestation
-# (`gh attestation verify FILE --repo OWNER/raytex`).
+# (`gh attestation verify FILE --repo OWNER/raytex`), and, when the update key
+# is set (TAURI_SIGNING_PRIVATE_KEY), the signed update files and latest.json
+# that the application reads to offer the new version.
 on:
   push:
     tags: ["v*"]
@@ -35,6 +37,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       HAS_APPLE: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
       - name: Linux dependencies of Tauri
@@ -79,6 +82,9 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Update files (.sig, latest.json) signed with the project's key.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: crates/raytex-desktop
           tagName: ${{ github.ref_name }}
@@ -86,7 +92,7 @@ jobs:
           releaseBody: See CHANGELOG.md for the changes of this version.
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} ${{ env.HAS_UPDATER_KEY == 'true' && format('--config {0}/crates/raytex-desktop/tauri.updater.conf.json', github.workspace) || '' }}
 
   # SignPath (free for open-source projects) signs the Windows installers;
   # the signed files replace the unsigned ones in the draft release.
@@ -101,6 +107,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       TAG: ${{ github.ref_name }}
+      HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
     steps:
       - name: Unsigned Windows installers
         run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir unsigned --pattern '*.exe' --pattern '*.msi'
@@ -120,6 +127,27 @@ jobs:
           output-artifact-directory: signed
       - name: Signed installers in the release
         run: gh release upload "$TAG" signed/* --repo "$GITHUB_REPOSITORY" --clobber
+      # The update signatures were made on the unsigned files: made again on
+      # the signed ones, and written into latest.json.
+      - name: Update signatures of the signed installers
+        if: env.HAS_UPDATER_KEY == 'true'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          for f in signed/*; do npx --yes @tauri-apps/cli@2 signer sign "$f"; done
+          gh release upload "$TAG" signed/*.sig --repo "$GITHUB_REPOSITORY" --clobber
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern latest.json --dir . || exit 0
+          node -e '
+            const fs = require("fs");
+            const latest = JSON.parse(fs.readFileSync("latest.json", "utf8"));
+            for (const p of Object.values(latest.platforms)) {
+              const file = "signed/" + decodeURIComponent(p.url.split("/").pop());
+              if (fs.existsSync(file + ".sig")) p.signature = fs.readFileSync(file + ".sig", "utf8").trim();
+            }
+            fs.writeFileSync("latest.json", JSON.stringify(latest, null, 2));
+          '
+          gh release upload "$TAG" latest.json --repo "$GITHUB_REPOSITORY" --clobber
 
   # Once the files are final: their fingerprints, and the proof that they
   # were built here from this source.
