@@ -1446,11 +1446,20 @@ main {
 .fig-label {
   font-weight: 700;
 }
+/* The application in the theme of the page. */
+.shot-dark,
+[data-theme="dark"] .shot-light {
+  display: none;
+}
+[data-theme="dark"] .shot-dark {
+  display: block;
+}
 .shot {
   width: 100%;
   height: auto;
-  border: 0.8px solid var(--hair);
-  box-shadow: 0 14px 34px -12px rgba(40, 30, 80, 0.3);
+  /* A picture of the window alone: its rounded corners are transparent, the
+     shadow follows them. */
+  filter: drop-shadow(0 14px 22px rgba(40, 30, 80, 0.28));
 }
 .tikz {
   width: min(100%, 430px);

@@ -12,7 +12,7 @@
 // group fails.
 
 import { spawn, spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -27,7 +27,26 @@ const TIMEOUT_MS = Number(process.env.E2E_TIMEOUT_MS ?? 20 * 60_000);
 
 mkdirSync(out, { recursive: true });
 
+// E2E_WINDOW=1 (macOS): pictures of the window of RayTeX alone, its rounded
+// corners transparent and nothing of the screen in front of it.
+let windowNumber = null;
+function rayTeXWindow() {
+  if (windowNumber) return windowNumber;
+  const tool = join(tmpdir(), "raytex-window-id");
+  if (!existsSync(tool)) spawnSync("swiftc", ["-O", join(root, "scripts/window-id.swift"), "-o", tool], { stdio: "ignore" });
+  const found = spawnSync(tool, ["raytex"], { encoding: "utf8" }).stdout?.trim();
+  windowNumber = found || null;
+  return windowNumber;
+}
+
 function screenshot(file) {
+  if (process.env.E2E_WINDOW && process.platform === "darwin") {
+    const id = rayTeXWindow();
+    if (id) {
+      spawnSync("screencapture", ["-x", "-o", `-l${id}`, file], { stdio: "ignore" });
+      return;
+    }
+  }
   if (windows) {
     const ps = [
       "Add-Type -AssemblyName System.Windows.Forms,System.Drawing",

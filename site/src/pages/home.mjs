@@ -168,7 +168,9 @@ difficile\footnote{Réputation méritée.}.
 
   body(ctx) {
     const { T, url, asset, icon, lang, GITHUB, tex } = ctx;
-    const shot = (name, alt) => `<img class="shot" src="${asset(`screenshots/${lang}/${name}.png`)}" width="1400" height="813" alt="${alt}" loading="lazy" />`;
+    // The picture of the application in the theme of the page (light or dark).
+    const shot = (name, alt) =>
+      ["light", "dark"].map((t) => `<img class="shot shot-${t}" src="${asset(`screenshots/${lang}/${name}-${t}.png`)}" width="1400" height="813" alt="${alt}" loading="lazy" />`).join("");
     const painNote = T("A well-deserved reputation: “Undefined control sequence” does not say much.", "Réputation méritée : « Undefined control sequence » ne dit pas grand-chose.");
     const surprise = T(
       "No ray was harmed in the typesetting of this site. This document also hides a few surprises: try typing \\TeX.",
