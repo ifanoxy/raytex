@@ -41,11 +41,13 @@ function rayTeXWindow() {
 
 function screenshot(file) {
   if (process.env.E2E_WINDOW && process.platform === "darwin") {
-    const id = rayTeXWindow();
-    if (id) {
-      spawnSync("screencapture", ["-x", "-o", `-l${id}`, file], { stdio: "ignore" });
-      return;
+    for (let attempt = 0; attempt < 4 && !existsSync(file); attempt++) {
+      if (attempt) spawnSync("sleep", ["0.6"]);
+      const id = rayTeXWindow();
+      if (id) spawnSync("screencapture", ["-x", "-o", `-l${id}`, file], { stdio: "ignore" });
     }
+    if (!existsSync(file)) console.log(`no picture of the window for ${file}: allow your terminal to record the screen (System Settings → Privacy & Security → Screen & System Audio Recording)`);
+    return;
   }
   if (windows) {
     const ps = [
@@ -109,7 +111,8 @@ async function run(group) {
   const onData = (chunk) => {
     const text = chunk.toString();
     appendFileSync(logFile, text);
-    if (!running && /Running `[^`]*raytex-app/.test(text)) running = Date.now();
+    const plain = text.replace(/\x1b\[[0-9;]*m/g, "");
+    if (!running && (/Running `[^`]*raytex-app/.test(plain) || plain.includes("selftest:"))) running = Date.now();
     for (const m of text.matchAll(/scene: ([a-z0-9-]+)/g)) {
       if (seen.has(m[1])) continue;
       seen.add(m[1]);
@@ -147,7 +150,7 @@ async function run(group) {
   // last lines say why), or the scenes did not end in time.
   const result = verdict ?? (running ? "TIMEOUT" : "NOT STARTED");
   console.log(`${group}: ${result} (${Math.round((Date.now() - started) / 1000)} s, ${seen.size} scenes) — ${logFile}`);
-  if (!running) {
+  if (!verdict && !running) {
     const tail = readFileSync(logFile, "utf8").trim().split("\n").slice(-6).join("\n");
     console.log(`The application did not start:\n${tail}`);
   }

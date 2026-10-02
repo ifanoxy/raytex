@@ -35,6 +35,9 @@ for (const file of readdirSync(out)) {
   if (ok) written++;
   console.log(`${ok ? "written" : "FAILED"}: ${dest}`);
 }
-if (written && !run.status) rmSync(out, { recursive: true, force: true });
+const missing = 12 - written;
+if (missing)
+  console.log(`${missing} picture(s) missing (the others are written). On macOS, your terminal must be allowed to record the screen: System Settings → Privacy & Security → Screen & System Audio Recording.`);
+if (written && !run.status && !missing) rmSync(out, { recursive: true, force: true });
 console.log(`${written} screenshot(s)${run.status ? ` (the scenes reported a failure: see ${out})` : ""}`);
-process.exit(written && !run.status ? 0 : 1);
+process.exit(written === 12 && !run.status ? 0 : 1);
