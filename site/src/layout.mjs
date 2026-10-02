@@ -113,17 +113,18 @@ const SCRIPT_TEXTS = {
 // Paper by day unless the reader turned the page to night (the button).
 const THEME_SCRIPT = `(function(){var t,d=document.documentElement;try{t=localStorage.getItem("raytex-theme")}catch(e){}d.dataset.theme=t==="dark"?"dark":"light";d.classList.add("js")})();`;
 
-// Turning the page from one page of the site to the next (site.css): back
-// when the new page comes before the old one in the document (their folios,
-// kept by site.js when the old page goes). Browsers without transitions
-// between documents get a simpler turn from site.js ("arriving").
-const TURN_SCRIPT = `(function(){var d=document.documentElement;addEventListener("pagereveal",function(e){if(!e.viewTransition)return;try{var f=+sessionStorage.getItem("raytex-from"),t=+d.dataset.folio;if(f&&t&&t<f){d.classList.add("vt-back");var off=function(){d.classList.remove("vt-back")};e.viewTransition.finished.then(off,off)}}catch(x){}});try{if(sessionStorage.getItem("raytex-turn")){sessionStorage.removeItem("raytex-turn");d.classList.add("arriving")}}catch(x){}})();`;
+// Turning the page from one page of the site to the next (site.js turns the
+// page that goes; this script, before the first paint, makes the next one
+// arrive: from underneath, or turning over the old one when going back).
+const TURN_SCRIPT = `(function(){var d=document.documentElement;try{var t=sessionStorage.getItem("raytex-turn");if(t){sessionStorage.removeItem("raytex-turn");d.classList.add(t==="back"?"arriving-back":"arriving")}}catch(x){}})();`;
 
 /** Icons the scripts insert (download lists). */
 const SCRIPT_ICONS = Object.fromEntries(["windows", "apple", "linux", "download", "copy", "github"].map((n) => [n, icon(n, n === "copy" ? 13 : 16)]));
 
 /** The page numbers, like those of a printed document (the table of contents shows them). */
 export const FOLIO = { home: 1, features: 2, download: 3, releases: 4, guide: 5, faq: 6, about: 7, legal: 8, privacy: 9, license: 10 };
+/** The same, by the path of the page (site.js: which way the page turns). */
+const FOLIOS = Object.fromEntries(Object.entries(FOLIO).map(([id, n]) => [id === "home" ? "" : `${id}/`, n]));
 
 function head({ title, description, lang, canonical, alternates, rel, siteUrl, extra = "" }) {
   return `<meta charset="utf-8" />
@@ -175,7 +176,7 @@ export function page(p, { lang, path, siteUrl, version, prefix }) {
   const nav = NAV.map(([id, to, en, fr]) => `<a href="${url(to)}"${id === p.id ? ' aria-current="page"' : ""}>${T(en, fr)}</a>`).join("");
 
   return `<!doctype html>
-<html lang="${lang}" data-folio="${FOLIO[p.id] ?? ""}">
+<html lang="${lang}" data-pageno="${FOLIO[p.id] ?? ""}">
 <head>
 ${head({ title, description, lang, canonical: `${siteUrl}/${path}`, alternates, rel, siteUrl, extra: redirect })}
 </head>
@@ -205,7 +206,7 @@ ${tex.footnotes()}
   </article>
 </main>
 ${footer(ctx, p, other)}
-<script>window.RAYTEX=${JSON.stringify({ repo: REPO, lang, rel, texts: SCRIPT_TEXTS[lang], icons: SCRIPT_ICONS })}</script>
+<script>window.RAYTEX=${JSON.stringify({ repo: REPO, lang, rel, texts: SCRIPT_TEXTS[lang], icons: SCRIPT_ICONS, folios: FOLIOS })}</script>
 </body>
 </html>
 `;
@@ -255,7 +256,7 @@ ${head({ title: "Page not found · RayTeX", description: "This page does not exi
   </article>
 </main>
 <script>(function(){var fr=/\\/fr\\//.test(location.pathname)||/^fr\\b/i.test(navigator.language||"");if(fr){document.documentElement.lang="fr";document.title="Page introuvable · RayTeX";document.querySelectorAll('[data-lang-block="en"]').forEach(function(e){e.hidden=true});document.querySelectorAll('[data-lang-block="fr"]').forEach(function(e){e.hidden=false});document.querySelector("[data-home]").href="${base}fr/"}})();</script>
-<script>window.RAYTEX=${JSON.stringify({ repo: REPO, lang: "en", rel: base, texts: SCRIPT_TEXTS.en, icons: SCRIPT_ICONS })}</script>
+<script>window.RAYTEX=${JSON.stringify({ repo: REPO, lang: "en", rel: base, texts: SCRIPT_TEXTS.en, icons: SCRIPT_ICONS, folios: FOLIOS })}</script>
 </body>
 </html>
 `;

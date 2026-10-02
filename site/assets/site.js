@@ -67,19 +67,17 @@
   $$("[data-lang-switch]").forEach((a) => a.addEventListener("click", () => store.set("raytex-lang", a.dataset.langSwitch)));
 
   // ------------------------------------------------------ turning the page
-  // The folio of the page that goes, for the direction of the turn (the
-  // script in the head of the next page reads it).
-  addEventListener("pageswap", (e) => {
-    if (!e.viewTransition) return;
-    try {
-      sessionStorage.setItem("raytex-from", document.documentElement.dataset.folio || "");
-    } catch {
-      /* private mode */
-    }
-  });
-  // Without transitions between documents: the page turns away, then the
-  // link is followed; the next page arrives ("arriving", set in its head).
-  if (!("onpagereveal" in window) && !reduced) {
+  // A link to another page of the site: the page turns over from its left
+  // edge (or, going back to an earlier page, sinks), then the link is
+  // followed; the next page arrives (its head reads "raytex-turn").
+  const root = document.documentElement;
+  if (!reduced) {
+    const here = Number(root.dataset.pageno) || 0;
+    const base = new URL(C.rel || "./", location.href).pathname;
+    const folioOf = (url) => {
+      const path = url.pathname.startsWith(base) ? url.pathname.slice(base.length) : "";
+      return (C.folios || {})[path.replace(/^fr\//, "").replace(/index\.html$/, "")] || 0;
+    };
     document.addEventListener("click", (e) => {
       const a = e.target.closest?.("a[href]");
       if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -88,20 +86,29 @@
       if (to.origin !== location.origin || (to.pathname === location.pathname && to.search === location.search)) return;
       if (!/\/$|\.html$/.test(to.pathname)) return;
       e.preventDefault();
+      const there = folioOf(to);
+      const back = here > 0 && there > 0 && there < here;
       try {
-        sessionStorage.setItem("raytex-turn", "1");
+        sessionStorage.setItem("raytex-turn", back ? "back" : "forward");
       } catch {
         /* private mode */
       }
-      document.documentElement.classList.add("turning");
-      setTimeout(() => location.assign(to.href), 750);
+      // The page turns around the middle of what is on screen.
+      const paper = $(".paper");
+      if (paper) paper.style.transformOrigin = `${back ? "50%" : "0"} ${Math.round(innerHeight / 2 - paper.getBoundingClientRect().top)}px`;
+      root.classList.add(back ? "leaving-back" : "leaving");
+      setTimeout(() => location.assign(to.href), back ? 600 : 800);
     });
-    // Coming back with the history: the page shows again as it was left.
+    // Back with the history: the page comes back as it was, turning in.
     addEventListener("pageshow", (e) => {
-      if (e.persisted) document.documentElement.classList.remove("turning", "arriving");
+      if (!e.persisted) return;
+      root.classList.remove("leaving", "leaving-back");
+      $(".paper")?.style.removeProperty("transform-origin");
+      root.classList.add("arriving-back");
+      setTimeout(() => root.classList.remove("arriving-back"), 1100);
     });
   }
-  setTimeout(() => document.documentElement.classList.remove("arriving"), 1200);
+  setTimeout(() => root.classList.remove("arriving", "arriving-back"), 1100);
 
   // \today, in the reader's language.
   $$("[data-today]").forEach((el) => (el.textContent = new Intl.DateTimeFormat(fr ? "fr" : "en", { dateStyle: "long" }).format(new Date())));
@@ -231,7 +238,7 @@
   });
 
   // The page number, in every style LaTeX knows.
-  const folio = $("[data-folio]");
+  const folio = $("button[data-folio]");
   if (folio) {
     const n = Number(folio.textContent) || 1;
     const roman = (k) =>

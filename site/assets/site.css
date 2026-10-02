@@ -2540,43 +2540,28 @@ body.draft .figure[data-file]::before {
 .js .marginnote[data-reveal].visible {
   transform: rotate(var(--tilt, -2deg));
 }
-/* From one page to another, the page turns: the old one lifts from its left
-   edge and turns over, the new one is underneath. Going back to an earlier
-   page (a smaller folio), the new one turns over the old (vt-back). The top
-   bar stays in place. */
-@view-transition {
-  navigation: auto;
+/* From one page to another, the page turns (site.js): the old one lifts
+   from its left edge and turns over; the new one is underneath and comes
+   up. Going back to an earlier page (a smaller page number), the old one
+   sinks and the new one turns over onto it. The top bar stays. */
+html.leaving .paper {
+  animation: turn-over 0.8s cubic-bezier(0.55, 0.02, 0.3, 1) forwards;
 }
-.topbar {
-  view-transition-name: topbar;
+html.leaving-back .paper {
+  animation: sink-under 0.6s cubic-bezier(0.3, 0.1, 0.25, 1) forwards;
 }
-::view-transition-old(root),
-::view-transition-new(root) {
-  mix-blend-mode: normal;
-  transform-origin: 0 50%;
-  backface-visibility: hidden;
-  animation-duration: 1.5s;
-  animation-fill-mode: both;
+html.leaving .colophon,
+html.leaving-back .colophon {
+  opacity: 0;
+  transition: opacity 0.3s;
 }
-::view-transition-old(root) {
-  z-index: 2;
-  animation-name: turn-over;
-  animation-timing-function: cubic-bezier(0.55, 0.02, 0.3, 1);
+html.arriving .paper {
+  transform-origin: 50% 40vh;
+  animation: lie-under 0.9s cubic-bezier(0.3, 0.1, 0.25, 1) both;
 }
-::view-transition-new(root) {
-  z-index: 1;
-  animation-name: lie-under;
-  animation-timing-function: cubic-bezier(0.3, 0.1, 0.25, 1);
-}
-.vt-back::view-transition-old(root) {
-  z-index: 1;
-  animation-name: sink-under;
-  animation-timing-function: cubic-bezier(0.3, 0.1, 0.25, 1);
-}
-.vt-back::view-transition-new(root) {
-  z-index: 2;
-  animation-name: turn-back;
-  animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+html.arriving-back .paper {
+  transform-origin: 0 40vh;
+  animation: turn-back 0.95s cubic-bezier(0.45, 0, 0.2, 1) both;
 }
 @keyframes turn-over {
   0% {
@@ -2595,10 +2580,21 @@ body.draft .figure[data-file]::before {
     opacity: 0;
   }
 }
-@keyframes lie-under {
-  from {
+@keyframes sink-under {
+  to {
     transform: scale(0.93);
     filter: brightness(0.72);
+    opacity: 0;
+  }
+}
+@keyframes lie-under {
+  0% {
+    transform: scale(0.93);
+    filter: brightness(0.72);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
   }
 }
 @keyframes turn-back {
@@ -2615,48 +2611,13 @@ body.draft .figure[data-file]::before {
     filter: brightness(1);
   }
 }
-@keyframes sink-under {
-  to {
-    transform: scale(0.93);
-    filter: brightness(0.72);
-  }
-}
-/* The theme: no page turns, the new ink spreads from the button (site.js). */
-.theme-vt .topbar {
-  view-transition-name: none;
-}
+/* The theme: the new ink spreads from the button (site.js). */
 .theme-vt::view-transition-old(root),
 .theme-vt::view-transition-new(root) {
   animation: none;
-  transform: none;
-  filter: none;
-}
-.theme-vt::view-transition-new(root) {
-  z-index: 3;
-}
-/* Browsers without transitions between documents (site.js): the page turns
-   away, then the next one arrives. */
-html.turning main {
-  transform-origin: 0 50%;
-  animation: turn-over 0.8s cubic-bezier(0.55, 0.02, 0.3, 1) forwards;
-}
-html.turning .colophon {
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-html.arriving main {
-  animation: arrive 0.9s cubic-bezier(0.3, 0.1, 0.25, 1) both;
-}
-@keyframes arrive {
-  from {
-    transform: translateY(30px) scale(0.96);
-    opacity: 0;
-  }
+  mix-blend-mode: normal;
 }
 @media (prefers-reduced-motion: reduce) {
-  @view-transition {
-    navigation: none;
-  }
   *,
   *::before,
   *::after {
