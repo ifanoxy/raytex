@@ -88,7 +88,7 @@ ${panel(
   "linux",
   `${tex.enumerate(
     [
-      T(`Make ${file("linux", "RayTeX.AppImage")} executable and run it — it works on any distribution:`, `Rendez ${file("linux", "RayTeX.AppImage")} exécutable et lancez-la — elle fonctionne sur toutes les distributions :`) +
+      T(`Make ${file("linux", "RayTeX.AppImage")} executable and run it; it works on any distribution:`, `Rendez ${file("linux", "RayTeX.AppImage")} exécutable et lancez-la ; elle fonctionne sur toutes les distributions :`) +
         code("chmod +x RayTeX_*.AppImage && ./RayTeX_*.AppImage"),
       T("Or install the package of your distribution (in <i>Other formats</i>):", "Ou installez le paquet de votre distribution (dans <i>Autres formats</i>) :") +
         `<span class="code-label">Debian, Ubuntu, Mint</span>${code("sudo apt install ./RayTeX_*_amd64.deb")}<span class="code-label">Fedora, openSUSE</span>${code("sudo dnf install ./RayTeX-*.x86_64.rpm")}`,
@@ -109,7 +109,7 @@ ${tex.section(T("Every version", "Toutes les versions"), "versions")}
 </div>
 
 ${tex.section(T("Verify a file", "Vérifier un fichier"), "verify")}
-${tex.note(T("optional — for the careful", "facultatif — pour les prudents"), { arrow: "left", tilt: -3 })}
+${tex.note(T("optional, for the careful", "facultatif, pour les prudents"), { arrow: "left", tilt: -3 })}
 ${tex.theorem(
   T("Proposition", "Proposition"),
   T("integrity", "intégrité"),

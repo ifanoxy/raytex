@@ -34,8 +34,8 @@ export default {
   <div class="abstract" data-reveal>
     <p class="abstract-title">${T("Abstract", "Résumé")}</p>
     <p>${T(
-      `RayTeX compiles as you type, completes the commands of every package you load, draws your figures, fills your tables, and ${tex.hl("explains each error in plain words")} — with its fix one click away. It keeps all the power of LaTeX and takes away what made it painful.`,
-      `RayTeX compile pendant que vous écrivez, complète les commandes de chaque package chargé, dessine vos figures, remplit vos tableaux, et ${tex.hl("explique chaque erreur avec des mots simples")} — sa correction à un clic. Il garde toute la puissance de LaTeX et retire ce qui le rendait pénible.`,
+      `RayTeX compiles as you type, completes the commands of every package you load, draws your figures, fills your tables, and ${tex.hl("explains each error in plain words")}, with its fix one click away. It keeps all the power of LaTeX and takes away what made it painful.`,
+      `RayTeX compile pendant que vous écrivez, complète les commandes de chaque package chargé, dessine vos figures, remplit vos tableaux, et ${tex.hl("explique chaque erreur avec des mots simples")}, sa correction à un clic. Il garde toute la puissance de LaTeX et retire ce qui le rendait pénible.`,
     )}</p>
   </div>
 
@@ -70,8 +70,8 @@ ${tex.note(T("proved in section 2", "démontré en section 2"), { arrow: "left",
 <p data-reveal>${T("RayTeX is a LaTeX editor built to remove that difficulty without hiding LaTeX:", "RayTeX est un éditeur LaTeX conçu pour retirer cette difficulté sans cacher LaTeX :")}</p>
 ${tex.eq(String.raw`\text{LaTeX} + \htmlClass{tx-violet}{\text{RayTeX}} \;=\; \text{LaTeX} - \htmlClass{strike}{\text{${T("the pain", "la douleur")}}}`)}
 <p data-reveal>${T(
-  `Everything stays standard LaTeX — your files open anywhere — but writing becomes ${tex.underline("immediate", "violet", true)}: the PDF follows what you type, the errors explain themselves, the figures draw themselves.`,
-  `Tout reste du LaTeX standard — vos fichiers s'ouvrent partout — mais l'écriture devient ${tex.underline("immédiate", "violet", true)} : le PDF suit ce que vous tapez, les erreurs s'expliquent, les figures se dessinent.`,
+  `Everything stays standard LaTeX (your files open anywhere), but writing becomes ${tex.underline("immediate", "violet", true)}: the PDF follows what you type, the errors explain themselves, the figures draw themselves.`,
+  `Tout reste du LaTeX standard (vos fichiers s'ouvrent partout), mais l'écriture devient ${tex.underline("immédiate", "violet", true)} : le PDF suit ce que vous tapez, les erreurs s'expliquent, les figures se dessinent.`,
 )}</p>
 </section>
 
@@ -82,14 +82,14 @@ ${tex.theorem(
   T("explained errors", "erreurs expliquées"),
   T(`Every LaTeX error has an explanation in plain words, and the common ones ${tex.hl("a fix in one click", "green")}.`, `Toute erreur de LaTeX admet une explication en mots simples, et les plus courantes ${tex.hl("une correction en un clic", "green")}.`),
   T(
-    `Take the message LaTeX gives for a typing slip. ${tex.listing("! Undefined control sequence.\nl.7 Du texte en \\textbff{gras}")} RayTeX reads the log, finds the misspelt command and offers ${tex.fix("\\textbff", "\\textbf")} — one click, or <kbd>Alt</kbd>+<kbd>Enter</kbd>. The same reasoning holds for about 110 messages of LaTeX, packages, BibTeX and Biber.`,
-    `Prenons le message que LaTeX donne pour une faute de frappe. ${tex.listing("! Undefined control sequence.\nl.7 Du texte en \\textbff{gras}")} RayTeX lit le journal, trouve la commande mal orthographiée et propose ${tex.fix("\\textbff", "\\textbf")} — un clic, ou <kbd>Alt</kbd>+<kbd>Entrée</kbd>. Le même raisonnement vaut pour environ 110 messages de LaTeX, des packages, de BibTeX et de Biber.`,
+    `Take the message LaTeX gives for a typing slip. ${tex.listing("! Undefined control sequence.\nl.7 Du texte en \\textbff{gras}")} RayTeX reads the log, finds the misspelt command and offers ${tex.fix("\\textbff", "\\textbf")}: one click, or <kbd>Alt</kbd>+<kbd>Enter</kbd>. The same reasoning holds for about 110 messages of LaTeX, packages, BibTeX and Biber.`,
+    `Prenons le message que LaTeX donne pour une faute de frappe. ${tex.listing("! Undefined control sequence.\nl.7 Du texte en \\textbff{gras}")} RayTeX lit le journal, trouve la commande mal orthographiée et propose ${tex.fix("\\textbff", "\\textbf")} : un clic, ou <kbd>Alt</kbd>+<kbd>Entrée</kbd>. Le même raisonnement vaut pour environ 110 messages de LaTeX, des packages, de BibTeX et de Biber.`,
   ),
 )}
 ${tex.note(T("click the little square ;)", "cliquez sur le petit carré ;)"), { arrow: "up", tilt: -3 })}
 ${tex.checklist([
   T("misspelt commands, environments, labels and citation keys;", "commandes, environnements, labels et clés de citation mal orthographiés ;"),
-  T("missing packages added — or installed with the right tool;", "packages manquants ajoutés — ou installés avec le bon outil ;"),
+  T("missing packages added, or installed with the right tool;", "packages manquants ajoutés, ou installés avec le bon outil ;"),
   T("unclosed braces, formulas and environments;", "accolades, formules et environnements non fermés ;"),
   T(`and ${tex.boxed("<b>Fix all</b>")}, for the whole document at once.`, `et ${tex.boxed("<b>Tout corriger</b>")}, pour tout le document d'un coup.`),
 ])}
@@ -150,8 +150,8 @@ ${tex.sticky(T("…and in French or English!", "…et en français ou en anglais
 <section class="doc-section">
 ${tex.section(T("Free and open", "Libre et ouvert"), "libre")}
 <p data-reveal>${T(
-  `Every line of RayTeX is public, under the MIT or Apache 2.0 license: ${tex.hl("read it, change it, share it")}. The logo itself is made of curves — ${tex.circled("Bézier", "red")} curves, like the wings of a ray:`,
-  `Chaque ligne de RayTeX est publique, sous licence MIT ou Apache 2.0 : ${tex.hl("lisez-la, modifiez-la, partagez-la")}. Le logo lui-même est fait de courbes — de courbes de ${tex.circled("Bézier", "red")}, comme les ailes d'une raie :`,
+  `Every line of RayTeX is public, under the MIT or Apache 2.0 license: ${tex.hl("read it, change it, share it")}. The logo itself is made of curves, ${tex.circled("Bézier", "red")} curves, like the wings of a ray:`,
+  `Chaque ligne de RayTeX est publique, sous licence MIT ou Apache 2.0 : ${tex.hl("lisez-la, modifiez-la, partagez-la")}. Le logo lui-même est fait de courbes, des courbes de ${tex.circled("Bézier", "red")}, comme les ailes d'une raie :`,
 )}</p>
 ${tex.eq(String.raw`B(t) = \sum_{k=0}^{3} \binom{3}{k}\, t^k (1-t)^{3-k}\, \htmlClass{tx-violet}{P_k}, \qquad t \in [0,1]`)}
 ${tex.figure(bezier(lang), T("A cubic Bézier curve and its four control points.", "Une courbe de Bézier cubique et ses quatre points de contrôle."), "figure-tikz")}

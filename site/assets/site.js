@@ -66,6 +66,43 @@
   });
   $$("[data-lang-switch]").forEach((a) => a.addEventListener("click", () => store.set("raytex-lang", a.dataset.langSwitch)));
 
+  // ------------------------------------------------------ turning the page
+  // The folio of the page that goes, for the direction of the turn (the
+  // script in the head of the next page reads it).
+  addEventListener("pageswap", (e) => {
+    if (!e.viewTransition) return;
+    try {
+      sessionStorage.setItem("raytex-from", document.documentElement.dataset.folio || "");
+    } catch {
+      /* private mode */
+    }
+  });
+  // Without transitions between documents: the page turns away, then the
+  // link is followed; the next page arrives ("arriving", set in its head).
+  if (!("onpagereveal" in window) && !reduced) {
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest?.("a[href]");
+      if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if ((a.target && a.target !== "_self") || a.hasAttribute("download")) return;
+      const to = new URL(a.href, location.href);
+      if (to.origin !== location.origin || (to.pathname === location.pathname && to.search === location.search)) return;
+      if (!/\/$|\.html$/.test(to.pathname)) return;
+      e.preventDefault();
+      try {
+        sessionStorage.setItem("raytex-turn", "1");
+      } catch {
+        /* private mode */
+      }
+      document.documentElement.classList.add("turning");
+      setTimeout(() => location.assign(to.href), 750);
+    });
+    // Coming back with the history: the page shows again as it was left.
+    addEventListener("pageshow", (e) => {
+      if (e.persisted) document.documentElement.classList.remove("turning", "arriving");
+    });
+  }
+  setTimeout(() => document.documentElement.classList.remove("arriving"), 1200);
+
   // \today, in the reader's language.
   $$("[data-today]").forEach((el) => (el.textContent = new Intl.DateTimeFormat(fr ? "fr" : "en", { dateStyle: "long" }).format(new Date())));
 
@@ -266,8 +303,8 @@
     c.setAttribute("role", "status");
     c.innerHTML = `<div class="cheque-top"><span>${L("Bank of San Serriffe", "Banque de San Serriffe")}</span><span>N° 0x100</span></div>
       <span class="cheque-amount">$2.56</span>
-      ${L("Pay to the order of <b>you</b>, for a bug found in this document: two dollars and fifty-six cents — one hexadecimal dollar.", "Payez à l'ordre de <b>vous</b>, pour une erreur trouvée dans ce document : deux dollars et cinquante-six cents — un dollar hexadécimal.")}
-      <span class="hand">${L("— the ray", "— la raie")}</span>
+      ${L("Pay to the order of <b>you</b>, for a bug found in this document: two dollars and fifty-six cents, one hexadecimal dollar.", "Payez à l'ordre de <b>vous</b>, pour une erreur trouvée dans ce document : deux dollars et cinquante-six cents, un dollar hexadécimal.")}
+      <span class="hand">${L("the ray", "la raie")}</span>
       <small>${L("In the manner of the cheques D. E. Knuth sends to whoever finds an error in his books. Not cashable.", "À la manière des chèques que D. E. Knuth envoie à qui trouve une erreur dans ses livres. Non encaissable.")}</small>`;
     c.addEventListener("click", () => c.remove());
     document.body.append(c);
@@ -560,7 +597,7 @@
       <span class="dl-file-name">${esc(label)}${recommended ? ` <span class="badge">${esc(T.recommended)}</span>` : ""}</span>
       <span class="dl-file-desc">${esc(desc)}</span>
       <span class="dl-file-meta"><span>${esc(size(f.size))}</span>${sha ? `<button type="button" data-copy="${sha}" title="${esc(sha)}" aria-label="${esc(T.copy)} ${T.sha}">${C.icons.copy} ${T.sha}</button>` : ""}</span>
-      <a class="btn btn-primary btn-sm" href="${esc(f.url)}" download aria-label="${esc(label)} — ${esc(f.name)}">${C.icons.download}</a>
+      <a class="btn btn-primary btn-sm" href="${esc(f.url)}" download aria-label="${esc(label)}, ${esc(f.name)}">${C.icons.download}</a>
     </div>`;
   }
 
@@ -611,12 +648,12 @@
         btn.href = `https://github.com/${C.repo}/releases`;
         $("[data-dl-main-label]", btn).textContent = T.onGithub;
       }
-      $$("[data-dl-files]").forEach((el) => (el.innerHTML = `<p class="dl-empty">—</p>`));
+      $$("[data-dl-files]").forEach((el) => (el.innerHTML = `<p class="dl-empty">${esc(T.none)}</p>`));
       return;
     }
 
     select.innerHTML = list
-      .map((r) => `<option value="${esc(r.tag)}">${esc(version(r))}${r === latestOf(list) ? ` — ${esc(T.latest)}` : r.prerelease ? ` — ${esc(T.prerelease)}` : ""}</option>`)
+      .map((r) => `<option value="${esc(r.tag)}">${esc(version(r))}${r === latestOf(list) ? ` (${esc(T.latest.toLowerCase())})` : r.prerelease ? ` (${esc(T.prerelease.toLowerCase())})` : ""}</option>`)
       .join("");
     const wanted = new URLSearchParams(location.search).get("version");
     const initial = list.find((r) => r.tag === wanted || version(r) === wanted) || latestOf(list);
@@ -648,7 +685,7 @@
           $("[data-dl-main-label]", btn).textContent = T.onGithub;
           meta.textContent = T.noFile;
         }
-        $(`[data-dl-files="${os}"]`).innerHTML = rest.length ? rest.map((f) => fileRow(f, false)).join("") : `<p class="dl-empty">—</p>`;
+        $(`[data-dl-files="${os}"]`).innerHTML = rest.length ? rest.map((f) => fileRow(f, false)).join("") : `<p class="dl-empty">${esc(T.none)}</p>`;
         // macOS: the other kind of Mac, right under the button.
         const alt = $(`[data-dl-alt="${os}"]`);
         if (alt) {
@@ -692,7 +729,7 @@
           const others = r.assets.filter((a) => !classify(a.name)).length;
           return `<article class="release${r === latest ? " is-latest" : ""}" id="${esc(r.tag)}" data-reveal>
             <div class="release-head"><h2>${esc(r.name || r.tag)}</h2>${r === latest ? `<span class="badge latest">${esc(T.latest)}</span>` : ""}${r.prerelease ? `<span class="badge pre">${esc(T.prerelease)}</span>` : ""}<span class="release-date">${esc(fill(T.released, { date: date(r.date) }))}</span></div>
-            <div class="release-notes">${r.notes}</div>
+            <div class="release-notes">${r.notes.replace(/\s*\u2014\s*/g, ", ")}</div>
             <div class="release-assets">${chips}${others ? `<a class="asset-chip" href="${esc(r.url)}">${esc(T.otherFiles)} <small>${others}</small></a>` : ""}<a class="asset-chip" href="${esc(r.url)}">${C.icons.github} GitHub</a></div>
           </article>`;
         })

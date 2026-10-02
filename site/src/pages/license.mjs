@@ -9,8 +9,8 @@ export default {
   body({ T, icon, GITHUB, tex }) {
     return `${tex.chapter("I", T("License", "Licence"), {
       stamp: ["MIT ∨ Apache", "violet", 7],
-      epigraph: [T("Free as in freedom — twice over.", "Libre comme l'air — deux fois plutôt qu'une."), T("the ray", "la raie")],
-      lead: T("RayTeX is distributed under the MIT license <b>or</b> the Apache License 2.0, at your choice — the usual pair of the Rust world.", "RayTeX est distribué sous la licence MIT <b>ou</b> la licence Apache 2.0, au choix — le duo habituel du monde Rust."),
+      epigraph: [T("Free as in freedom, twice over.", "Libre comme l'air, deux fois plutôt qu'une."), T("the ray", "la raie")],
+      lead: T("RayTeX is distributed under the MIT license <b>or</b> the Apache License 2.0, at your choice: the usual pair of the Rust world.", "RayTeX est distribué sous la licence MIT <b>ou</b> la licence Apache 2.0, au choix : le duo habituel du monde Rust."),
     })}
 ${tex.eq(String.raw`\mathcal{L}(\text{RayTeX}) \;=\; \htmlClass{tx-violet}{\text{MIT} \;\lor\; \text{Apache-2.0}}`)}
 
@@ -20,9 +20,9 @@ ${tex.theorem(
   T("freedom", "liberté"),
   T("Anyone may, for any purpose:", "Toute personne peut, pour tout usage :") +
     tex.enumerate([
-      T("<b>use</b> RayTeX — personal, school, research or commercial work;", "<b>utiliser</b> RayTeX — travail personnel, scolaire, de recherche ou commercial ;"),
-      T("<b>study and change</b> it — the whole source code is public;", "l'<b>étudier et le modifier</b> — tout le code source est public ;"),
-      T("<b>share</b> it — copy and distribute it, changed or not, free or paid.", "le <b>partager</b> — le copier et le distribuer, modifié ou non, gratuitement ou non."),
+      T("<b>use</b> RayTeX, for personal, school, research or commercial work;", "<b>utiliser</b> RayTeX, pour un travail personnel, scolaire, de recherche ou commercial ;"),
+      T("<b>study and change</b> it: the whole source code is public;", "l'<b>étudier et le modifier</b> : tout le code source est public ;"),
+      T("<b>share</b> it: copy and distribute it, changed or not, free or paid.", "le <b>partager</b> : le copier et le distribuer, modifié ou non, gratuitement ou non."),
     ]),
   T(`Read the licenses: <a href="${GITHUB}/blob/main/LICENSE-MIT">MIT</a> and <a href="${GITHUB}/blob/main/LICENSE-APACHE">Apache 2.0</a>.`, `Lisez les licences : <a href="${GITHUB}/blob/main/LICENSE-MIT">MIT</a> et <a href="${GITHUB}/blob/main/LICENSE-APACHE">Apache 2.0</a>.`),
 )}

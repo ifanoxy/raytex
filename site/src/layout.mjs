@@ -45,6 +45,7 @@ const SCRIPT_TEXTS = {
     loadFailedHint: "All the files are on GitHub:",
     onGithub: "Open the releases on GitHub",
     noFile: "No file for this system in this version.",
+    none: "None for this version.",
     recommended: "Recommended",
     copy: "Copy",
     copied: "Copied",
@@ -82,6 +83,7 @@ const SCRIPT_TEXTS = {
     loadFailedHint: "Tous les fichiers sont sur GitHub :",
     onGithub: "Ouvrir les versions sur GitHub",
     noFile: "Aucun fichier pour ce système dans cette version.",
+    none: "Aucun pour cette version.",
     recommended: "Recommandé",
     copy: "Copier",
     copied: "Copié",
@@ -110,6 +112,12 @@ const SCRIPT_TEXTS = {
 
 // Paper by day unless the reader turned the page to night (the button).
 const THEME_SCRIPT = `(function(){var t,d=document.documentElement;try{t=localStorage.getItem("raytex-theme")}catch(e){}d.dataset.theme=t==="dark"?"dark":"light";d.classList.add("js")})();`;
+
+// Turning the page from one page of the site to the next (site.css): back
+// when the new page comes before the old one in the document (their folios,
+// kept by site.js when the old page goes). Browsers without transitions
+// between documents get a simpler turn from site.js ("arriving").
+const TURN_SCRIPT = `(function(){var d=document.documentElement;addEventListener("pagereveal",function(e){if(!e.viewTransition)return;try{var f=+sessionStorage.getItem("raytex-from"),t=+d.dataset.folio;if(f&&t&&t<f){d.classList.add("vt-back");var off=function(){d.classList.remove("vt-back")};e.viewTransition.finished.then(off,off)}}catch(x){}});try{if(sessionStorage.getItem("raytex-turn")){sessionStorage.removeItem("raytex-turn");d.classList.add("arriving")}}catch(x){}})();`;
 
 /** Icons the scripts insert (download lists). */
 const SCRIPT_ICONS = Object.fromEntries(["windows", "apple", "linux", "download", "copy", "github"].map((n) => [n, icon(n, n === "copy" ? 13 : 16)]));
@@ -140,7 +148,7 @@ ${alternates ?? ""}
 <link rel="preload" href="${rel}assets/fonts/caveat-latin.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="${rel}assets/katex/katex.min.css" />
 <link rel="stylesheet" href="${rel}assets/site.css?v=${CSS_V}" />
-<script>${THEME_SCRIPT}</script>
+<script>${THEME_SCRIPT}${TURN_SCRIPT}</script>
 ${extra}
 <script src="${rel}assets/site.js?v=${JS_V}" defer></script>`;
 }
@@ -155,7 +163,7 @@ export function page(p, { lang, path, siteUrl, version, prefix }) {
   const tex = texContext(lang);
   const ctx = { lang, T, url, rel, asset: (a) => `${rel}assets/${a}`, icon, esc, version, GITHUB, REPO, YEAR, tex, FOLIO };
 
-  const title = p.id === "home" ? T("RayTeX — the next-generation, open-source LaTeX IDE", "RayTeX — l'IDE LaTeX nouvelle génération, open source") : `${T(p.title.en, p.title.fr)} — RayTeX`;
+  const title = p.id === "home" ? T("RayTeX, the next-generation open-source LaTeX IDE", "RayTeX, l'IDE LaTeX nouvelle génération, open source") : `${T(p.title.en, p.title.fr)} · RayTeX`;
   const description = T(p.description.en, p.description.fr);
   const alternates = ["en", "fr"].map((l) => `<link rel="alternate" hreflang="${l}" href="${siteUrl}/${prefix(l)}${p.path}" />`).join("\n") + `\n<link rel="alternate" hreflang="x-default" href="${siteUrl}/${p.path}" />`;
   // Every page in the reader's language: the one chosen with the switch, or
@@ -167,7 +175,7 @@ export function page(p, { lang, path, siteUrl, version, prefix }) {
   const nav = NAV.map(([id, to, en, fr]) => `<a href="${url(to)}"${id === p.id ? ' aria-current="page"' : ""}>${T(en, fr)}</a>`).join("");
 
   return `<!doctype html>
-<html lang="${lang}">
+<html lang="${lang}" data-folio="${FOLIO[p.id] ?? ""}">
 <head>
 ${head({ title, description, lang, canonical: `${siteUrl}/${path}`, alternates, rel, siteUrl, extra: redirect })}
 </head>
@@ -175,7 +183,7 @@ ${head({ title, description, lang, canonical: `${siteUrl}/${path}`, alternates, 
 <a class="skip" href="#main">${T("Skip to content", "Aller au contenu")}</a>
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="${url("")}" aria-label="RayTeX — ${T("home", "accueil")}">
+    <a class="brand" href="${url("")}" aria-label="RayTeX, ${T("home", "accueil")}">
       <img class="brand-light" src="${rel}assets/img/logo-mark-light.svg" alt="RayTeX" width="132" height="44" />
       <img class="brand-dark" src="${rel}assets/img/logo-mark-dark.svg" alt="" width="132" height="44" />
     </a>
@@ -228,7 +236,7 @@ export function notFound({ base, siteUrl }) {
   return `<!doctype html>
 <html lang="en">
 <head>
-${head({ title: "Page not found — RayTeX", description: "This page does not exist.", lang: "en", rel: base, siteUrl })}
+${head({ title: "Page not found · RayTeX", description: "This page does not exist.", lang: "en", rel: base, siteUrl })}
 </head>
 <body data-page="404">
 <main id="main" class="texstop">
@@ -246,7 +254,7 @@ ${head({ title: "Page not found — RayTeX", description: "This page does not ex
     <p class="terminal-actions"><a class="fbox-link" data-home href="${base}">${icon("home", 15)}<span data-lang-block="en">Home</span><span data-lang-block="fr" hidden>Accueil</span></a></p>
   </article>
 </main>
-<script>(function(){var fr=/\\/fr\\//.test(location.pathname)||/^fr\\b/i.test(navigator.language||"");if(fr){document.documentElement.lang="fr";document.title="Page introuvable — RayTeX";document.querySelectorAll('[data-lang-block="en"]').forEach(function(e){e.hidden=true});document.querySelectorAll('[data-lang-block="fr"]').forEach(function(e){e.hidden=false});document.querySelector("[data-home]").href="${base}fr/"}})();</script>
+<script>(function(){var fr=/\\/fr\\//.test(location.pathname)||/^fr\\b/i.test(navigator.language||"");if(fr){document.documentElement.lang="fr";document.title="Page introuvable · RayTeX";document.querySelectorAll('[data-lang-block="en"]').forEach(function(e){e.hidden=true});document.querySelectorAll('[data-lang-block="fr"]').forEach(function(e){e.hidden=false});document.querySelector("[data-home]").href="${base}fr/"}})();</script>
 <script>window.RAYTEX=${JSON.stringify({ repo: REPO, lang: "en", rel: base, texts: SCRIPT_TEXTS.en, icons: SCRIPT_ICONS })}</script>
 </body>
 </html>

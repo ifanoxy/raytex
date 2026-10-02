@@ -50,7 +50,7 @@ export function texContext(lang) {
       n.chapter = letter;
       const mark = stamp ? `<span class="stamp stamp-${stamp[1] ?? "red"} stamp-chapter" data-reveal style="--tilt: ${stamp[2] ?? 7}deg">${stamp[0]}</span>` : "";
       return `<header class="chapter" data-reveal>${mark}<p class="chapter-label">${fr ? "Annexe" : "Appendix"} <span>${letter}</span></p><h1 class="chapter-title">${title}</h1>${
-        epigraph ? `<blockquote class="epigraph"><p>${epigraph[0]}</p><footer>— ${epigraph[1]}</footer></blockquote>` : ""
+        epigraph ? `<blockquote class="epigraph"><p>${epigraph[0]}</p><footer>${epigraph[1]}</footer></blockquote>` : ""
       }${lead ? `<p class="chapter-lead">${lead}</p>` : ""}</header>`;
     },
 
@@ -73,7 +73,7 @@ export function texContext(lang) {
     /** A figure and its caption. */
     figure(content, caption, cls = "") {
       const k = num(++n.figure);
-      return `<figure class="figure ${cls}" data-reveal>${content}<figcaption><span class="fig-label">Figure ${k} —</span> ${caption}</figcaption></figure>`;
+      return `<figure class="figure ${cls}" data-reveal>${content}<figcaption><span class="fig-label">Figure ${k}${fr ? " :" : ":"}</span> ${caption}</figcaption></figure>`;
     },
 
     /** Théorème / Proposition, with an optional proof ending in ∎. */
@@ -176,7 +176,7 @@ export function texContext(lang) {
       const cls = (i) => (align[i] === "r" ? ' class="num"' : "");
       const body = rows.map((r) => `<tr>${r.map((c, i) => `<td${cls(i)}>${c}</td>`).join("")}</tr>`).join("");
       const k = caption ? num(++n.table) : null;
-      return `<div class="booktabs" data-reveal>${caption ? `<p class="tab-caption"><span class="fig-label">${fr ? "Tableau" : "Table"} ${k} —</span> ${caption}</p>` : ""}<table><thead><tr>${head.map((h, i) => `<th${cls(i)}>${h}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
+      return `<div class="booktabs" data-reveal>${caption ? `<p class="tab-caption"><span class="fig-label">${fr ? "Tableau" : "Table"} ${k}${fr ? " :" : ":"}</span> ${caption}</p>` : ""}<table><thead><tr>${head.map((h, i) => `<th${cls(i)}>${h}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
     },
 
     /** A listing of LaTeX source, line numbers in the margin. */

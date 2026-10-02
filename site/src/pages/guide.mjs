@@ -54,8 +54,8 @@ ${tex.note(T("nothing to do if LaTeX is already there", "rien à faire si LaTeX 
 
 ${tex.section(T("Create a project", "Créer un projet"), "project")}
 <p data-reveal>${T(
-  "<b>New project</b>: give it a name, it is created in your projects folder (<code>Documents/RayTeX</code>). The <b>Templates</b> panel shows each template by its first page — article, report, thesis, slides, CV… — and puts it in the document in one click (undo brings the blank page back).",
-  "<b>Nouveau projet</b> : donnez-lui un nom, il est créé dans votre dossier de projets (<code>Documents/RayTeX</code>). Le panneau <b>Modèles</b> montre chaque modèle par sa première page — article, rapport, thèse, diaporama, CV… — et le place dans le document en un clic (annuler rend la page blanche).",
+  "<b>New project</b>: give it a name, it is created in your projects folder (<code>Documents/RayTeX</code>). The <b>Templates</b> panel shows each template by its first page (article, report, thesis, slides, CV…) and puts it in the document in one click (undo brings the blank page back).",
+  "<b>Nouveau projet</b> : donnez-lui un nom, il est créé dans votre dossier de projets (<code>Documents/RayTeX</code>). Le panneau <b>Modèles</b> montre chaque modèle par sa première page (article, rapport, thèse, diaporama, CV…) et le place dans le document en un clic (annuler rend la page blanche).",
 )}</p>
 <p data-reveal>${T(
   "Already have a <code>.tex</code> file? Open it directly: RayTeX edits it and exports its PDF without creating anything next to it.",
@@ -65,8 +65,8 @@ ${tex.section(T("Create a project", "Créer un projet"), "project")}
 ${tex.section(T("Write", "Écrire"), "write")}
 ${tex.note(T("in a formula, @e gives ε and @/ a fraction", "dans une formule, @e donne ε et @/ une fraction"), { arrow: "left", tilt: -2 })}
 <p data-reveal>${T(
-  `Type as usual: ${tex.hl("completion proposes the commands of the packages you load")}, with their documentation. The formatting bar does the rest — styles, lists, formulas, images, tables, drawings.`,
-  `Tapez comme d'habitude : ${tex.hl("la complétion propose les commandes des packages chargés")}, avec leur documentation. La barre de mise en forme fait le reste — styles, listes, formules, images, tableaux, dessins.`,
+  `Type as usual: ${tex.hl("completion proposes the commands of the packages you load")}, with their documentation. The formatting bar does the rest: styles, lists, formulas, images, tables, drawings.`,
+  `Tapez comme d'habitude : ${tex.hl("la complétion propose les commandes des packages chargés")}, avec leur documentation. La barre de mise en forme fait le reste : styles, listes, formules, images, tableaux, dessins.`,
 )}</p>
 ${tex.figure(`<div class="srcpdf">${tex.listing(sample, "main.tex")}${output}</div>`, T("The source, and the PDF that follows it.", "La source, et le PDF qui la suit."))}
 
@@ -78,8 +78,8 @@ ${tex.section(T("Compile and read the PDF", "Compiler et lire le PDF"), "compile
 
 ${tex.section(T("Fix the errors", "Corriger les erreurs"), "fix")}
 <p data-reveal>${T(
-  `Problems are underlined in the text and counted in the top bar. Each one says what is wrong in plain words; <kbd>Alt</kbd> + <kbd>Enter</kbd> offers its fixes — ${tex.fix("\\begin{itemise}", "itemize")} — and <b>Fix all</b> in the Problems panel corrects everything it can at once.`,
-  `Les problèmes sont soulignés dans le texte et comptés dans la barre du haut. Chacun dit ce qui ne va pas avec des mots simples ; <kbd>Alt</kbd> + <kbd>Entrée</kbd> propose ses corrections — ${tex.fix("\\begin{itemise}", "itemize")} — et <b>Tout corriger</b> dans le panneau Problèmes corrige d'un coup tout ce qui peut l'être.`,
+  `Problems are underlined in the text and counted in the top bar. Each one says what is wrong in plain words; <kbd>Alt</kbd> + <kbd>Enter</kbd> offers its fixes (${tex.fix("\\begin{itemise}", "itemize")}), and <b>Fix all</b> in the Problems panel corrects everything it can at once.`,
+  `Les problèmes sont soulignés dans le texte et comptés dans la barre du haut. Chacun dit ce qui ne va pas avec des mots simples ; <kbd>Alt</kbd> + <kbd>Entrée</kbd> propose ses corrections (${tex.fix("\\begin{itemise}", "itemize")}), et <b>Tout corriger</b> dans le panneau Problèmes corrige d'un coup tout ce qui peut l'être.`,
 )}</p>
 
 ${tex.section(T("Shortcuts worth knowing", "Les raccourcis à connaître"), "shortcuts")}
@@ -91,9 +91,9 @@ ${tex.table(
 
 ${tex.sectionStar(T("See also", "Voir aussi"), "more")}
 ${tex.itemize([
-  `<a href="${url("features/")}">${T("Every feature", "Toutes les fonctionnalités")}</a> — ${T("images, TikZ studio, fonts, macros, projects (appendix A).", "images, studio TikZ, polices, macros, projets (annexe A).")}`,
-  `<a href="${url("faq/")}">${T("Frequently asked questions", "Questions fréquentes")}</a> — ${T("distributions, offline use, privacy, updates (appendix E).", "distributions, hors ligne, confidentialité, mises à jour (annexe E).")}`,
-  `<a href="${GITHUB}#command-line">${T("The command line", "La ligne de commande")}</a> — <code>raytex build</code>, <code>lint</code>, <code>doctor</code>, <code>new</code>…`,
+  `<a href="${url("features/")}">${T("Every feature", "Toutes les fonctionnalités")}</a> : ${T("images, TikZ studio, fonts, macros, projects (appendix A).", "images, studio TikZ, polices, macros, projets (annexe A).")}`,
+  `<a href="${url("faq/")}">${T("Frequently asked questions", "Questions fréquentes")}</a> : ${T("distributions, offline use, privacy, updates (appendix E).", "distributions, hors ligne, confidentialité, mises à jour (annexe E).")}`,
+  `<a href="${GITHUB}#command-line">${T("The command line", "La ligne de commande")}</a> : <code>raytex build</code>, <code>lint</code>, <code>doctor</code>, <code>new</code>…`,
 ])}
 ${ctaEnd({ T, url, icon }, T("let's go!", "c'est parti !"))}`;
   },

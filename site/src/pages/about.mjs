@@ -37,8 +37,8 @@ ${axiom(T("any setup", "toute configuration"), T("Whatever the system and the Te
 
 ${tex.section(T("Why “RayTeX”?", "Pourquoi « RayTeX » ?"), "name")}
 <p data-reveal>${T(
-  "A manta ray — the <em>Ray</em> — gliding with the <span class='texlogo'>T<span>e</span>X</span> logo: something light and calm moving through a sea of commands. The wordmark is typeset by LaTeX itself, in Latin Modern.",
-  "Une raie manta — <em>ray</em> en anglais — qui glisse avec le logo <span class='texlogo'>T<span>e</span>X</span> : quelque chose de léger et de calme au milieu d'un océan de commandes. Le logotype est composé par LaTeX lui-même, en Latin Modern.",
+  "A manta ray (the <em>Ray</em>) gliding with the <span class='texlogo'>T<span>e</span>X</span> logo: something light and calm moving through a sea of commands. The wordmark is typeset by LaTeX itself, in Latin Modern.",
+  "Une raie manta (<em>ray</em> en anglais) qui glisse avec le logo <span class='texlogo'>T<span>e</span>X</span> : quelque chose de léger et de calme au milieu d'un océan de commandes. Le logotype est composé par LaTeX lui-même, en Latin Modern.",
 )}</p>
 ${tex.figure(`<div class="ray-figure">${ray()}</div>`, T("<i>Mobula texensis</i>, observed gliding over a <code>.tex</code> file.", "<i>Mobula texensis</i>, observée planant au-dessus d'un fichier <code>.tex</code>."), "figure-tikz")}
 
@@ -51,7 +51,7 @@ ${tex.table([T("Component", "Composant"), T("Role", "Rôle")], tech.map(([n, d])
 
 ${tex.section(T("Everyone can help", "Tout le monde peut aider"), "contributing")}
 <p data-reveal>${T("No need to write Rust: a clear bug report, a better explanation or a template helps as much.", "Pas besoin d'écrire du Rust : un rapport de bug clair, une meilleure explication ou un modèle aident tout autant.")}</p>
-${tex.note(T("every contribution counts — even a typo", "chaque contribution compte — même une coquille"), { arrow: "left", tilt: -2 })}
+${tex.note(T("every contribution counts, even a typo", "chaque contribution compte, même une coquille"), { arrow: "left", tilt: -2 })}
 ${tex.description([
   [`<a href="${GITHUB}/issues/new/choose">${T("Report a bug", "Signaler un bug")}</a>`, T("The steps, your system and your distribution.", "Les étapes, votre système et votre distribution.")],
   [`<a href="${GITHUB}/issues/new/choose">${T("Suggest an idea", "Proposer une idée")}</a>`, T("A feature, a shortcut, a missing template?", "Une fonctionnalité, un raccourci, un modèle manquant ?")],
