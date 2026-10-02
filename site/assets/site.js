@@ -123,20 +123,23 @@
 
   // -------------------------------------------------------------- opening
   // Once per visit, when the visit starts on the title page (the script in
-  // the head sets "opening"): the source is typed, compiled, the ray drawn
-  // and inked, the title typeset, then the page turns onto the site (about
-  // 9 s; Skip or Escape ends it at once).
+  // the head sets "opening"): the source of the title page is written at
+  // full speed and scrolls, the ray is drawn and inked, the title typeset,
+  // then the title page arrives like a book (about 7.5 s; Skip or Escape
+  // ends it at once). Not in a tab opened in the background.
   const introBox = $("[data-intro]");
   try {
     sessionStorage.setItem("raytex-visited", "1");
   } catch {
     /* private mode */
   }
-  if (introBox && root.classList.contains("opening")) playIntro(introBox);
-  else introBox?.remove();
+  if (introBox && root.classList.contains("opening") && !document.hidden) playIntro(introBox);
+  else {
+    introBox?.remove();
+    root.classList.remove("opening");
+  }
 
   function playIntro(box) {
-    box.style.setProperty("--intro-ms", "9000ms");
     let done = false;
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const stage = (c) => {
@@ -145,16 +148,16 @@
     const onKey = (e) => {
       if (e.key === "Escape") finish();
     };
-    const finish = () => {
+    // The end: the drawing falls, the title page arrives like a book.
+    function finish() {
       if (done) return;
       done = true;
       removeEventListener("keydown", onKey);
       box.classList.add("s-out");
-      setTimeout(() => {
-        root.classList.remove("opening");
-        box.remove();
-      }, 1100);
-    };
+      root.classList.add("arriving-book");
+      setTimeout(() => box.remove(), 950);
+      setTimeout(() => root.classList.remove("opening", "arriving-book"), 1650);
+    }
     $("[data-intro-skip]", box)?.addEventListener("click", finish);
     addEventListener("keydown", onKey);
     // The strokes of the drawing know their length (they trace themselves).
@@ -162,37 +165,60 @@
       for (const el of $$(".intro-stroke:not(.dashed), .intro-ray path", box)) el.style.setProperty("--len", strokeLength(el));
     });
 
-    (async () => {
-      // 1. The source, typed.
+    // 1. The source, written at full speed (2 s for the whole file); the
+    // sheet scrolls to follow the caret.
+    function write(duration) {
+      const pre = $("[data-intro-pre]", box);
+      const rows = $$(".row", box);
+      const size = (row) => Number($(".tl", row).dataset.n) + 1;
+      const total = rows.reduce((sum, row) => sum + size(row), 0);
       const caret = Object.assign(document.createElement("span"), { className: "intro-caret" });
-      await wait(450);
-      for (const line of $$(".tl", box)) {
-        if (done) return;
-        line.after(caret);
-        const n = Number(line.dataset.n);
-        for (let k = 1; k <= n + 2 && !done; k += 3) {
-          line.style.maxWidth = `${k}ch`;
-          await wait(16);
-        }
-        line.style.maxWidth = "none";
-        await wait(50);
-      }
-      // 2. Compiled.
-      stage("s-log");
-      for (const l of $$(".ll", box)) {
-        if (done) return;
-        await wait(170);
-        l.classList.add("on");
-      }
-      await wait(300);
-      caret.remove();
-      // 3. Drawn; 4. inked; 5. the title.
+      return new Promise((resolve) => {
+        let i = 0;
+        let written = 0;
+        let start = 0;
+        const tick = (now) => {
+          if (done) return resolve();
+          start ||= now;
+          const target = Math.min(total, ((now - start) / duration) * total);
+          while (i < rows.length) {
+            const row = rows[i];
+            const line = $(".tl", row);
+            row.hidden = false;
+            if (written + size(row) <= target) {
+              line.style.maxWidth = "none";
+              written += size(row);
+              i++;
+              continue;
+            }
+            line.style.maxWidth = `${Math.max(0, Math.floor(target - written))}ch`;
+            line.after(caret);
+            break;
+          }
+          pre.scrollTop = pre.scrollHeight;
+          if (i >= rows.length) {
+            caret.remove();
+            return resolve();
+          }
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+    }
+
+    (async () => {
+      await wait(350);
+      await write(2000);
+      if (done) return;
+      $("[data-intro-status]", box)?.classList.add("on");
+      await wait(400);
+      // 2. Drawn; 3. inked; 4. the title.
       stage("s-draw");
-      await wait(3000);
+      await wait(2100);
       stage("s-ink");
-      await wait(800);
+      await wait(550);
       stage("s-title");
-      await wait(1500);
+      await wait(1100);
       finish();
     })();
   }

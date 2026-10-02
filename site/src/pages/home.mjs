@@ -9,33 +9,152 @@ export default {
     en: "RayTeX is the next-generation LaTeX IDE: open source and free, for Windows, macOS and Linux. Live preview, completion that knows every package, and every error explained with its fix.",
     fr: "RayTeX est l'IDE LaTeX nouvelle génération : open source et gratuit, pour Windows, macOS et Linux. Aperçu en direct, complétion qui connaît chaque package, et chaque erreur expliquée avec sa correction.",
   },
-  /** The opening of the site (site.js): the source is typed, compiled, the
-   *  ray drawn with compass and curves, inked, the title typeset; then the
-   *  page turns onto the site. Once per visit, from the title page. */
+  /** The opening of the site (site.js): the source of this page written at
+   *  full speed on a sheet as high as the screen, which scrolls as it goes;
+   *  then the ray drawn with compass and curves, inked, the title typeset;
+   *  then this page arrives like a book. Once per visit, from the title page. */
   intro({ T, lang }) {
-    const source = [
-      "\\documentclass{article}",
-      "\\usepackage{raytex, tikz}",
-      "\\begin{document}",
-      "\\title{Ray\\TeX}",
-      T("\\author{the ray}", "\\author{la raie}"),
-      "\\maketitle",
-      "\\[ \\text{LaTeX} + \\text{RayTeX} = \\heartsuit \\]",
-      "\\end{document}",
-    ];
-    const log = [
-      ["t-prompt", "$ raytex build raytex.tex"],
-      ["", "This is RayTeX, Version 0.1 (preloaded format=intro)"],
-      ["", "(./raytex.tex (./raytex.sty) (./tikz.sty)"],
-      ["", "[1]"],
-      ["", T("Output written on raytex.pdf (1 page).", "Output written on raytex.pdf (1 page).")],
-      ["t-ok", T("✓ 0 errors, 0 warnings · 1.2 s", "✓ 0 erreur, 0 avertissement · 1,2 s")],
-    ];
+    const source = T(
+      String.raw`% raytex.tex: the title page of RayTeX
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern, amsmath, amssymb, amsthm}
+\usepackage{tikz, booktabs, hyperref}
+\usetikzlibrary{calc, positioning}
+
+\title{Ray\TeX}
+\author{Open source, free, for Windows, macOS and Linux}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+  RayTeX compiles as you type, completes the commands of every
+  package you load, draws your figures, fills your tables, and
+  \emph{explains each error in plain words}.
+\end{abstract}
+
+\tableofcontents
+
+\section{Introduction}\label{sec:intro}
+LaTeX makes the most beautiful documents there are: theses,
+articles, courses, slides. It also has a reputation for being
+hard\footnote{A well-deserved reputation.}.
+\begin{equation}
+  \text{LaTeX} + \text{RayTeX} = \text{LaTeX} - \text{the pain}
+\end{equation}
+
+\section{Errors that finally make sense}\label{sec:errors}
+\begin{theorem}[explained errors]
+  Every LaTeX error has an explanation in plain words.
+\end{theorem}
+\begin{proof}
+  \verb|\textbff| becomes \verb|\textbf|: one click.
+\end{proof}
+\begin{itemize}
+  \item misspelt commands, environments, labels and keys;
+  \item missing packages, installed with the right tool;
+  \item and \textbf{Fix all}, for the whole document at once.
+\end{itemize}
+
+\section{Write, and see the PDF}\label{sec:live}
+\[ \Delta t_{\text{build}} \approx 1{,}5\ \mathrm{s} \]
+
+\section{Drawings, tables and matrices}\label{sec:draw}
+\begin{tikzpicture}
+  \draw (0,0) -- (4,-0.3) -- (2,2.4) -- cycle;
+  \draw[violet] (2.03,0.55) circle (2.04);
+\end{tikzpicture}
+\[ \frac{\partial u}{\partial t} = \alpha\,\Delta u \]
+
+\section{Everywhere, with your LaTeX}\label{sec:everywhere}
+\begin{description}
+  \item[Windows, macOS, Linux] a light native application;
+  \item[Any TeX distribution] TeX Live, MiKTeX, MacTeX, Tectonic.
+\end{description}
+
+\section{Free and open}\label{sec:free}
+\[ B(t) = \sum_{k=0}^{3} \binom{3}{k}\, t^k (1-t)^{3-k} P_k \]
+
+\begin{thebibliography}{9}
+  \bibitem{knuth} D. E. Knuth, \emph{The \TeX book}, 1984.
+  \bibitem{lamport} L. Lamport, \emph{\LaTeX}, 1986.
+\end{thebibliography}
+\end{document}`,
+      String.raw`% raytex.tex : la page de titre de RayTeX
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern, amsmath, amssymb, amsthm}
+\usepackage{tikz, booktabs, hyperref}
+
+\title{Ray\TeX}
+\author{Open source, gratuit, pour Windows, macOS et Linux}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+  RayTeX compile pendant que vous écrivez, complète les commandes
+  de chaque package chargé, dessine vos figures, remplit vos
+  tableaux, et \emph{explique chaque erreur avec des mots simples}.
+\end{abstract}
+
+\tableofcontents
+
+\section{Introduction}\label{sec:intro}
+LaTeX fait les plus beaux documents qui soient : thèses, articles,
+cours, diaporamas. Il a aussi la réputation d'être
+difficile\footnote{Réputation méritée.}.
+\begin{equation}
+  \text{LaTeX} + \text{RayTeX} = \text{LaTeX} - \text{la douleur}
+\end{equation}
+
+\section{Des erreurs enfin compréhensibles}\label{sec:erreurs}
+\begin{theorem}[erreurs expliquées]
+  Toute erreur de LaTeX admet une explication en mots simples.
+\end{theorem}
+\begin{proof}
+  \verb|\textbff| devient \verb|\textbf| : un clic.
+\end{proof}
+\begin{itemize}
+  \item commandes, environnements, labels et clés mal orthographiés ;
+  \item packages manquants, installés avec le bon outil ;
+  \item et \textbf{Tout corriger}, pour tout le document d'un coup.
+\end{itemize}
+
+\section{Écrire, et voir le PDF}\label{sec:direct}
+\[ \Delta t_{\text{compilation}} \approx 1{,}5\ \mathrm{s} \]
+
+\section{Dessins, tableaux et matrices}\label{sec:dessins}
+\begin{tikzpicture}
+  \draw (0,0) -- (4,-0.3) -- (2,2.4) -- cycle;
+  \draw[violet] (2.03,0.55) circle (2.04);
+\end{tikzpicture}
+\[ \frac{\partial u}{\partial t} = \alpha\,\Delta u \]
+
+\section{Partout, avec votre LaTeX}\label{sec:partout}
+\begin{description}
+  \item[Windows, macOS, Linux] une application native et légère ;
+  \item[Toute distribution TeX] TeX Live, MiKTeX, MacTeX, Tectonic.
+\end{description}
+
+\section{Libre et ouvert}\label{sec:libre}
+\[ B(t) = \sum_{k=0}^{3} \binom{3}{k}\, t^k (1-t)^{3-k} P_k \]
+
+\begin{thebibliography}{9}
+  \bibitem{knuth} D. E. Knuth, \emph{The \TeX book}, 1984.
+  \bibitem{lamport} L. Lamport, \emph{\LaTeX}, 1986.
+\end{thebibliography}
+\end{document}`,
+    ).split("\n");
     const letters = (word, cls = "") => [...word].map((c) => `<span class="il ${cls}">${c}</span>`).join("");
     return `<div class="intro" data-intro aria-hidden="true">
   <div class="intro-code">
-    <div class="intro-src"><p class="intro-file">raytex.tex</p><pre><code>${source.map((l) => `<span class="ln"></span><span class="tl" data-n="${l.length}">${latex(l)}</span>`).join("\n")}</code></pre></div>
-    <pre class="intro-log">${log.map(([c, l]) => `<span class="ll ${c}">${l}</span>`).join("")}</pre>
+    <p class="intro-file"><span>raytex.tex</span><span class="intro-status" data-intro-status>${T("✓ compiled · 0 errors · 1 page", "✓ compilé · 0 erreur · 1 page")}</span></p>
+    <pre data-intro-pre><code>${source.map((l) => `<span class="row" hidden><span class="ln"></span><span class="tl" data-n="${l.length}">${latex(l) || " "}</span></span>`).join("")}</code></pre>
   </div>
   <div class="intro-page">
     ${introDrawing(lang)}
@@ -44,7 +163,6 @@ export default {
     <span class="stamp stamp-red intro-stamp" style="--tilt: -10deg">Open source</span>
   </div>
   <button type="button" class="intro-skip" data-intro-skip tabindex="-1">${T("Skip", "Passer")} <span aria-hidden="true">▸▸</span></button>
-  <span class="intro-progress"></span>
 </div>`;
   },
 
