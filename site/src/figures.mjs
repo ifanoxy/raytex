@@ -103,3 +103,31 @@ export function ray(cls = "") {
   <path class="ray-dark" d="${RAY.dark}" fill-rule="evenodd"/>
 </svg>`;
 }
+
+/** The drawing of the opening of the site (site.js plays it): a grid, a
+ *  compass circle, the axes, a Bézier curve and its control points on a
+ *  wing, then the ray, traced and inked. */
+export function introDrawing(lang) {
+  const grid = Array.from({ length: 11 }, (_, i) => `<line x1="${i * 100}" y1="0" x2="${i * 100}" y2="1000"/><line x1="0" y1="${i * 100}" x2="1000" y2="${i * 100}"/>`).join("");
+  const P = [
+    [520, 330],
+    [690, 170],
+    [905, 250],
+    [975, 560],
+  ];
+  const dot = (p, k) => `<circle class="intro-dot" style="--k: ${k}" cx="${p[0]}" cy="${p[1]}" r="9"/>`;
+  const label = (p, i, dx, dy) => `<text class="intro-label" style="--k: ${i}" x="${p[0] + dx}" y="${p[1] + dy}">P<tspan baseline-shift="sub" font-size="65%">${i}</tspan></text>`;
+  return `<svg class="intro-geo" viewBox="-30 -30 1060 1060" aria-hidden="true">
+  <g class="intro-grid">${grid}</g>
+  <circle class="intro-stroke thin dashed" style="--delay: 0.1s; --dur: 1.4s" cx="500" cy="500" r="480"/>
+  <path class="intro-stroke thin" style="--delay: 0.3s" d="M-20 500 H1020 M500 -20 V1020"/>
+  <path class="intro-stroke thin dashed" style="--delay: 0.6s; --dur: 0.9s" d="M${P.map((p) => p.join(" ")).join(" L")}"/>
+  ${P.map(dot).join("")}
+  <path class="intro-stroke red" style="--delay: 1s; --dur: 1s" d="M${P[0].join(" ")} C${P[1].join(" ")} ${P[2].join(" ")} ${P[3].join(" ")}"/>
+  <g class="intro-labels">${label(P[0], 0, -58, 10)}${label(P[1], 1, -20, -26)}${label(P[2], 2, 10, -24)}${label(P[3], 3, 22, 10)}<text class="intro-label" style="--k: 4" x="512" y="545">O</text><text class="intro-hand" x="40" y="80">r = 480</text><text class="intro-hand red" x="720" y="660">${lang === "fr" ? "C¹ partout" : "C¹ everywhere"}</text></g>
+  <g class="intro-ray">
+    <path class="ray-light" d="${RAY.light}" fill-rule="evenodd"/>
+    <path class="ray-dark" d="${RAY.dark}" fill-rule="evenodd"/>
+  </g>
+</svg>`;
+}

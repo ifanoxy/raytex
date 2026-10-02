@@ -1,5 +1,5 @@
-import { bezier, construction, heatPlot, ray } from "../figures.mjs";
-import { ctaEnd } from "../util.mjs";
+import { bezier, construction, heatPlot, introDrawing, ray } from "../figures.mjs";
+import { ctaEnd, latex } from "../util.mjs";
 
 export default {
   id: "home",
@@ -9,6 +9,45 @@ export default {
     en: "RayTeX is the next-generation LaTeX IDE: open source and free, for Windows, macOS and Linux. Live preview, completion that knows every package, and every error explained with its fix.",
     fr: "RayTeX est l'IDE LaTeX nouvelle génération : open source et gratuit, pour Windows, macOS et Linux. Aperçu en direct, complétion qui connaît chaque package, et chaque erreur expliquée avec sa correction.",
   },
+  /** The opening of the site (site.js): the source is typed, compiled, the
+   *  ray drawn with compass and curves, inked, the title typeset; then the
+   *  page turns onto the site. Once per visit, from the title page. */
+  intro({ T, lang }) {
+    const source = [
+      "\\documentclass{article}",
+      "\\usepackage{raytex, tikz}",
+      "\\begin{document}",
+      "\\title{Ray\\TeX}",
+      T("\\author{the ray}", "\\author{la raie}"),
+      "\\maketitle",
+      "\\[ \\text{LaTeX} + \\text{RayTeX} = \\heartsuit \\]",
+      "\\end{document}",
+    ];
+    const log = [
+      ["t-prompt", "$ raytex build raytex.tex"],
+      ["", "This is RayTeX, Version 0.1 (preloaded format=intro)"],
+      ["", "(./raytex.tex (./raytex.sty) (./tikz.sty)"],
+      ["", "[1]"],
+      ["", T("Output written on raytex.pdf (1 page).", "Output written on raytex.pdf (1 page).")],
+      ["t-ok", T("✓ 0 errors, 0 warnings · 1.2 s", "✓ 0 erreur, 0 avertissement · 1,2 s")],
+    ];
+    const letters = (word, cls = "") => [...word].map((c) => `<span class="il ${cls}">${c}</span>`).join("");
+    return `<div class="intro" data-intro aria-hidden="true">
+  <div class="intro-code">
+    <div class="intro-src"><p class="intro-file">raytex.tex</p><pre><code>${source.map((l) => `<span class="ln"></span><span class="tl" data-n="${l.length}">${latex(l)}</span>`).join("\n")}</code></pre></div>
+    <pre class="intro-log">${log.map(([c, l]) => `<span class="ll ${c}">${l}</span>`).join("")}</pre>
+  </div>
+  <div class="intro-page">
+    ${introDrawing(lang)}
+    <p class="intro-title">${letters("Ray")}<span class="intro-tex">${letters("T")}${letters("E", "tex-e")}${letters("X")}</span></p>
+    <p class="intro-sub">${T("The next-generation LaTeX IDE", "L'IDE LaTeX nouvelle génération")}</p>
+    <span class="stamp stamp-red intro-stamp" style="--tilt: -10deg">Open source</span>
+  </div>
+  <button type="button" class="intro-skip" data-intro-skip tabindex="-1">${T("Skip", "Passer")} <span aria-hidden="true">▸▸</span></button>
+  <span class="intro-progress"></span>
+</div>`;
+  },
+
   body(ctx) {
     const { T, url, asset, icon, lang, GITHUB, tex } = ctx;
     const shot = (name, alt) => `<img class="shot" src="${asset(`screenshots/${lang}/${name}.png`)}" width="1400" height="813" alt="${alt}" loading="lazy" />`;

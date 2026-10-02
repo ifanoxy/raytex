@@ -121,6 +121,82 @@
   }
   setTimeout(() => root.classList.remove("arriving", "arriving-back", "arriving-book"), 1600);
 
+  // -------------------------------------------------------------- opening
+  // Once per visit, when the visit starts on the title page (the script in
+  // the head sets "opening"): the source is typed, compiled, the ray drawn
+  // and inked, the title typeset, then the page turns onto the site (about
+  // 9 s; Skip or Escape ends it at once).
+  const introBox = $("[data-intro]");
+  try {
+    sessionStorage.setItem("raytex-visited", "1");
+  } catch {
+    /* private mode */
+  }
+  if (introBox && root.classList.contains("opening")) playIntro(introBox);
+  else introBox?.remove();
+
+  function playIntro(box) {
+    box.style.setProperty("--intro-ms", "9000ms");
+    let done = false;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const stage = (c) => {
+      if (!done) box.classList.add(c);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") finish();
+    };
+    const finish = () => {
+      if (done) return;
+      done = true;
+      removeEventListener("keydown", onKey);
+      box.classList.add("s-out");
+      setTimeout(() => {
+        root.classList.remove("opening");
+        box.remove();
+      }, 1100);
+    };
+    $("[data-intro-skip]", box)?.addEventListener("click", finish);
+    addEventListener("keydown", onKey);
+    // The strokes of the drawing know their length (they trace themselves).
+    requestAnimationFrame(() => {
+      for (const el of $$(".intro-stroke:not(.dashed), .intro-ray path", box)) el.style.setProperty("--len", strokeLength(el));
+    });
+
+    (async () => {
+      // 1. The source, typed.
+      const caret = Object.assign(document.createElement("span"), { className: "intro-caret" });
+      await wait(450);
+      for (const line of $$(".tl", box)) {
+        if (done) return;
+        line.after(caret);
+        const n = Number(line.dataset.n);
+        for (let k = 1; k <= n + 2 && !done; k += 3) {
+          line.style.maxWidth = `${k}ch`;
+          await wait(16);
+        }
+        line.style.maxWidth = "none";
+        await wait(50);
+      }
+      // 2. Compiled.
+      stage("s-log");
+      for (const l of $$(".ll", box)) {
+        if (done) return;
+        await wait(170);
+        l.classList.add("on");
+      }
+      await wait(300);
+      caret.remove();
+      // 3. Drawn; 4. inked; 5. the title.
+      stage("s-draw");
+      await wait(3000);
+      stage("s-ink");
+      await wait(800);
+      stage("s-title");
+      await wait(1500);
+      finish();
+    })();
+  }
+
   // \today, in the reader's language.
   $$("[data-today]").forEach((el) => (el.textContent = new Intl.DateTimeFormat(fr ? "fr" : "en", { dateStyle: "long" }).format(new Date())));
 

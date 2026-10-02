@@ -120,7 +120,7 @@ const THEME_SCRIPT = `(function(){var t,d=document.documentElement;try{t=localSt
 // from the page number of the old one (kept by site.js when it goes).
 // Elsewhere site.js turns the old page, and this script makes the new one
 // arrive ("raytex-turn").
-const TURN_SCRIPT = `(function(){var d=document.documentElement,n=+d.dataset.pageno||0;addEventListener("pagereveal",function(e){if(!e.viewTransition)return;var f=0;try{f=+sessionStorage.getItem("raytex-from")||0}catch(x){}var c=n===1?"vt-book":f&&n&&n<f?"vt-back":"";if(!c)return;var p=document.getElementById("sheet");if(c==="vt-book"&&p)p.style.viewTransitionName="book";d.classList.add(c);var off=function(){d.classList.remove(c);if(p)p.style.viewTransitionName=""};e.viewTransition.finished.then(off,off)});try{var t=sessionStorage.getItem("raytex-turn");if(t){sessionStorage.removeItem("raytex-turn");d.classList.add(t==="back"?"arriving-back":t==="book"?"arriving-book":"arriving")}}catch(x){}})();`;
+const TURN_SCRIPT = `(function(){var d=document.documentElement,n=+d.dataset.pageno||0;try{if(n===1&&!sessionStorage.getItem("raytex-visited")&&!matchMedia("(prefers-reduced-motion: reduce)").matches)d.classList.add("opening")}catch(x){}addEventListener("pagereveal",function(e){if(!e.viewTransition)return;var f=0;try{f=+sessionStorage.getItem("raytex-from")||0}catch(x){}var c=n===1?"vt-book":f&&n&&n<f?"vt-back":"";if(!c)return;var p=document.getElementById("sheet");if(c==="vt-book"&&p)p.style.viewTransitionName="book";d.classList.add(c);var off=function(){d.classList.remove(c);if(p)p.style.viewTransitionName=""};e.viewTransition.finished.then(off,off)});try{var t=sessionStorage.getItem("raytex-turn");if(t){sessionStorage.removeItem("raytex-turn");d.classList.add(t==="back"?"arriving-back":t==="book"?"arriving-book":"arriving")}}catch(x){}})();`;
 
 /** Icons the scripts insert (download lists). */
 const SCRIPT_ICONS = Object.fromEntries(["windows", "apple", "linux", "download", "copy", "github"].map((n) => [n, icon(n, n === "copy" ? 13 : 16)]));
@@ -187,6 +187,7 @@ ${head({ title, description, lang, canonical: `${siteUrl}/${path}`, alternates, 
 </head>
 <body data-page="${p.id}">
 <a class="skip" href="#main">${T("Skip to content", "Aller au contenu")}</a>
+${p.intro ? p.intro(ctx) : ""}
 <header class="topbar">
   <div class="topbar-inner">
     <a class="brand" href="${url("")}" aria-label="RayTeX, ${T("home", "accueil")}">
