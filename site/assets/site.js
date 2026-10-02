@@ -124,8 +124,9 @@
   // -------------------------------------------------------------- opening
   // Once per visit, when the visit starts on the title page (the script in
   // the head sets "opening"): the source of the title page is written at
-  // full speed and scrolls, the ray is drawn and inked, the title typeset,
-  // then the title page arrives like a book (about 7.5 s; Skip or Escape
+  // full speed and scrolls, the ray is constructed, sketched in pencil and
+  // inked, the title typeset, then the title page arrives like a book
+  // (about 9 s; Skip or Escape
   // ends it at once). Not in a tab opened in the background.
   const introBox = $("[data-intro]");
   try {
@@ -162,7 +163,7 @@
     addEventListener("keydown", onKey);
     // The strokes of the drawing know their length (they trace themselves).
     requestAnimationFrame(() => {
-      for (const el of $$(".intro-stroke:not(.dashed), .intro-ray path", box)) el.style.setProperty("--len", strokeLength(el));
+      for (const el of $$(".intro-stroke:not(.dashed), .intro-pencil path, .intro-ray path", box)) el.style.setProperty("--len", strokeLength(el));
     });
 
     // 1. The source, written at full speed (2 s for the whole file); the
@@ -208,17 +209,19 @@
 
     (async () => {
       await wait(350);
-      await write(2000);
+      await write(1600);
       if (done) return;
       $("[data-intro-status]", box)?.classList.add("on");
-      await wait(400);
-      // 2. Drawn; 3. inked; 4. the title.
+      await wait(350);
+      // 2. The construction; 3. the sketch in pencil; 4. the ink; 5. the title.
       stage("s-draw");
       await wait(2100);
+      stage("s-sketch");
+      await wait(1250);
       stage("s-ink");
-      await wait(550);
+      await wait(1000);
       stage("s-title");
-      await wait(1100);
+      await wait(1000);
       finish();
     })();
   }

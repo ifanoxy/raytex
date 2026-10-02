@@ -104,27 +104,75 @@ export function ray(cls = "") {
 </svg>`;
 }
 
-/** The drawing of the opening of the site (site.js plays it): a grid, a
- *  compass circle, the axes, a Bézier curve and its control points on a
- *  wing, then the ray, traced and inked. */
+/** The drawing of the opening of the site (site.js plays it): first the
+ *  construction (grid, axis of symmetry, compass circles, the kite that
+ *  holds the ray, the guides to the wing tips and their angle, a Bézier
+ *  curve on each wing, the tail, the dimensions), then two pencil passes
+ *  over the outline (the sketch), then the ray in ink. */
 export function introDrawing(lang) {
+  const fr = lang === "fr";
   const grid = Array.from({ length: 11 }, (_, i) => `<line x1="${i * 100}" y1="0" x2="${i * 100}" y2="1000"/><line x1="0" y1="${i * 100}" x2="1000" y2="${i * 100}"/>`).join("");
+  // A stroke that traces itself: its delay and duration after the page is up.
+  const line = (d, delay, dur = 0.6, cls = "thin") => `<path class="intro-stroke ${cls}" style="--delay: ${delay}s; --dur: ${dur}s" d="${d}"/>`;
+  const circle = (cx, cy, r, delay, dur = 0.7, cls = "thin") => `<circle class="intro-stroke ${cls}" style="--delay: ${delay}s; --dur: ${dur}s" cx="${cx}" cy="${cy}" r="${r}"/>`;
+  const dashed = (d, delay) => `<path class="intro-stroke thin dashed" style="--delay: ${delay}s" d="${d}"/>`;
+  let k = 0;
+  const dot = ([x, y], hollow = false) => `<circle class="intro-dot${hollow ? " hollow" : ""}" style="--k: ${k++}" cx="${x}" cy="${y}" r="${hollow ? 9 : 7}"/>`;
+  let j = 0;
+  const label = (x, y, text, cls = "intro-label") => `<text class="${cls}" style="--k: ${j++}" x="${x}" y="${y}">${text}</text>`;
+  const sub = (name, i) => `${name}<tspan baseline-shift="sub" font-size="65%">${i}</tspan>`;
+
+  // The right wing as a Bézier curve, and its mirror.
   const P = [
     [520, 330],
     [690, 170],
     [905, 250],
     [975, 560],
   ];
-  const dot = (p, k) => `<circle class="intro-dot" style="--k: ${k}" cx="${p[0]}" cy="${p[1]}" r="9"/>`;
-  const label = (p, i, dx, dy) => `<text class="intro-label" style="--k: ${i}" x="${p[0] + dx}" y="${p[1] + dy}">P<tspan baseline-shift="sub" font-size="65%">${i}</tspan></text>`;
-  return `<svg class="intro-geo" viewBox="-30 -30 1060 1060" aria-hidden="true">
+  const Q = P.map(([x, y]) => [1000 - x, y]);
+  const poly = (pts) => `M${pts.map((p) => p.join(" ")).join(" L")}`;
+  const bez = (pts) => `M${pts[0].join(" ")} C${pts[1].join(" ")} ${pts[2].join(" ")} ${pts[3].join(" ")}`;
+  const head = [500, 60];
+  const tail = [505, 948];
+  const tipR = [990, 590];
+  const tipL = [10, 590];
+  // The angle of the wing guide with the horizontal axis.
+  const theta = Math.atan2(tipR[1] - 500, tipR[0] - 500);
+  const arc = (r) => `M${500 + r} 500 A${r} ${r} 0 0 1 ${(500 + r * Math.cos(theta)).toFixed(1)} ${(500 + r * Math.sin(theta)).toFixed(1)}`;
+  const deg = Math.round((theta * 180) / Math.PI);
+
+  return `<svg class="intro-geo" viewBox="-40 -60 1100 1100" aria-hidden="true">
   <g class="intro-grid">${grid}</g>
-  <circle class="intro-stroke thin dashed" style="--delay: 0.1s; --dur: 1.4s" cx="500" cy="500" r="480"/>
-  <path class="intro-stroke thin" style="--delay: 0.3s" d="M-20 500 H1020 M500 -20 V1020"/>
-  <path class="intro-stroke thin dashed" style="--delay: 0.6s; --dur: 0.9s" d="M${P.map((p) => p.join(" ")).join(" L")}"/>
-  ${P.map(dot).join("")}
-  <path class="intro-stroke red" style="--delay: 1s; --dur: 1s" d="M${P[0].join(" ")} C${P[1].join(" ")} ${P[2].join(" ")} ${P[3].join(" ")}"/>
-  <g class="intro-labels">${label(P[0], 0, -58, 10)}${label(P[1], 1, -20, -26)}${label(P[2], 2, 10, -24)}${label(P[3], 3, 22, 10)}<text class="intro-label" style="--k: 4" x="512" y="545">O</text><text class="intro-hand" x="40" y="80">r = 480</text><text class="intro-hand red" x="720" y="660">${lang === "fr" ? "C¹ partout" : "C¹ everywhere"}</text></g>
+  ${circle(500, 500, 480, 0, 1.1)}
+  ${line("M-20 500 H1020", 0.15, 0.5)}
+  ${line("M500 -30 V1030", 0.2, 0.5, "thin axis")}
+  ${line(`M${head.join(" ")} L${tipR.join(" ")} L${tail.join(" ")} L${tipL.join(" ")} Z`, 0.35, 0.9)}
+  ${line(`M500 500 L${tipR.join(" ")} M500 500 L${tipL.join(" ")}`, 0.55, 0.45)}
+  ${circle(500, 500, 165, 0.6, 0.6)}
+  ${circle(438, 150, 46, 0.8, 0.4)}
+  ${circle(562, 150, 46, 0.85, 0.4)}
+  ${line(arc(120), 1.15, 0.35, "thin violet")}
+  ${line("M10 -22 H990 M10 -34 V-10 M990 -34 V-10 M10 -22 l16 -7 M10 -22 l16 7 M990 -22 l-16 -7 M990 -22 l-16 7", 0.7, 0.6)}
+  ${line("M1035 54 V946 M1023 54 H1047 M1023 946 H1047 M1035 54 l-7 16 M1035 54 l7 16 M1035 946 l-7 -16 M1035 946 l7 -16", 0.8, 0.6)}
+  ${dashed(poly(P), 0.9)}
+  ${dashed(poly(Q), 0.95)}
+  ${line(bez(P), 1.0, 0.7, "red")}
+  ${line(bez(Q), 1.05, 0.7, "red")}
+  ${line("M500 640 C 545 720, 455 830, 505 945", 1.1, 0.6, "red")}
+  ${[...P, ...Q].map((p) => dot(p, true)).join("")}
+  ${[head, tipR, tail, tipL, [500, 500]].map((p) => dot(p)).join("")}
+  <g class="intro-labels">
+    ${label(P[0][0] - 58, P[0][1] + 10, sub("P", 0))}${label(P[1][0] - 20, P[1][1] - 26, sub("P", 1))}${label(P[2][0] + 10, P[2][1] - 24, sub("P", 2))}${label(P[3][0] + 22, P[3][1] + 10, sub("P", 3))}
+    ${label(512, 545, "O")}${label(tipR[0] - 10, tipR[1] + 50, "A")}${label(tipL[0] - 10, tipL[1] + 50, "A′")}${label(head[0] + 14, head[1] - 10, "S")}${label(tail[0] + 16, tail[1] + 6, "T")}
+    ${label(30, 70, "r = 480", "intro-hand")}
+    ${label(420, -40, fr ? "envergure 980" : "span 980", "intro-hand")}
+    ${label(1058, 520, "h", "intro-hand")}
+    ${label(515, 1028, fr ? "axe de symétrie" : "axis of symmetry", "intro-hand")}
+    ${label(700, 690, fr ? "C¹ partout" : "C¹ everywhere", "intro-hand red")}
+    ${label(645, 556, `θ ≈ ${deg}°`, "intro-hand violet")}
+  </g>
+  <g class="intro-pencil"><path d="${RAY.light}" fill-rule="evenodd"/><path d="${RAY.dark}" fill-rule="evenodd"/></g>
+  <g class="intro-pencil second" transform="translate(4 -3) rotate(0.5 500 500)"><path d="${RAY.light}" fill-rule="evenodd"/></g>
   <g class="intro-ray">
     <path class="ray-light" d="${RAY.light}" fill-rule="evenodd"/>
     <path class="ray-dark" d="${RAY.dark}" fill-rule="evenodd"/>
