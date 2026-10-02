@@ -690,46 +690,6 @@ main {
     stroke-opacity: 0;
   }
 }
-/* Click: the ray swims around the page. */
-.ray-hero.swim .ray-sketch {
-  animation: swim 3.4s ease-in-out;
-}
-@keyframes swim {
-  0% {
-    transform: none;
-  }
-  18% {
-    transform: translate(-140px, -26px) rotate(-16deg) scale(0.9);
-  }
-  42% {
-    transform: translate(180px, 34px) rotate(12deg) scale(1.06);
-  }
-  68% {
-    transform: translate(-70px, 12px) rotate(-7deg) scale(0.96);
-  }
-  86% {
-    transform: translate(20px, -6px) rotate(3deg);
-  }
-  100% {
-    transform: none;
-  }
-}
-.ray-bubble {
-  position: absolute;
-  pointer-events: none;
-  width: var(--s, 10px);
-  height: var(--s, 10px);
-  border: 1.2px solid var(--violet);
-  border-radius: 50%;
-  opacity: 0.7;
-  animation: bubble 1.8s ease-out forwards;
-}
-@keyframes bubble {
-  to {
-    transform: translate(var(--dx, 0), -120px);
-    opacity: 0;
-  }
-}
 .doc-title {
   font: 400 clamp(3.4rem, 9vw, 5.4rem) / 1 var(--display);
   letter-spacing: -0.01em;
@@ -2690,6 +2650,42 @@ html.opening .intro {
   background: var(--ink);
   color: var(--paper);
 }
+/* The ray swimming over the page, and its bubbles (site.js). */
+.swimmer {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 150;
+  pointer-events: none;
+  will-change: transform;
+  filter: drop-shadow(0 14px 18px rgba(40, 30, 90, 0.25));
+}
+.bubble {
+  position: fixed;
+  z-index: 149;
+  width: var(--s, 10px);
+  height: var(--s, 10px);
+  margin: calc(var(--s, 10px) / -2) 0 0 calc(var(--s, 10px) / -2);
+  border: 1.4px solid var(--violet);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.85) 0 18%, transparent 24%);
+  opacity: 0.75;
+  pointer-events: none;
+  animation: bubble-rise var(--t, 1.6s) ease-out both;
+}
+@keyframes bubble-rise {
+  from {
+    transform: scale(0.4);
+  }
+  to {
+    transform: translate(var(--dx, 0), -120px) scale(1.15);
+    opacity: 0;
+  }
+}
+[data-ray] {
+  cursor: pointer;
+}
+
 /* ------------------------------------------------------------ easter eggs */
 /* \TeX typed: mathematics rains on the page. */
 .confetti {

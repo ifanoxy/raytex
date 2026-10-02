@@ -308,30 +308,75 @@
 
   // --------------------------------------------------------------- the ray
   const hero = $("[data-ray]");
-  if (hero) {
-    const sketch = $(".ray-sketch", hero);
-    requestAnimationFrame(() => sketch.classList.add("inked"));
-    let swimming = false;
-    hero.addEventListener("click", () => {
-      if (swimming || reduced) return;
-      swimming = true;
-      hero.classList.add("swim");
-      bubbles(hero);
-      setTimeout(() => {
-        hero.classList.remove("swim");
-        swimming = false;
-      }, 3500);
-    });
+  if (hero) requestAnimationFrame(() => $(".ray-sketch", hero)?.classList.add("inked"));
+  $$("[data-ray]").forEach((el) => el.addEventListener("click", () => swim(el)));
+
+  // A click on the ray: it leaves its place and swims over the whole page,
+  // along a curve from one side to the other, turned towards its way and
+  // beating its wings, a few bubbles now and then; then it comes back.
+  // Without a place to leave, it crosses the screen.
+  let swimming = false;
+  function swim(from) {
+    if (swimming || reduced) return;
+    swimming = true;
+    const W = innerWidth;
+    const H = innerHeight;
+    const place = () => {
+      const r = from.getBoundingClientRect();
+      return [r.left + r.width / 2, r.top + r.height / 2];
+    };
+    const size = from ? Math.min(from.getBoundingClientRect().width, 220) : 130;
+    const img = Object.assign(document.createElement("img"), { src: `${C.rel}assets/img/ray.svg`, alt: "", className: "swimmer" });
+    img.style.width = img.style.height = `${size}px`;
+    document.body.append(img);
+    if (from) from.style.visibility = "hidden";
+    const pts = [from ? place() : [-size, rand(0.3, 0.7) * H]];
+    for (let i = 0; i < 5; i++) pts.push([(i % 2 ? rand(0.62, 0.9) : rand(0.1, 0.38)) * W, rand(0.2, 0.85) * H]);
+    pts.push(from ? place() : [W + size, rand(0.3, 0.7) * H]);
+    // Catmull-Rom through the points, t in [0, 1].
+    const at = (t) => {
+      const n = pts.length - 1;
+      const seg = Math.min(n - 1, Math.floor(t * n));
+      const u = t * n - seg;
+      const [p0, p1, p2, p3] = [pts[Math.max(0, seg - 1)], pts[seg], pts[seg + 1], pts[Math.min(n, seg + 2)]];
+      const cr = (a, b, c, d) => 0.5 * (2 * b + (c - a) * u + (2 * a - 5 * b + 4 * c - d) * u * u + (3 * b - a - 3 * c + d) * u * u * u);
+      return [cr(p0[0], p1[0], p2[0], p3[0]), cr(p0[1], p1[1], p2[1], p3[1])];
+    };
+    const duration = 7500;
+    const t0 = performance.now();
+    let angle = 0;
+    let nextBubble = t0 + 300;
+    const frame = (now) => {
+      const k = Math.min(1, (now - t0) / duration);
+      const t = 0.5 - Math.cos(Math.PI * k) / 2;
+      if (from) pts[pts.length - 1] = place();
+      const [x, y] = at(t);
+      const [x2, y2] = at(Math.min(1, t + 0.01));
+      // Head first (the drawing faces up); upright again at both ends.
+      const heading = ((((Math.atan2(y2 - y, x2 - x) * 180) / Math.PI + 90) % 360) + 540) % 360 - 180;
+      const w = Math.sin(Math.PI * k);
+      angle += ((((heading * w - angle) % 360) + 540) % 360 - 180) * 0.12;
+      const flap = 1 + 0.08 * Math.sin(now / 150);
+      const scale = from ? 1 - 0.35 * w : 1;
+      img.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px) rotate(${angle}deg) scale(${scale * flap}, ${scale})`;
+      if (now > nextBubble && k < 0.94) {
+        nextBubble = now + rand(350, 900);
+        const count = 1 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < count; i++) bubble(x, y, i);
+      }
+      if (k < 1) return requestAnimationFrame(frame);
+      img.remove();
+      if (from) from.style.visibility = "";
+      swimming = false;
+    };
+    requestAnimationFrame(frame);
   }
-  function bubbles(el) {
-    const r = el.getBoundingClientRect();
-    for (let i = 0; i < 9; i++) {
-      const b = document.createElement("span");
-      b.className = "ray-bubble";
-      b.style.cssText = `left:${r.left + scrollX + rand(0.2, 0.8) * r.width}px;top:${r.top + scrollY + rand(0.3, 0.7) * r.height}px;--s:${rand(5, 14)}px;--dx:${rand(-30, 30)}px;animation-delay:${i * 0.18}s`;
-      document.body.append(b);
-      setTimeout(() => b.remove(), 2400 + i * 180);
-    }
+  function bubble(x, y, i) {
+    const b = document.createElement("span");
+    b.className = "bubble";
+    b.style.cssText = `left:${x + rand(-24, 24)}px;top:${y + rand(-24, 24)}px;--s:${rand(6, 16)}px;--dx:${rand(-26, 26)}px;--t:${rand(1.2, 2.1)}s;animation-delay:${i * 0.12}s`;
+    document.body.append(b);
+    setTimeout(() => b.remove(), 2600);
   }
 
   // ------------------------------------------------------------ the text
@@ -442,26 +487,12 @@
     toast(on ? "\\documentclass[draft]{article}" : "\\documentclass[final]{article}");
   }
 
-  // ray: a ray crosses the page.
-  function swimmer() {
-    if (reduced) return;
-    const img = Object.assign(document.createElement("img"), { src: `${C.rel}assets/img/ray.svg`, alt: "" });
-    img.style.cssText = `position:fixed;z-index:90;width:120px;left:-140px;top:${rand(25, 70)}vh;pointer-events:none;transition:transform 6s cubic-bezier(.4,.1,.5,1)`;
-    document.body.append(img);
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        img.style.transform = `translate(${innerWidth + 300}px, ${rand(-120, 120)}px) rotate(${rand(-8, 8)}deg)`;
-      }),
-    );
-    setTimeout(() => img.remove(), 6400);
-  }
-
   const words = [
     ["\\tex", confetti],
     ["\\latex", confetti],
     ["knuth", cheque],
     ["\\bye", () => toast(L("Output written on raytex.pdf (1 page). Goodbye!", "Output written on raytex.pdf (1 page). Au revoir !"))],
-    ["raytex", swimmer],
+    ["raytex", () => swim($("[data-ray]"))],
   ];
   const konami = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
   let typed = "";

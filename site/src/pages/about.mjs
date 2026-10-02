@@ -40,7 +40,7 @@ ${tex.section(T("Why “RayTeX”?", "Pourquoi « RayTeX » ?"), "name")}
   "A manta ray (the <em>Ray</em>) gliding with the <span class='texlogo'>T<span>e</span>X</span> logo: something light and calm moving through a sea of commands. The wordmark is typeset by LaTeX itself, in Latin Modern.",
   "Une raie manta (<em>ray</em> en anglais) qui glisse avec le logo <span class='texlogo'>T<span>e</span>X</span> : quelque chose de léger et de calme au milieu d'un océan de commandes. Le logotype est composé par LaTeX lui-même, en Latin Modern.",
 )}</p>
-${tex.figure(`<div class="ray-figure">${ray()}</div>`, T("<i>Mobula texensis</i>, observed gliding over a <code>.tex</code> file.", "<i>Mobula texensis</i>, observée planant au-dessus d'un fichier <code>.tex</code>."), "figure-tikz")}
+${tex.figure(`<div class="ray-figure" data-ray title="${T("Click me", "Cliquez-moi")}">${ray()}</div>`, T("<i>Mobula texensis</i>, observed gliding over a <code>.tex</code> file.", "<i>Mobula texensis</i>, observée planant au-dessus d'un fichier <code>.tex</code>."), "figure-tikz")}
 
 ${tex.section(T("How it is made", "Comment il est fait"), "made")}
 ${tex.table([T("Component", "Composant"), T("Role", "Rôle")], tech.map(([n, d]) => [`<b>${n}</b>`, d]), T("The building blocks of RayTeX.", "Les briques de RayTeX."))}
