@@ -122,6 +122,10 @@ const THEME_SCRIPT = `(function(){var t,d=document.documentElement;try{t=localSt
 // arrive ("raytex-turn").
 const TURN_SCRIPT = `(function(){var d=document.documentElement,n=+d.dataset.pageno||0;try{if(n===1&&!sessionStorage.getItem("raytex-visited")&&!matchMedia("(prefers-reduced-motion: reduce)").matches)d.classList.add("opening")}catch(x){}addEventListener("pagereveal",function(e){if(!e.viewTransition)return;var f=0;try{f=+sessionStorage.getItem("raytex-from")||0}catch(x){}var c=n===1?"vt-book":f&&n&&n<f?"vt-back":"";if(!c)return;var p=document.getElementById("sheet");if(c==="vt-book"&&p)p.style.viewTransitionName="book";d.classList.add(c);var off=function(){d.classList.remove(c);if(p)p.style.viewTransitionName=""};e.viewTransition.finished.then(off,off)});try{var t=sessionStorage.getItem("raytex-turn");if(t){sessionStorage.removeItem("raytex-turn");d.classList.add(t==="back"?"arriving-back":t==="book"?"arriving-book":"arriving")}}catch(x){}})();`;
 
+// What is on screen when a page first shows is there at once, so that a page
+// never appears as a blank sheet; site.js still writes its handwriting.
+const AT_LOAD_SCRIPT = `(function(){var h=innerHeight;document.querySelectorAll("#sheet [data-reveal]").forEach(function(e){if(e.classList.contains("stamp"))return;var r=e.getBoundingClientRect();if(r.top<h&&r.bottom>0)e.classList.add("at-load")})})();`;
+
 /** Icons the scripts insert (download lists). */
 const SCRIPT_ICONS = Object.fromEntries(["windows", "apple", "linux", "download", "copy", "github"].map((n) => [n, icon(n, n === "copy" ? 13 : 16)]));
 
@@ -210,6 +214,7 @@ ${body}
 ${tex.footnotes()}
     <button type="button" class="folio" data-folio title="${T("Page", "Page")} ${FOLIO[p.id] ?? ""}">${FOLIO[p.id] ?? ""}</button>
   </article>
+  <script>${AT_LOAD_SCRIPT}</script>
 </main>
 ${footer(ctx, p, other)}
 <script>window.RAYTEX=${JSON.stringify({ repo: REPO, lang, rel, texts: SCRIPT_TEXTS[lang], icons: SCRIPT_ICONS, folios: FOLIOS })}</script>

@@ -2481,6 +2481,7 @@ html.opening .intro {
   height: auto;
   margin: 0 auto;
   overflow: visible;
+  transform: rotate(-11deg) scale(0.86);
 }
 .intro-grid line {
   stroke: var(--grid);
@@ -2905,6 +2906,17 @@ body.draft .figure[data-file]::before {
 .js .marginnote[data-reveal].visible {
   transform: rotate(var(--tilt, -2deg));
 }
+/* On screen when the page first shows: there at once, no blank sheet (the
+   script after the sheet); the handwriting inside still draws itself. */
+html.js [data-reveal].at-load {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+html.js .marginnote[data-reveal].at-load,
+html.js .sticky[data-reveal].at-load {
+  transform: rotate(var(--tilt, -2deg));
+}
 /* From one page to another, the page turns, both pages seen at once: the
    old one lifts from its left edge and turns over, the new one is
    underneath. Going back to an earlier page (a smaller page number), the
@@ -2941,8 +2953,7 @@ body.draft .figure[data-file]::before {
 }
 .vt-back::view-transition-new(root) {
   z-index: 2;
-  animation-name: turn-back;
-  animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+  animation: turn-back 1.5s cubic-bezier(0.45, 0, 0.2, 1) both;
 }
 .vt-book::view-transition-old(root) {
   z-index: 2;
