@@ -492,6 +492,9 @@ body.menu-open .menu-btn span:nth-child(3) {
 main {
   padding: 28px 16px 8px;
 }
+main:focus {
+  outline: none;
+}
 .paper {
   position: relative;
   width: min(100%, calc(var(--text-w) + var(--gap) + var(--margin-w) + 2 * var(--side)));

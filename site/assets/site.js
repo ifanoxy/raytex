@@ -1,12 +1,17 @@
 // RayTeX website: theme, menu, the life of the page (figures that draw
-// themselves, notes written in the margin, the ray), a few surprises, and
-// the downloads (system detection, versions from GitHub's releases).
+// themselves, notes written in the margin, the ray), a few surprises, the
+// downloads (system detection, versions from GitHub's releases), and the
+// way from one page to another without leaving the document (the page
+// turns; nothing is loaded again, so nothing flashes). What belongs to the
+// whole document is set up once; what belongs to a page, in initPage.
 (() => {
   "use strict";
-  const C = window.RAYTEX || { lang: "en", rel: "", texts: {}, icons: {} };
-  const T = C.texts;
-  const fr = (document.documentElement.lang || C.lang) === "fr";
-  const L = (en, frText) => (fr ? frText : en);
+  // The configuration of the page shown (its language, its depth…).
+  let C = window.RAYTEX || { lang: "en", rel: "", texts: {}, icons: {} };
+  let T = C.texts;
+  const isFr = () => document.documentElement.lang === "fr";
+  const L = (en, frText) => (isFr() ? frText : en);
+  const root = document.documentElement;
   const $ = (s, root = document) => root.querySelector(s);
   const $$ = (s, root = document) => [...root.querySelectorAll(s)];
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -31,21 +36,23 @@
   };
 
   // --------------------------------------------------------- header, menu
-  const topbar = $(".topbar");
-  const onScroll = () => topbar && topbar.classList.toggle("scrolled", scrollY > 8);
+  const onScroll = () => $(".topbar")?.classList.toggle("scrolled", scrollY > 8);
   addEventListener("scroll", onScroll, { passive: true });
-  onScroll();
 
-  const menu = $("[data-menu]");
-  menu?.addEventListener("click", () => {
-    const open = document.body.classList.toggle("menu-open");
-    menu.setAttribute("aria-expanded", String(open));
-  });
-  $$(".main-nav a").forEach((a) => a.addEventListener("click", () => document.body.classList.remove("menu-open")));
+  function bindChrome() {
+    onScroll();
+    const menu = $("[data-menu]");
+    menu?.addEventListener("click", () => {
+      const open = document.body.classList.toggle("menu-open");
+      menu.setAttribute("aria-expanded", String(open));
+    });
+    $$(".main-nav a").forEach((a) => a.addEventListener("click", () => document.body.classList.remove("menu-open")));
+    $("[data-theme-toggle]")?.addEventListener("click", themeToggle);
+    $$("[data-lang-switch]").forEach((a) => a.addEventListener("click", () => store.set("raytex-lang", a.dataset.langSwitch)));
+  }
 
   // Paper by day, paper by night: the ink spreads from the button.
-  $("[data-theme-toggle]")?.addEventListener("click", (e) => {
-    const root = document.documentElement;
+  function themeToggle(e) {
     const next = root.dataset.theme === "light" ? "dark" : "light";
     const apply = () => {
       root.dataset.theme = next;
@@ -63,63 +70,137 @@
       )
       .catch(() => {});
     vt.finished.catch(() => {}).finally(() => root.classList.remove("theme-vt"));
-  });
-  $$("[data-lang-switch]").forEach((a) => a.addEventListener("click", () => store.set("raytex-lang", a.dataset.langSwitch)));
+  }
 
-  // ------------------------------------------------------ turning the page
-  // Where the browser plays transitions between documents (site.css), it
-  // shows both pages at once; the page number of the page that goes tells
-  // the next one which way to turn (the script in its head). Elsewhere, a
-  // link to another page of the site: the page turns over from its left
-  // edge (or sinks, going back; or falls, going to the title page), then
-  // the link is followed and the next page arrives ("raytex-turn").
-  const root = document.documentElement;
-  const here = Number(root.dataset.pageno) || 0;
+  // -------------------------------------------------------- page to page
+  // A link to another page of the site is followed without leaving this
+  // document: the next page is fetched (already, when the pointer comes on
+  // the link), then put in place of this one while the page turns, both
+  // seen at once (site.css: forward, back to an earlier page, or to the
+  // title page like a book); the history follows. Styles, fonts and
+  // scripts stay: nothing is loaded again, nothing can flash. Without view
+  // transitions, the page goes, then the next one arrives.
+  const pages = new Map();
+  const pageText = (href) => {
+    const key = href.split("#")[0];
+    if (!pages.has(key)) pages.set(key, fetch(key).then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status))))));
+    pages.get(key).catch(() => pages.delete(key));
+    return pages.get(key);
+  };
+  const pageno = (el) => Number(el.dataset.pageno) || 0;
+  /** The page of the site a link leads to, if it is another one. */
+  const internal = (a) => {
+    if ((a.target && a.target !== "_self") || a.hasAttribute("download")) return null;
+    const to = new URL(a.href, location.href);
+    if (to.origin !== location.origin || (to.pathname === location.pathname && to.search === location.search)) return null;
+    return /\/$|\.html$/.test(to.pathname) ? to : null;
+  };
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest?.("a[href]");
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const to = internal(a);
+    if (!to) return;
+    e.preventDefault();
+    go(to);
+  });
+  document.addEventListener(
+    "pointerover",
+    (e) => {
+      const a = e.target.closest?.("a[href]");
+      const to = a && internal(a);
+      if (to) pageText(to.href).catch(() => {});
+    },
+    { passive: true },
+  );
+  history.scrollRestoration = "manual";
+  history.replaceState({ ...(history.state || {}), raytex: true, y: scrollY }, "");
+  let shown = location.pathname + location.search;
+  addEventListener("popstate", () => {
+    if (location.pathname + location.search !== shown) go(new URL(location.href), { push: false });
+  });
+  // A page that the browser itself loaded (a reload, an address typed):
+  // its folio is kept for its own transition between documents.
   addEventListener("pageswap", (e) => {
     if (!e.viewTransition) return;
     try {
-      sessionStorage.setItem("raytex-from", String(here));
+      sessionStorage.setItem("raytex-from", String(pageno(root)));
     } catch {
       /* private mode */
     }
   });
-  if (!reduced && !("CSSViewTransitionRule" in window)) {
-    const base = new URL(C.rel || "./", location.href).pathname;
-    const folioOf = (url) => {
-      const path = url.pathname.startsWith(base) ? url.pathname.slice(base.length) : "";
-      return (C.folios || {})[path.replace(/^fr\//, "").replace(/index\.html$/, "")] || 0;
-    };
-    document.addEventListener("click", (e) => {
-      const a = e.target.closest?.("a[href]");
-      if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      if ((a.target && a.target !== "_self") || a.hasAttribute("download")) return;
-      const to = new URL(a.href, location.href);
-      if (to.origin !== location.origin || (to.pathname === location.pathname && to.search === location.search)) return;
-      if (!/\/$|\.html$/.test(to.pathname)) return;
-      e.preventDefault();
-      const there = folioOf(to);
-      const way = there === 1 ? "book" : here > 0 && there > 0 && there < here ? "back" : "forward";
-      try {
-        sessionStorage.setItem("raytex-turn", way);
-      } catch {
-        /* private mode */
-      }
-      // The page turns around the middle of what is on screen.
-      const paper = $(".paper");
-      if (paper) paper.style.transformOrigin = `${way === "forward" ? "0" : "50%"} ${Math.round(innerHeight / 2 - paper.getBoundingClientRect().top)}px`;
-      root.classList.add({ forward: "leaving", back: "leaving-back", book: "leaving-down" }[way]);
-      setTimeout(() => location.assign(to.href), way === "back" ? 600 : 750);
-    });
-    // Back with the history: the page comes back as it was, turning in.
-    addEventListener("pageshow", (e) => {
-      if (!e.persisted) return;
-      root.classList.remove("leaving", "leaving-back", "leaving-down");
-      $(".paper")?.style.removeProperty("transform-origin");
-      root.classList.add("arriving-back");
-      setTimeout(() => root.classList.remove("arriving-back"), 1100);
-    });
-  }
   setTimeout(() => root.classList.remove("arriving", "arriving-back", "arriving-book"), 1600);
+
+  let turning = false;
+  async function go(to, { push = true } = {}) {
+    if (turning) return;
+    turning = true;
+    let doc;
+    try {
+      doc = new DOMParser().parseFromString(await pageText(to.href), "text/html");
+      if (!doc.getElementById("sheet")) throw new Error("not a page of the site");
+    } catch {
+      location.href = to.href;
+      return;
+    }
+    const there = pageno(doc.documentElement);
+    const from = pageno(root);
+    const way = there === 1 ? "book" : from && there && there < from ? "back" : "forward";
+    if (push) history.replaceState({ ...(history.state || {}), raytex: true, y: scrollY }, "");
+    const swap = () => {
+      root.classList.remove("leaving", "leaving-back", "leaving-down");
+      document.title = doc.title;
+      root.lang = doc.documentElement.lang;
+      root.dataset.pageno = doc.documentElement.dataset.pageno || "";
+      for (const sel of ['meta[name="description"]', 'link[rel="canonical"]']) {
+        const now = $(sel);
+        const next = doc.querySelector(sel);
+        if (now && next) now.replaceWith(document.importNode(next, true));
+      }
+      $$('link[rel="alternate"]').forEach((l) => l.remove());
+      doc.querySelectorAll('link[rel="alternate"]').forEach((l) => document.head.append(document.importNode(l, true)));
+      const config = [...doc.scripts].map((sc) => /window\.RAYTEX=(\{.*\})/.exec(sc.textContent)).find(Boolean);
+      if (config) {
+        C = window.RAYTEX = JSON.parse(config[1]);
+        T = C.texts;
+      }
+      document.body.replaceWith(document.adoptNode(doc.body));
+      if (push) history.pushState({ raytex: true, y: 0 }, "", to.href);
+      shown = to.pathname + to.search;
+      const target = to.hash && document.getElementById(decodeURIComponent(to.hash.slice(1)));
+      if (target) target.scrollIntoView({ behavior: "instant" });
+      else scrollTo({ top: push ? 0 : history.state?.y || 0, behavior: "instant" });
+      initPage(false);
+      $("#main")?.focus({ preventScroll: true });
+      if (way === "book") $("#sheet")?.style.setProperty("view-transition-name", "book");
+    };
+    const done = () => {
+      root.classList.remove("vt-back", "vt-book");
+      $("#sheet")?.style.removeProperty("view-transition-name");
+      turning = false;
+    };
+    if (reduced) {
+      swap();
+      return done();
+    }
+    if (document.startViewTransition) {
+      if (way !== "forward") root.classList.add(`vt-${way}`);
+      const vt = document.startViewTransition(swap);
+      // A transition the browser skips (a hidden tab) still changes the page.
+      vt.ready.catch(() => {});
+      return vt.finished.catch(() => {}).finally(done);
+    }
+    const paper = $(".paper");
+    if (paper) paper.style.transformOrigin = `${way === "forward" ? "0" : "50%"} ${Math.round(innerHeight / 2 - paper.getBoundingClientRect().top)}px`;
+    root.classList.add({ forward: "leaving", back: "leaving-back", book: "leaving-down" }[way]);
+    await new Promise((r) => setTimeout(r, way === "back" ? 600 : 750));
+    swap();
+    const arriving = { forward: "arriving", back: "arriving-back", book: "arriving-book" }[way];
+    root.classList.add(arriving);
+    setTimeout(() => {
+      root.classList.remove(arriving);
+      done();
+    }, 1600);
+  }
 
   // -------------------------------------------------------------- opening
   // Once per visit, when the visit starts on the title page (the script in
@@ -227,7 +308,9 @@
   }
 
   // \today, in the reader's language.
-  $$("[data-today]").forEach((el) => (el.textContent = new Intl.DateTimeFormat(fr ? "fr" : "en", { dateStyle: "long" }).format(new Date())));
+  function today() {
+    $$("[data-today]").forEach((el) => (el.textContent = new Intl.DateTimeFormat(isFr() ? "fr" : "en", { dateStyle: "long" }).format(new Date())));
+  }
 
   // ------------------------------------------------------- the strokes
   // Each stroke knows its length, so that it can trace itself; the steps of
@@ -269,27 +352,27 @@
       $$(".tikz-labels, .tikz-label, .tikz-hand", svg).forEach((el) => el.style.setProperty("--delay", `${0.6 + last * 0.6}s`));
     }
   }
-  prepareStrokes();
-
   // A figure drawn again when clicked.
-  $$(".figure-tikz svg").forEach((svg) => {
-    svg.style.cursor = "pointer";
-    svg.addEventListener("click", () => {
-      if (reduced) return;
-      const parts = $$(".draw, .tikz-dot, .tikz-labels, .tikz-label, .tikz-hand", svg);
-      parts.forEach((el) => {
-        el.style.transition = "none";
-        if (el.classList.contains("draw") && !el.classList.contains("dashed")) el.style.strokeDashoffset = "var(--len)";
-        else el.style.opacity = "0";
-      });
-      svg.getBoundingClientRect();
-      parts.forEach((el) => {
-        el.style.transition = "";
-        el.style.strokeDashoffset = "";
-        el.style.opacity = "";
+  function bindFigures() {
+    $$(".figure-tikz svg").forEach((svg) => {
+      svg.style.cursor = "pointer";
+      svg.addEventListener("click", () => {
+        if (reduced) return;
+        const parts = $$(".draw, .tikz-dot, .tikz-labels, .tikz-label, .tikz-hand", svg);
+        parts.forEach((el) => {
+          el.style.transition = "none";
+          if (el.classList.contains("draw") && !el.classList.contains("dashed")) el.style.strokeDashoffset = "var(--len)";
+          else el.style.opacity = "0";
+        });
+        svg.getBoundingClientRect();
+        parts.forEach((el) => {
+          el.style.transition = "";
+          el.style.strokeDashoffset = "";
+          el.style.opacity = "";
+        });
       });
     });
-  });
+  }
 
   // ------------------------------------------------------------ reveals
   const reveal = new IntersectionObserver(
@@ -304,12 +387,26 @@
     },
     { rootMargin: "0px 0px -8% 0px", threshold: 0.08 },
   );
-  $$("[data-reveal]").forEach((el) => reveal.observe(el));
+  function observeReveals(first) {
+    reveal.disconnect();
+    // What is on screen at once (the first page: the script after its sheet).
+    if (!first) {
+      const h = innerHeight;
+      $$("#sheet [data-reveal]").forEach((el) => {
+        if (el.classList.contains("stamp")) return;
+        const r = el.getBoundingClientRect();
+        if (r.top < h && r.bottom > 0) el.classList.add("at-load");
+      });
+    }
+    $$("[data-reveal]").forEach((el) => reveal.observe(el));
+  }
 
   // --------------------------------------------------------------- the ray
-  const hero = $("[data-ray]");
-  if (hero) requestAnimationFrame(() => $(".ray-sketch", hero)?.classList.add("inked"));
-  $$("[data-ray]").forEach((el) => el.addEventListener("click", () => swim(el)));
+  function bindRays() {
+    const hero = $("[data-ray]");
+    if (hero) requestAnimationFrame(() => $(".ray-sketch", hero)?.classList.add("inked"));
+    $$("[data-ray]").forEach((el) => el.addEventListener("click", () => swim(el)));
+  }
 
   // A click on the ray: it leaves its place and swims over the whole page,
   // along a curve from one side to the other, turned towards its way and
@@ -380,61 +477,63 @@
   }
 
   // ------------------------------------------------------------ the text
-  // Double-click on a formula: its source; again: the formula.
-  $$(".equation").forEach((eq) => {
-    eq.title = L("Double-click: the LaTeX source", "Double-clic : la source LaTeX");
-    eq.addEventListener("dblclick", () => {
-      eq.classList.toggle("source");
-      getSelection()?.removeAllRanges();
+  function bindText() {
+    // Double-click on a formula: its source; again: the formula.
+    $$(".equation").forEach((eq) => {
+      eq.title = L("Double-click: the LaTeX source", "Double-clic : la source LaTeX");
+      eq.addEventListener("dblclick", () => {
+        eq.classList.toggle("source");
+        getSelection()?.removeAllRanges();
+      });
     });
-  });
 
-  // The end of a proof turns into the ray.
-  $$("[data-qed]").forEach((q) => {
-    q.dataset.said = L("Q.E.D.", "C.Q.F.D.");
-    q.addEventListener("click", () => {
-      const on = q.classList.toggle("flipped");
-      q.innerHTML = on ? `<img src="${C.rel}assets/img/ray.svg" alt="" width="40" height="27" />` : "";
+    // The end of a proof turns into the ray.
+    $$("[data-qed]").forEach((q) => {
+      q.dataset.said = L("Q.E.D.", "C.Q.F.D.");
+      q.addEventListener("click", () => {
+        const on = q.classList.toggle("flipped");
+        q.innerHTML = on ? `<img src="${C.rel}assets/img/ray.svg" alt="" width="40" height="27" />` : "";
+      });
     });
-  });
 
-  // The page number, in every style LaTeX knows.
-  const folio = $("button[data-folio]");
-  if (folio) {
-    const n = Number(folio.textContent) || 1;
-    const roman = (k) =>
-      [
-        [10, "x"],
-        [9, "ix"],
-        [5, "v"],
-        [4, "iv"],
-        [1, "i"],
-      ].reduce((acc, [v, s]) => {
-        while (k >= v) {
-          acc += s;
-          k -= v;
-        }
-        return acc;
-      }, "");
-    const styles = [
-      ["arabic", String(n)],
-      ["roman", roman(n)],
-      ["Roman", roman(n).toUpperCase()],
-      ["alph", "abcdefghij"[n - 1] || String(n)],
-      ["Alph", "ABCDEFGHIJ"[n - 1] || String(n)],
-      ["fnsymbol", ["*", "†", "‡", "§", "¶", "‖", "**", "††", "‡‡", "§§"][n - 1] || "*"],
-    ];
-    let k = 0;
-    let timer = 0;
-    folio.addEventListener("click", () => {
-      k = (k + 1) % styles.length;
-      folio.textContent = styles[k][1];
-      const note = Object.assign(document.createElement("span"), { className: "folio-note", textContent: `\\pagenumbering{${styles[k][0]}}` });
-      $(".folio-note", folio)?.remove();
-      folio.append(note);
-      clearTimeout(timer);
-      timer = setTimeout(() => note.remove(), 2200);
-    });
+    // The page number, in every style LaTeX knows.
+    const folio = $("button[data-folio]");
+    if (folio) {
+      const n = Number(folio.textContent) || 1;
+      const roman = (k) =>
+        [
+          [10, "x"],
+          [9, "ix"],
+          [5, "v"],
+          [4, "iv"],
+          [1, "i"],
+        ].reduce((acc, [v, s]) => {
+          while (k >= v) {
+            acc += s;
+            k -= v;
+          }
+          return acc;
+        }, "");
+      const styles = [
+        ["arabic", String(n)],
+        ["roman", roman(n)],
+        ["Roman", roman(n).toUpperCase()],
+        ["alph", "abcdefghij"[n - 1] || String(n)],
+        ["Alph", "ABCDEFGHIJ"[n - 1] || String(n)],
+        ["fnsymbol", ["*", "†", "‡", "§", "¶", "‖", "**", "††", "‡‡", "§§"][n - 1] || "*"],
+      ];
+      let k = 0;
+      let timer = 0;
+      folio.addEventListener("click", () => {
+        k = (k + 1) % styles.length;
+        folio.textContent = styles[k][1];
+        const note = Object.assign(document.createElement("span"), { className: "folio-note", textContent: `\\pagenumbering{${styles[k][0]}}` });
+        $(".folio-note", folio)?.remove();
+        folio.append(note);
+        clearTimeout(timer);
+        timer = setTimeout(() => note.remove(), 2200);
+      });
+    }
   }
 
   // ------------------------------------------------------------ surprises
@@ -528,11 +627,9 @@
   }
 
   // ------------------------------------------------- 404: TeX has stopped
-  const term = $("[data-terminal]");
-  if (term) terminal(term);
 
   function terminal(root) {
-    const home = fr ? root.dataset.homeFr : root.dataset.homeEn;
+    const home = isFr() ? root.dataset.homeFr : root.dataset.homeEn;
     const segs = location.pathname.split("/").filter(Boolean);
     $("[data-path]", root).textContent = `${segs.join("/") || "index"}.tex`;
     $("[data-path-word]", root).textContent = `{${segs[segs.length - 1] || ""}}`;
@@ -612,8 +709,6 @@
   });
 
   // ---------------------------------------------------------- downloads
-  const needsReleases = $("[data-download-primary], [data-os-panel], [data-releases]");
-  if (!needsReleases) return;
 
   async function detect() {
     const ua = navigator.userAgent || "";
@@ -663,8 +758,7 @@
     return null;
   }
 
-  const sizeFmt = new Intl.NumberFormat(C.lang, { maximumFractionDigits: 1 });
-  const size = (b) => `${sizeFmt.format(b / 1048576)} ${C.lang === "fr" ? "Mo" : "MB"}`;
+  const size = (b) => `${new Intl.NumberFormat(C.lang, { maximumFractionDigits: 1 }).format(b / 1048576)} ${C.lang === "fr" ? "Mo" : "MB"}`;
   const date = (d) => (d ? new Intl.DateTimeFormat(C.lang, { dateStyle: "long" }).format(new Date(d)) : "");
   const version = (r) => r.tag.replace(/^v/, "");
 
@@ -712,8 +806,11 @@
     return [label + armLinux, desc];
   };
 
-  (async () => {
-    const env = await detect();
+  let detected;
+  function initReleases() {
+    if (!$("[data-download-primary], [data-os-panel], [data-releases]")) return;
+    (async () => {
+    const env = await (detected ||= detect());
     document.documentElement.dataset.os = env.os;
 
     let list;
@@ -725,7 +822,8 @@
     primaryButtons(list, env);
     if ($("[data-os-panel]")) downloadPage(list, env);
     if ($("[data-releases]")) releasesPage(list);
-  })();
+    })();
+  }
 
   function primaryButtons(list, env) {
     const latest = list && list.length ? latestOf(list) : null;
@@ -906,4 +1004,20 @@
     toggle.addEventListener("change", render);
     render();
   }
+
+  // ---------------------------------------------------------------- a page
+  function initPage(first) {
+    bindChrome();
+    today();
+    prepareStrokes();
+    bindFigures();
+    observeReveals(first);
+    bindRays();
+    bindText();
+    const term = $("[data-terminal]");
+    if (term) terminal(term);
+    initReleases();
+    if (!first) $("[data-intro]")?.remove();
+  }
+  initPage(true);
 })();

@@ -207,7 +207,7 @@ ${p.intro ? p.intro(ctx) : ""}
     </div>
   </div>
 </header>
-<main id="main">
+<main id="main" tabindex="-1">
   <article class="paper${p.id === "home" ? " paper-home" : ""}" id="sheet">
     <div class="runninghead" aria-hidden="true"><span>RayTeX</span><span>${p.id === "home" ? T("the next-generation LaTeX IDE", "l'IDE LaTeX nouvelle génération") : T(p.title.en, p.title.fr)}</span></div>
 ${body}
