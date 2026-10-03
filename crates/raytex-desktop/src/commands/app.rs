@@ -205,28 +205,6 @@ pub async fn selftest_scenes() -> CmdResult<(Option<String>, Option<String>)> {
     ))
 }
 
-/// Development only: puts the main window at a size (logical pixels), centred
-/// on its screen, for the screenshots of the self-test; gives back its place
-/// on the screen in physical pixels: x, y, width, height.
-#[tauri::command]
-pub async fn selftest_window(
-    window: tauri::WebviewWindow,
-    width: f64,
-    height: f64,
-) -> CmdResult<(i32, i32, u32, u32)> {
-    if !cfg!(debug_assertions) {
-        return Err("development only".into());
-    }
-    let _ = window.unmaximize();
-    window
-        .set_size(tauri::LogicalSize::new(width, height))
-        .map_err(|e| e.to_string())?;
-    window.center().map_err(|e| e.to_string())?;
-    let place = window.outer_position().map_err(|e| e.to_string())?;
-    let size = window.outer_size().map_err(|e| e.to_string())?;
-    Ok((place.x, place.y, size.width, size.height))
-}
-
 /// Development only: ends the self-test with an exit code.
 #[tauri::command]
 pub async fn selftest_exit(app: AppHandle, code: i32) -> CmdResult<()> {

@@ -30,7 +30,6 @@ cargo test -p raytex-core --release -- --ignored
 node scripts/e2e.mjs            # the scenes of the real application, with a screenshot at each step (e2e-output/)
 node scripts/e2e.mjs fixes      # one group: workflow, fixes, files, projects or media
 E2E_LANG=en node scripts/e2e.mjs  # the scenes with the interface in English
-node scripts/screenshots.mjs     # the screenshots of the website and the README (macOS: light and dark, French and English)
 ```
 
 `scripts/e2e.mjs` runs `npm run app:dev` on a fresh copy of `tests/e2e/rapport` with a fresh configuration, so it never touches an installed RayTeX (stop any other `npm run dev` first: the port 1420 must be free).
@@ -71,7 +70,7 @@ After changing a built-in template, make its thumbnails again (macOS, or any sys
 RAYTEX_WRITE_THUMBNAILS=1 cargo test -p raytex-core --release -- --ignored write_bundled_thumbnails
 ```
 
-The logo is built from LaTeX and a small script: see [assets/logo/README.md](assets/logo/README.md).
+The logo is in `assets/` (the icon, the wordmark for light and dark backgrounds, the ray alone); `public/assets` holds the copies the application shows, `crates/raytex-desktop/icons` the icons made from it with `npx tauri icon assets/logo.svg -o crates/raytex-desktop/icons`.
 
 Formats are described in [docs/knowledge-base.md](docs/knowledge-base.md).
 

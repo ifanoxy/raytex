@@ -140,7 +140,7 @@ crates/
   raytex-cli/      the `raytex` command-line tool
   raytex-desktop/  the desktop application (Tauri 2): IPC commands, events, file watcher
 ui/                    the interface (Svelte 5 + TypeScript + CodeMirror 6 + pdf.js)
-assets/                logo sources
+assets/                logo
 docs/                  architecture, Windows, data formats, screenshots
 tests/e2e/             project used by the end-to-end scenes
 ```

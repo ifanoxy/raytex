@@ -27,28 +27,7 @@ const TIMEOUT_MS = Number(process.env.E2E_TIMEOUT_MS ?? 20 * 60_000);
 
 mkdirSync(out, { recursive: true });
 
-// E2E_WINDOW=1 (macOS): pictures of the window of RayTeX alone, its rounded
-// corners transparent and nothing of the screen in front of it.
-let windowNumber = null;
-function rayTeXWindow() {
-  if (windowNumber) return windowNumber;
-  const tool = join(tmpdir(), "raytex-window-id");
-  if (!existsSync(tool)) spawnSync("swiftc", ["-O", join(root, "scripts/window-id.swift"), "-o", tool], { stdio: "ignore" });
-  const found = spawnSync(tool, ["raytex"], { encoding: "utf8" }).stdout?.trim();
-  windowNumber = found || null;
-  return windowNumber;
-}
-
 function screenshot(file) {
-  if (process.env.E2E_WINDOW && process.platform === "darwin") {
-    for (let attempt = 0; attempt < 4 && !existsSync(file); attempt++) {
-      if (attempt) spawnSync("sleep", ["0.6"]);
-      const id = rayTeXWindow();
-      if (id) spawnSync("screencapture", ["-x", "-o", `-l${id}`, file], { stdio: "ignore" });
-    }
-    if (!existsSync(file)) console.log(`no picture of the window for ${file}: allow your terminal to record the screen (System Settings → Privacy & Security → Screen & System Audio Recording)`);
-    return;
-  }
   if (windows) {
     const ps = [
       "Add-Type -AssemblyName System.Windows.Forms,System.Drawing",
