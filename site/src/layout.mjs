@@ -244,7 +244,7 @@ function footer({ T, url, icon, YEAR }, p, other) {
 }
 
 /** The page GitHub Pages shows for a missing address (any depth: absolute links). TeX stops on it. */
-export function notFound({ base, siteUrl }) {
+export function notFound({ base, siteUrl, version }) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -253,7 +253,7 @@ ${head({ title: "Page not found · RayTeX", description: "This page does not exi
 <body data-page="404">
 <main id="main" class="texstop">
   <article class="paper paper-terminal" id="sheet" data-terminal data-home-en="${base}" data-home-fr="${base}fr/">
-    <pre class="terminal"><span class="t-dim">This is RayTeX, Version 0.1 (preloaded format=site)</span>
+    <pre class="terminal"><span class="t-dim">This is RayTeX, Version ${version} (preloaded format=site)</span>
 <span class="t-dim">(./<span data-path></span></span>
 <span class="t-err">! Undefined control sequence.</span>
 <span>l.404 \\page</span><span class="t-err" data-path-word></span>
