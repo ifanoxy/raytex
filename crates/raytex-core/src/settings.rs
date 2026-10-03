@@ -35,6 +35,27 @@ pub struct Settings {
     pub macros: Vec<Macro>,
     /// Keyboard shortcut overrides: action id → key (e.g. `"build": "Mod-Enter"`).
     pub keybindings: std::collections::BTreeMap<String, String>,
+    /// New versions of RayTeX.
+    pub updates: UpdateSettings,
+}
+
+/// New versions of RayTeX.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct UpdateSettings {
+    /// Look for a new version when RayTeX starts (asks GitHub).
+    pub check_at_startup: bool,
+    /// A version the user chose to skip: not offered again at start.
+    pub skipped_version: Option<String>,
+}
+
+impl Default for UpdateSettings {
+    fn default() -> Self {
+        Self {
+            check_at_startup: true,
+            skipped_version: None,
+        }
+    }
 }
 
 impl Default for Settings {
@@ -49,6 +70,7 @@ impl Default for Settings {
             lint: LintSettings::default(),
             macros: Vec::new(),
             keybindings: std::collections::BTreeMap::new(),
+            updates: UpdateSettings::default(),
         }
     }
 }

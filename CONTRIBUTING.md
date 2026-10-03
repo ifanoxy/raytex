@@ -30,6 +30,7 @@ cargo test -p raytex-core --release -- --ignored
 node scripts/e2e.mjs            # the scenes of the real application, with a screenshot at each step (e2e-output/)
 node scripts/e2e.mjs fixes      # one group: workflow, fixes, files, projects or media
 E2E_LANG=en node scripts/e2e.mjs  # the scenes with the interface in English
+node scripts/screenshots.mjs     # the screenshots of the website and the README (macOS: light and dark, French and English)
 ```
 
 `scripts/e2e.mjs` runs `npm run app:dev` on a fresh copy of `tests/e2e/rapport` with a fresh configuration, so it never touches an installed RayTeX (stop any other `npm run dev` first: the port 1420 must be free).
@@ -38,7 +39,7 @@ E2E_LANG=en node scripts/e2e.mjs  # the scenes with the interface in English
 
 Optional variables of the end-to-end check (development builds only):
 
-- `RAYTEX_SELFTEST_SCENES=workflow` with `RAYTEX_SELFTEST_ASSETS=<folder>`: creates an empty project in that folder, then checks templates and their thumbnails, live compilation, undo / redo, the formatting bar, `$` typing, linked environments and the panels; `=media` (assets: test images) checks the image, TikZ and font tools; `=fixes` writes a document full of mistakes, checks the suggestions, Alt+Enter and **Fix all** until it compiles; `=1` walks through the main screens for screenshots (each logs `scene: <name>`).
+- `RAYTEX_SELFTEST_SCENES=workflow` with `RAYTEX_SELFTEST_ASSETS=<folder>`: creates an empty project in that folder, then checks templates and their thumbnails, live compilation, undo / redo, the formatting bar, `$` typing, linked environments and the panels; `=media` (assets: test images) checks the image, TikZ and font tools; `=fixes` writes a document full of mistakes, checks the suggestions, Alt+Enter and **Fix all** until it compiles; `=1` walks through the main screens for screenshots (each logs `scene: <name>`). `=shots` puts the window at 1400 × 813 and shows the editor with its PDF, the TikZ studio and the problems panel in the light and the dark theme, in French and English; `scripts/screenshots.mjs` crops them into `docs/screenshots/`.
 - `RAYTEX_CONFIG_DIR=<folder>`: settings, session and cache in that folder, so the check never touches those of an installed RayTeX.
 - `RAYTEX_SELFTEST_KEEP=1`: leaves the window open at the end.
 

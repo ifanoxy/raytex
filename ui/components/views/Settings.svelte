@@ -5,6 +5,7 @@
   import { type MessageKey, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { app } from "$lib/state/app.svelte";
+  import { updates } from "$lib/state/updates.svelte";
   import { editor } from "$lib/state/editor.svelte";
   import { project } from "$lib/state/project.svelte";
   import { ui } from "$lib/state/ui.svelte";
@@ -507,8 +508,14 @@
           <p class="faint">{app.info?.os} · {app.info?.arch}</p>
           <p class="faint small">{t("settings.license")}</p>
           <div class="row">
+            <button class="btn small primary" onclick={() => updates.check(true)} disabled={updates.phase === "checking"}>
+              <Icon name="download" size={13} />{updates.phase === "checking" ? t("update.checking") : t("update.checkNow")}
+            </button>
             <button class="btn small" onclick={() => ipc.openUrl(REPOSITORY_URL)}><Icon name="globe" size={13} />GitHub</button>
             <button class="btn small" onclick={() => app.info && ipc.revealInOs(app.info.templatesPath)}><Icon name="folder-open" size={13} />{t("settings.templatesFolder")}</button>
+          </div>
+          <div class="about-updates">
+            {@render toggle(t("update.atStartup"), t("update.atStartupHint"), s.updates?.checkAtStartup ?? true, (v) => set((x) => (x.updates = { checkAtStartup: v, skippedVersion: x.updates?.skippedVersion ?? null })))}
           </div>
         </div>
       {/if}

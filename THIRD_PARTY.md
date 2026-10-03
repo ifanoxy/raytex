@@ -16,11 +16,17 @@ following components, which keep their own licenses.
 | [@replit/codemirror-vim](https://github.com/replit/codemirror-vim) | Vim mode | MIT |
 | [Svelte](https://svelte.dev) | Interface framework | MIT |
 | [Tauri](https://tauri.app) and its plugins | Desktop shell | MIT or Apache-2.0 |
-| Latin Modern (glyph outlines of T, E, X in the logo) | Logo | GUST Font License |
+| Latin Modern (glyph outlines of the letters of the logo) | Logo | GUST Font License |
 
 The thumbnails of the templates (`crates/raytex-desktop/thumbnails`) are
 pictures of documents made by RayTeX's own templates with Latin Modern and
 the other fonts of the templates (SIL Open Font License, GUST Font License).
+
+## The website
+
+The site (`site/`) is typeset in Latin Modern (`site/assets/fonts`, subsets
+of the TeX Live fonts; GUST Font License), with the Caveat handwriting
+(SIL Open Font License 1.1) and the formulas rendered by KaTeX (MIT).
 
 ## Rust crates
 

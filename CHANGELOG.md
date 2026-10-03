@@ -2,6 +2,15 @@
 
 All notable changes to RayTeX are documented here. The format follows [Keep a Changelog](https://keepachangelog.com), and versions follow [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+## [0.2.0] — 2026-10-03
+
+- **Updates**: at start, RayTeX looks for a new version on GitHub and offers it (its notes, *Update now*, *Later*, *Skip this version*); the files open are saved, the new version is downloaded with a progress bar, installed, and RayTeX restarts. *Settings → About* checks by hand or turns the check at start off. Only files signed with the project's update key are installed.
+- **New identity**: the manta ray of the final logo, traced from its drawing, next to Ray\TeX typeset by LaTeX; new icons on every system; the interface takes its violets, in the dark and the light theme.
+- **Website**: rewritten as a LaTeX document on paper (Latin Modern, notes by hand in the margin, figures that draw themselves, an opening on the title page), with an installation page in three steps, pages that turn without being loaded again, the language of the reader, and pictures of the application in the light and the dark theme.
+- For contributors: `node scripts/screenshots.mjs` takes the screenshots of the README and the website in the real application (light and dark, French and English).
+
 ## [0.1.0] — 2026-10-01
 
 First version.
@@ -91,4 +100,5 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[0.2.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.2.0
 [0.1.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.1.0

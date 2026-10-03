@@ -4,7 +4,7 @@ members = ["crates/raytex-core", "crates/raytex-cli", "crates/raytex-desktop"]
 default-members = ["crates/raytex-core", "crates/raytex-cli", "crates/raytex-desktop"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"
@@ -36,6 +36,8 @@ tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 notify = "8"
 trash = "5"
 clap = { version = "4", features = ["derive"] }

@@ -35,6 +35,16 @@ Requires the [Apple Developer Program](https://developer.apple.com/programs/) (9
 
 The macOS builds are then signed and notarized by Apple: they open without any warning.
 
+## Updates offered by the application
+
+At start (unless turned off in *Settings → About*), RayTeX reads `latest.json` in the latest GitHub release and offers the new version; it installs only files signed with the project's **update key** (a key of Tauri's updater, distinct from the certificates above), whose public half is in `crates/raytex-desktop/tauri.conf.json` (`plugins.updater.pubkey`).
+
+1. The private key is `~/.tauri/raytex-updater.key` on the maintainer's computer (made with `npx tauri signer generate`). **Keep a copy in a safe place**: without it, the installed applications can no longer be updated (a new key means a new version to download by hand).
+2. Add these repository secrets: `TAURI_SIGNING_PRIVATE_KEY` (the content of the key file) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (empty, the key has no password).
+3. Then every release also contains the update files (`.app.tar.gz`, `.sig`…) and `latest.json`. When SignPath signs the Windows installers, their update signatures are made again on the signed files.
+
+Updates install themselves on Windows, macOS and from the AppImage on Linux; with a `.deb` or `.rpm`, RayTeX opens the download page instead when it cannot install.
+
 ## Linux, and every file: checksums and provenance
 
 Linux has no central check: trust comes from what anyone can verify.

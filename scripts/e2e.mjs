@@ -12,9 +12,9 @@
 // group fails.
 
 import { spawn, spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { delimiter, join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const groups = process.argv.slice(2).length ? process.argv.slice(2) : ["workflow", "fixes", "files", "projects", "media"];
@@ -27,7 +27,28 @@ const TIMEOUT_MS = Number(process.env.E2E_TIMEOUT_MS ?? 20 * 60_000);
 
 mkdirSync(out, { recursive: true });
 
+// E2E_WINDOW=1 (macOS): pictures of the window of RayTeX alone, its rounded
+// corners transparent and nothing of the screen in front of it.
+let windowNumber = null;
+function rayTeXWindow() {
+  if (windowNumber) return windowNumber;
+  const tool = join(tmpdir(), "raytex-window-id");
+  if (!existsSync(tool)) spawnSync("swiftc", ["-O", join(root, "scripts/window-id.swift"), "-o", tool], { stdio: "ignore" });
+  const found = spawnSync(tool, ["raytex"], { encoding: "utf8" }).stdout?.trim();
+  windowNumber = found || null;
+  return windowNumber;
+}
+
 function screenshot(file) {
+  if (process.env.E2E_WINDOW && process.platform === "darwin") {
+    for (let attempt = 0; attempt < 4 && !existsSync(file); attempt++) {
+      if (attempt) spawnSync("sleep", ["0.6"]);
+      const id = rayTeXWindow();
+      if (id) spawnSync("screencapture", ["-x", "-o", `-l${id}`, file], { stdio: "ignore" });
+    }
+    if (!existsSync(file)) console.log(`no picture of the window for ${file}: allow your terminal to record the screen (System Settings → Privacy & Security → Screen & System Audio Recording)`);
+    return;
+  }
   if (windows) {
     const ps = [
       "Add-Type -AssemblyName System.Windows.Forms,System.Drawing",
@@ -69,8 +90,13 @@ async function run(group) {
   const logFile = join(out, `${group}.log`);
   writeFileSync(logFile, "");
 
+  // Cargo and TeX where they are usually installed, for a shell whose PATH
+  // does not have them (rustup in ~/.cargo or from Homebrew, MacTeX).
+  const usual = [join(homedir(), ".cargo", "bin"), "/opt/homebrew/opt/rustup/bin", "/opt/homebrew/bin", "/Library/TeX/texbin"].filter((d) => existsSync(d));
+  const path = (process.env.PATH ?? "").split(delimiter);
   const env = {
     ...process.env,
+    PATH: [...path, ...usual.filter((d) => !path.includes(d))].join(delimiter),
     RAYTEX_CONFIG_DIR: config,
     RAYTEX_SELFTEST: project,
     RAYTEX_SELFTEST_SCENES: group,
@@ -85,7 +111,8 @@ async function run(group) {
   const onData = (chunk) => {
     const text = chunk.toString();
     appendFileSync(logFile, text);
-    if (!running && /Running `[^`]*raytex-app/.test(text)) running = Date.now();
+    const plain = text.replace(/\x1b\[[0-9;]*m/g, "");
+    if (!running && (/Running `[^`]*raytex-app/.test(plain) || plain.includes("selftest:"))) running = Date.now();
     for (const m of text.matchAll(/scene: ([a-z0-9-]+)/g)) {
       if (seen.has(m[1])) continue;
       seen.add(m[1]);
@@ -119,8 +146,14 @@ async function run(group) {
     // A TeX run still ending holds a file (Windows): the folder stays.
     console.log(`${group}: ${work} not removed (${e.code ?? e})`);
   }
-  const result = verdict ?? "TIMEOUT";
+  // Without a verdict: the application never ran (its build failed: the
+  // last lines say why), or the scenes did not end in time.
+  const result = verdict ?? (running ? "TIMEOUT" : "NOT STARTED");
   console.log(`${group}: ${result} (${Math.round((Date.now() - started) / 1000)} s, ${seen.size} scenes) — ${logFile}`);
+  if (!verdict && !running) {
+    const tail = readFileSync(logFile, "utf8").trim().split("\n").slice(-6).join("\n");
+    console.log(`The application did not start:\n${tail}`);
+  }
   return result === "PASSED";
 }
 

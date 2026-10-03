@@ -19,68 +19,70 @@
 }
 
 /* ----------------------------------------------------------- dark theme */
+/* The violets of the logo (a manta ray) on a deep night. */
 :root,
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0e1220;
-  --bg-elev: #131a2b;
-  --bg-elev-2: #19213a;
-  --bg-input: #0f1526;
-  --bg-hover: #1f2842;
-  --bg-active: #263252;
-  --border: #232c45;
-  --border-strong: #34405f;
-  --text: #e6e9f2;
-  --text-muted: #9ca5bc;
-  --text-faint: #6c7792;
-  --accent: #e3a857;
-  --accent-strong: #f2c078;
-  --accent-contrast: #1d1405;
-  --accent-soft: rgba(227, 168, 87, 0.14);
-  --link: #7ab3ff;
-  --error: #ff6b6b;
+  --bg: #100d1c;
+  --bg-elev: #161227;
+  --bg-elev-2: #1c1733;
+  --bg-input: #120f22;
+  --bg-hover: #231d3e;
+  --bg-active: #2c244d;
+  --border: #261f42;
+  --border-strong: #3a3160;
+  --text: #ebe7f7;
+  --text-muted: #a69ec2;
+  --text-faint: #736b92;
+  --accent: #a68cff;
+  --accent-strong: #c4b2ff;
+  --accent-contrast: #170e35;
+  --accent-soft: rgba(166, 140, 255, 0.15);
+  --link: #a9b4ff;
+  --error: #ff6b80;
   --warning: #f3b64f;
-  --info: #5fb4ff;
-  --hint: #8f9bb3;
+  --info: #6fb6ff;
+  --hint: #9a93b5;
   --success: #4cc38a;
-  --editor-bg: #0f1424;
-  --editor-gutter: #0f1424;
-  --selection: rgba(227, 168, 87, 0.22);
-  --pdf-bg: #0b0f1b;
-  --overlay: rgba(4, 6, 14, 0.55);
+  --editor-bg: #120f20;
+  --editor-gutter: #120f20;
+  --selection: rgba(166, 140, 255, 0.24);
+  --pdf-bg: #0c0a16;
+  --overlay: rgba(7, 4, 16, 0.6);
 }
 
 /* ---------------------------------------------------------- light theme */
+/* Lavender paper. */
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #f4f1ea;
-  --bg-elev: #faf8f4;
+  --bg: #f5f3fb;
+  --bg-elev: #fbfaff;
   --bg-elev-2: #ffffff;
   --bg-input: #ffffff;
-  --bg-hover: #ece7dc;
-  --bg-active: #e3dac8;
-  --border: #e2dbcd;
-  --border-strong: #cfc4ae;
-  --text: #1e2230;
-  --text-muted: #585f72;
-  --text-faint: #8a8f9d;
-  --accent: #b0701d;
-  --accent-strong: #925a12;
+  --bg-hover: #eeeaf9;
+  --bg-active: #e3dcf6;
+  --border: #e2dcf2;
+  --border-strong: #ccc2e8;
+  --text: #1d1734;
+  --text-muted: #5a5376;
+  --text-faint: #8c86a3;
+  --accent: #6a3ce0;
+  --accent-strong: #5428c4;
   --accent-contrast: #ffffff;
-  --accent-soft: rgba(176, 112, 29, 0.12);
-  --link: #2563c9;
-  --error: #d13b3b;
+  --accent-soft: rgba(106, 60, 224, 0.1);
+  --link: #4a4fd4;
+  --error: #d1344a;
   --warning: #b3761a;
   --info: #2f6fcf;
-  --hint: #6f7688;
+  --hint: #6f6a88;
   --success: #1f8a4c;
-  --editor-bg: #fffefb;
-  --editor-gutter: #fbf9f4;
-  --selection: rgba(176, 112, 29, 0.18);
-  --pdf-bg: #e9e4d8;
-  --overlay: rgba(40, 32, 18, 0.28);
-  --shadow: 0 8px 28px rgba(60, 45, 20, 0.12);
-  --shadow-lg: 0 24px 64px rgba(60, 45, 20, 0.22);
+  --editor-bg: #fefdff;
+  --editor-gutter: #faf8ff;
+  --selection: rgba(106, 60, 224, 0.16);
+  --pdf-bg: #ebe7f4;
+  --overlay: rgba(32, 20, 64, 0.26);
+  --shadow: 0 8px 28px rgba(50, 30, 110, 0.12);
+  --shadow-lg: 0 24px 64px rgba(50, 30, 110, 0.2);
 }
 
 /* ------------------------------------------------------------------ base */
@@ -529,10 +531,10 @@ kbd {
 :root,
 :root[data-theme="dark"] {
   --hl-command: #7fb4ff;
-  --hl-heading: #f2c078;
+  --hl-heading: #cdbaff;
   --hl-comment: #6c7792;
-  --hl-magic: #e3a857;
-  --hl-env: #c79bf2;
+  --hl-magic: #ff9bd6;
+  --hl-env: #f2a2cf;
   --hl-key: #5fd3b6;
   --hl-math: #a6d98b;
   --hl-math-delim: #f0a86c;
@@ -544,10 +546,10 @@ kbd {
 }
 :root[data-theme="light"] {
   --hl-command: #1d5bbf;
-  --hl-heading: #8f520a;
+  --hl-heading: #5428c4;
   --hl-comment: #8a8f9d;
-  --hl-magic: #a3620f;
-  --hl-env: #8537b5;
+  --hl-magic: #a8238f;
+  --hl-env: #a3306d;
   --hl-key: #0e7a67;
   --hl-math: #2f7d31;
   --hl-math-delim: #b3531a;

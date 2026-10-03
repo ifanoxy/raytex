@@ -24,7 +24,7 @@
 RayTeX is a LaTeX editor that helps beginners learn and lets experts go fast: live preview, completion learned from **every** installed package, a precise error console that explains every problem and fixes the common ones in one click (or all at once), SyncTeX, templates, macros and a guided setup of **any** TeX distribution.
 
 <p align="center">
-  <img src="docs/screenshots/en/editor.png" width="900" alt="RayTeX: the editor, the live PDF and the @ shortcuts panel" />
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/editor-dark.png" /><img src="docs/screenshots/en/editor-light.png" width="900" alt="RayTeX: the editor, the live PDF and the @ shortcuts panel" /></picture>
 </p>
 
 ## Features
@@ -83,8 +83,8 @@ RayTeX is a LaTeX editor that helps beginners learn and lets experts go fast: li
 The interface is available in English and French.
 
 <p align="center">
-  <img src="docs/screenshots/en/problems.png" width="440" alt="Problems explained, with their fixes" />
-  <img src="docs/screenshots/en/tikz.png" width="440" alt="The TikZ studio: draw with the mouse, the code writes itself" />
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/problems-dark.png" /><img src="docs/screenshots/en/problems-light.png" width="440" alt="Problems explained, with their fixes" /></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/en/tikz-dark.png" /><img src="docs/screenshots/en/tikz-light.png" width="440" alt="The TikZ studio: draw with the mouse, the code writes itself" /></picture>
 </p>
 
 ## Install

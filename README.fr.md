@@ -24,7 +24,7 @@
 RayTeX aide les débutants à apprendre et laisse les experts aller vite : aperçu en direct, autocomplétion apprise de **tous** les packages installés, console d'erreurs précise qui explique chaque problème et corrige les plus courants en un clic (ou tous à la fois), SyncTeX, modèles, macros et configuration guidée de **n'importe quelle** distribution TeX.
 
 <p align="center">
-  <img src="docs/screenshots/fr/editor.png" width="900" alt="RayTeX : l'éditeur, le PDF en direct et le panneau des raccourcis @" />
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/fr/editor-dark.png" /><img src="docs/screenshots/fr/editor-light.png" width="900" alt="RayTeX : l'éditeur, le PDF en direct et le panneau des raccourcis @" /></picture>
 </p>
 
 ## Fonctionnalités
@@ -83,8 +83,8 @@ RayTeX aide les débutants à apprendre et laisse les experts aller vite : aper�
 L'interface est disponible en français et en anglais.
 
 <p align="center">
-  <img src="docs/screenshots/fr/problems.png" width="440" alt="Les problèmes expliqués, avec leurs corrections" />
-  <img src="docs/screenshots/fr/tikz.png" width="440" alt="Le studio TikZ : dessinez à la souris, le code s'écrit tout seul" />
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/fr/problems-dark.png" /><img src="docs/screenshots/fr/problems-light.png" width="440" alt="Les problèmes expliqués, avec leurs corrections" /></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/fr/tikz-dark.png" /><img src="docs/screenshots/fr/tikz-light.png" width="440" alt="Le studio TikZ : dessinez à la souris, le code s'écrit tout seul" /></picture>
 </p>
 
 ## Installation

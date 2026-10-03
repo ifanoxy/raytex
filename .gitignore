@@ -29,3 +29,7 @@ Thumbs.db
 # Local assistant settings
 .claude/
 e2e-output/
+
+# Logo work files (the drawing being traced, the trace alone)
+assets/logo/drawing.png
+assets/logo/ray-traced.svg
