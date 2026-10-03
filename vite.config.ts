@@ -1,12 +1,24 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 
 // Tauri expects a fixed port and no clearing of its output.
 const host = process.env.TAURI_DEV_HOST;
 
+// KaTeX lists each of its fonts in three formats. Every webview RayTeX runs
+// in reads WOFF2 (the fonts of the interface come in that format alone), so
+// the two others stay out of the application.
+const katexWoff2Only = (): Plugin => ({
+  name: "katex-woff2-only",
+  enforce: "pre",
+  transform(code, id) {
+    if (!id.includes("katex/dist/katex.min.css")) return;
+    return { code: code.replace(/,url\([^)]+\.(?:woff|ttf)\) format\("(?:woff|truetype)"\)/g, ""), map: null };
+  },
+});
+
 export default defineConfig({
   root: ".",
-  plugins: [svelte()],
+  plugins: [svelte(), katexWoff2Only()],
   clearScreen: false,
   server: {
     port: 1420,

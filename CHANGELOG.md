@@ -4,6 +4,9 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- A lighter application: the fonts of the formula previews ship in one format (WOFF2) instead of three, about 0.8 MB less in the interface.
+- For contributors: the tools that made the pictures are gone from the repository (the scripts of the logo, the page of the sharing picture, `scripts/screenshots.mjs` and its scenes); the pictures stay. Icons that no installer used and two unused dependencies are removed.
+
 ## [0.2.0] — 2026-10-03
 
 - **Updates**: at start, RayTeX looks for a new version on GitHub and offers it (its notes, *Update now*, *Later*, *Skip this version*); the files open are saved, the new version is downloaded with a progress bar, installed, and RayTeX restarts. *Settings → About* checks by hand or turns the check at start off. Only files signed with the project's update key are installed.

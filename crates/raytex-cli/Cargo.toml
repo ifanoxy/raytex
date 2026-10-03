@@ -16,7 +16,6 @@ path = "src/main.rs"
 raytex-core.workspace = true
 clap.workspace = true
 serde_json.workspace = true
-directories.workspace = true
 dunce.workspace = true
 
 [lints]
