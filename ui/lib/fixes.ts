@@ -14,6 +14,22 @@ import { type MenuItem, ui } from "./state/ui.svelte";
 import type { Diagnostic, Fix, Position, Range, TextEdit } from "./types";
 import { join } from "./utils";
 
+/** The cause of a problem of the compiler, found in the sources by the
+ *  engine, with what to write instead; null when it only knows what the
+ *  message means (nothing is guessed). */
+export function causeOf(d: Diagnostic): string | null {
+  const hint: { title: string; explanation: string; advice?: string | null } | null = d.hint;
+  return hint?.advice ?? null;
+}
+
+/** What to suggest for a problem: the cause found in the sources, or the
+ *  explanation of a live check (it knows the exact place by itself). The
+ *  meaning of a compiler message alone is not a suggestion. */
+export function suggestionOf(d: Diagnostic): string | null {
+  if (!d.hint) return null;
+  return causeOf(d) ?? (d.source === "lint" || d.source === "syntax" ? d.hint.explanation : null);
+}
+
 export function fixLabel(fix: Fix): string {
   switch (fix.kind) {
     case "addPackage":

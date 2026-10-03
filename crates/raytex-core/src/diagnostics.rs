@@ -46,8 +46,25 @@ pub enum Source {
 pub struct Hint {
     /// Short title (what happened).
     pub title: String,
-    /// Explanation in plain words (why), markdown allowed.
+    /// What the message means, in plain words (markdown allowed). It holds
+    /// for every document that gets this message: no guess about the cause.
     pub explanation: String,
+    /// The cause found in the sources and what to write instead (markdown
+    /// allowed). Only set when the place is known exactly: the range of the
+    /// diagnostic is then the text to change.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub advice: Option<String>,
+}
+
+impl Hint {
+    /// A hint without advice.
+    pub fn new(title: impl Into<String>, explanation: impl Into<String>) -> Self {
+        Self {
+            title: title.into(),
+            explanation: explanation.into(),
+            advice: None,
+        }
+    }
 }
 
 /// A change of one place of a file (fixes touching several places).
@@ -214,6 +231,13 @@ impl Diagnostic {
     pub fn with_fix(mut self, fix: Fix) -> Self {
         self.fixes.push(fix);
         self
+    }
+
+    /// Says what was found to be the cause, in the sources (see [`Hint::advice`]).
+    pub fn advise(&mut self, advice: impl Into<String>) {
+        if let Some(hint) = &mut self.hint {
+            hint.advice = Some(advice.into());
+        }
     }
 
     /// Sets file and range.

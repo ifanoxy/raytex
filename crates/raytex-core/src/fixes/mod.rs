@@ -7,6 +7,7 @@
 
 mod data;
 pub(crate) mod latex;
+mod numeric;
 pub mod text;
 
 use std::collections::BTreeMap;
@@ -16,7 +17,7 @@ use crate::diagnostics::{Diagnostic, FileEdit, Fix};
 use crate::i18n::Lang;
 use crate::text::LineIndex;
 
-pub(crate) use latex::{Sources, relocate, suggest};
+pub(crate) use latex::{CONSEQUENCE, Sources, relocate, suggest};
 
 /// Whether a fix can be applied without asking (not an installation, a
 /// security setting or a page of documentation).

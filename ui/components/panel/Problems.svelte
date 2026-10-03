@@ -1,8 +1,9 @@
 <script lang="ts">
   // Precise error console: every diagnostic with its location, the TeX
-  // context, a plain-language suggestion and one-click fixes, one by one or
-  // all at once.
-  import { autoFix, fixable, fixAllAndReport, fixIcon, fixLabel, runFix } from "$lib/fixes";
+  // context, what its message means and one-click fixes, one by one or all
+  // at once. A suggestion (the light bulb) is only shown when the cause was
+  // found in the sources: the place highlighted is then the text to change.
+  import { autoFix, causeOf, fixable, fixAllAndReport, fixIcon, fixLabel, runFix, suggestionOf } from "$lib/fixes";
   import { t } from "$lib/i18n.svelte";
   import { app } from "$lib/state/app.svelte";
   import { build } from "$lib/state/build.svelte";
@@ -78,6 +79,8 @@
     const where = d.file ? `${relative(project.info?.root ?? "", d.file)}${location(d) ? `:${location(d)}` : ""}: ` : "";
     const lines = [`${where}${t(SEVERITY[d.severity])}: ${d.hint?.title ?? d.message}`];
     if (d.hint && d.hint.title !== d.message) lines.push(`  ${d.message}`);
+    const cause = causeOf(d);
+    if (cause) lines.push(`  ${cause}`);
     if (details && (d.contextBefore || d.contextAfter)) lines.push(`  ${d.contextBefore ?? ""}⏐${d.contextAfter ?? ""}`);
     if (details && d.raw) lines.push(d.raw);
     return lines.join("\n");
@@ -164,10 +167,11 @@
           {#if location(d)}<button class="loc mono" onclick={() => open(d)}>{location(d)}</button>{/if}
         </div>
         {#if d.hint && !open_}
-          <!-- The suggestion; a click shows the details. -->
+          {@const suggestion = suggestionOf(d)}
+          <!-- The suggestion when the cause is known, else what the message means; a click shows the details. -->
           <div class="suggestion selectable" role="button" tabindex="-1" onclick={() => !selection() && toggle(d)} onkeydown={(e) => e.key === "Enter" && toggle(d)}>
-            <Icon name="lightbulb" size={12} />
-            <span>{@html inlineMarkdown(d.hint.explanation)}</span>
+            {#if suggestion}<Icon name="lightbulb" size={12} />{/if}
+            <span>{@html inlineMarkdown(suggestion ?? d.hint.explanation)}</span>
           </div>
         {/if}
         {#if d.fixes.length}
@@ -182,6 +186,9 @@
         {/if}
         {#if open_}
           <div class="details">
+            {#if causeOf(d)}
+              <p class="cause selectable"><Icon name="lightbulb" size={13} /><span>{@html inlineMarkdown(causeOf(d) ?? "")}</span></p>
+            {/if}
             {#if d.hint}<p class="explanation selectable">{@html inlineMarkdown(d.hint.explanation)}</p>{/if}
             {#if d.contextBefore || d.contextAfter}
               <div class="context mono selectable">
@@ -397,6 +404,17 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+  .cause {
+    margin: 0;
+    display: flex;
+    gap: 6px;
+    line-height: 1.55;
+  }
+  .cause :global(.icon) {
+    flex-shrink: 0;
+    margin-top: 3px;
+    color: var(--warning);
   }
   .explanation {
     margin: 0;

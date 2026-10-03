@@ -7,6 +7,9 @@
 //!   explanation and an automatic fix; applying the fix like the editor does
 //!   makes the problem go away.
 //!
+//! * The cause of a mistake is found in the sources: the diagnostic is on the
+//!   text to change and its advice says what is wrong with it.
+//!
 //! `LBT_PROBE=1` prints every diagnostic instead of checking (to write new
 //! cases); `LBT_CASE=<name>` runs the cases whose name contains the text.
 
@@ -325,10 +328,15 @@ fn describe(d: &Diagnostic) -> String {
             .as_ref()
             .map(|c| format!(" after: {c:?}"))
             .unwrap_or_default(),
-        d.fixes
-            .iter()
-            .map(|f| format!("\n      fix: {}", serde_json::to_string(f).unwrap()))
-            .collect::<String>()
+        d.hint
+            .as_ref()
+            .and_then(|h| h.advice.as_ref())
+            .map(|a| format!("\n      advice: {a}"))
+            .unwrap_or_default()
+            + &d.fixes
+                .iter()
+                .map(|f| format!("\n      fix: {}", serde_json::to_string(f).unwrap()))
+                .collect::<String>()
     )
 }
 
@@ -520,6 +528,394 @@ fn common_mistakes_are_explained_and_fixed() {
         results.len()
     );
     assert!(failed.is_empty(), "{} cases failed", failed.len());
+}
+
+/// A mistake whose cause is in the sources: what must be shown (the text
+/// of the range of the diagnostic) and what the advice must say.
+struct Located {
+    name: &'static str,
+    code: &'static str,
+    main: String,
+    /// The text the diagnostic is placed on.
+    shown: &'static str,
+    /// A part of the advice; `None` when nothing may be said about the
+    /// cause, because it cannot be told.
+    advice: Option<&'static str>,
+}
+
+fn located(
+    name: &'static str,
+    code: &'static str,
+    main: String,
+    shown: &'static str,
+    advice: Option<&'static str>,
+) -> Located {
+    Located {
+        name,
+        code,
+        main,
+        shown,
+        advice,
+    }
+}
+
+fn located_cases() -> Vec<Located> {
+    let table = |rows: &str| format!("\\begin{{tabular}}{{ll}}\n{rows}\n\\end{{tabular}}");
+    vec![
+        // ------------------------------ a number or a length was expected
+        located(
+            "length-words",
+            "missing-number",
+            doc("", "Avant.\n\\vspace{abc}\nAprès."),
+            "abc",
+            Some("`\\vspace` attend une longueur"),
+        ),
+        located(
+            "length-empty",
+            "missing-number",
+            doc("", "Avant\\hspace{}après."),
+            "{}",
+            Some("mais rien n'est écrit"),
+        ),
+        located(
+            "length-second-argument",
+            "missing-number",
+            doc("", "\\rule{abc}{1pt}"),
+            "abc",
+            Some("`\\rule` attend une longueur"),
+        ),
+        located(
+            "length-of-setlength",
+            "missing-number",
+            doc("", "\\setlength{\\parindent}{beaucoup} Texte."),
+            "beaucoup",
+            Some("`\\setlength` attend une longueur"),
+        ),
+        located(
+            "length-of-parbox",
+            "missing-number",
+            doc("", "\\parbox{large}{Texte}"),
+            "large",
+            Some("`\\parbox`"),
+        ),
+        located(
+            "length-of-raisebox",
+            "missing-number",
+            doc("", "\\raisebox{haut}{x}"),
+            "haut",
+            Some("`\\raisebox`"),
+        ),
+        located(
+            "length-of-minipage",
+            "missing-number",
+            doc("", "\\begin{minipage}{large}\nTexte\n\\end{minipage}"),
+            "large",
+            Some("`\\begin{minipage}` attend une longueur"),
+        ),
+        located(
+            "length-of-option",
+            "missing-number",
+            doc(
+                "\\usepackage{graphicx}",
+                "\\includegraphics[width=large]{example-image}",
+            ),
+            "large",
+            Some("L'option `width` de `\\includegraphics`"),
+        ),
+        located(
+            "length-after-primitive",
+            "missing-number",
+            doc("", "A\\kern abc B"),
+            "abc",
+            Some("`\\kern` attend une longueur"),
+        ),
+        located(
+            "column-width-empty",
+            "missing-number",
+            doc("", "\\begin{tabular}{p{}}\na \\\\\n\\end{tabular}"),
+            "p{}",
+            Some("La colonne `p{…}` du tableau"),
+        ),
+        located(
+            "counter-words",
+            "missing-number",
+            doc("", "\\setcounter{page}{abc} Texte."),
+            "abc",
+            Some("`\\setcounter` attend un nombre entier"),
+        ),
+        located(
+            "counter-added-words",
+            "missing-number",
+            doc("", "\\addtocounter{section}{un} Texte."),
+            "un",
+            Some("`\\addtocounter` attend un nombre entier"),
+        ),
+        located(
+            "columns-words",
+            "missing-number",
+            doc("", &table("\\multicolumn{deux}{c}{a} \\\\")),
+            "deux",
+            Some("`\\multicolumn` attend un nombre entier"),
+        ),
+        located(
+            "break-words",
+            "missing-number",
+            doc("", "Texte\\linebreak[beaucoup] suite."),
+            "beaucoup",
+            Some("`\\linebreak` attend un nombre entier"),
+        ),
+        located(
+            "bracket-after-newline",
+            "missing-number",
+            doc("", &table("a & b \\\\\n[note] c & d \\\\")),
+            "[note]",
+            Some("Le crochet qui suit `\\\\`"),
+        ),
+        located(
+            "bracket-after-newline-same-line",
+            "missing-number",
+            doc("", &table("a & b \\\\ [note] c & d \\\\")),
+            "[note]",
+            Some("Le crochet qui suit `\\\\`"),
+        ),
+        // A command of the document: its definition is not read, nothing is guessed.
+        located(
+            "length-in-own-command",
+            "missing-number",
+            doc(
+                "\\newcommand{\\espace}[1]{\\vspace{#1}}",
+                "Avant.\n\\espace{abc}\nAprès.",
+            ),
+            "\\espace{abc}",
+            None,
+        ),
+        // ------------------------------------------------------- too large
+        located(
+            "number-too-big",
+            "number-too-big",
+            doc("", "\\setcounter{page}{99999999999} Texte."),
+            "99999999999",
+            Some("2 147 483 647"),
+        ),
+        located(
+            "length-too-large",
+            "dimension-too-large",
+            doc("", "Avant.\n\\vspace{99999cm}\nAprès."),
+            "99999cm",
+            Some("575,83 cm"),
+        ),
+        // ------------------------------------------------------------ units
+        located(
+            "unit-missing",
+            "illegal-unit",
+            doc("", "Avant.\n\\vspace{2}\nAprès."),
+            "2",
+            Some("n'a pas d'unité"),
+        ),
+        located(
+            "unit-decimal-comma",
+            "keyval-undefined",
+            doc(
+                "\\usepackage{graphicx}",
+                "\\includegraphics[width=2,5cm]{example-image}",
+            ),
+            "2,5cm",
+            Some("la virgule sépare les options"),
+        ),
+        // ------------------------------------------------ other mistakes
+        located(
+            "command-typo",
+            "undefined-control-sequence",
+            doc("", "Du texte en \\textbff{gras}."),
+            "\\textbff",
+            Some("Vouliez-vous écrire `\\textbf`"),
+        ),
+        located(
+            "command-unknown",
+            "undefined-control-sequence",
+            doc("", "Du texte \\zzzqqq ici."),
+            "\\zzzqqq",
+            None,
+        ),
+        located(
+            "underscore-in-text",
+            "missing-dollar",
+            doc("", "Le fichier mon_fichier est prêt."),
+            "_",
+            Some("n'existe que dans une formule"),
+        ),
+        located(
+            "math-command-in-text",
+            "missing-dollar",
+            doc("", "Un angle \\alpha petit."),
+            "\\alpha",
+            Some("`\\alpha` n'existe que dans une formule"),
+        ),
+        located(
+            "ampersand-in-text",
+            "misplaced-alignment-tab",
+            doc("", "Dupont & fils."),
+            "&",
+            Some("une esperluette s'écrit `\\&`"),
+        ),
+        located(
+            "too-many-cells",
+            "extra-alignment-tab",
+            doc("", &table("a & b & c \\\\")),
+            "&",
+            Some("3 cellules, et le tableau 2 colonnes"),
+        ),
+        located(
+            "label-typo",
+            "undefined-reference",
+            doc("", "\\section{A}\\label{sec:intro}\nVoir \\ref{sec:intr}."),
+            "sec:intr",
+            Some("le plus proche est `sec:intro`"),
+        ),
+        located(
+            "renew-unknown",
+            "renew-undefined",
+            doc("\\renewcommand{\\nouveau}{x}", "\\nouveau"),
+            "\\renewcommand",
+            Some("`\\nouveau` n'existe pas encore"),
+        ),
+        located(
+            "name-with-at",
+            "wrong-mode",
+            doc("", "\\@ifundefined{chapter}{a}{b}"),
+            "\\@ifundefined",
+            Some("contient `@`"),
+        ),
+        located(
+            "image-format",
+            "unknown-graphics-extension",
+            doc("\\usepackage{graphicx}", "\\includegraphics{dessin.svg}"),
+            "dessin.svg",
+            Some("ne lit pas les images `.svg`"),
+        ),
+        located(
+            "command-calls-itself",
+            "capacity-exceeded",
+            doc("\\newcommand{\\boucle}{a\\boucle b}", "\\boucle"),
+            "\\boucle",
+            Some("s'utilise elle-même"),
+        ),
+    ]
+}
+
+/// The text of the document a diagnostic is placed on.
+fn shown(text: &str, d: &Diagnostic) -> String {
+    let Some(r) = d.range else {
+        return String::new();
+    };
+    let lines: Vec<&str> = text.split('\n').collect();
+    let at = |line: u32, character: u32| -> usize {
+        let l = lines.get(line as usize).copied().unwrap_or("");
+        let mut units = 0;
+        for (i, c) in l.char_indices() {
+            if units >= character as usize {
+                return i;
+            }
+            units += c.len_utf16();
+        }
+        l.len()
+    };
+    if r.start.line != r.end.line {
+        return lines[r.start.line as usize][at(r.start.line, r.start.character)..].to_owned();
+    }
+    lines[r.start.line as usize]
+        [at(r.start.line, r.start.character)..at(r.end.line, r.end.character)]
+        .to_owned()
+}
+
+fn run_located(
+    dist: &Distribution,
+    index: &TexmfIndex,
+    case: &Located,
+    probe: bool,
+) -> (String, bool) {
+    let dir = tempfile::tempdir().unwrap();
+    let main = dir.path().join("main.tex");
+    std::fs::write(&main, &case.main).unwrap();
+    let built = compile(dist, index, &main, false);
+    if probe {
+        let mut out = format!("\n=== {} (success: {})\n", case.name, built.success);
+        for d in &built.diagnostics {
+            out.push_str(&format!(
+                "  {}\n      shown: {:?}\n",
+                describe(d),
+                shown(&case.main, d)
+            ));
+        }
+        return (out, true);
+    }
+    let fail = |why: String| {
+        let all: Vec<String> = built.diagnostics.iter().map(describe).collect();
+        (
+            format!("✘ {}: {why}\n  {}", case.name, all.join("\n  ")),
+            false,
+        )
+    };
+    let Some(d) = built.diagnostics.iter().find(|d| has_code(d, case.code)) else {
+        return fail(format!("no `{}` diagnostic", case.code));
+    };
+    let text = shown(&case.main, d);
+    if text != case.shown {
+        return fail(format!("placed on {text:?}, not on {:?}", case.shown));
+    }
+    let advice = d.hint.as_ref().and_then(|h| h.advice.clone());
+    match (case.advice, &advice) {
+        (Some(part), Some(a)) if a.contains(part) => {}
+        (None, None) => {}
+        (Some(part), _) => return fail(format!("the advice does not say {part:?}: {advice:?}")),
+        (None, Some(a)) => return fail(format!("a cause is given though none is known: {a}")),
+    }
+    // One mistake, one problem: what follows from it is not reported.
+    let same_line: Vec<&Diagnostic> = built
+        .diagnostics
+        .iter()
+        .filter(|x| x.severity == Severity::Error && !std::ptr::eq(*x, d))
+        .filter(|x| !has_code(x, "emergency-stop"))
+        .collect();
+    if !same_line.is_empty() {
+        return fail(format!(
+            "{} other error(s) for the same mistake",
+            same_line.len()
+        ));
+    }
+    (
+        format!(
+            "✔ {:<32} {:<20} {:<14} {}",
+            case.name,
+            case.code,
+            text,
+            advice.unwrap_or_else(|| "(no advice)".into())
+        ),
+        true,
+    )
+}
+
+/// The cause of a mistake is found in the sources: the diagnostic is placed
+/// on the word or the argument to change and its advice says what is wrong
+/// with it; when the cause cannot be told, no advice is given.
+#[test]
+#[ignore = "depends on the local TeX installation"]
+fn causes_are_found_and_shown() {
+    let dist = distribution();
+    let index = TexmfIndex::build(&dist);
+    let probe = std::env::var_os("LBT_PROBE").is_some();
+    let only = std::env::var("LBT_CASE").ok();
+    let mut failed = 0;
+    let cases = located_cases();
+    for case in cases
+        .iter()
+        .filter(|c| only.as_deref().is_none_or(|o| c.name.contains(o)))
+    {
+        let (line, ok) = run_located(&dist, &index, case, probe);
+        println!("{line}");
+        failed += usize::from(!ok);
+    }
+    assert!(failed == 0, "{failed} cases failed");
 }
 
 /// The most common commands and environments: no error, no warning, and

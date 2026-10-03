@@ -97,18 +97,24 @@ Code blocks get **Copy** and **Insert** buttons in the help centre.
 
 ## Error explanations: `data/errors.json`
 
-Each entry explains a LaTeX, BibTeX or Biber message:
+Each entry says what a LaTeX, BibTeX or Biber message means:
 
 ```json
 {
-  "id": "undefined-control-sequence",
-  "match": "^Undefined control sequence",
-  "title": { "en": "Unknown command", "fr": "Commande inconnue" },
-  "explanation": { "en": "The command at the end of the highlighted text does not exist…", "fr": "…" }
+  "id": "missing-number",
+  "match": "^Missing number, treated as zero",
+  "title": { "en": "A number was expected", "fr": "Un nombre était attendu" },
+  "explanation": { "en": "TeX expected a number or a length at this place and read something else; it used zero instead.", "fr": "…" },
+  "more": { "en": "Usual causes: a length that is empty or made of words (`\\vspace{}`), a `[` right after `\\\\`…", "fr": "…" }
 }
 ```
 
-`match` is a regular expression tested against the message. The explanation is Markdown and appears in the Problems panel and in *Help › Errors*. Fixes (add a package, install it, replace a misspelt command…) are computed by the engine (`log/hints.rs`).
+`match` is a regular expression tested against the message; the first entry that matches wins. Texts are Markdown.
+
+- `explanation` is shown in the Problems panel under every problem with this message, so it must hold for all of them: what the message means, in plain words, and nothing about a cause it cannot know ("often", "probably", "check that…").
+- `more` (optional) lists the usual causes and remedies. It is only shown in *Help › Errors*, after the explanation.
+
+The cause of a problem in a given document is not written here: the engine finds it in the sources (`fixes/latex.rs`, `fixes/numeric.rs`), places the problem on the word or the argument to change and says what is wrong with it in the *advice* of the problem (the light bulb), with its fix. A problem whose cause is not found gets its explanation and no advice. To teach the engine a new cause, add an analysis there and a case to `tests/common_mistakes.rs` (`located_cases`: the text shown and what the advice says, checked with a real TeX distribution).
 
 ## TikZ gallery: `data/tikz.json`
 

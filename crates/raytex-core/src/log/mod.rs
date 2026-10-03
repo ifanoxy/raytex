@@ -597,11 +597,113 @@ pub fn normalize(path: &Path) -> PathBuf {
 fn dedupe(diags: &mut Vec<Diagnostic>) {
     let mut seen = std::collections::HashSet::new();
     diags.retain(|d| seen.insert((d.file.clone(), d.line, d.message.clone())));
+    // What is not a number where TeX expects one gives "Missing number",
+    // then other errors as TeX reads on from the same place ("Illegal unit
+    // of measure", "Missing = inserted for \ifdim"). They say nothing
+    // more about the mistake: one mistake, one problem.
+    //
+    // More generally, an error reported at the very place of an earlier one
+    // (TeX has read nothing more of the document) comes from the way TeX
+    // went on after the first: it is the same mistake.
+    let consequence: Vec<bool> = (0..diags.len())
+        .map(|i| {
+            let d = &diags[i];
+            if d.severity != Severity::Error {
+                return false;
+            }
+            let after_number = (d.message.starts_with("Illegal unit of measure")
+                || d.message.starts_with("Missing = inserted for \\if"))
+                && diags[..i].iter().any(|first| {
+                    first.message.starts_with("Missing number")
+                        && first.file == d.file
+                        && first.line == d.line
+                });
+            let same_place = d.context_before.is_some()
+                && d.line.is_some()
+                && diags[..i].iter().any(|first| {
+                    first.severity == Severity::Error
+                        && first.file == d.file
+                        && first.line == d.line
+                        && first.context_before == d.context_before
+                        && first.context_after == d.context_after
+                });
+            after_number || same_place
+        })
+        .collect();
+    let mut consequence = consequence;
+    for i in 0..diags.len() {
+        if !consequence[i] {
+            continue;
+        }
+        let same_place = |other: &Diagnostic| {
+            other.file == diags[i].file
+                && other.line == diags[i].line
+                && other.context_before == diags[i].context_before
+                && other.context_after == diags[i].context_after
+        };
+        // A definition without the name of a command gives several errors
+        // at its place; "Missing control sequence inserted" is the one that
+        // says what is wrong.
+        if diags[i]
+            .message
+            .starts_with("Missing control sequence inserted")
+            && let Some(first) = (0..i).find(|&k| !consequence[k] && same_place(&diags[k]))
+        {
+            consequence[first] = true;
+            consequence[i] = false;
+            continue;
+        }
+        // TeX opened a formula by itself while going on: what it refuses in
+        // that formula, and the "Missing $ inserted" that closes it at the
+        // end of the paragraph, come from the first error too.
+        if diags[i].message.starts_with("Missing $ inserted") {
+            for j in i + 1..diags.len() {
+                let next = &diags[j];
+                let near = next
+                    .line
+                    .zip(diags[i].line)
+                    .is_none_or(|(a, b)| a.abs_diff(b) <= 60);
+                if next.file != diags[i].file || !near {
+                    break;
+                }
+                if next.message.contains("invalid in math mode")
+                    || next.message.contains("Please use \\mathaccent")
+                {
+                    consequence[j] = true;
+                } else if next.message.starts_with("Missing $ inserted") {
+                    consequence[j] = true;
+                    break;
+                }
+            }
+        }
+    }
+    let mut i = 0;
+    diags.retain(|_| {
+        i += 1;
+        !consequence[i - 1]
+    });
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn one_mistake_gives_one_problem() {
+        // A length that is not a number: TeX reports "Missing number", then
+        // "Illegal unit of measure" at the same place.
+        let log = "(./main.tex\n./main.tex:4: Missing number, treated as zero.\n<to be read again> \n                   a\nl.4 Avant.\\vspace{abc}\n                       Après.\nA number should have been here; I inserted `0'.\n\n./main.tex:4: Illegal unit of measure (pt inserted).\n<to be read again> \n                   a\nl.4 Avant.\\vspace{abc}\n                       Après.\nDimensions can be in units of em, ex, in, pt, pc,\n\n./main.tex:7: Undefined control sequence.\nl.7 \\zzz\n        \nThe control sequence at the end of the top line\n\n)\n";
+        let root = Path::new("/proj");
+        let r = parse_log(log, root, &root.join("main.tex"), Lang::En);
+        let messages: Vec<&str> = r.diagnostics.iter().map(|d| d.message.as_str()).collect();
+        assert_eq!(
+            messages,
+            [
+                "Missing number, treated as zero.",
+                "Undefined control sequence."
+            ]
+        );
+    }
 
     fn fixture(name: &str) -> String {
         std::fs::read_to_string(

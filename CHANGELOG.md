@@ -4,6 +4,12 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- **Problems that say what is wrong, where it is**: the explanation of a problem now only says what its message means; the usual causes it used to guess ("often a `[` after `\\`…") are kept for *Help › Errors*. The cause is looked for in the document: the problem is placed on the word or the argument to change, and a suggestion (the light bulb) says what is wrong with it. No suggestion is shown when the cause is not found.
+  - Numbers and lengths ("Missing number", "Illegal unit of measure", "Number too big", "Dimension too large"): the value at fault is found among those the commands of the line expect (`\vspace{abc}`, `\setcounter{page}{abc}`, `\includegraphics[width=large]`, a `p{}` column, the bracket after `\\`, `width=2,5cm`…) and shown with what the command expects.
+  - Also found: a name with `@` outside `\makeatletter`, an image format the compiler does not read, a command that uses itself in its definition, and, for the problems that already had a fix, the cause in words (the closest label, the package of a color, the cells of a row and the columns of its table…).
+  - One mistake, one problem: the errors TeX reports again at the same place or as it goes on (an "Illegal unit" after a "Missing number", the formula it closes at the end of a paragraph after a `_` in text, accents refused in that formula) are no longer listed.
+  - New explanations: number too big, file not saved as UTF-8, `}` too many in an argument, `{` expected, `\maketitle` without `\title`, command not allowed in the current mode, unknown TikZ node, and a few more.
+- The cross that closes a tab is in the middle of its square.
 - A lighter application: the fonts of the formula previews ship in one format (WOFF2) instead of three, about 0.8 MB less in the interface.
 - For contributors: the tools that made the pictures are gone from the repository (the scripts of the logo, the page of the sharing picture, `scripts/screenshots.mjs` and its scenes); the pictures stay. Icons that no installer used and two unused dependencies are removed.
 

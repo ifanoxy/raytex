@@ -55,7 +55,7 @@ impl Src {
         self.lines.offset(&self.text, pos)
     }
 
-    fn edit(&self, span: Span, text: impl Into<String>) -> FileEdit {
+    pub(super) fn edit(&self, span: Span, text: impl Into<String>) -> FileEdit {
         FileEdit {
             file: self.path.clone(),
             range: self.range(span),
@@ -63,7 +63,7 @@ impl Src {
         }
     }
 
-    fn insert(&self, at: usize, text: impl Into<String>) -> FileEdit {
+    pub(super) fn insert(&self, at: usize, text: impl Into<String>) -> FileEdit {
         self.edit(at..at, text)
     }
 
@@ -76,7 +76,7 @@ impl Src {
     }
 
     /// Span (without the newline) and text of a line.
-    fn line(&self, line: usize) -> (Span, &str) {
+    pub(super) fn line(&self, line: usize) -> (Span, &str) {
         let span = self.lines.line_span(&self.text, line);
         let text = self.text[span.clone()].trim_end_matches('\r');
         (span.start..span.start + text.len(), text)
@@ -110,7 +110,7 @@ impl Src {
     }
 
     /// Innermost environment containing `offset` among `names` (all when empty).
-    fn environment_at(&self, offset: usize, names: &[&str]) -> Option<&EnvironmentSpan> {
+    pub(super) fn environment_at(&self, offset: usize, names: &[&str]) -> Option<&EnvironmentSpan> {
         self.index
             .environments
             .iter()
@@ -303,19 +303,19 @@ pub(crate) fn files_with(dir: &Path, exts: &[&str]) -> Vec<PathBuf> {
 }
 
 /// Where a diagnostic is: its file, the token before the error point, its line.
-struct At {
-    src: Rc<Src>,
+pub(super) struct At {
+    pub(super) src: Rc<Src>,
     token: Span,
-    line: usize,
+    pub(super) line: usize,
 }
 
 impl At {
-    fn point(&self) -> usize {
+    pub(super) fn point(&self) -> usize {
         self.token.end
     }
 }
 
-fn at(d: &Diagnostic, s: &mut Sources<'_>) -> Option<At> {
+pub(super) fn at(d: &Diagnostic, s: &mut Sources<'_>) -> Option<At> {
     let src = s.get(d.file.as_ref()?)?;
     if let Some(r) = d.range {
         let token = src.offset(r.start)..src.offset(r.end);
@@ -338,7 +338,7 @@ fn at(d: &Diagnostic, s: &mut Sources<'_>) -> Option<At> {
 }
 
 /// Moves a diagnostic to `span` of `src`.
-fn place(d: &mut Diagnostic, src: &Src, span: Span) {
+pub(super) fn place(d: &mut Diagnostic, src: &Src, span: Span) {
     let r = src.range(span);
     d.file = Some(src.path.clone());
     d.line = Some(r.start.line + 1);
@@ -346,7 +346,27 @@ fn place(d: &mut Diagnostic, src: &Src, span: Span) {
     d.range = Some(r);
 }
 
-fn edits(title: String, edits: Vec<FileEdit>) -> Vec<Fix> {
+/// Code given to a diagnostic that only follows from an earlier one (the same
+/// mistake, reported again by TeX further on): it is not shown.
+pub(crate) const CONSEQUENCE: &str = "consequence";
+
+/// Says the cause found in the sources (the advice of the hint). Only what
+/// was read in the document may be said here: a guess is never an advice.
+fn advise(d: &mut Diagnostic, lang: Lang, fr: &str, en: &str) {
+    d.advise(lang.pick(fr, en));
+}
+
+/// "Did you mean …?", for a name found close to the one written.
+fn did_you_mean(d: &mut Diagnostic, lang: Lang, best: &str) {
+    advise(
+        d,
+        lang,
+        &format!("Vouliez-vous écrire `{best}` ?"),
+        &format!("Did you mean `{best}`?"),
+    );
+}
+
+pub(super) fn edits(title: String, edits: Vec<FileEdit>) -> Vec<Fix> {
     if edits.is_empty() {
         return Vec::new();
     }
@@ -467,6 +487,12 @@ pub(crate) fn suggest(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) {
         if !d.fixes.contains(&fix) {
             d.fixes.insert(0, fix);
         }
+        advise(
+            d,
+            lang,
+            "Avec babel en français, le « : » est un caractère actif : il casse la clé de `\\cref{…}` sur cette ligne.",
+            "With French babel, `:` is an active character: it breaks the key of `\\cref{…}` on this line.",
+        );
         return;
     }
     let Some(code) = d.code.clone() else { return };
@@ -529,8 +555,13 @@ pub(crate) fn suggest(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) {
         "headheight" => headheight(d, s, lang),
         "pdf-string" => pdf_string(d, s, lang),
         "verb-in-argument" => verb(d, s, lang),
-        "illegal-unit" => unit(d, s, lang),
+        "missing-number" | "illegal-unit" | "dimension-too-large" | "number-too-big" => {
+            super::numeric::numbers(d, s, lang)
+        }
         "include-nested" => include_nested(d, s, lang),
+        "wrong-mode" => at_command(d, s, lang),
+        "unknown-graphics-extension" => graphics_extension(d, s, lang),
+        "capacity-exceeded" => recursion(d, s, lang),
         "rerun" | "biber-rerun" => vec![Fix::Rebuild],
         "mhchem-version" => vec![Fix::AddPackageOption {
             package: "mhchem".into(),
@@ -622,6 +653,12 @@ fn undefined_cs(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
         .flat_map(|src| src.index.command_defs.iter().map(|c| c.name.clone()))
         .collect();
     if let Some(best) = closest(&cmd, user.iter().map(String::as_str), 2) {
+        advise(
+            d,
+            lang,
+            &format!("Vouliez-vous écrire `\\{best}`, défini dans ce document ?"),
+            &format!("Did you mean `\\{best}`, defined in this document?"),
+        );
         return vec![replace(best)];
     }
     // A command of the kernel or of a loaded package, misspelled. When a
@@ -637,6 +674,7 @@ fn undefined_cs(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
         return Vec::new();
     };
     if !d.fixes.iter().any(|f| matches!(f, Fix::AddPackage { .. })) {
+        did_you_mean(d, lang, &format!("\\{best}"));
         return vec![replace(best)];
     }
     if distance(&cmd, best) == 1 && cmd.len() >= 5 {
@@ -658,6 +696,16 @@ fn env_undefined(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
     let src = &at.src;
     // `\renewenvironment` of an environment that does not exist.
     if let Some(span) = find_on_line(src, at.line, "\\renewenvironment", Some(at.point())) {
+        advise(
+            d,
+            lang,
+            &format!(
+                "`\\renewenvironment` redéfinit un environnement qui existe, et `{name}` n'existe pas encore."
+            ),
+            &format!(
+                "`\\renewenvironment` redefines an environment that exists, and `{name}` does not exist yet."
+            ),
+        );
         return edits(
             lang.pick("Utiliser \\newenvironment", "Use \\newenvironment")
                 .into(),
@@ -701,6 +749,9 @@ fn env_undefined(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
             list.push(src.edit(n, best));
         }
     }
+    if !list.is_empty() {
+        did_you_mean(d, lang, best);
+    }
     edits(
         format!("{} {best}", lang.pick("Remplacer par", "Replace with")),
         list,
@@ -729,6 +780,18 @@ fn env_mismatch(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
             let begin_end = src.text[begin.clone()]
                 .find(&format!("\\begin{{{open}}}"))
                 .map_or(begin.end, |i| begin.start + i + open.len() + 8);
+            advise(
+                d,
+                lang,
+                &format!(
+                    "`\\begin{{{open}}}`, ouvert ligne {}, n'est jamais fermé.",
+                    begin_line + 1
+                ),
+                &format!(
+                    "`\\begin{{{open}}}`, opened on line {}, is never closed.",
+                    begin_line + 1
+                ),
+            );
             return edits(
                 format!("{} \\end{{{open}}}", lang.pick("Fermer avec", "Close with")),
                 vec![src.insert(
@@ -741,6 +804,19 @@ fn env_mismatch(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
         let Some(span) = find_on_line(src, at.line, &format!("\\end{{{close}}}"), None) else {
             return Vec::new();
         };
+        place(d, src, span.clone());
+        advise(
+            d,
+            lang,
+            &format!(
+                "`\\end{{{close}}}` ferme `\\begin{{{open}}}`, ouvert ligne {}.",
+                begin_line + 1
+            ),
+            &format!(
+                "`\\end{{{close}}}` closes `\\begin{{{open}}}`, opened on line {}.",
+                begin_line + 1
+            ),
+        );
         return edits(
             format!(
                 "{} \\end{{{open}}}",
@@ -758,6 +834,13 @@ fn env_mismatch(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
         if mask(&src.text[..span.start]).contains(&format!("\\begin{{{close}}}")) {
             return Vec::new();
         }
+        place(d, src, span.clone());
+        advise(
+            d,
+            lang,
+            &format!("Ce `\\end{{{close}}}` ne ferme aucun `\\begin{{{close}}}`."),
+            &format!("This `\\end{{{close}}}` closes no `\\begin{{{close}}}`."),
+        );
         return edits(
             format!("{} \\end{{{close}}}", lang.pick("Supprimer", "Delete")),
             vec![src.delete(span)],
@@ -800,6 +883,18 @@ fn missing_item(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
     if body[i..].starts_with("\\item") || body[i..].starts_with('%') {
         return Vec::new();
     }
+    advise(
+        d,
+        lang,
+        &format!(
+            "Ce texte vient avant le premier `\\item` de la liste `{}`.",
+            env.name
+        ),
+        &format!(
+            "This text comes before the first `\\item` of the `{}` list.",
+            env.name
+        ),
+    );
     edits(
         lang.pick(
             "Ajouter \\item avant ce texte",
@@ -836,6 +931,12 @@ fn lonely_item(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> 
         }
         last += 1;
     }
+    advise(
+        d,
+        lang,
+        "Ce `\\item` n'est dans aucune liste.",
+        "This `\\item` is in no list.",
+    );
     edits(
         lang.pick(
             "Mettre les \\item dans une liste itemize",
@@ -894,6 +995,12 @@ fn unclosed_brace(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
             })
             .unwrap_or(open);
         place(d, &src, start..open + 1);
+        advise(
+            d,
+            lang,
+            "L'accolade ouverte ici n'est jamais refermée.",
+            "The brace opened here is never closed.",
+        );
         let at = tx::brace_close_at(&src.text, open);
         let what = &src.text[start..open];
         return edits(
@@ -940,6 +1047,13 @@ fn extra_brace(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> 
     {
         return Vec::new();
     }
+    place(d, src, b..b + 1);
+    advise(
+        d,
+        lang,
+        "Cette `}` ne ferme aucune `{`.",
+        "This `}` closes no `{`.",
+    );
     edits(
         lang.pick("Supprimer cette }", "Delete this }").into(),
         vec![src.edit(b..b + 1, "")],
@@ -966,6 +1080,12 @@ fn missing_brace(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
             break;
         }
     }
+    advise(
+        d,
+        lang,
+        "Une `{` ouverte sur cette ligne n'est pas refermée.",
+        "A `{` opened on this line is not closed.",
+    );
     edits(
         lang.pick("Ajouter la } manquante", "Add the missing }")
             .into(),
@@ -1010,6 +1130,12 @@ fn missing_dollar(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
             list.push(src.edit(src.full_line(l), ""));
             l += 1;
         }
+        advise(
+            d,
+            lang,
+            "Cette ligne vide est dans une formule : elle termine le paragraphe, et TeX ferme la formule avec lui.",
+            "This blank line is inside a formula: it ends the paragraph, and TeX closes the formula with it.",
+        );
         return edits(
             lang.pick(
                 "Supprimer la ligne vide de la formule",
@@ -1067,6 +1193,24 @@ fn missing_dollar(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
         let first = word.split(['_', '^']).next().unwrap_or("");
         let identifier = text[..p].ends_with('_')
             && first.chars().filter(char::is_ascii_alphabetic).count() >= 2;
+        let script = &text[p - 1..p];
+        place(d, src, p - 1..p);
+        advise(
+            d,
+            lang,
+            &format!(
+                "`{script}` ({}) n'existe que dans une formule, et celui-ci est dans du texte.",
+                if script == "_" { "indice" } else { "exposant" }
+            ),
+            &format!(
+                "`{script}` (a {}) only exists in a formula, and this one is in text.",
+                if script == "_" {
+                    "subscript"
+                } else {
+                    "superscript"
+                }
+            ),
+        );
         return if identifier {
             vec![escape, wrap]
         } else {
@@ -1080,6 +1224,19 @@ fn missing_dollar(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
             end = group_end(text, end).unwrap_or(end + 1);
         }
         let code = &text[start..end];
+        let name = m.as_str();
+        let math_only = kb()
+            .command(name.trim_start_matches('\\').trim_end_matches('*'), None)
+            .is_some_and(|c| c.mode == crate::kb::Mode::Math);
+        if math_only {
+            place(d, src, start..start + name.len());
+            advise(
+                d,
+                lang,
+                &format!("`{name}` n'existe que dans une formule, et celui-ci est dans du texte."),
+                &format!("`{name}` only exists in a formula, and this one is in text."),
+            );
+        }
         return edits(
             format!(
                 "{} ${code}$",
@@ -1209,6 +1366,13 @@ fn missing_right(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
     } else {
         " "
     };
+    place(d, src, span.start + left..span.start + left + 5);
+    advise(
+        d,
+        lang,
+        "Ce `\\left` n'a pas de `\\right` avant la fin de la formule.",
+        "This `\\left` has no `\\right` before the end of the formula.",
+    );
     edits(
         format!("{} \\right{close}", lang.pick("Fermer avec", "Close with")),
         vec![src.insert(at_, format!("{space}\\right{close}"))],
@@ -1266,6 +1430,18 @@ fn align_in_math(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
     for (open, close) in pairs {
         if before.ends_with(open) && after.starts_with(close) {
             let o = before.len() - open.len();
+            advise(
+                d,
+                lang,
+                &format!(
+                    "`{}` ouvre déjà une formule : il ne se met pas dans `{open} … {close}`.",
+                    env.name
+                ),
+                &format!(
+                    "`{}` already opens a formula: it does not go inside `{open} … {close}`.",
+                    env.name
+                ),
+            );
             return edits(
                 format!(
                     "{} {open} … {close} {} {}",
@@ -1326,6 +1502,22 @@ fn escape_char(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang, c: char) -> 
     if c == '&' && src.environment_at(p, ALIGNMENTS).is_some() {
         return Vec::new();
     }
+    place(d, src, p - 1..p);
+    if c == '&' {
+        advise(
+            d,
+            lang,
+            "Ce `&` n'est pas dans un tableau. Dans du texte, une esperluette s'écrit `\\&`.",
+            "This `&` is not in a table. In text, an ampersand is written `\\&`.",
+        );
+    } else {
+        advise(
+            d,
+            lang,
+            &format!("Dans du texte, `{c}` s'écrit `\\{c}`."),
+            &format!("In text, `{c}` is written `\\{c}`."),
+        );
+    }
     edits(
         format!("{} \\{c}", lang.pick("Écrire", "Write")),
         vec![src.edit(p - 1..p, format!("\\{c}"))],
@@ -1336,7 +1528,8 @@ static UNICODE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"Unicode character (.) \(U\+([0-9A-Fa-f]+)\)").unwrap());
 
 fn unicode(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
-    let Some(m) = UNICODE.captures(&d.message) else {
+    let message = d.message.clone();
+    let Some(m) = UNICODE.captures(&message) else {
         return Vec::new();
     };
     let ch = m[1].chars().next().unwrap();
@@ -1366,6 +1559,27 @@ fn unicode(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
             src.edit(i..i + found.len(), code)
         })
         .collect();
+    if cmd.is_empty() {
+        advise(
+            d,
+            lang,
+            &format!(
+                "Ce caractère invisible (U+{}) n'est pas lu par pdfLaTeX.",
+                &m[2]
+            ),
+            &format!(
+                "This invisible character (U+{}) is not read by pdfLaTeX.",
+                &m[2]
+            ),
+        );
+    } else {
+        advise(
+            d,
+            lang,
+            &format!("Avec pdfLaTeX, « {ch} » s'écrit `{cmd}`."),
+            &format!("With pdfLaTeX, “{ch}” is written `{cmd}`."),
+        );
+    }
     let title = if cmd.is_empty() {
         format!(
             "{} U+{}",
@@ -1387,7 +1601,7 @@ fn unicode(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
 
 // ---------------------------------------------------------- tables
 
-const TABULARS: &[&str] = &[
+pub(super) const TABULARS: &[&str] = &[
     "tabular",
     "tabular*",
     "tabularx",
@@ -1398,7 +1612,7 @@ const TABULARS: &[&str] = &[
 ];
 
 /// Span of the column specification of a table environment.
-fn column_spec(src: &Src, env: &EnvironmentSpan) -> Option<Span> {
+pub(super) fn column_spec(src: &Src, env: &EnvironmentSpan) -> Option<Span> {
     let text = &src.text;
     let mut i = env.begin.end;
     let skip_ws = |i: &mut usize| {
@@ -1500,6 +1714,14 @@ fn extra_column(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
         ),
         None => format!("{current}{extra}"),
     };
+    advise(
+        d,
+        lang,
+        &format!(
+            "Cette ligne a {needed} cellules, et le tableau {have} colonnes (`{{{current}}}`)."
+        ),
+        &format!("This row has {needed} cells, and the table {have} columns (`{{{current}}}`)."),
+    );
     edits(
         format!(
             "{} {{{current}}} → {{{new}}}",
@@ -1541,6 +1763,12 @@ fn end_row(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     {
         return Vec::new();
     }
+    advise(
+        d,
+        lang,
+        "La ligne du tableau qui précède ce filet ne se termine pas par `\\\\`.",
+        "The row of the table before this rule does not end with `\\\\`.",
+    );
     edits(
         lang.pick(
             "Terminer la ligne du tableau par \\\\",
@@ -1610,12 +1838,28 @@ fn bad_column(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
         i += 1;
     }
     let Some((i, c)) = bad else { return Vec::new() };
+    let at_ = spec.start + i;
+    place(d, src, at_..at_ + 1);
+    let from_package = |d: &mut Diagnostic, package: &str| {
+        advise(
+            d,
+            lang,
+            &format!("Les colonnes `{c}` viennent du package `{package}`, qui n'est pas chargé."),
+            &format!("`{c}` columns come from the `{package}` package, which is not loaded."),
+        );
+        vec![Fix::add_package(package)]
+    };
     match c {
-        'm' | 'b' | 'w' | 'W' => return vec![Fix::add_package("array")],
-        'S' | 's' => return vec![Fix::add_package("siunitx")],
+        'm' | 'b' | 'w' | 'W' => return from_package(d, "array"),
+        'S' | 's' => return from_package(d, "siunitx"),
         _ => {}
     }
-    let at_ = spec.start + i;
+    advise(
+        d,
+        lang,
+        &format!("`{c}` n'est pas un type de colonne connu ici."),
+        &format!("`{c}` is not a column type known here."),
+    );
     ['l', 'c']
         .iter()
         .map(|r| Fix::Edits {
@@ -1645,6 +1889,12 @@ fn stray_newline(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
     if !text[i + 2..limit].trim().is_empty() || src.line_of(limit) > src.line_of(i) + 2 {
         return Vec::new();
     }
+    advise(
+        d,
+        lang,
+        "Le `\\\\` qui précède a déjà terminé la ligne : celui-ci n'a plus de ligne à terminer.",
+        "The `\\\\` before has already ended the line: this one has no line left to end.",
+    );
     edits(
         lang.pick("Supprimer ce \\\\ inutile", "Delete this useless \\\\")
             .into(),
@@ -1673,6 +1923,14 @@ fn newline_before_blank(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> 
             let start = span.start + content[..content.len() - 2].trim_end().len();
             list.push(src.edit(start..end, ""));
         }
+    }
+    if !list.is_empty() {
+        advise(
+            d,
+            lang,
+            "`\\\\` à la fin d'un paragraphe laisse une ligne presque vide.",
+            "`\\\\` at the end of a paragraph leaves an almost empty line.",
+        );
     }
     edits(
         lang.pick(
@@ -1724,6 +1982,12 @@ fn float_option(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
         return Vec::new();
     };
     if opt == "H" {
+        advise(
+            d,
+            lang,
+            "`[H]` (exactement ici) vient du package `float`, qui n'est pas chargé.",
+            "`[H]` (exactly here) comes from the `float` package, which is not loaded.",
+        );
         return vec![Fix::add_package("float")];
     }
     let Some(at) = at(d, s) else {
@@ -1824,6 +2088,12 @@ fn caption_outside(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<F
         };
         let (_, line) = src.line(src.line_of(env.begin.start));
         let indent: String = line.chars().take_while(|c| c.is_whitespace()).collect();
+        advise(
+            d,
+            lang,
+            "Ce `\\caption` est dans `center`, qui n'est pas un flottant.",
+            "This `\\caption` is in `center`, which is not a float.",
+        );
         return edits(
             format!(
                 "{} {kind}",
@@ -1905,7 +2175,18 @@ fn file_not_found(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
                 };
                 let span = p.command_span.start + i..p.command_span.start + i + stem.len();
                 place(d, &root, span.clone());
-                return closest(&stem, candidates.iter().copied(), 3)
+                let best = closest(&stem, candidates.iter().copied(), 3);
+                if let Some(best) = best {
+                    advise(
+                        d,
+                        lang,
+                        &format!(
+                            "`{stem}` n'est pas un encodage connu. Vouliez-vous écrire `{best}` ?"
+                        ),
+                        &format!("`{stem}` is not a known encoding. Did you mean `{best}`?"),
+                    );
+                }
+                return best
                     .map(|best| replace(&root, span, best))
                     .into_iter()
                     .collect();
@@ -1931,12 +2212,30 @@ fn file_not_found(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
                 });
             let Some(span) = found else { return Vec::new() };
             place(d, &root, span.clone());
+            let what = if ext == "cls" {
+                lang.pick("La classe", "The class")
+            } else {
+                lang.pick("Le package", "The package")
+            };
             if kb().package_or_class(&stem).is_some() {
+                advise(
+                    d,
+                    lang,
+                    &format!(
+                        "{what} `{stem}` existe, mais n'est pas installé dans cette distribution TeX."
+                    ),
+                    &format!(
+                        "{what} `{stem}` exists, but is not installed in this TeX distribution."
+                    ),
+                );
                 return Vec::new();
             }
             let names = kb().packages().iter().map(|p| p.name.as_str());
-            closest(&stem, names, 2)
-                .map(|best| replace(&root, span, best))
+            let best = closest(&stem, names, 2);
+            if let Some(best) = best {
+                did_you_mean(d, lang, best);
+            }
+            best.map(|best| replace(&root, span, best))
                 .into_iter()
                 .collect()
         }
@@ -1978,14 +2277,26 @@ fn file_not_found(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
                         })
                     })
                     .collect();
-            closest(written, candidates.iter().map(String::as_str), 3)
-                .map(|best| replace(&src, span, best))
+            let best = closest(written, candidates.iter().map(String::as_str), 3);
+            if let Some(best) = best {
+                advise(
+                    d,
+                    lang,
+                    &format!(
+                        "Le projet n'a pas de fichier `{written}` ; le plus proche est `{best}`."
+                    ),
+                    &format!("The project has no file `{written}`; the closest one is `{best}`."),
+                );
+            }
+            best.map(|best| replace(&src, span, best))
                 .into_iter()
                 .collect()
         }
     }
 }
 
+static LENGTH_TAIL: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\d+\s*(?:[a-z]{2}|\\[A-Za-z]+)$").unwrap());
 static KEYVAL: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"keyval Error: (.+?) undefined").unwrap());
 
@@ -1999,6 +2310,34 @@ fn keyval(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     let src = &at.src;
     let (span, line) = src.line(at.line);
     let upto = &line[..at.point().clamp(span.start, span.end) - span.start];
+    // `width=2,5cm`: the comma ends the option, and `5cm` is read as another one.
+    if LENGTH_TAIL.is_match(&key)
+        && let Ok(written) = Regex::new(&format!(r"(\d+)\s*(,)\s*{}", regex::escape(&key)))
+        && let Some(m) = written.captures(upto)
+    {
+        let (number, comma) = (m.get(1).unwrap(), m.get(2).unwrap());
+        let whole = m.get(0).unwrap();
+        place(d, src, span.start + whole.start()..span.start + whole.end());
+        let fixed = format!("{}.{key}", number.as_str());
+        advise(
+            d,
+            lang,
+            &format!(
+                "Dans une liste d'options, la virgule sépare les options : `{}` est lu `{}`, puis `{key}`. Écrivez `{fixed}`.",
+                whole.as_str(),
+                number.as_str()
+            ),
+            &format!(
+                "In a list of options, the comma separates the options: `{}` is read `{}`, then `{key}`. Write `{fixed}`.",
+                whole.as_str(),
+                number.as_str()
+            ),
+        );
+        return edits(
+            format!("{} {fixed}", lang.pick("Écrire", "Write")),
+            vec![src.edit(span.start + comma.start()..span.start + comma.end(), ".")],
+        );
+    }
     let package = src
         .index
         .packages
@@ -2023,6 +2362,8 @@ fn keyval(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     let Some(found) = find_on_line(src, at.line, &key, Some(at.point())) else {
         return Vec::new();
     };
+    place(d, src, found.clone());
+    did_you_mean(d, lang, best);
     edits(
         format!(
             "{} {key} {} {best}",
@@ -2080,6 +2421,12 @@ fn overfull(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
             let indent = first_line.len() - first_line.trim_start().len();
             list.push(src.insert(region.start + indent, "\\noindent"));
         }
+        advise(
+            d,
+            lang,
+            "L'image de cette ligne est plus large que le texte.",
+            "The image of this line is wider than the text.",
+        );
         return edits(
             lang.pick(
                 "Réduire l'image à la largeur du texte",
@@ -2124,6 +2471,12 @@ fn overfull(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
         {
             list.push(root.insert(point, "\n\\usepackage{graphicx}"));
         }
+        advise(
+            d,
+            lang,
+            "Le tableau est plus large que le texte.",
+            "The table is wider than the text.",
+        );
         return edits(
             lang.pick(
                 "Adapter le tableau à la largeur du texte",
@@ -2183,6 +2536,26 @@ fn redefine(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang, exists: bool) -
     let Some((i, word, new)) = found else {
         return Vec::new();
     };
+    place(d, src, span.start + i..span.start + i + word.len());
+    if exists {
+        advise(
+            d,
+            lang,
+            &format!("`{name}` existe déjà : `{word}` refuse de le remplacer, `{new}` le fait."),
+            &format!("`{name}` already exists: `{word}` refuses to replace it, `{new}` does."),
+        );
+    } else {
+        advise(
+            d,
+            lang,
+            &format!(
+                "`{name}` n'existe pas encore : `{word}` ne peut pas le redéfinir, `{new}` le crée."
+            ),
+            &format!(
+                "`{name}` does not exist yet: `{word}` cannot redefine it, `{new}` creates it."
+            ),
+        );
+    }
     edits(
         format!("{} {new}", lang.pick("Utiliser", "Use")),
         vec![src.edit(span.start + i..span.start + i + word.len(), new)],
@@ -2241,6 +2614,20 @@ fn parameters(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
             lang.pick("argument", "argument")
         }
     );
+    let declared = args.as_ref().map_or(0, |(_, n)| *n);
+    if declared < max {
+        place(d, src, m.range());
+        advise(
+            d,
+            lang,
+            &format!(
+                "La définition de `{name}` utilise `#{max}` et déclare {declared} argument(s)."
+            ),
+            &format!(
+                "The definition of `{name}` uses `#{max}` and declares {declared} argument(s)."
+            ),
+        );
+    }
     match args {
         Some((span, n)) if n < max => edits(title, vec![src.edit(span, max.to_string())]),
         Some(_) => Vec::new(),
@@ -2261,6 +2648,19 @@ fn backslash_name(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
         return Vec::new();
     };
     let name = m.get(1).unwrap();
+    place(d, src, span.start + name.start()..span.start + name.end());
+    advise(
+        d,
+        lang,
+        &format!(
+            "Le nom d'une commande commence par `\\` : `\\{}`.",
+            name.as_str()
+        ),
+        &format!(
+            "The name of a command starts with `\\`: `\\{}`.",
+            name.as_str()
+        ),
+    );
     edits(
         format!("{} \\{}", lang.pick("Écrire", "Write"), name.as_str()),
         vec![src.insert(span.start + name.start(), "\\")],
@@ -2352,6 +2752,12 @@ fn begin_document(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
     if line.trim_start().starts_with('\\') || src.index.begin_document.is_some() {
         return Vec::new();
     }
+    advise(
+        d,
+        lang,
+        "Le document n'a pas de `\\begin{document}` : ce texte est lu comme une partie du préambule.",
+        "The document has no `\\begin{document}`: this text is read as a part of the preamble.",
+    );
     edits(
         lang.pick(
             "Ajouter \\begin{document} avant ce texte",
@@ -2546,6 +2952,21 @@ fn babel_language(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
         d.file = Some(root.path.clone());
         d.line = Some(first.range.start.line + 1);
         d.range = Some(first.range);
+        if BABEL_OLD_NAMES
+            .iter()
+            .any(|(o, n)| o.eq_ignore_ascii_case(&old) && *n == new)
+        {
+            advise(
+                d,
+                lang,
+                &format!(
+                    "`{old}` est un ancien nom de langue ; babel l'appelle maintenant `{new}`."
+                ),
+                &format!("`{old}` is an old language name; babel now calls it `{new}`."),
+            );
+        } else {
+            did_you_mean(d, lang, &new);
+        }
     }
     edits(
         format!(
@@ -2607,6 +3028,7 @@ fn unknown_option(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
         .map(|p| p.options.iter().map(|o| o.name.clone()).collect())
         .unwrap_or_default();
     if let Some(best) = closest(&option, known.iter().map(String::as_str), 2) {
+        did_you_mean(d, lang, best);
         return edits(
             format!(
                 "{} {option} {} {best}",
@@ -2661,12 +3083,32 @@ fn color(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
         .collect();
     let has = |o: &str| options.iter().any(|x| x == o);
     if DVIPS_COLORS.contains(&name.as_str()) && !has("dvipsnames") {
+        advise(
+            d,
+            lang,
+            &format!(
+                "`{name}` est une couleur de l'option `dvipsnames` de `xcolor`, qui n'est pas demandée."
+            ),
+            &format!(
+                "`{name}` is a color of the `dvipsnames` option of `xcolor`, which is not asked for."
+            ),
+        );
         return vec![Fix::AddPackageOption {
             package: "xcolor".into(),
             option: "dvipsnames".into(),
         }];
     }
     if SVG_COLORS.contains(&name.as_str()) && !has("svgnames") {
+        advise(
+            d,
+            lang,
+            &format!(
+                "`{name}` est une couleur de l'option `svgnames` de `xcolor`, qui n'est pas demandée."
+            ),
+            &format!(
+                "`{name}` is a color of the `svgnames` option of `xcolor`, which is not asked for."
+            ),
+        );
         return vec![Fix::AddPackageOption {
             package: "xcolor".into(),
             option: "svgnames".into(),
@@ -2698,6 +3140,8 @@ fn color(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     let Some(span) = find_on_line(&at.src, at.line, &name, Some(at.point())) else {
         return Vec::new();
     };
+    place(d, &at.src, span.clone());
+    did_you_mean(d, lang, best);
     edits(
         format!(
             "{} {name} {} {best}",
@@ -2724,6 +3168,12 @@ fn semicolon(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
         if content.ends_with(';') || content.ends_with('{') || content.starts_with("\\begin") {
             return Vec::new();
         }
+        advise(
+            d,
+            lang,
+            &format!("Le tracé de la ligne {} ne se termine pas par `;`.", l + 1),
+            &format!("The path of line {} does not end with `;`.", l + 1),
+        );
         return edits(
             lang.pick(
                 "Ajouter le ; qui termine le tracé",
@@ -2745,44 +3195,56 @@ static TIKZ_KEY: LazyLock<Regex> =
 
 fn tikz(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     let msg = d.message.clone();
-    let library = |l: &str| vec![Fix::AddTikzLibrary { library: l.into() }];
+    // What is written comes from a library that is not loaded.
+    let library = |d: &mut Diagnostic, what: &str, l: &str| {
+        advise(
+            d,
+            lang,
+            &format!("{what} vient de la bibliothèque TikZ `{l}`, qui n'est pas chargée."),
+            &format!("{what} comes from the TikZ library `{l}`, which is not loaded."),
+        );
+        vec![Fix::AddTikzLibrary { library: l.into() }]
+    };
     if let Some(m) = ARROW_TIP.captures(&msg) {
         let tip = m[1].trim();
+        let what = format!("`{tip}`");
         if META_ARROWS.contains(&tip) {
-            return library("arrows.meta");
+            return library(d, &what, "arrows.meta");
         }
         if OLD_ARROWS.contains(&tip) {
-            return library("arrows");
+            return library(d, &what, "arrows");
         }
         return Vec::new();
     }
     if msg.contains("Unknown function `of'") || msg.contains("No shape named `of ") {
-        return library("positioning");
+        return library(d, "`=of`", "positioning");
     }
     if let Some(m) = DECORATION.captures(&msg) {
         return TIKZ_DECORATIONS
             .iter()
             .find(|(n, _)| *n == &m[1])
-            .map(|(_, l)| library(l))
+            .map(|(n, l)| library(d, &format!("`{n}`"), l))
             .unwrap_or_default();
     }
     if msg.contains("Cannot parse this coordinate")
         && let Some(at) = at(d, s)
         && at.src.line(at.line).1.contains("($")
     {
-        return library("calc");
+        return library(d, "`($ … $)`", "calc");
     }
     if msg.contains("active@") || msg.contains("language@active") {
-        return library("babel");
+        return vec![Fix::AddTikzLibrary {
+            library: "babel".into(),
+        }];
     }
     let Some(key) = TIKZ_KEY.captures(&msg).map(|m| m[1].to_owned()) else {
         return Vec::new();
     };
     if let Some((_, l)) = TIKZ_KEY_LIBRARIES.iter().find(|(k, _)| *k == key) {
-        return library(l);
+        return library(d, &format!("`{key}`"), l);
     }
     if key.starts_with('"') {
-        return library("quotes");
+        return library(d, "`\"…\"`", "quotes");
     }
     let Some(at) = at(d, s) else {
         return Vec::new();
@@ -2794,6 +3256,8 @@ fn tikz(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     let Some(span) = find_on_line(&at.src, at.line, &key, Some(at.point())) else {
         return Vec::new();
     };
+    place(d, &at.src, span.clone());
+    did_you_mean(d, lang, best);
     edits(
         format!(
             "{} {key} {} {best}",
@@ -2838,11 +3302,33 @@ fn reference(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
         .flat_map(|x| x.index.labels.iter().map(|l| l.name.clone()))
         .collect();
     if labels.contains(&key) {
+        advise(
+            d,
+            lang,
+            &format!(
+                "`\\label{{{key}}}` existe dans le projet : une compilation de plus résout la référence."
+            ),
+            &format!(
+                "`\\label{{{key}}}` exists in the project: one more build resolves the reference."
+            ),
+        );
         return vec![Fix::Rebuild];
     }
     let Some(best) = closest(&key, labels.iter().map(String::as_str), 3) else {
+        advise(
+            d,
+            lang,
+            &format!("Le projet n'a pas de `\\label{{{key}}}`."),
+            &format!("The project has no `\\label{{{key}}}`."),
+        );
         return Vec::new();
     };
+    advise(
+        d,
+        lang,
+        &format!("Le projet n'a pas de `\\label{{{key}}}` ; le plus proche est `{best}`."),
+        &format!("The project has no `\\label{{{key}}}`; the closest one is `{best}`."),
+    );
     let uses: Vec<(Rc<Src>, Span)> = srcs
         .iter()
         .flat_map(|x| {
@@ -2888,6 +3374,18 @@ fn duplicate_label(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<F
         return Vec::new();
     }
     place(d, &defs[1].0, defs[1].1.clone());
+    advise(
+        d,
+        lang,
+        &format!(
+            "`\\label{{{key}}}` est écrit {} fois dans le projet.",
+            defs.len()
+        ),
+        &format!(
+            "`\\label{{{key}}}` is written {} times in the project.",
+            defs.len()
+        ),
+    );
     let mut n = 2;
     let mut list = Vec::new();
     let mut first_new = String::new();
@@ -2982,13 +3480,47 @@ fn citation(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     let keys = s.bib_keys();
     if keys.contains(&key) {
         if !s.has_bibliography() {
+            advise(
+                d,
+                lang,
+                &format!(
+                    "`{key}` est dans un fichier `.bib` du projet, mais le document n'affiche aucune bibliographie."
+                ),
+                &format!(
+                    "`{key}` is in a `.bib` file of the project, but the document prints no bibliography."
+                ),
+            );
             return bibliography(s, lang).into_iter().collect();
         }
+        advise(
+            d,
+            lang,
+            &format!(
+                "`{key}` est dans le fichier `.bib` : une compilation de plus résout la citation."
+            ),
+            &format!("`{key}` is in the `.bib` file: one more build resolves the citation."),
+        );
         return vec![Fix::Rebuild];
     }
     let Some(best) = closest(&key, keys.iter().map(String::as_str), 3) else {
+        if !keys.is_empty() {
+            advise(
+                d,
+                lang,
+                &format!("Aucune entrée des fichiers `.bib` du projet ne s'appelle `{key}`."),
+                &format!("No entry of the `.bib` files of the project is named `{key}`."),
+            );
+        }
         return Vec::new();
     };
+    advise(
+        d,
+        lang,
+        &format!(
+            "Aucune entrée des fichiers `.bib` ne s'appelle `{key}` ; la plus proche est `{best}`."
+        ),
+        &format!("No entry of the `.bib` files is named `{key}`; the closest one is `{best}`."),
+    );
     edits(
         format!(
             "{} {key} {} {best}",
@@ -3068,6 +3600,15 @@ fn bib_comma(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
         if content.ends_with(',') || content.ends_with('{') || content.ends_with('(') {
             return Vec::new();
         }
+        advise(
+            d,
+            lang,
+            &format!(
+                "Le champ de la ligne {} ne se termine pas par une virgule.",
+                l + 1
+            ),
+            &format!("The field of line {} does not end with a comma.", l + 1),
+        );
         return edits(
             lang.pick("Ajouter la virgule manquante", "Add the missing comma")
                 .into(),
@@ -3132,6 +3673,15 @@ static TITLE_COMMAND: LazyLock<Regex> = LazyLock::new(|| {
 
 fn pdf_string(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     if !d.message.contains("math shift") {
+        // The message names what is left out: a command, a line break…
+        if let Some(token) = quoted(&d.message).filter(|t| t.starts_with('\\')) {
+            advise(
+                d,
+                lang,
+                &format!("Le titre contient `{token}`, que le signet du PDF ne peut pas afficher."),
+                &format!("The title holds `{token}`, which the PDF bookmark cannot show."),
+            );
+        }
         return Vec::new();
     }
     let Some(at) = at(d, s) else {
@@ -3162,6 +3712,14 @@ fn pdf_string(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
             ));
             i = b + 1;
         }
+    }
+    if !list.is_empty() {
+        advise(
+            d,
+            lang,
+            "Le titre contient une formule, que le signet du PDF ne peut pas afficher.",
+            "The title holds a formula, which the PDF bookmark cannot show.",
+        );
     }
     edits(
         lang.pick(
@@ -3220,40 +3778,6 @@ fn verb(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     )
 }
 
-static DECIMAL_COMMA: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(\d+),(\d+)\s*(?:cm|mm|pt|em|ex|in|bp|pc|sp|dd|cc|mu|\\)").unwrap()
-});
-static NUMBER_BEFORE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(-?\d+(?:\.\d+)?)\s*\}?\s*$").unwrap());
-
-fn unit(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
-    let Some(at) = at(d, s) else {
-        return Vec::new();
-    };
-    let src = &at.src;
-    let (span, line) = src.line(at.line);
-    // A decimal comma: `2,5cm`.
-    if let Some(m) = DECIMAL_COMMA.captures(line) {
-        let comma = span.start + m.get(1).unwrap().end();
-        return edits(
-            format!("{} {}.{}", lang.pick("Écrire", "Write"), &m[1], &m[2]),
-            vec![src.edit(comma..comma + 1, ".")],
-        );
-    }
-    let upto = &line[..at.point().clamp(span.start, span.end) - span.start];
-    let Some(m) = NUMBER_BEFORE.captures(upto) else {
-        return Vec::new();
-    };
-    let end = span.start + m.get(1).unwrap().end();
-    ["cm", "em", "pt"]
-        .iter()
-        .map(|u| Fix::Edits {
-            title: format!("{} {u}", lang.pick("Ajouter l'unité", "Add the unit")),
-            edits: vec![src.insert(end, *u)],
-        })
-        .collect()
-}
-
 fn include_nested(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     let Some(at) = at(d, s) else {
         return Vec::new();
@@ -3265,4 +3789,148 @@ fn include_nested(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
         lang.pick("Utiliser \\input", "Use \\input").into(),
         vec![at.src.edit(span, "\\input")],
     )
+}
+
+static AT_COMMAND: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\\[A-Za-z]*@[A-Za-z@]*").unwrap());
+
+/// "You can't use `\\spacefactor' in vertical mode": a command whose name
+/// holds `@`, read outside `\\makeatletter … \\makeatother` (TeX reads `\\@`
+/// alone, then the rest as text).
+fn at_command(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
+    if !d.message.contains("\\spacefactor") {
+        return Vec::new();
+    }
+    let Some(at) = at(d, s) else {
+        return Vec::new();
+    };
+    let src = &at.src;
+    let (span, line) = src.line(at.line);
+    let point = at.point().clamp(span.start, span.end) - span.start;
+    let Some(m) = AT_COMMAND
+        .find_iter(line)
+        .filter(|m| m.start() < point)
+        .last()
+    else {
+        return Vec::new();
+    };
+    let before = mask(&src.text[..span.start + m.start()]);
+    if before.rfind("\\makeatletter") > before.rfind("\\makeatother") {
+        return Vec::new();
+    }
+    let name = m.as_str().to_owned();
+    place(d, src, span.start + m.start()..span.start + m.end());
+    advise(
+        d,
+        lang,
+        &format!(
+            "`{name}` contient `@` : un tel nom n'est lu en entier qu'entre `\\makeatletter` et `\\makeatother`."
+        ),
+        &format!(
+            "`{name}` holds `@`: such a name is only read whole between `\\makeatletter` and `\\makeatother`."
+        ),
+    );
+    edits(
+        lang.pick(
+            "Entourer de \\makeatletter … \\makeatother",
+            "Surround with \\makeatletter … \\makeatother",
+        )
+        .into(),
+        vec![
+            src.insert(span.start, "\\makeatletter\n"),
+            src.insert(span.end, "\n\\makeatother"),
+        ],
+    )
+}
+
+static EXTENSION: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"Unknown graphics extension: (\.\S+?)\.?$").unwrap());
+
+/// "Unknown graphics extension": a format the compiler does not read, or a
+/// dot in the name of the file, taken for the start of the extension.
+fn graphics_extension(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
+    let Some(ext) = EXTENSION.captures(&d.message).map(|m| m[1].to_owned()) else {
+        return Vec::new();
+    };
+    let Some(at) = at(d, s) else {
+        return Vec::new();
+    };
+    let src = &at.src;
+    let Some(inc) = src.index.includes.iter().find(|i| {
+        matches!(i.kind, IncludeKind::Graphics)
+            && src.line_of(i.span.start) == at.line
+            && i.path.ends_with(&ext)
+    }) else {
+        return Vec::new();
+    };
+    place(d, src, inc.span.clone());
+    if ext[1..].contains('.')
+        && let Some((stem, last)) = inc.path.rsplit_once('.')
+    {
+        let new = format!("{{{stem}}}.{last}");
+        advise(
+            d,
+            lang,
+            &format!(
+                "Le nom du fichier contient un point : LaTeX prend `{ext}` pour son extension. Entre accolades, le nom est lu en entier : `{new}`."
+            ),
+            &format!(
+                "The name of the file holds a dot: LaTeX takes `{ext}` for its extension. In braces, the name is read whole: `{new}`."
+            ),
+        );
+        return edits(
+            format!("{} {new}", lang.pick("Écrire", "Write")),
+            vec![src.edit(inc.span.clone(), new)],
+        );
+    }
+    advise(
+        d,
+        lang,
+        &format!(
+            "Ce compilateur ne lit pas les images `{ext}` : il lit les fichiers PDF, PNG et JPG."
+        ),
+        &format!("This compiler does not read `{ext}` images: it reads PDF, PNG and JPG files."),
+    );
+    Vec::new()
+}
+
+static DEFINITION: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\\(?:re)?newcommand\*?\s*\{?\s*(\\[A-Za-z@]+)\s*\}?\s*(?:\[[^\]]*\]\s*)*\{")
+        .unwrap()
+});
+
+/// "TeX capacity exceeded": a command that uses itself in its own
+/// definition is expanded without end.
+fn recursion(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
+    for src in s.srcs() {
+        let text = mask(&src.text);
+        for m in DEFINITION.captures_iter(&text) {
+            let name = m.get(1).unwrap();
+            let open = m.get(0).unwrap().end() - 1;
+            let Some(end) = group_end(&text, open) else {
+                continue;
+            };
+            let body = &text[open + 1..end - 1];
+            let itself = body.match_indices(name.as_str()).any(|(i, _)| {
+                !body[i + name.len()..].starts_with(|c: char| c.is_ascii_alphabetic() || c == '@')
+            });
+            if itself {
+                place(d, &src, name.range());
+                advise(
+                    d,
+                    lang,
+                    &format!(
+                        "`{}` s'utilise elle-même dans sa propre définition : TeX la développe sans fin.",
+                        name.as_str()
+                    ),
+                    &format!(
+                        "`{}` uses itself in its own definition: TeX expands it without end.",
+                        name.as_str()
+                    ),
+                );
+                return Vec::new();
+            }
+        }
+    }
+    Vec::new()
 }

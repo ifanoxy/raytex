@@ -11,7 +11,7 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 
-use crate::diagnostics::{Diagnostic, Fix};
+use crate::diagnostics::{Diagnostic, Fix, Severity};
 use crate::fixes::{self, Sources};
 use crate::i18n::Lang;
 use crate::log::hints;
@@ -23,7 +23,7 @@ static SPACE_AFTER_CS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\\[A-Za-
 /// Locates every diagnostic precisely, then adds fixes and explanations.
 /// `root` is the main file of the project.
 pub fn refine_all(
-    diags: &mut [Diagnostic],
+    diags: &mut Vec<Diagnostic>,
     root: &Path,
     source: &dyn Fn(&Path) -> Option<String>,
     lang: Lang,
@@ -41,6 +41,72 @@ pub fn refine_all(
         fixes::suggest(d, &mut sources, lang);
         hints::fallback(d, lang);
     }
+    drop_math_consequences(diags, source);
+    diags.retain(|d| d.code.as_deref() != Some(fixes::CONSEQUENCE));
+    // Characters that a font lacks, reported without a line: as long as
+    // there are errors, they are what TeX printed while going on after
+    // them. They come back once the document compiles, if they are real.
+    if diags.iter().any(|d| d.severity == Severity::Error) {
+        diags.retain(|d| {
+            d.line.is_some() || !matches!(d.code.as_deref(), Some("missing-character" | "nullfont"))
+        });
+    }
+}
+
+/// After `_`, `^` or a math command written in text, TeX opens a formula by
+/// itself and closes it at the end of the paragraph. What it reports until
+/// there (accents it refuses in a formula, the formula closed by another
+/// "Missing $ inserted") is the same mistake: only the first problem, on
+/// the character that opened the formula, is kept.
+fn drop_math_consequences(diags: &mut Vec<Diagnostic>, source: &dyn Fn(&Path) -> Option<String>) {
+    let mut consequence = vec![false; diags.len()];
+    for i in 0..diags.len() {
+        let d = &diags[i];
+        let opened = d.code.as_deref() == Some("missing-dollar")
+            && d.hint.as_ref().is_some_and(|h| h.advice.is_some());
+        let (Some(file), Some(range)) = (&d.file, d.range) else {
+            continue;
+        };
+        if !opened || consequence[i] {
+            continue;
+        }
+        let Some(text) = source(file) else { continue };
+        let lines = LineIndex::new(&text);
+        let token = &text[lines.offset(&text, range.start)..lines.offset(&text, range.end)];
+        if !(token == "_" || token == "^" || token.starts_with('\\')) {
+            continue;
+        }
+        // The paragraph ends at the next blank line.
+        let first = range.start.line as usize;
+        let mut last = first;
+        while last + 1 < lines.line_count()
+            && !text[lines.line_span(&text, last + 1)].trim().is_empty()
+        {
+            last += 1;
+        }
+        for j in i + 1..diags.len() {
+            let next = &diags[j];
+            let Some(line) = next.line.map(|l| l as usize - 1) else {
+                continue;
+            };
+            if next.file.as_ref() != Some(file) || line < first || line > last + 1 {
+                break;
+            }
+            match next.code.as_deref() {
+                Some("command-invalid-math" | "math-accent") => consequence[j] = true,
+                Some("missing-dollar") => {
+                    consequence[j] = true;
+                    break;
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut i = 0;
+    diags.retain(|_| {
+        i += 1;
+        !consequence[i - 1]
+    });
 }
 
 fn refine(d: &mut Diagnostic, text: &str, lines: &LineIndex) {
@@ -249,5 +315,75 @@ mod tests {
             (1, 21, 35)
         );
         assert_eq!(ds[3].line, Some(2));
+    }
+
+    fn shown(text: &str, d: &Diagnostic) -> String {
+        let lines = LineIndex::new(text);
+        let r = d.range.unwrap();
+        text[lines.offset(text, r.start)..lines.offset(text, r.end)].to_owned()
+    }
+
+    #[test]
+    fn the_cause_is_shown_where_it_is() {
+        let text = "\\documentclass{article}\n\\begin{document}\nAvant.\\vspace{abc} Après.\n\\includegraphics{plan.v2.png}\n\\espace{abc}\n\\end{document}\n";
+        let source = |_: &Path| Some(text.to_owned());
+        let number = |line: u32, before: &str| {
+            let mut d = diag("Missing number, treated as zero.", line, Some(before));
+            d.raw = Some(format!(
+                "! Missing number, treated as zero.\n<to be read again> \n                   a\nl.{line} {before}"
+            ));
+            d
+        };
+        let mut ds = vec![
+            number(3, "Avant.\\vspace{abc}"),
+            diag(
+                "LaTeX Error: Unknown graphics extension: .v2.png.",
+                4,
+                Some("\\includegraphics{plan.v2.png}"),
+            ),
+            number(5, "\\espace{abc}"),
+        ];
+        refine_all(&mut ds, Path::new("/p/main.tex"), &source, Lang::En);
+        let advice = |d: &Diagnostic| d.hint.as_ref().and_then(|h| h.advice.clone());
+        // The value that is not a length, and what is wrong with it.
+        assert_eq!(shown(text, &ds[0]), "abc");
+        assert!(
+            advice(&ds[0]).is_some_and(|a| a.starts_with("`\\vspace` expects a length")),
+            "{:?}",
+            ds[0].hint
+        );
+        // A dot in the name of an image, with the way to write it.
+        assert_eq!(shown(text, &ds[1]), "plan.v2.png");
+        assert!(advice(&ds[1]).is_some_and(|a| a.contains("holds a dot")));
+        assert!(
+            matches!(&ds[1].fixes[0], Fix::Edits { edits, .. } if edits[0].text == "{plan.v2}.png")
+        );
+        // A command of the document: its whole call is shown, and nothing
+        // is said about a cause that cannot be told.
+        assert_eq!(shown(text, &ds[2]), "\\espace{abc}");
+        assert_eq!(advice(&ds[2]), None);
+        // The explanation never names a cause.
+        assert_eq!(
+            ds[2].hint.as_ref().unwrap().explanation,
+            ds[0].hint.as_ref().unwrap().explanation
+        );
+    }
+
+    #[test]
+    fn what_follows_a_formula_tex_opened_is_dropped() {
+        let text = "\\documentclass{article}\n\\begin{document}\nLe fichier mon_fichier est prêt.\n\\end{document}\n";
+        let source = |_: &Path| Some(text.to_owned());
+        let mut ds = vec![
+            diag("Missing $ inserted.", 3, Some("Le fichier mon_")),
+            diag(
+                "Please use \\mathaccent for accents in math mode.",
+                3,
+                Some("Le fichier mon_fichier est prê"),
+            ),
+            diag("Missing $ inserted.", 4, Some("\\end{document}")),
+        ];
+        refine_all(&mut ds, Path::new("/p/main.tex"), &source, Lang::En);
+        assert_eq!(ds.len(), 1, "{ds:#?}");
+        assert_eq!(shown(text, &ds[0]), "_");
     }
 }

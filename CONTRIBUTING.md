@@ -59,7 +59,7 @@ The continuous integration runs the same checks on Linux, macOS and Windows, and
 - Package documentation: `crates/raytex-core/data/packages/<name>.json`
 - A template: `crates/raytex-core/data/templates/<id>/`
 - A help guide: `crates/raytex-core/data/help/{en,fr}/NN-id.md`
-- An error explanation: `crates/raytex-core/data/errors.json`
+- An error explanation: `crates/raytex-core/data/errors.json` (what the message means, never a guessed cause; the cause is found in the sources by `fixes/`)
 - A snippet: `crates/raytex-core/data/snippets.json`
 - Keys and values of an argument (completion with documentation): `crates/raytex-core/data/keys.json`
 - What a free argument expects (hint above the cursor): `crates/raytex-core/data/arguments.json`

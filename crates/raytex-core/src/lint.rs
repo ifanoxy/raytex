@@ -109,10 +109,7 @@ pub fn lint(ws: &Workspace, file: &Path, opts: &LintOptions<'_>) -> Vec<Diagnost
         if d.hint.is_none()
             && let Some(explanation) = d.code.as_deref().and_then(|c| explanation(c, opts.lang))
         {
-            d.hint = Some(Hint {
-                title: d.message.clone(),
-                explanation: explanation.to_owned(),
-            });
+            d.hint = Some(Hint::new(d.message.clone(), explanation));
         }
     }
     if disabled.contains("syntax") {
@@ -199,10 +196,7 @@ impl Linter<'_> {
             };
             let fixes = self.syntax_fixes(&p, &problems);
             let d = self.push(Severity::Error, Source::Syntax, "syntax", &p.span, msg);
-            d.hint = Some(Hint {
-                title: d.message.clone(),
-                explanation: hint.to_owned(),
-            });
+            d.hint = Some(Hint::new(d.message.clone(), hint));
             d.fixes = fixes;
         }
     }

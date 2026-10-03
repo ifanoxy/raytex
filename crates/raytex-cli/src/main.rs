@@ -505,7 +505,7 @@ fn print_diagnostics(diags: &[Diagnostic], json: bool) {
         };
         println!("{place}: {sev}: {}", d.message);
         if let Some(h) = &d.hint {
-            println!("    → {}", h.explanation);
+            println!("    → {}", h.advice.as_deref().unwrap_or(&h.explanation));
         }
     }
 }

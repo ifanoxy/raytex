@@ -1,10 +1,16 @@
 //! Friendly explanations and quick fixes for compiler diagnostics.
 //!
 //! The catalogue lives in `data/errors.json`: each entry matches messages
-//! with a regular expression and explains them in French and English.
-//! On top of the catalogue, a few errors get automatic fixes (load the
-//! package that defines an unknown command, install a missing package,
-//! switch engine…).
+//! with a regular expression and says, in French and English, what the
+//! message means. An explanation holds for every document that gets the
+//! message: it never guesses a cause. The usual causes of a message are
+//! kept apart (`more`), for the help centre.
+//!
+//! The cause of a problem in a given document is found in its sources
+//! ([`crate::fixes`]) and said in the advice of the hint, with the fix.
+//! Here, a few errors get the advice and the fixes that the message alone
+//! gives (the package that defines an unknown command, a missing package to
+//! install, another engine…).
 
 use std::sync::LazyLock;
 
@@ -22,6 +28,8 @@ struct Entry {
     pattern: String,
     title: Doc,
     explanation: Doc,
+    #[serde(default)]
+    more: Option<Doc>,
 }
 
 /// A compiled catalogue entry.
@@ -32,8 +40,10 @@ pub struct ErrorInfo {
     regex: Regex,
     /// Short title.
     pub title: Doc,
-    /// Explanation (markdown).
+    /// What the message means (markdown).
     pub explanation: Doc,
+    /// The usual causes and remedies (markdown), for the help centre.
+    pub more: Option<Doc>,
 }
 
 static CATALOG: LazyLock<Vec<ErrorInfo>> = LazyLock::new(|| {
@@ -47,6 +57,7 @@ static CATALOG: LazyLock<Vec<ErrorInfo>> = LazyLock::new(|| {
                 regex,
                 title: e.title,
                 explanation: e.explanation,
+                more: e.more,
             }),
             Err(err) => {
                 tracing::error!("invalid pattern for {}: {err}", e.id);
@@ -76,10 +87,7 @@ pub fn enrich(d: &mut Diagnostic, lang: Lang) {
         if d.code.is_none() {
             d.code = Some(info.id.clone());
         }
-        d.hint = Some(Hint {
-            title: info.title.get(lang).to_owned(),
-            explanation: info.explanation.get(lang).to_owned(),
-        });
+        d.hint = Some(Hint::new(info.title.get(lang), info.explanation.get(lang)));
     }
     let mut extra = String::new();
     match d.code.as_deref() {
@@ -149,11 +157,8 @@ pub fn enrich(d: &mut Diagnostic, lang: Lang) {
         Some("shell-escape") => push_fix(d, Fix::EnableShellEscape),
         _ => {}
     }
-    if !extra.is_empty()
-        && let Some(hint) = &mut d.hint
-        && !hint.explanation.contains(&extra)
-    {
-        hint.explanation = format!("{extra} {}", hint.explanation);
+    if !extra.is_empty() {
+        d.advise(extra);
     }
 }
 
@@ -177,8 +182,8 @@ pub fn fallback(d: &mut Diagnostic, lang: Lang) {
         (_, Source::Bibtex | Source::Biber) => (
             lang.pick("Problème de bibliographie", "Bibliography problem").to_owned(),
             lang.pick(
-                "BibTeX ou Biber signale un problème dans un fichier `.bib` ou dans les citations. Ouvrez l'entrée indiquée : une virgule, une accolade ou un champ manquant sont les causes les plus fréquentes.",
-                "BibTeX or Biber reports a problem in a `.bib` file or in the citations. Open the entry: a missing comma, brace or field is the usual cause.",
+                "BibTeX ou Biber signale un problème dans un fichier `.bib` ou dans les citations. Le message (en anglais) dit ce qu'il a rencontré.",
+                "BibTeX or Biber reports a problem in a `.bib` file or in the citations. The message says what it met.",
             )
             .to_owned(),
         ),
@@ -188,8 +193,8 @@ pub fn fallback(d: &mut Diagnostic, lang: Lang) {
                 "{} `{p}` {}",
                 lang.pick("Le package", "The package"),
                 lang.pick(
-                    "refuse ce qui est écrit à cet endroit. Le message (en anglais) dit quoi corriger ; sa documentation détaille ses commandes et options.",
-                    "rejects what is written here. The message says what to fix; its documentation details its commands and options.",
+                    "refuse ce qui est écrit à cet endroit. Le message (en anglais) dit ce qu'il refuse ; sa documentation détaille ses commandes et options.",
+                    "rejects what is written here. The message says what it rejects; its documentation details its commands and options.",
                 )
             ),
         ),
@@ -207,8 +212,8 @@ pub fn fallback(d: &mut Diagnostic, lang: Lang) {
         (None, _) if error => (
             lang.pick("Erreur LaTeX", "LaTeX error").to_owned(),
             lang.pick(
-                "LaTeX s'est arrêté sur cette ligne. Regardez le texte signalé : une commande mal écrite, une accolade ou un `$` manquant sont les causes les plus fréquentes. Quand plusieurs erreurs se suivent, corrigez d'abord la première : les suivantes en sont souvent la conséquence.",
-                "LaTeX stopped on this line. Look at the highlighted text: a misspelled command, a missing brace or `$` are the usual causes. When errors follow each other, fix the first one: the next ones are often its consequence.",
+                "LaTeX n'a pas pu composer cette ligne. Le message (en anglais) dit ce qu'il a rencontré ; RayTeX n'a pas d'explication propre à ce message.",
+                "LaTeX could not typeset this line. The message says what it met; RayTeX has no explanation of its own for this message.",
             )
             .to_owned(),
         ),
@@ -221,7 +226,7 @@ pub fn fallback(d: &mut Diagnostic, lang: Lang) {
             .to_owned(),
         ),
     };
-    d.hint = Some(Hint { title, explanation });
+    d.hint = Some(Hint::new(title, explanation));
 }
 
 /// Loads a package, with the options it asks for when loaded without them.
@@ -303,12 +308,12 @@ mod tests {
         enrich(&mut d, Lang::Fr);
         let hint = d.hint.unwrap();
         assert_eq!(hint.title, "Commande inconnue");
-        assert!(
-            hint.explanation
-                .starts_with("Vouliez-vous écrire `\\textbf` ?"),
-            "{}",
-            hint.explanation
+        assert_eq!(
+            hint.advice.as_deref(),
+            Some("Vouliez-vous écrire `\\textbf` ?")
         );
+        // The explanation says what the message means, without guessing.
+        assert!(!hint.explanation.contains("textbf"), "{}", hint.explanation);
 
         let mut d = Diagnostic::new(
             Severity::Error,

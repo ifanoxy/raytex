@@ -46,7 +46,7 @@ import { navigableAt } from "../editor/navigation";
 import { frenchPhrases } from "../editor/phrases";
 import { enterKeymap, latexStructure } from "../editor/structure";
 import { editorTheme } from "../editor/theme";
-import { fixLabel, runFix } from "../fixes";
+import { fixLabel, runFix, suggestionOf } from "../fixes";
 import { figureAt } from "../images";
 import { i18n, type MessageKey, t } from "../i18n.svelte";
 import * as ipc from "../ipc";
@@ -167,7 +167,7 @@ function renderDiagnostic(d: Diagnostic): HTMLElement {
   if (d.hint) {
     const hint = document.createElement("div");
     hint.className = "lbt-diag-hint";
-    hint.innerHTML = `<strong>${inlineMarkdown(d.hint.title)}</strong> ${inlineMarkdown(d.hint.explanation)}`;
+    hint.innerHTML = `<strong>${inlineMarkdown(d.hint.title)}</strong> ${inlineMarkdown(suggestionOf(d) ?? d.hint.explanation)}`;
     root.appendChild(hint);
   }
   if (d.fixes.length) {

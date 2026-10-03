@@ -270,7 +270,10 @@ pub fn errors(lang: Lang) -> Vec<ErrorEntry> {
         .map(|e| ErrorEntry {
             id: e.id.clone(),
             title: e.title.get(lang).to_owned(),
-            explanation: markdown_to_html(e.explanation.get(lang)),
+            explanation: markdown_to_html(&match &e.more {
+                Some(more) => format!("{}\n\n{}", e.explanation.get(lang), more.get(lang)),
+                None => e.explanation.get(lang).to_owned(),
+            }),
         })
         .collect()
 }
