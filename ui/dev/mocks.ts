@@ -449,7 +449,7 @@ async function simulateBuild() {
         contextAfter: "{Chapitre 2} présente les méthodes numériques.",
         raw: "! Undefined control sequence.\nl.24 \\textbff\n              {Chapitre 2} présente les méthodes numériques.",
         // The cause was found in the sources: the advice says it.
-        hint: Object.assign({ title: "Commande inconnue", explanation: "LaTeX ne connaît pas cette commande : ni LaTeX ni un package chargé ne la définit." }, { advice: "Vouliez-vous écrire `\\textbf` ?" }),
+        hint: { title: "Commande inconnue", explanation: "LaTeX ne connaît pas cette commande : ni LaTeX ni un package chargé ne la définit.", advice: "Vouliez-vous écrire `\\textbf` ?" },
         fixes: [{ kind: "replace", title: "Remplacer par \\textbf", range: range(23, 0, 8), text: "\\textbf" }],
       }),
       diag({
@@ -462,7 +462,7 @@ async function simulateBuild() {
         range: range(29, 8, 11),
         contextBefore: "\\vspace{abc}",
         raw: "! Missing number, treated as zero.\n<to be read again> \n                   a\nl.30 \\vspace{abc}",
-        hint: Object.assign({ title: "Un nombre était attendu", explanation: "TeX attendait un nombre ou une longueur à cet endroit et a lu autre chose ; il a pris zéro à la place." }, { advice: "`\\vspace` attend une longueur (un nombre et une unité, comme `1cm`), et `abc` n'en est pas une." }),
+        hint: { title: "Un nombre était attendu", explanation: "TeX attendait un nombre ou une longueur à cet endroit et a lu autre chose ; il a pris zéro à la place.", advice: "`\\vspace` attend une longueur (un nombre et une unité, comme `1cm`), et `abc` n'en est pas une." },
       }),
       diag({
         severity: "error",

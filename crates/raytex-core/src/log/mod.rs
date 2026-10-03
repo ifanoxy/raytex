@@ -171,8 +171,22 @@ impl Parser<'_> {
                 || line == "Runaway definition?"
                 || line == "Runaway text?"
             {
-                self.runaway = self.lines.get(self.i + 1).cloned();
-                self.i += 2;
+                // The text read so far comes on the next line, unless nothing
+                // was read: the error follows at once.
+                let next = self.lines.get(self.i + 1);
+                let error = next.is_some_and(|l| {
+                    l.starts_with("! ")
+                        || FILE_LINE_ERROR
+                            .captures(l)
+                            .is_some_and(|m| self.looks_like_file(&m[1]))
+                });
+                if error {
+                    self.runaway = Some(String::new());
+                    self.i += 1;
+                } else {
+                    self.runaway = next.cloned();
+                    self.i += 2;
+                }
                 continue;
             }
             if let Some(m) = WARNING.captures(&line) {
@@ -687,6 +701,17 @@ fn dedupe(diags: &mut Vec<Diagnostic>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_empty_runaway_argument_keeps_its_error() {
+        // `\\includegraphics[width=3cm]` then a blank line: nothing was read
+        // of the argument, the error comes right after "Runaway argument?".
+        let log = "(./main.tex\nRunaway argument?\n./main.tex:5: Paragraph ended before \\Gin@ii was complete.\n<to be read again> \n                   \\par \nl.5 \n    \nI suspect you've forgotten a `}', causing me to apply this\n\n)\n";
+        let root = Path::new("/proj");
+        let r = parse_log(log, root, &root.join("main.tex"), Lang::En);
+        assert_eq!(r.diagnostics.len(), 1, "{:?}", r.diagnostics);
+        assert_eq!(r.diagnostics[0].line, Some(5));
+    }
 
     #[test]
     fn one_mistake_gives_one_problem() {

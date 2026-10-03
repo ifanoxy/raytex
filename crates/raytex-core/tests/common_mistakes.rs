@@ -419,7 +419,11 @@ fn run_case(dist: &Distribution, index: &TexmfIndex, case: &Case, probe: bool) -
             false,
         );
     };
-    if d.hint.as_ref().is_none_or(|h| h.explanation.is_empty()) {
+    // Explained: what the message means, or better, the cause found.
+    if d.hint
+        .as_ref()
+        .is_none_or(|h| h.explanation.is_empty() && h.advice.is_none())
+    {
         return (
             format!("✘ {}: no explanation for {}", case.name, describe(d)),
             false,
@@ -803,6 +807,508 @@ fn located_cases() -> Vec<Located> {
     ]
 }
 
+/// Mistakes as people report them on forums. Whatever message TeX gives for
+/// them (the case names none), the engine must find what is wrong in the
+/// source by itself: one problem, on the text to change, with its cause.
+fn forum_cases() -> Vec<Located> {
+    let table = |rows: &str| format!("\\begin{{tabular}}{{ll}}\n{rows}\n\\end{{tabular}}");
+    let any = "";
+    vec![
+        // ----------------------------------------------------------- formulas
+        located(
+            "dollar-in-equation",
+            any,
+            doc(
+                "",
+                "Avant.\n\\begin{equation}$ a = b $\\end{equation}\nAprès.",
+            ),
+            "$",
+            Some("Ce `$` est dans `equation`, qui est déjà une formule : il n'en faut pas ici."),
+        ),
+        located(
+            "display-closed-by-one-dollar",
+            any,
+            doc("", "Avant.\n$$ a = b $\nAprès."),
+            "$",
+            Some("La formule ouverte par `$$` ligne 4 est fermée ici par un seul `$`."),
+        ),
+        located(
+            "fraction-in-text",
+            any,
+            doc("", "Soit \\frac{1}{2} la moitié."),
+            "\\frac",
+            Some("`\\frac` n'existe que dans une formule, et celui-ci est dans du texte."),
+        ),
+        located(
+            "inline-math-never-closed",
+            any,
+            doc("", "Soit $a = b un réel.\n\nSuite."),
+            "$",
+            Some("La formule ouverte par ce `$` n'est pas refermée avant la fin du paragraphe."),
+        ),
+        located(
+            "blank-line-in-display",
+            any,
+            doc("", "\\[\na = b\n\nc = d\n\\]"),
+            "\\[",
+            Some("Une ligne vide coupe cette formule : elle termine le paragraphe, et TeX ferme"),
+        ),
+        located(
+            "equation-in-inline-math",
+            any,
+            doc("", "Texte $ \\begin{equation} a \\end{equation} $ suite."),
+            "\\begin{equation}",
+            Some("Ce `\\begin{equation}` ouvre une formule à l'intérieur d'une formule déjà"),
+        ),
+        located(
+            "matrix-outside-math",
+            any,
+            doc(
+                "\\usepackage{amsmath}",
+                "Voici \\begin{pmatrix} a \\\\ b \\end{pmatrix} ici.",
+            ),
+            "\\begin{pmatrix}",
+            Some("`\\begin{pmatrix}` n'existe que dans une formule, et celui-ci est dans du"),
+        ),
+        located(
+            "aligned-outside-math",
+            any,
+            doc(
+                "\\usepackage{amsmath}",
+                "\\begin{aligned} a &= b \\end{aligned}",
+            ),
+            "\\begin{aligned}",
+            Some("`\\begin{aligned}` n'existe que dans une formule, et celui-ci est dans du"),
+        ),
+        located(
+            "left-without-delimiter",
+            any,
+            doc("", "$\\left a + b \\right)$"),
+            "a",
+            Some("`\\left` doit être suivi d'un délimiteur (`(`, `[`, `\\{`, `|`, ou `.` pour"),
+        ),
+        located(
+            "display-in-display",
+            any,
+            doc("", "\\[ a \\[ b \\] \\]"),
+            "\\[",
+            Some("Ce `\\[` ouvre une formule à l'intérieur d'une formule déjà ouverte."),
+        ),
+        located(
+            "brace-missing-in-math",
+            any,
+            doc("", "Soit $\\sqrt{2$ ici.\n\nSuite."),
+            "{",
+            Some("Cette `{` n'est jamais refermée."),
+        ),
+        located(
+            "frac-one-argument",
+            any,
+            doc("", "Soit $\\frac{1}$ ici."),
+            "\\frac{1}",
+            Some("`\\frac` s'écrit `\\frac{numérateur}{dénominateur}` : il manque l'argument"),
+        ),
+        located(
+            "dollar-as-currency",
+            any,
+            doc("", "Le prix est de 10$ seulement.\n\nSuite."),
+            "$",
+            Some("Ce `$` ouvre une formule qui n'est jamais fermée. Pour écrire le signe"),
+        ),
+        located(
+            "text-command-in-math",
+            any,
+            doc("", "$a \\textbf{b} \\item c$"),
+            "\\item",
+            Some("`\\item` ne fonctionne que dans du texte, et celui-ci est dans une formule."),
+        ),
+        // ------------------------------------------------------------- braces
+        located(
+            "brace-never-closed",
+            any,
+            doc("", "Du \\textbf{gras\n\nSuite du texte."),
+            "\\textbf{",
+            Some("L'accolade ouverte ici n'est jamais refermée."),
+        ),
+        located(
+            "brace-too-many",
+            any,
+            doc("", "Du texte } en trop."),
+            "}",
+            Some("Cette `}` ne ferme aucune `{`."),
+        ),
+        located(
+            "brace-open-at-end",
+            any,
+            doc("", "\\section{Titre\nTexte."),
+            "\\section{",
+            Some("L'accolade ouverte ici n'est jamais refermée."),
+        ),
+        located(
+            "group-closed-in-environment",
+            any,
+            doc("", "{\\begin{center} Texte } \\end{center}"),
+            "}",
+            Some("Cette `}` ferme le groupe ouvert ligne 3 alors que `\\begin{center}` est"),
+        ),
+        // ------------------------------------------------------- environments
+        located(
+            "environment-never-closed",
+            any,
+            doc("", "\\begin{center}\nTexte.\n"),
+            "\\begin{center}",
+            Some("Ce `\\begin{center}` n'est jamais fermé par `\\end{center}`."),
+        ),
+        located(
+            "end-without-begin",
+            any,
+            doc("", "Texte.\n\\end{center}\nSuite."),
+            "\\end{center}",
+            Some("Ce `\\end{center}` ne ferme aucun `\\begin{center}`."),
+        ),
+        located(
+            "float-in-minipage",
+            any,
+            doc(
+                "",
+                "\\begin{minipage}{5cm}\n\\begin{figure}\nx\n\\end{figure}\n\\end{minipage}",
+            ),
+            "\\begin{figure}",
+            Some("Ce `figure` est dans `minipage` (ligne 3) : un flottant ne peut pas être"),
+        ),
+        located(
+            "tabular-without-columns",
+            any,
+            doc("", "\\begin{tabular}\na & b \\\\\n\\end{tabular}"),
+            "\\begin{tabular}",
+            Some("`\\begin{tabular}` s'écrit `\\begin{tabular}{colonnes}` : il manque son"),
+        ),
+        located(
+            "multicolumn-two-arguments",
+            any,
+            doc("", &table("\\multicolumn{2}{c} \\\\")),
+            "\\multicolumn{2}{c}",
+            Some("`\\multicolumn` s'écrit `\\multicolumn{colonnes}{alignement}{texte}` : il"),
+        ),
+        located(
+            "rule-not-after-row",
+            any,
+            doc("", &table("a & b \\hline")),
+            "\\hline",
+            Some("La ligne du tableau avant ce `\\hline` ne se termine pas par `\\\\` : un filet"),
+        ),
+        located(
+            "too-many-nested-lists",
+            any,
+            doc(
+                "",
+                "\\begin{itemize}\\item a\\begin{itemize}\\item b\\begin{itemize}\\item c\\begin{itemize}\\item d\\begin{itemize}\\item e\\end{itemize}\\end{itemize}\\end{itemize}\\end{itemize}\\end{itemize}",
+            ),
+            "\\begin{itemize}",
+            Some("Cette liste est la 5ᵉ imbriquée ; LaTeX s'arrête à quatre du même type."),
+        ),
+        located(
+            "rule-one-argument",
+            any,
+            doc("", "\\rule{1cm} Texte."),
+            "\\rule{1cm}",
+            Some("Il manque un argument à `\\rule` : à la place d'une longueur (un nombre et une"),
+        ),
+        // ---------------------------------------------------------------- names
+        located(
+            "color-in-french",
+            any,
+            doc("\\usepackage{xcolor}", "\\textcolor{rouge}{Texte}"),
+            "rouge",
+            Some("Vouliez-vous écrire `red` ?"),
+        ),
+        located(
+            "counter-typo",
+            any,
+            doc("", "\\setcounter{sectoin}{1} Texte."),
+            "sectoin",
+            Some("Vouliez-vous écrire `section` ?"),
+        ),
+        located(
+            "pagestyle-typo",
+            any,
+            doc("", "\\pagestyle{emtpy} Texte."),
+            "emtpy",
+            Some("`\\pagestyle` ne connaît pas `emtpy`. Vouliez-vous écrire `empty` ?"),
+        ),
+        located(
+            "class-typo",
+            any,
+            "\\documentclass{artcle}\n\\begin{document}\nTexte.\n\\end{document}\n".into(),
+            "artcle",
+            Some("Vouliez-vous écrire `article` ?"),
+        ),
+        located(
+            "tikz-library-typo",
+            any,
+            doc("\\usepackage{tikz}\n\\usetikzlibrary{arrow.meta}", "Texte."),
+            "arrow.meta",
+            Some("Vouliez-vous écrire `arrows.meta` ?"),
+        ),
+        located(
+            "tikz-node-typo",
+            any,
+            doc(
+                "\\usepackage{tikz}",
+                "\\begin{tikzpicture}\n\\node (debut) at (0,0) {A};\n\\draw (debut) -- (debu);\n\\end{tikzpicture}",
+            ),
+            "debu",
+            Some("Vouliez-vous écrire `debut` ?"),
+        ),
+        located(
+            "label-with-command",
+            any,
+            doc("", "\\section{A}\\label{sec:\\alpha}\nTexte."),
+            "\\alpha",
+            Some("L'argument de `\\label` est un nom : il ne peut pas contenir la commande"),
+        ),
+        located(
+            "windows-path-in-text",
+            any,
+            doc("", "Le fichier C:\\Users\\nom\\doc est ici."),
+            "C:\\Users\\nom\\doc",
+            Some(
+                "`C:\\Users\\nom\\doc` est un chemin : LaTeX lit chacun de ses `\\` comme le début",
+            ),
+        ),
+        // ------------------------------------------------------- definitions
+        located(
+            "definition-existing",
+            any,
+            doc("\\newcommand{\\alpha}{a}", "Texte."),
+            "\\newcommand",
+            Some("`\\alpha` existe déjà : `\\newcommand` refuse de le remplacer, `\\renewcommand`"),
+        ),
+        located(
+            "parameter-not-declared",
+            any,
+            doc("\\newcommand{\\double}{#1#1}", "\\double{a}"),
+            "\\newcommand{\\double}",
+            Some("La définition de `\\double` utilise `#1` et déclare 0 argument(s)."),
+        ),
+        located(
+            "verb-in-title",
+            any,
+            doc("", "\\section{Le code \\verb|x|}\nTexte."),
+            "\\verb|x|",
+            Some("Ce `\\verb` est dans l'argument d'une autre commande, où il ne peut pas lire"),
+        ),
+        located(
+            "usepackage-in-body",
+            any,
+            doc("", "\\usepackage{amsmath}\nTexte."),
+            "\\usepackage",
+            Some("Ce `\\usepackage` vient après `\\begin{document}` (ligne 2) : il ne s'emploie"),
+        ),
+        located(
+            "percent-eats-brace",
+            any,
+            doc("", "Une remise de \\textbf{50% de réduction}\n\nSuite."),
+            "\\textbf{",
+            Some("Le `%` de cette ligne met la fin de la ligne en commentaire, avec la `}` qui"),
+        ),
+        located(
+            "length-brace-never-closed",
+            any,
+            doc("", "Avant\\hspace{1cm après.\n\nSuite."),
+            "\\hspace{",
+            Some("L'accolade ouverte ici n'est jamais refermée."),
+        ),
+        located(
+            "register-without-unit",
+            any,
+            doc("\\parindent=10", "Texte."),
+            "10",
+            Some("`\\parindent` attend une longueur, et `10` n'a pas d'unité (`cm`, `mm`, `pt`,"),
+        ),
+        // ------------------------------------------- more of the same kinds
+        located(
+            "sqrt-in-text",
+            any,
+            doc("", "La racine \\sqrt{2} vaut environ 1,41."),
+            "\\sqrt",
+            Some("`\\sqrt` n'existe que dans une formule, et celui-ci est dans du texte."),
+        ),
+        located(
+            "sum-in-text",
+            any,
+            doc("", "La somme \\sum_{i=1}^n i est connue."),
+            "\\sum",
+            Some("`\\sum` n'existe que dans une formule, et celui-ci est dans du texte."),
+        ),
+        located(
+            "hat-in-text",
+            any,
+            doc("", "L'angle \\hat{A} est droit."),
+            "\\hat",
+            Some("`\\hat` n'existe que dans une formule, et celui-ci est dans du texte."),
+        ),
+        located(
+            "underscore-in-texttt",
+            any,
+            doc("", "Le fichier \\texttt{mon_fichier} est prêt."),
+            "_",
+            Some("`_` n'existe que dans une formule, et celui-ci est dans le texte de `\\texttt`."),
+        ),
+        located(
+            "brace-in-footnote",
+            any,
+            doc("", "Texte\\footnote{Une note\n\nSuite du texte."),
+            "\\footnote{",
+            Some("L'accolade ouverte ici n'est jamais refermée."),
+        ),
+        located(
+            "end-without-brace",
+            any,
+            doc("", "\\begin{itemize}\n\\item a\n\\end{itemize\n\nSuite."),
+            "\\end{",
+            Some("L'accolade ouverte ici n'est jamais refermée."),
+        ),
+        located(
+            "graphics-without-file",
+            any,
+            doc(
+                "\\usepackage{graphicx}",
+                "\\includegraphics[width=3cm]\n\nSuite.",
+            ),
+            "\\includegraphics[width=3cm]",
+            Some("`\\includegraphics` s'écrit `\\includegraphics[options]{fichier}` : il manque"),
+        ),
+        located(
+            "href-one-argument",
+            any,
+            doc(
+                "\\usepackage{hyperref}",
+                "Voir \\href{https://ctan.org}\n\nSuite.",
+            ),
+            "\\href{https://ctan.org}",
+            Some("`\\href` s'écrit `\\href{adresse}{texte}` : il manque l'argument `{texte}`."),
+        ),
+        located(
+            "ref-in-label",
+            any,
+            doc("", "\\section{A}\\label{sec:\\ref{a}}\nTexte."),
+            "\\ref",
+            Some("L'argument de `\\label` est un nom : il ne peut pas contenir la commande"),
+        ),
+        located(
+            "cases-outside-math",
+            any,
+            doc(
+                "\\usepackage{amsmath}",
+                "Soit \\begin{cases} a \\\\ b \\end{cases} ici.",
+            ),
+            "\\begin{cases}",
+            Some("`\\begin{cases}` n'existe que dans une formule, et celui-ci est dans du texte."),
+        ),
+        located(
+            "dollar-in-align",
+            any,
+            doc(
+                "\\usepackage{amsmath}",
+                "\\begin{align}\n$a$ &= b\n\\end{align}",
+            ),
+            "$",
+            Some("Ce `$` est dans `align`, qui est déjà une formule : il n'en faut pas ici."),
+        ),
+        located(
+            "blank-line-in-align",
+            any,
+            doc(
+                "\\usepackage{amsmath}",
+                "\\begin{align}\na &= b\n\nc &= d\n\\end{align}",
+            ),
+            "",
+            Some("Une ligne vide coupe cette formule : elle termine le paragraphe, et TeX ferme"),
+        ),
+        located(
+            "multicols-without-number",
+            any,
+            doc(
+                "\\usepackage{multicol}",
+                "\\begin{multicols}\nTexte\n\\end{multicols}",
+            ),
+            "\\begin{multicols}",
+            Some("`\\begin{multicols}` s'écrit `\\begin{multicols}{colonnes}` : il manque son"),
+        ),
+        located(
+            "minipage-without-width",
+            any,
+            doc("", "\\begin{minipage}\nTexte\n\\end{minipage}"),
+            "\\begin{minipage}",
+            Some("`\\begin{minipage}` s'écrit `\\begin{minipage}[position]{largeur}` : il manque"),
+        ),
+        located(
+            "unit-in-words",
+            any,
+            doc("", "Avant\\hspace{2 centimetres}après."),
+            "centimetres",
+            Some("`centimetres` n'est pas une unité que TeX connaît (`pt`, `cm`, `mm`, `in`,"),
+        ),
+        located(
+            "begin-document-twice",
+            any,
+            doc("", "Texte.\n\\begin{document}\nSuite."),
+            "\\begin{document}",
+            Some("Le document a déjà commencé ligne 2 : ce second `\\begin{document}` est en"),
+        ),
+        located(
+            "cell-with-ampersand",
+            any,
+            doc("", "\\begin{tabular}{l}\nR&D \\\\\n\\end{tabular}"),
+            "&",
+            Some("Cette ligne a 2 cellules, et le tableau 1 colonnes (`{l}`)."),
+        ),
+        located(
+            "item-in-text",
+            any,
+            doc("", "Voici :\n\\item un point"),
+            "\\item",
+            Some("Ce `\\item` n'est dans aucune liste."),
+        ),
+        located(
+            "textbf-across-paragraphs",
+            any,
+            doc("", "\\textbf{Premier paragraphe.\n\nSecond paragraphe.}"),
+            "\\textbf{",
+            Some("L'argument de `\\textbf` contient une ligne vide (ligne 4) : cette commande"),
+        ),
+        located(
+            "center-closed-as-centre",
+            any,
+            doc("", "\\begin{center}\nTexte\n\\end{centre}"),
+            "\\end{centre}",
+            Some("`\\end{centre}` ferme `\\begin{center}`, ouvert ligne 3."),
+        ),
+        located(
+            "right-without-left",
+            any,
+            doc("", "$a + b \\right)$"),
+            "$",
+            Some("`\\left` et `\\right` ne sont pas appariés dans cette formule (`\\right.` ferme"),
+        ),
+        located(
+            "subscript-twice",
+            any,
+            doc("", "$a_i_j$"),
+            "a_i_j",
+            Some("Deux indices (`_`) se suivent sur `a` : TeX ne sait pas s'il faut lire"),
+        ),
+        located(
+            "pagenumbering-typo",
+            any,
+            doc("", "\\pagenumbering{romain}\nTexte."),
+            "romain",
+            Some("`\\pagenumbering` ne connaît pas `romain`. Vouliez-vous écrire `roman` ?"),
+        ),
+    ]
+}
+
 /// The text of the document a diagnostic is placed on.
 fn shown(text: &str, d: &Diagnostic) -> String {
     let Some(r) = d.range else {
@@ -856,7 +1362,15 @@ fn run_located(
             false,
         )
     };
-    let Some(d) = built.diagnostics.iter().find(|d| has_code(d, case.code)) else {
+    // Whatever message TeX gives when the case names none: its first error.
+    let reported = |d: &&Diagnostic| {
+        if case.code.is_empty() {
+            d.severity == Severity::Error && d.source == Source::Latex
+        } else {
+            has_code(d, case.code)
+        }
+    };
+    let Some(d) = built.diagnostics.iter().find(reported) else {
         return fail(format!("no `{}` diagnostic", case.code));
     };
     let text = shown(&case.main, d);
@@ -874,8 +1388,8 @@ fn run_located(
     let same_line: Vec<&Diagnostic> = built
         .diagnostics
         .iter()
-        .filter(|x| x.severity == Severity::Error && !std::ptr::eq(*x, d))
-        .filter(|x| !has_code(x, "emergency-stop"))
+        .filter(|x| x.severity == Severity::Error && x.source == Source::Latex)
+        .filter(|x| !std::ptr::eq(*x, d) && !has_code(x, "emergency-stop"))
         .collect();
     if !same_line.is_empty() {
         return fail(format!(
@@ -906,7 +1420,8 @@ fn causes_are_found_and_shown() {
     let probe = std::env::var_os("LBT_PROBE").is_some();
     let only = std::env::var("LBT_CASE").ok();
     let mut failed = 0;
-    let cases = located_cases();
+    let mut cases = located_cases();
+    cases.extend(forum_cases());
     for case in cases
         .iter()
         .filter(|c| only.as_deref().is_none_or(|o| c.name.contains(o)))

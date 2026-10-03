@@ -114,7 +114,16 @@ Each entry says what a LaTeX, BibTeX or Biber message means:
 - `explanation` is shown in the Problems panel under every problem with this message, so it must hold for all of them: what the message means, in plain words, and nothing about a cause it cannot know ("often", "probably", "check that…").
 - `more` (optional) lists the usual causes and remedies. It is only shown in *Help › Errors*, after the explanation.
 
-The cause of a problem in a given document is not written here: the engine finds it in the sources (`fixes/latex.rs`, `fixes/numeric.rs`), places the problem on the word or the argument to change and says what is wrong with it in the *advice* of the problem (the light bulb), with its fix. A problem whose cause is not found gets its explanation and no advice. To teach the engine a new cause, add an analysis there and a case to `tests/common_mistakes.rs` (`located_cases`: the text shown and what the advice says, checked with a real TeX distribution).
+The cause of a problem in a given document is not written here, and is not tied to a message: the engine looks for it in the source (`fixes/cause.rs`), where TeX stopped, with what this knowledge base says of the commands and environments written there:
+
+- their `mode`: a command or an environment of formulas written in text, and the reverse;
+- their `args`: an argument of the signature that is not written, and what an argument expects by its name (`{width}`, `{length}`: a length; `{number}`: a number; `{label}`, `{counter}`: a name without command);
+- the values of an argument listed in `data/keys.json` (`\pagestyle{1}`): a value close to one of them is a typo;
+- the structure of the paragraph as the live checks see it (braces, formulas, environments).
+
+So a command described here gets its mistakes explained without anything else: the problem is placed on the word or the argument to change, its title names the mistake and its *advice* (the light bulb) says what is wrong, with a fix when there is one. A problem whose cause is not found keeps its explanation and gets no advice.
+
+To check a new kind of mistake, add a case to `tests/common_mistakes.rs` (`forum_cases`: a document, the text that must be shown and what the advice must say; the message TeX gives is not part of the case). They run with a real TeX distribution: `cargo test -p raytex-core --release --test common_mistakes -- --ignored causes_are_found --nocapture` (`LBT_PROBE=1` prints what is found instead of checking).
 
 ## TikZ gallery: `data/tikz.json`
 

@@ -5423,6 +5423,296 @@
      "en": "Error bars (y dir=both, y explicit)"
     }
    ]
+  },
+  {
+   "package": "latex",
+   "for": [
+    "\\pagestyle{1}",
+    "\\thispagestyle{1}"
+   ],
+   "keys": [
+    {
+     "k": "plain",
+     "fr": "Numéro de page en pied, rien en tête",
+     "en": "Page number in the footer, empty header"
+    },
+    {
+     "k": "empty",
+     "fr": "Ni en-tête ni pied de page",
+     "en": "No header and no footer"
+    },
+    {
+     "k": "headings",
+     "fr": "Titre courant et numéro de page en tête",
+     "en": "Running title and page number in the header"
+    },
+    {
+     "k": "myheadings",
+     "fr": "En-tête donné par \\markboth et \\markright",
+     "en": "Header given by \\markboth and \\markright"
+    },
+    {
+     "k": "fancy",
+     "fr": "En-têtes et pieds définis avec fancyhdr",
+     "en": "Headers and footers defined with fancyhdr"
+    }
+   ]
+  },
+  {
+   "package": "latex",
+   "for": [
+    "\\pagenumbering{1}"
+   ],
+   "keys": [
+    {
+     "k": "arabic",
+     "fr": "Chiffres arabes : 1, 2, 3",
+     "en": "Arabic numerals: 1, 2, 3"
+    },
+    {
+     "k": "roman",
+     "fr": "Chiffres romains minuscules : i, ii, iii",
+     "en": "Lowercase roman numerals: i, ii, iii"
+    },
+    {
+     "k": "Roman",
+     "fr": "Chiffres romains majuscules : I, II, III",
+     "en": "Uppercase roman numerals: I, II, III"
+    },
+    {
+     "k": "alph",
+     "fr": "Lettres minuscules : a, b, c",
+     "en": "Lowercase letters: a, b, c"
+    },
+    {
+     "k": "Alph",
+     "fr": "Lettres majuscules : A, B, C",
+     "en": "Uppercase letters: A, B, C"
+    }
+   ]
+  },
+  {
+   "package": "tikz",
+   "for": [
+    "\\usetikzlibrary{1}"
+   ],
+   "keys": [
+    {
+     "k": "arrows.meta",
+     "fr": "Pointes de flèche (Stealth, Latex, Triangle…)",
+     "en": "Arrow tips (Stealth, Latex, Triangle…)"
+    },
+    {
+     "k": "positioning",
+     "fr": "Placer un nœud par rapport à un autre (right=of a)",
+     "en": "Place a node relative to another (right=of a)"
+    },
+    {
+     "k": "calc",
+     "fr": "Calculs sur les coordonnées : ($(a)!0.5!(b)$)",
+     "en": "Coordinate calculations: ($(a)!0.5!(b)$)"
+    },
+    {
+     "k": "shapes.geometric",
+     "fr": "Formes : diamond, ellipse, trapezium, star…",
+     "en": "Shapes: diamond, ellipse, trapezium, star…"
+    },
+    {
+     "k": "shapes.misc",
+     "fr": "Formes : rounded rectangle, cross out…",
+     "en": "Shapes: rounded rectangle, cross out…"
+    },
+    {
+     "k": "shapes.symbols",
+     "fr": "Formes : cloud, starburst, signal…",
+     "en": "Shapes: cloud, starburst, signal…"
+    },
+    {
+     "k": "shapes.arrows",
+     "fr": "Formes de flèches pleines",
+     "en": "Solid arrow shapes"
+    },
+    {
+     "k": "shapes.multipart",
+     "fr": "Nœuds en plusieurs parties",
+     "en": "Nodes in several parts"
+    },
+    {
+     "k": "shapes.callouts",
+     "fr": "Bulles de texte",
+     "en": "Speech bubbles"
+    },
+    {
+     "k": "shapes",
+     "fr": "Toutes les formes de nœuds",
+     "en": "All the node shapes"
+    },
+    {
+     "k": "arrows",
+     "fr": "Anciennes pointes de flèche (stealth', triangle 45…)",
+     "en": "Older arrow tips (stealth', triangle 45…)"
+    },
+    {
+     "k": "decorations.pathmorphing",
+     "fr": "Tracés déformés : zigzag, snake, coil…",
+     "en": "Deformed paths: zigzag, snake, coil…"
+    },
+    {
+     "k": "decorations.pathreplacing",
+     "fr": "Accolades et tracés remplacés : brace…",
+     "en": "Braces and replaced paths: brace…"
+    },
+    {
+     "k": "decorations.markings",
+     "fr": "Marques placées le long d'un tracé",
+     "en": "Marks placed along a path"
+    },
+    {
+     "k": "decorations.text",
+     "fr": "Texte le long d'un tracé",
+     "en": "Text along a path"
+    },
+    {
+     "k": "decorations",
+     "fr": "Décorations de tracés",
+     "en": "Path decorations"
+    },
+    {
+     "k": "patterns",
+     "fr": "Motifs de remplissage : hachures, points…",
+     "en": "Fill patterns: lines, dots…"
+    },
+    {
+     "k": "patterns.meta",
+     "fr": "Motifs de remplissage réglables",
+     "en": "Adjustable fill patterns"
+    },
+    {
+     "k": "backgrounds",
+     "fr": "Dessiner derrière le reste (on background layer)",
+     "en": "Draw behind the rest (on background layer)"
+    },
+    {
+     "k": "fit",
+     "fr": "Nœud qui englobe d'autres nœuds",
+     "en": "A node that fits around other nodes"
+    },
+    {
+     "k": "matrix",
+     "fr": "Matrices de nœuds",
+     "en": "Matrices of nodes"
+    },
+    {
+     "k": "chains",
+     "fr": "Nœuds placés en chaîne",
+     "en": "Nodes placed in a chain"
+    },
+    {
+     "k": "trees",
+     "fr": "Arbres",
+     "en": "Trees"
+    },
+    {
+     "k": "graphs",
+     "fr": "Graphes décrits simplement",
+     "en": "Graphs described simply"
+    },
+    {
+     "k": "automata",
+     "fr": "Automates finis",
+     "en": "Finite automata"
+    },
+    {
+     "k": "mindmap",
+     "fr": "Cartes mentales",
+     "en": "Mind maps"
+    },
+    {
+     "k": "intersections",
+     "fr": "Points d'intersection de deux tracés",
+     "en": "Intersection points of two paths"
+    },
+    {
+     "k": "through",
+     "fr": "Cercle passant par un point",
+     "en": "Circle through a point"
+    },
+    {
+     "k": "angles",
+     "fr": "Marquer un angle",
+     "en": "Mark an angle"
+    },
+    {
+     "k": "quotes",
+     "fr": "Étiquettes entre guillemets : \"texte\"",
+     "en": "Labels in quotes: \"text\""
+    },
+    {
+     "k": "babel",
+     "fr": "Compatibilité avec les caractères actifs de babel",
+     "en": "Compatibility with babel's active characters"
+    },
+    {
+     "k": "shadows",
+     "fr": "Ombres portées",
+     "en": "Drop shadows"
+    },
+    {
+     "k": "shadings",
+     "fr": "Dégradés",
+     "en": "Shadings"
+    },
+    {
+     "k": "fadings",
+     "fr": "Fondus de transparence",
+     "en": "Transparency fadings"
+    },
+    {
+     "k": "plotmarks",
+     "fr": "Marques de points pour les courbes",
+     "en": "Plot marks"
+    },
+    {
+     "k": "math",
+     "fr": "Calculs et variables dans un dessin",
+     "en": "Calculations and variables in a picture"
+    },
+    {
+     "k": "external",
+     "fr": "Dessins compilés à part et mis en cache",
+     "en": "Pictures compiled apart and cached"
+    },
+    {
+     "k": "spy",
+     "fr": "Loupe sur une partie du dessin",
+     "en": "Magnify a part of the picture"
+    },
+    {
+     "k": "circuits.ee.IEC",
+     "fr": "Circuits électriques (norme IEC)",
+     "en": "Electrical circuits (IEC)"
+    },
+    {
+     "k": "circuits.logic.US",
+     "fr": "Circuits logiques (symboles US)",
+     "en": "Logic circuits (US symbols)"
+    },
+    {
+     "k": "3d",
+     "fr": "Dessin dans des plans en 3D",
+     "en": "Drawing in 3D planes"
+    },
+    {
+     "k": "perspective",
+     "fr": "Vue en perspective",
+     "en": "Perspective view"
+    },
+    {
+     "k": "cd",
+     "fr": "Diagrammes commutatifs (tikz-cd)",
+     "en": "Commutative diagrams (tikz-cd)"
+    }
+   ]
   }
  ]
 }

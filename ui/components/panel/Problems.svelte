@@ -74,13 +74,16 @@
     return line ? (col ? `${line}:${col}` : `${line}`) : "";
   }
 
-  /** One problem as text: `chapters/intro.tex:12:5: erreur : message`. */
+  /** One problem as text: `chapters/intro.tex:12:5: erreur : message`,
+   *  then what the panel says about it (the cause found, what the message
+   *  means). */
   function asText(d: Diagnostic, details = false): string {
     const where = d.file ? `${relative(project.info?.root ?? "", d.file)}${location(d) ? `:${location(d)}` : ""}: ` : "";
     const lines = [`${where}${t(SEVERITY[d.severity])}: ${d.hint?.title ?? d.message}`];
     if (d.hint && d.hint.title !== d.message) lines.push(`  ${d.message}`);
     const cause = causeOf(d);
     if (cause) lines.push(`  ${cause}`);
+    if (d.hint?.explanation) lines.push(`  ${d.hint.explanation}`);
     if (details && (d.contextBefore || d.contextAfter)) lines.push(`  ${d.contextBefore ?? ""}⏐${d.contextAfter ?? ""}`);
     if (details && d.raw) lines.push(d.raw);
     return lines.join("\n");
@@ -166,7 +169,7 @@
           <span class="src">{SOURCE[d.source]}{d.code && (d.source === "lint" || d.source === "syntax") ? ` · ${d.code}` : ""}</span>
           {#if location(d)}<button class="loc mono" onclick={() => open(d)}>{location(d)}</button>{/if}
         </div>
-        {#if d.hint && !open_}
+        {#if d.hint && !open_ && (suggestionOf(d) || d.hint.explanation)}
           {@const suggestion = suggestionOf(d)}
           <!-- The suggestion when the cause is known, else what the message means; a click shows the details. -->
           <div class="suggestion selectable" role="button" tabindex="-1" onclick={() => !selection() && toggle(d)} onkeydown={(e) => e.key === "Enter" && toggle(d)}>
@@ -189,7 +192,7 @@
             {#if causeOf(d)}
               <p class="cause selectable"><Icon name="lightbulb" size={13} /><span>{@html inlineMarkdown(causeOf(d) ?? "")}</span></p>
             {/if}
-            {#if d.hint}<p class="explanation selectable">{@html inlineMarkdown(d.hint.explanation)}</p>{/if}
+            {#if d.hint?.explanation}<p class="explanation selectable">{@html inlineMarkdown(d.hint.explanation)}</p>{/if}
             {#if d.contextBefore || d.contextAfter}
               <div class="context mono selectable">
                 <span class="before">{d.contextBefore ?? ""}</span><span class="cursor"></span><span class="after">{d.contextAfter ?? ""}</span>

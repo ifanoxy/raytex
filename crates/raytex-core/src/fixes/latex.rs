@@ -51,7 +51,7 @@ impl Src {
         self.lines.range(&self.text, span)
     }
 
-    fn offset(&self, pos: crate::text::Position) -> usize {
+    pub(super) fn offset(&self, pos: crate::text::Position) -> usize {
         self.lines.offset(&self.text, pos)
     }
 
@@ -71,7 +71,7 @@ impl Src {
         self.lines.line_count()
     }
 
-    fn line_of(&self, offset: usize) -> usize {
+    pub(super) fn line_of(&self, offset: usize) -> usize {
         self.lines.line_of(offset)
     }
 
@@ -94,7 +94,7 @@ impl Src {
     }
 
     /// Deletes `span`, with its line when nothing else is on it.
-    fn delete(&self, span: Span) -> FileEdit {
+    pub(super) fn delete(&self, span: Span) -> FileEdit {
         let line = self.line_of(span.start);
         let (ls, lt) = self.line(line);
         let rest = format!(
@@ -197,7 +197,7 @@ impl<'a> Sources<'a> {
         out
     }
 
-    fn srcs(&mut self) -> Vec<Rc<Src>> {
+    pub(super) fn srcs(&mut self) -> Vec<Rc<Src>> {
         self.files()
             .into_iter()
             .filter_map(|f| self.get(&f))
@@ -305,7 +305,7 @@ pub(crate) fn files_with(dir: &Path, exts: &[&str]) -> Vec<PathBuf> {
 /// Where a diagnostic is: its file, the token before the error point, its line.
 pub(super) struct At {
     pub(super) src: Rc<Src>,
-    token: Span,
+    pub(super) token: Span,
     pub(super) line: usize,
 }
 
@@ -352,12 +352,22 @@ pub(crate) const CONSEQUENCE: &str = "consequence";
 
 /// Says the cause found in the sources (the advice of the hint). Only what
 /// was read in the document may be said here: a guess is never an advice.
-fn advise(d: &mut Diagnostic, lang: Lang, fr: &str, en: &str) {
+pub(super) fn advise(d: &mut Diagnostic, lang: Lang, fr: &str, en: &str) {
     d.advise(lang.pick(fr, en));
 }
 
+/// The `%` that comes after the brace opened at `open`, on its line, when
+/// the comment it starts holds the `}` (`\\textbf{50% de réduction}`).
+pub(super) fn percent_hides_brace(text: &str, open: usize) -> Option<usize> {
+    let b = text.as_bytes();
+    let line_end = text[open..].find('\n').map_or(text.len(), |i| open + i);
+    (open..line_end)
+        .find(|&i| b[i] == b'%' && b[i - 1] != b'\\')
+        .filter(|&i| text[i..line_end].contains('}'))
+}
+
 /// "Did you mean …?", for a name found close to the one written.
-fn did_you_mean(d: &mut Diagnostic, lang: Lang, best: &str) {
+pub(super) fn did_you_mean(d: &mut Diagnostic, lang: Lang, best: &str) {
     advise(
         d,
         lang,
@@ -380,7 +390,12 @@ fn quoted(message: &str) -> Option<String> {
 }
 
 /// The last occurrence of `word` in `src` on `line`, before `before` when possible.
-fn find_on_line(src: &Src, line: usize, word: &str, before: Option<usize>) -> Option<Span> {
+pub(super) fn find_on_line(
+    src: &Src,
+    line: usize,
+    word: &str,
+    before: Option<usize>,
+) -> Option<Span> {
     let (span, text) = src.line(line);
     let limit = before
         .filter(|b| (span.start..=span.end).contains(b))
@@ -495,7 +510,18 @@ pub(crate) fn suggest(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) {
         );
         return;
     }
-    let Some(code) = d.code.clone() else { return };
+    let code = d.code.clone().unwrap_or_default();
+    let compiler = d.severity == crate::diagnostics::Severity::Error
+        && d.source == crate::diagnostics::Source::Latex;
+    // A message that only tells how TeX went on (a `$` or a brace it added):
+    // what is wrong in the structure of the paragraph is its cause.
+    if compiler
+        && super::cause::is_symptom(&code, &d.message)
+        && let Some(fixes) = super::cause::explain_structure(d, s, lang)
+    {
+        d.fixes = fixes;
+        return;
+    }
     let found = match code.as_str() {
         "undefined-control-sequence" => undefined_cs(d, s, lang),
         "env-undefined" => env_undefined(d, s, lang),
@@ -576,6 +602,19 @@ pub(crate) fn suggest(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) {
         }
     }
     d.fixes = all;
+    // No analysis of this message found the cause: it is looked for in the
+    // source, whatever the message says.
+    let explained = d.hint.as_ref().is_some_and(|h| h.advice.is_some());
+    if !explained
+        && compiler
+        && let Some(fixes) = super::cause::explain(d, s, lang)
+    {
+        for f in fixes {
+            if !d.fixes.contains(&f) {
+                d.fixes.push(f);
+            }
+        }
+    }
     // At least the documentation of the package that complains.
     if d.fixes.is_empty()
         && let Some(m) = PACKAGE_IN_MESSAGE.captures(&d.message)
@@ -780,17 +819,17 @@ fn env_mismatch(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
             let begin_end = src.text[begin.clone()]
                 .find(&format!("\\begin{{{open}}}"))
                 .map_or(begin.end, |i| begin.start + i + open.len() + 8);
+            d.swallows = true;
+            // Shown where it opens: that is where the `\\end` is missing from.
+            let written = format!("\\begin{{{open}}}");
+            if let Some(i) = src.text[begin.clone()].find(&written) {
+                place(d, src, begin.start + i..begin.start + i + written.len());
+            }
             advise(
                 d,
                 lang,
-                &format!(
-                    "`\\begin{{{open}}}`, ouvert ligne {}, n'est jamais fermé.",
-                    begin_line + 1
-                ),
-                &format!(
-                    "`\\begin{{{open}}}`, opened on line {}, is never closed.",
-                    begin_line + 1
-                ),
+                &format!("Ce `\\begin{{{open}}}` n'est jamais fermé par `\\end{{{open}}}`."),
+                &format!("This `\\begin{{{open}}}` is never closed by `\\end{{{open}}}`."),
             );
             return edits(
                 format!("{} \\end{{{open}}}", lang.pick("Fermer avec", "Close with")),
@@ -931,6 +970,9 @@ fn lonely_item(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> 
         }
         last += 1;
     }
+    if let Some(item) = find_on_line(src, at.line, "\\item", Some(at.point())) {
+        place(d, src, item);
+    }
     advise(
         d,
         lang,
@@ -995,6 +1037,19 @@ fn unclosed_brace(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
             })
             .unwrap_or(open);
         place(d, &src, start..open + 1);
+        d.swallows = true;
+        if let Some(percent) = percent_hides_brace(&src.text, open) {
+            advise(
+                d,
+                lang,
+                "Le `%` de cette ligne met la fin de la ligne en commentaire, avec la `}` qui ferme cette accolade. Un pourcentage s'écrit `\\%`.",
+                "The `%` of this line turns the end of the line into a comment, with the `}` that closes this brace. A percent sign is written `\\%`.",
+            );
+            return edits(
+                lang.pick("Écrire \\%", "Write \\%").into(),
+                vec![src.edit(percent..percent + 1, "\\%")],
+            );
+        }
         advise(
             d,
             lang,
@@ -1098,7 +1153,7 @@ fn missing_brace(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
 static TRAILING_COMMAND: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\\[A-Za-z]+\*?$").unwrap());
 
-fn inside_display(src: &Src, offset: usize) -> bool {
+pub(super) fn inside_display(src: &Src, offset: usize) -> bool {
     let before = mask(&src.text[..offset]);
     let open = before.rfind("\\[").map(|i| i as isize).unwrap_or(-1);
     let close = before.rfind("\\]").map(|i| i as isize).unwrap_or(-1);
@@ -1310,6 +1365,24 @@ fn double_script(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
     };
     let nested = format!("{}{{{}}}", &text[base..first + 1], &text[first + 1..end]);
     let grouped = format!("{{{}}}{}", &text[base..second], &text[second..end]);
+    let (script, fr, en) = if c == Some(b'_') {
+        ("_", "indices", "subscripts")
+    } else {
+        ("^", "exposants", "superscripts")
+    };
+    place(d, src, base..end);
+    advise(
+        d,
+        lang,
+        &format!(
+            "Deux {fr} (`{script}`) se suivent sur `{}` : TeX ne sait pas s'il faut lire `{nested}` ou `{grouped}`.",
+            &text[base..first]
+        ),
+        &format!(
+            "Two {en} (`{script}`) follow each other on `{}`: TeX cannot tell whether to read `{nested}` or `{grouped}`.",
+            &text[base..first]
+        ),
+    );
     vec![
         Fix::Edits {
             title: format!("{} {nested}", lang.pick("Écrire", "Write")),
@@ -1745,29 +1818,57 @@ fn end_row(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
         return Vec::new();
     };
     let src = &at.src;
-    let (_, line_text) = src.line(at.line);
-    if !RULES.iter().any(|r| line_text.trim_start().starts_with(r)) {
-        return Vec::new();
-    }
-    let Some(prev) = (0..at.line).rev().find(|&l| {
-        let text = src.line(l).1;
-        !text[..content_end(text)].trim().is_empty()
-    }) else {
+    let (line, line_text) = src.line(at.line);
+    let point = at.point().clamp(line.start, line.end) - line.start;
+    // The rule TeX stopped at, and what is written before it.
+    let Some((rule_at, rule)) = RULES
+        .iter()
+        .filter_map(|r| line_text[..point].rfind(r).map(|i| (i, *r)))
+        .max_by_key(|(i, _)| *i)
+    else {
         return Vec::new();
     };
-    let (span, text) = src.line(prev);
-    let content = text[..content_end(text)].trim_start();
+    let before = line_text[..rule_at].trim();
+    let (insert_at, content) = if before.is_empty() {
+        let Some(prev) = (0..at.line).rev().find(|&l| {
+            let text = src.line(l).1;
+            !text[..content_end(text)].trim().is_empty()
+        }) else {
+            return Vec::new();
+        };
+        let (span, text) = src.line(prev);
+        (
+            span.start + content_end(text),
+            text[..content_end(text)].trim_start().to_owned(),
+        )
+    } else {
+        (
+            line.start + line_text[..rule_at].trim_end().len(),
+            before.to_owned(),
+        )
+    };
     if content.ends_with("\\\\")
-        || RULES.iter().any(|r| content.starts_with(r))
+        || RULES
+            .iter()
+            .any(|r| content.starts_with(r) || content.ends_with(r))
         || content.starts_with("\\begin")
     {
         return Vec::new();
     }
+    place(
+        d,
+        src,
+        line.start + rule_at..line.start + rule_at + rule.len(),
+    );
     advise(
         d,
         lang,
-        "La ligne du tableau qui précède ce filet ne se termine pas par `\\\\`.",
-        "The row of the table before this rule does not end with `\\\\`.",
+        &format!(
+            "La ligne du tableau avant ce `{rule}` ne se termine pas par `\\\\` : un filet ne peut venir qu'après la fin d'une ligne."
+        ),
+        &format!(
+            "The row of the table before this `{rule}` does not end with `\\\\`: a rule can only come after the end of a row."
+        ),
     );
     edits(
         lang.pick(
@@ -1775,7 +1876,7 @@ fn end_row(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
             "End the row of the table with \\\\",
         )
         .into(),
-        vec![src.insert(span.start + content_end(text), " \\\\")],
+        vec![src.insert(insert_at, " \\\\")],
     )
 }
 
@@ -2675,6 +2776,54 @@ fn move_to_preamble(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<
     };
     let src = &at.src;
     let p = at.point();
+    let (line, _) = src.line(at.line);
+    let masked = mask(&src.text);
+    let written = super::numeric::command_start(&masked, line.start, p)
+        .map_or(at.token.clone(), |start| start..p);
+    let command = src.text[written.clone()].to_owned();
+    if command.starts_with('\\')
+        && let Some(begin) = masked
+            .find("\\begin{document}")
+            .filter(|b| *b < written.start)
+    {
+        place(d, src, written.clone());
+        let line = src.line_of(begin) + 1;
+        if command == "\\begin{document}" {
+            advise(
+                d,
+                lang,
+                &format!(
+                    "Le document a déjà commencé ligne {line} : ce second `\\begin{{document}}` est en trop."
+                ),
+                &format!(
+                    "The document has already begun on line {line}: this second `\\begin{{document}}` is one too many."
+                ),
+            );
+            return edits(
+                lang.pick(
+                    "Supprimer ce \\begin{document}",
+                    "Delete this \\begin{document}",
+                )
+                .into(),
+                vec![src.delete(written)],
+            );
+        }
+        let name = command
+            .split(['{', '['])
+            .next()
+            .unwrap_or(&command)
+            .to_owned();
+        advise(
+            d,
+            lang,
+            &format!(
+                "Ce `{name}` vient après `\\begin{{document}}` (ligne {line}) : il ne s'emploie qu'avant, dans le préambule."
+            ),
+            &format!(
+                "This `{name}` comes after `\\begin{{document}}` (line {line}): it is only used before it, in the preamble."
+            ),
+        );
+    }
     let Some(pkg) = src
         .index
         .packages
@@ -3752,6 +3901,17 @@ fn verb(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
         return Vec::new();
     };
     let body = &line[body_start..body_start + len];
+    place(
+        d,
+        src,
+        span.start + i..span.start + body_start + len + delim.len_utf8(),
+    );
+    advise(
+        d,
+        lang,
+        "Ce `\\verb` est dans l'argument d'une autre commande, où il ne peut pas lire son texte tel quel.",
+        "This `\\verb` is in the argument of another command, where it cannot read its text as it is.",
+    );
     let mut escaped = String::new();
     for c in body.chars() {
         match c {

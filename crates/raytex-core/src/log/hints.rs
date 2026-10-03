@@ -17,7 +17,7 @@ use std::sync::LazyLock;
 use regex::Regex;
 use serde::Deserialize;
 
-use crate::diagnostics::{Diagnostic, Fix, Hint, Severity, Source};
+use crate::diagnostics::{Diagnostic, Fix, Hint};
 use crate::i18n::Lang;
 use crate::kb::{Doc, KERNEL, kb};
 
@@ -81,8 +81,13 @@ static FILE_NOT_FOUND: LazyLock<Regex> =
 
 /// Adds a hint and fixes to `d` (idempotent).
 pub fn enrich(d: &mut Diagnostic, lang: Lang) {
+    // Patterns are written for the message itself: `LaTeX Error:` and
+    // `Package x Error:` before it are not part of what they match.
+    let bare = PREFIX.replace(&d.message, "");
     if d.hint.is_none()
-        && let Some(info) = CATALOG.iter().find(|e| e.regex.is_match(&d.message))
+        && let Some(info) = CATALOG
+            .iter()
+            .find(|e| e.regex.is_match(&d.message) || e.regex.is_match(&bare))
     {
         if d.code.is_none() {
             d.code = Some(info.id.clone());
@@ -162,71 +167,146 @@ pub fn enrich(d: &mut Diagnostic, lang: Lang) {
     }
 }
 
-static PACKAGE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(?:Package (\S+) (?:Error|Warning)|([A-Za-z][\w.-]*): )").unwrap()
+static PREFIX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?:LaTeX Error|Package \S+ Error|Class \S+ Error): ").unwrap());
+static PACKAGE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(Package|Class) (\S+) (Error|Warning)").unwrap());
+static MISSING: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^Missing (.+?) inserted").unwrap());
+static EXTRA: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^Extra (.+?)(?:, or forgotten (.+?))?\.?$").unwrap());
+static MISPLACED: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^Misplaced (.+?)\.?$").unwrap());
+static INCOMPLETE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^Incomplete (\\if\w*); all text was ignored after line (\d+)").unwrap()
 });
+static ONLY_IN_MODE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(.+?) allowed only in (\w+) mode").unwrap());
 
-/// Gives a diagnostic an explanation when the catalogue does not know its
-/// message: what kind of problem it is and where to look.
+/// Gives a title and an explanation to a message the catalogue does not
+/// know, from its shape: TeX builds its messages on a few patterns
+/// ("Missing … inserted", "Extra …", "Misplaced …"), and what they mean
+/// does not depend on what they name. A message of another shape is left
+/// as it is: it is shown as TeX wrote it, without a text saying nothing.
 pub fn fallback(d: &mut Diagnostic, lang: Lang) {
-    if d.hint.is_some() {
+    // An advice found in the sources may have come before the title.
+    if d.hint.as_ref().is_some_and(|h| h.title != d.message) {
         return;
     }
-    let package = PACKAGE
-        .captures(&d.message)
-        .and_then(|m| m.get(1).or(m.get(2)))
-        .map(|m| m.as_str().to_owned())
-        .filter(|p| !matches!(p.as_str(), "Font" | "pdfTeX" | "LaTeX"));
-    let error = d.severity == Severity::Error;
-    let (title, explanation) = match (&package, d.source) {
-        (_, Source::Bibtex | Source::Biber) => (
-            lang.pick("Problème de bibliographie", "Bibliography problem").to_owned(),
-            lang.pick(
-                "BibTeX ou Biber signale un problème dans un fichier `.bib` ou dans les citations. Le message (en anglais) dit ce qu'il a rencontré.",
-                "BibTeX or Biber reports a problem in a `.bib` file or in the citations. The message says what it met.",
-            )
-            .to_owned(),
-        ),
-        (Some(p), _) if error => (
-            format!("{} {p}", lang.pick("Erreur du package", "Error of package")),
-            format!(
-                "{} `{p}` {}",
-                lang.pick("Le package", "The package"),
+    let advice = d.hint.take().and_then(|h| h.advice);
+    let bare = PREFIX.replace(&d.message, "").into_owned();
+    let read = if let Some(m) = MISSING.captures(&bare) {
+        let what = &m[1];
+        if what.starts_with("delimiter") {
+            Some((
+                lang.pick("Délimiteur manquant", "Missing delimiter").to_owned(),
                 lang.pick(
-                    "refuse ce qui est écrit à cet endroit. Le message (en anglais) dit ce qu'il refuse ; sa documentation détaille ses commandes et options.",
-                    "rejects what is written here. The message says what it rejects; its documentation details its commands and options.",
+                    "`\\left`, `\\right` et les commandes `\\big…` doivent être suivis d'un délimiteur ; TeX a mis `.` (aucun délimiteur) à la place.",
+                    "`\\left`, `\\right` and the `\\big…` commands must be followed by a delimiter; TeX put `.` (no delimiter) instead.",
                 )
-            ),
-        ),
-        (Some(p), _) => (
-            format!("{} {p}", lang.pick("Avertissement du package", "Warning of package")),
-            format!(
-                "{} `{p}` {}",
-                lang.pick("Le package", "The package"),
+                .to_owned(),
+            ))
+        } else {
+            Some((
+                lang.pick(&format!("`{what}` manquant"), &format!("Missing `{what}`"))
+                    .to_owned(),
                 lang.pick(
-                    "signale un point à vérifier ; le PDF est tout de même produit. Le message (en anglais) indique quoi changer.",
-                    "points out something to check; the PDF is still produced. The message says what to change.",
+                    &format!("TeX attendait `{what}` à cet endroit et l'a ajouté lui-même pour continuer."),
+                    &format!("TeX expected `{what}` at this place and added it by itself to go on."),
                 )
+                .to_owned(),
+            ))
+        }
+    } else if let Some(m) = EXTRA.captures(&bare) {
+        let what = &m[1];
+        let or = m.get(2).map(|f| {
+            lang.pick(
+                &format!(" (ou bien `{}` manque avant)", f.as_str()),
+                &format!(" (or `{}` is missing before it)", f.as_str()),
+            )
+            .to_owned()
+        });
+        Some((
+            lang.pick(&format!("`{what}` en trop"), &format!("Extra `{what}`"))
+                .to_owned(),
+            format!(
+                "{}{}.",
+                lang.pick(
+                    &format!("TeX a rencontré `{what}` sans ce qui doit l'ouvrir"),
+                    &format!("TeX met `{what}` without what must open it"),
+                ),
+                or.unwrap_or_default()
             ),
-        ),
-        (None, _) if error => (
-            lang.pick("Erreur LaTeX", "LaTeX error").to_owned(),
+        ))
+    } else if let Some(m) = MISPLACED.captures(&bare) {
+        let what = &m[1];
+        Some((
             lang.pick(
-                "LaTeX n'a pas pu composer cette ligne. Le message (en anglais) dit ce qu'il a rencontré ; RayTeX n'a pas d'explication propre à ce message.",
-                "LaTeX could not typeset this line. The message says what it met; RayTeX has no explanation of its own for this message.",
+                &format!("`{what}` mal placé"),
+                &format!("Misplaced `{what}`"),
             )
             .to_owned(),
-        ),
-        (None, _) => (
-            lang.pick("Avertissement LaTeX", "LaTeX warning").to_owned(),
             lang.pick(
-                "LaTeX signale un point à vérifier, mais le PDF est produit. Le message (en anglais) indique ce qui ne va pas.",
-                "LaTeX points out something to check, but the PDF is produced. The message says what is wrong.",
+                &format!("`{what}` ne peut pas se trouver à cet endroit."),
+                &format!("`{what}` cannot be at this place."),
             )
             .to_owned(),
-        ),
+        ))
+    } else if let Some(m) = INCOMPLETE.captures(&bare) {
+        Some((
+            lang.pick("Condition jamais terminée", "Condition never ended").to_owned(),
+            lang.pick(
+                &format!("Une condition (`{}`) commencée ligne {} n'est pas terminée par `\\fi` : TeX a ignoré tout le texte qui la suit.", &m[1], &m[2]),
+                &format!("A condition (`{}`) started on line {} is not ended by `\\fi`: TeX ignored all the text after it.", &m[1], &m[2]),
+            )
+            .to_owned(),
+        ))
+    } else if let Some(m) = ONLY_IN_MODE.captures(&bare) {
+        let what = &m[1];
+        let (fr, en) = match &m[2] {
+            "math" => ("dans une formule", "in a formula"),
+            "paragraph" => (
+                "dans le texte courant, hors d'une formule et d'une boîte",
+                "in running text, outside a formula and a box",
+            ),
+            _ => ("dans un autre mode", "in another mode"),
+        };
+        Some((
+            lang.pick(
+                &format!("`{what}` n'est pas permis ici"),
+                &format!("`{what}` is not allowed here"),
+            )
+            .to_owned(),
+            lang.pick(
+                &format!("`{what}` n'est permis que {fr}."),
+                &format!("`{what}` is only allowed {en}."),
+            )
+            .to_owned(),
+        ))
+    } else if let Some(m) = PACKAGE.captures(&d.message) {
+        // The message of a package says by itself what it refuses.
+        let class = &m[1] == "Class";
+        let title = match (&m[3] == "Error", class) {
+            (true, false) => lang.pick("Erreur du package", "Error of package"),
+            (true, true) => lang.pick("Erreur de la classe", "Error of class"),
+            (false, false) => lang.pick("Avertissement du package", "Warning of package"),
+            (false, true) => lang.pick("Avertissement de la classe", "Warning of class"),
+        };
+        Some((format!("{title} `{}`", &m[2]), String::new()))
+    } else {
+        None
     };
-    d.hint = Some(Hint::new(title, explanation));
+    d.hint = match (read, advice) {
+        (Some((title, explanation)), advice) => Some(Hint {
+            title,
+            explanation,
+            advice,
+        }),
+        (None, Some(advice)) => Some(Hint {
+            title: d.message.clone(),
+            explanation: String::new(),
+            advice: Some(advice),
+        }),
+        (None, None) => None,
+    };
 }
 
 /// Loads a package, with the options it asks for when loaded without them.

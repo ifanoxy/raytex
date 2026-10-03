@@ -43,6 +43,7 @@ pub fn refine_all(
     }
     drop_math_consequences(diags, source);
     diags.retain(|d| d.code.as_deref() != Some(fixes::CONSEQUENCE));
+    drop_what_follows(diags, source);
     // Characters that a font lacks, reported without a line: as long as
     // there are errors, they are what TeX printed while going on after
     // them. They come back once the document compiles, if they are real.
@@ -51,6 +52,93 @@ pub fn refine_all(
             d.line.is_some() || !matches!(d.code.as_deref(), Some("missing-character" | "nullfont"))
         });
     }
+}
+
+/// How far after a mistake TeX may still report what follows from it.
+const REACH: usize = 30;
+
+/// One mistake, one problem. Once the cause of an error is found, the
+/// errors TeX reports next in the same paragraph (it goes on reading from a
+/// state the mistake left wrong) are kept only when a cause of their own is
+/// found for them; the others come back at the next build if they are real.
+/// Two errors that lead to the same place are the same mistake.
+fn drop_what_follows(diags: &mut Vec<Diagnostic>, source: &dyn Fn(&Path) -> Option<String>) {
+    let explained = |d: &Diagnostic| d.hint.as_ref().is_some_and(|h| h.advice.is_some());
+    let compiler = |d: &Diagnostic| {
+        d.severity == Severity::Error && d.source == crate::diagnostics::Source::Latex
+    };
+    let mut dropped = vec![false; diags.len()];
+    for i in 0..diags.len() {
+        let d = &diags[i];
+        let (Some(file), Some(range)) = (&d.file, d.range) else {
+            continue;
+        };
+        if dropped[i] || !compiler(d) || !explained(d) {
+            continue;
+        }
+        let Some(text) = source(file) else { continue };
+        let lines = LineIndex::new(&text);
+        let blank =
+            |l: usize| l >= lines.line_count() || text[lines.line_span(&text, l)].trim().is_empty();
+        // The paragraph of the mistake, and the line TeX ends it on.
+        let first = range.start.line as usize;
+        let mut last = first;
+        while !blank(last + 1) && last < first + REACH {
+            last += 1;
+        }
+        // What the package says next about the same thing, without a line.
+        for (j, next) in diags.iter().enumerate().skip(i + 1) {
+            if next.severity != Severity::Warning || next.line.is_some() || explained(next) {
+                break;
+            }
+            dropped[j] = true;
+        }
+        for j in 0..diags.len() {
+            let next = &diags[j];
+            if j == i || dropped[j] || !compiler(next) || next.file.as_ref() != Some(file) {
+                continue;
+            }
+            // Something left open: TeX misreads the structure of what follows.
+            if d.swallows && j > i && fixes::about_structure(next) {
+                dropped[j] = true;
+                continue;
+            }
+            if explained(next) {
+                // The same place found twice.
+                dropped[j] = j > i && next.range == d.range;
+                continue;
+            }
+            let Some(line) = next.line.map(|l| l as usize - 1) else {
+                continue;
+            };
+            dropped[j] = j > i && first <= line && line <= last + 1;
+        }
+        // The warnings of the line of the mistake come from it too, but for
+        // a reference or a citation that is not defined.
+        for (j, next) in diags.iter().enumerate() {
+            let own = matches!(
+                next.code.as_deref(),
+                Some("undefined-reference" | "undefined-citation" | "multiply-defined")
+            );
+            if next.severity == Severity::Warning
+                && next.source == crate::diagnostics::Source::Latex
+                && next.file.as_ref() == Some(file)
+                && !explained(next)
+                && !own
+                && next
+                    .line
+                    .is_some_and(|l| (first..=last).contains(&(l as usize - 1)))
+                && (next.line == d.line || next.code.as_deref() == Some("command-invalid-math"))
+            {
+                dropped[j] = true;
+            }
+        }
+    }
+    let mut i = 0;
+    diags.retain(|_| {
+        i += 1;
+        !dropped[i - 1]
+    });
 }
 
 /// After `_`, `^` or a math command written in text, TeX opens a formula by
@@ -305,8 +393,12 @@ mod tests {
             "{:?}",
             ds[0].fixes
         );
+        // "Missing $ inserted": a symptom of the brace that is not closed.
         let r = ds[1].range.unwrap();
-        assert_eq!((r.start.line, r.end.character), (3, 11));
+        assert_eq!(
+            (r.start.line, r.start.character, r.end.character),
+            (3, 9, 10)
+        );
         let r = ds[2].range.unwrap();
         assert_eq!((r.start.character, r.end.character), (9, 17));
         let r = ds[3].range.unwrap();
@@ -325,7 +417,7 @@ mod tests {
 
     #[test]
     fn the_cause_is_shown_where_it_is() {
-        let text = "\\documentclass{article}\n\\begin{document}\nAvant.\\vspace{abc} Après.\n\\includegraphics{plan.v2.png}\n\\espace{abc}\n\\end{document}\n";
+        let text = "\\documentclass{article}\n\\begin{document}\nAvant.\\vspace{abc} Après.\n\n\\includegraphics{plan.v2.png}\n\n\\espace{abc}\n\\end{document}\n";
         let source = |_: &Path| Some(text.to_owned());
         let number = |line: u32, before: &str| {
             let mut d = diag("Missing number, treated as zero.", line, Some(before));
@@ -338,10 +430,10 @@ mod tests {
             number(3, "Avant.\\vspace{abc}"),
             diag(
                 "LaTeX Error: Unknown graphics extension: .v2.png.",
-                4,
+                5,
                 Some("\\includegraphics{plan.v2.png}"),
             ),
-            number(5, "\\espace{abc}"),
+            number(7, "\\espace{abc}"),
         ];
         refine_all(&mut ds, Path::new("/p/main.tex"), &source, Lang::En);
         let advice = |d: &Diagnostic| d.hint.as_ref().and_then(|h| h.advice.clone());
@@ -367,6 +459,55 @@ mod tests {
             ds[2].hint.as_ref().unwrap().explanation,
             ds[0].hint.as_ref().unwrap().explanation
         );
+    }
+
+    #[test]
+    fn the_cause_is_read_in_the_source_whatever_the_message() {
+        let text = "\\documentclass{article}\n\\begin{document}\n\\begin{equation}$ a = b $\\end{equation}\n\nSoit $\\frac{1}$ ici.\n\nUn texte sans faute.\n\\end{document}\n";
+        let source = |_: &Path| Some(text.to_owned());
+        let mut ds = vec![
+            // A message the catalogue does not know, for a `$` in an equation.
+            diag(
+                "Missing \\endgroup inserted.",
+                3,
+                Some("\\begin{equation}$"),
+            ),
+            // What TeX reports next in the same paragraph is the same mistake.
+            diag(
+                "You can't use `\\eqno' in math mode.",
+                3,
+                Some("\\begin{equation}$ a = b $\\end{equation}"),
+            ),
+            // "Missing } inserted" for an argument that is not written.
+            diag("Missing } inserted.", 5, Some("Soit $\\frac{1}$")),
+            // Nothing wrong in the source: the message is read by its shape,
+            // or left as TeX wrote it. Nothing says it is not understood.
+            diag("Missing \\endgroup inserted.", 7, Some("Un texte")),
+            diag(
+                "Something TeX says that nobody knows.",
+                7,
+                Some("Un texte sans"),
+            ),
+        ];
+        refine_all(&mut ds, Path::new("/p/main.tex"), &source, Lang::En);
+        assert_eq!(ds.len(), 4, "{ds:#?}");
+        let hint = |d: &Diagnostic| d.hint.clone().unwrap();
+        assert_eq!(shown(text, &ds[0]), "$");
+        assert_eq!(hint(&ds[0]).title, "`$` inside a formula");
+        assert!(hint(&ds[0]).advice.unwrap().contains("`equation`"));
+        assert!(matches!(&ds[0].fixes[0], Fix::Edits { edits, .. } if edits.len() == 2));
+        assert_eq!(shown(text, &ds[1]), "\\frac{1}");
+        assert_eq!(hint(&ds[1]).title, "Missing argument");
+        assert!(
+            hint(&ds[1])
+                .advice
+                .unwrap()
+                .contains("`{denominator}` is missing")
+        );
+        assert_eq!(hint(&ds[2]).title, "Missing `\\endgroup`");
+        assert_eq!(hint(&ds[2]).advice, None);
+        assert!(hint(&ds[2]).explanation.contains("added it by itself"));
+        assert_eq!(ds[3].hint, None);
     }
 
     #[test]

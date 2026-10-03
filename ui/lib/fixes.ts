@@ -18,8 +18,7 @@ import { join } from "./utils";
  *  engine, with what to write instead; null when it only knows what the
  *  message means (nothing is guessed). */
 export function causeOf(d: Diagnostic): string | null {
-  const hint: { title: string; explanation: string; advice?: string | null } | null = d.hint;
-  return hint?.advice ?? null;
+  return d.hint?.advice ?? null;
 }
 
 /** What to suggest for a problem: the cause found in the sources, or the

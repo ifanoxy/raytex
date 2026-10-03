@@ -5,6 +5,7 @@
 //! labels and bibliography keys that exist…). [`apply`] applies a fix to
 //! files the way the editor does (for tests and the command line).
 
+mod cause;
 mod data;
 pub(crate) mod latex;
 mod numeric;
@@ -18,6 +19,23 @@ use crate::i18n::Lang;
 use crate::text::LineIndex;
 
 pub(crate) use latex::{CONSEQUENCE, Sources, relocate, suggest};
+
+/// Whether an error is about the structure TeX is in (a group, a formula,
+/// an environment): after a mistake that leaves one open, such an error
+/// comes from that mistake.
+pub(crate) fn about_structure(d: &Diagnostic) -> bool {
+    let code = d.code.as_deref().unwrap_or_default();
+    cause::is_symptom(code, &d.message)
+        || matches!(
+            code,
+            "env-mismatch"
+                | "file-ended"
+                | "paragraph-ended"
+                | "runaway-argument"
+                | "table-structure"
+                | "no-end-document"
+        )
+}
 
 /// Whether a fix can be applied without asking (not an installation, a
 /// security setting or a page of documentation).

@@ -320,6 +320,8 @@ pub fn closest<'a>(
         .min_by(|a, b| {
             a.0.cmp(&b.0)
                 .then(a.1.len().cmp(&b.1.len()))
+                // `romain`: `roman` rather than `Roman`.
+                .then(distance(word, a.1).cmp(&distance(word, b.1)))
                 .then(a.1.cmp(b.1))
         })
         .map(|(_, c)| c)

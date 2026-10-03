@@ -277,7 +277,7 @@ export interface Diagnostic {
   contextBefore: string | null;
   contextAfter: string | null;
   raw: string | null;
-  hint: { title: string; explanation: string } | null;
+  hint: { title: string; explanation: string; advice?: string | null } | null;
   fixes: Fix[];
 }
 

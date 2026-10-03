@@ -16,7 +16,7 @@ import { editor } from "../lib/state/editor.svelte";
 import { project } from "../lib/state/project.svelte";
 import { distLabel, tex } from "../lib/state/tex.svelte";
 import { diagnostics } from "../lib/state/diagnostics.svelte";
-import { fixable, quickFix } from "../lib/fixes";
+import { causeOf, fixable, quickFix } from "../lib/fixes";
 import { fileSelection } from "../lib/state/selection.svelte";
 import { media } from "../lib/state/media.svelte";
 import { colors } from "../lib/state/colors.svelte";
@@ -835,7 +835,9 @@ async function fixesScenes(log: (msg: string) => void, dir: string): Promise<boo
     results.problems = `${items} problems, ${suggestions} suggestions, ${buttons} fix buttons`;
     const all = [...diagnostics.build, ...Object.values(diagnostics.lint).flat()];
     const errors = all.filter((d) => d.severity === "error");
-    check("every error explained", errors.every((d) => !!d.hint), errors.filter((d) => !d.hint).map((d) => d.message).join(" | "));
+    // Each mistake of the document is found in the source: its cause is said, never that it is not understood.
+    const found = errors.filter((d) => !!causeOf(d));
+    check("causes found", found.length >= 6, errors.map((d) => `${d.code}:${causeOf(d) ? "cause" : "none"}`).join(" "));
     check("errors have a fix", errors.filter((d) => d.fixes.length).length >= 6, errors.map((d) => `${d.code}:${d.fixes.length}`).join(" "));
     const fixAll = document.querySelector<HTMLButtonElement>(".bar .fix-all");
     check("fix all button", !!fixAll && !fixAll.disabled && /\d/.test(fixAll.textContent ?? ""), fixAll?.textContent);

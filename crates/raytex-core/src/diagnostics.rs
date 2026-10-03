@@ -199,6 +199,11 @@ pub struct Diagnostic {
     pub hint: Option<Hint>,
     /// Automatic fixes.
     pub fixes: Vec<Fix>,
+    /// The mistake leaves something open (a brace, a formula, an
+    /// environment): TeX misreads what follows, and what it reports about
+    /// the structure after it comes from this mistake.
+    #[serde(skip)]
+    pub swallows: bool,
 }
 
 impl Diagnostic {
@@ -218,6 +223,7 @@ impl Diagnostic {
             raw: None,
             hint: None,
             fixes: Vec::new(),
+            swallows: false,
         }
     }
 
@@ -235,9 +241,10 @@ impl Diagnostic {
 
     /// Says what was found to be the cause, in the sources (see [`Hint::advice`]).
     pub fn advise(&mut self, advice: impl Into<String>) {
-        if let Some(hint) = &mut self.hint {
-            hint.advice = Some(advice.into());
-        }
+        let message = &self.message;
+        self.hint
+            .get_or_insert_with(|| Hint::new(message.clone(), ""))
+            .advice = Some(advice.into());
     }
 
     /// Sets file and range.

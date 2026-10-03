@@ -118,10 +118,34 @@ class DiagnosticsStore {
     this.notify(touched);
   }
 
+  /**
+   * Whether a live problem is already said by a problem of the build: the
+   * engine gives a compiler error the cause the live checks found, at the
+   * same place. One of the two is enough.
+   */
+  private said(d: Diagnostic): boolean {
+    const { file, range } = d;
+    if (!file || !range) return false;
+    const key = pathKey(file);
+    // A problem of structure (a brace, a formula) is the same mistake as
+    // the error of its line whose cause was found.
+    const structure = d.source === "syntax";
+    return this.build.some((b) => {
+      if (b.severity !== "error" || !b.file || !b.range || pathKey(b.file) !== key) return false;
+      if (b.range.start.line !== range.start.line) return false;
+      return b.range.start.character === range.start.character || (structure && !!b.hint?.advice);
+    });
+  }
+
+  /** The live problems to show for a file. */
+  private live(key: string): Diagnostic[] {
+    return (this.lint[key] ?? []).filter((d) => !this.said(d));
+  }
+
   forFile(path: string): { lint: Diagnostic[]; build: Diagnostic[] } {
     const key = pathKey(path);
     return {
-      lint: this.lint[key] ?? [],
+      lint: this.live(key),
       build: this.build.filter((d) => d.file && pathKey(d.file) === key),
     };
   }
@@ -137,7 +161,7 @@ class DiagnosticsStore {
       groups.get(k)!.push(d);
     };
     this.build.forEach(add);
-    for (const list of Object.values(this.lint)) list.forEach(add);
+    for (const key of Object.keys(this.lint)) this.live(key).forEach(add);
     const rank = { error: 0, warning: 1, info: 2, hint: 3 } as const;
     const out: { file: string | null; items: Diagnostic[] }[] = [];
     if (general.length) out.push({ file: null, items: general });
@@ -158,7 +182,7 @@ class DiagnosticsStore {
       else infos++;
     };
     this.build.forEach(count);
-    for (const list of Object.values(this.lint)) list.forEach(count);
+    for (const key of Object.keys(this.lint)) this.live(key).forEach(count);
     return { errors, warnings, infos };
   }
 }

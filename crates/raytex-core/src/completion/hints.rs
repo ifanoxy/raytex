@@ -98,6 +98,11 @@ pub fn signature_groups(args: &str) -> Vec<(char, String)> {
     out
 }
 
+/// Name and text of an argument in `lang`, as the hints show them.
+pub(crate) fn argument_name(target: &str, name: &str, lang: Lang) -> (String, String) {
+    describe(target, name, lang)
+}
+
 /// Name and text of an argument: by command and position, then by name.
 fn describe(target: &str, name: &str, lang: Lang) -> (String, String) {
     let d = data();

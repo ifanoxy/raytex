@@ -15,8 +15,10 @@ use regex::Regex;
 
 use super::latex::{At, CONSEQUENCE, Sources, Src, TABULARS, at, column_spec, edits, place};
 use super::text::{group_end, mask};
+use crate::completion::hints::signature_groups;
 use crate::diagnostics::{Diagnostic, Fix};
 use crate::i18n::Lang;
+use crate::kb::{Mode, kb};
 use crate::text::Span;
 
 /// What a place of a command expects.
@@ -220,6 +222,9 @@ struct Slot {
     /// In a list of options, the comma right after the value when what
     /// follows looks like the end of a decimal length (`width=2,5cm`).
     comma: Option<usize>,
+    /// The argument is not written: TeX took the character that follows
+    /// the command (`\rule{1cm} Texte`).
+    taken: bool,
 }
 
 /// Where the numbers and lengths of a command are: one letter per argument,
@@ -283,6 +288,53 @@ const ENVIRONMENTS: &[(&str, &str)] = &[
     ("spacing", "F"),
     ("column", "L"),
 ];
+
+/// Where the numbers and lengths of a command or an environment are: the
+/// tables above first (what the knowledge base does not say: a font size,
+/// column numbers), then the signature of the knowledge base, whose
+/// arguments are typed by their name (`{width}`, `{length}`, `{number}`).
+fn pattern_of(name: &str, environment: bool) -> Option<String> {
+    let table = if environment { ENVIRONMENTS } else { COMMANDS };
+    if let Some((_, pattern)) = table.iter().find(|(n, _)| *n == name) {
+        return Some((*pattern).to_owned());
+    }
+    let (signature, mode) = if environment {
+        let e = kb().environment(name, None)?;
+        (e.args.clone(), e.mode)
+    } else {
+        let c = kb().command(name, None)?;
+        (c.args.clone(), c.mode)
+    };
+    // The arguments of a command of formulas are formulas.
+    if mode == Mode::Math {
+        return None;
+    }
+    let mut pattern = String::new();
+    let mut previous = String::new();
+    for (open, param) in signature_groups(&signature) {
+        if open == '<' {
+            continue;
+        }
+        let kind = match param.as_str() {
+            "width" | "height" | "length" | "thickness" | "space" | "lift" | "depth" | "skip"
+            | "distance" => 'L',
+            "number" => 'N',
+            "value" if previous == "counter" => 'N',
+            "factor" => 'F',
+            _ => 'm',
+        };
+        pattern.push(match (kind, open == '[') {
+            ('L', true) => 'l',
+            ('N', true) => 'n',
+            (_, true) => 'o',
+            (kind, false) => kind,
+        });
+        previous = param;
+    }
+    pattern
+        .contains(['L', 'l', 'N', 'n', 'F'])
+        .then_some(pattern)
+}
 
 /// Options that are numbers or lengths.
 const KEYS: &[(&str, Kind)] = &[
@@ -426,6 +478,7 @@ fn option_slots(text: &str, inner: Span, command: &str, out: &mut Vec<Slot>) {
             kind: *kind,
             owner: Owner::Key(key.to_owned(), command.to_owned()),
             comma,
+            taken: false,
         });
     }
 }
@@ -434,6 +487,7 @@ fn option_slots(text: &str, inner: Span, command: &str, out: &mut Vec<Slot>) {
 /// `pattern` from `from`. Returns where the arguments end.
 fn argument_slots(
     text: &str,
+    head: usize,
     from: usize,
     pattern: &str,
     owner: &Owner,
@@ -474,6 +528,25 @@ fn argument_slots(
                 .max(1);
             (start..start + 1 + n, start + 1 + n)
         } else {
+            // No braces: TeX takes the next character for the argument.
+            let kind = match arg {
+                'L' => Some(Kind::Length),
+                'N' => Some(Kind::Number),
+                _ => None,
+            };
+            if let (Some(kind), Some(c)) = (kind, rest.chars().next())
+                && !c.is_whitespace()
+                && !matches!(c, '\\' | '}' | '$' | '&' | '%' | ']')
+            {
+                out.push(Slot {
+                    value: start..start + c.len_utf8(),
+                    shell: head..i,
+                    kind,
+                    owner: owner.clone(),
+                    comma: None,
+                    taken: true,
+                });
+            }
             return i;
         };
         i = end;
@@ -498,6 +571,7 @@ fn argument_slots(
             kind,
             owner: owner.clone(),
             comma: None,
+            taken: false,
         });
     }
     i
@@ -525,6 +599,7 @@ fn column_slots(text: &str, spec: Span, out: &mut Vec<Slot>) {
                     kind: Kind::Length,
                     owner: Owner::Column(c as char),
                     comma: None,
+                    taken: false,
                 });
                 i = end;
             }
@@ -561,6 +636,7 @@ fn slots(text: &str, region: Span) -> Vec<Slot> {
                     kind: Kind::Length,
                     owner: Owner::LineBreak,
                     comma: None,
+                    taken: false,
                 });
             }
             i += 2;
@@ -583,14 +659,14 @@ fn slots(text: &str, region: Span) -> Vec<Slot> {
             let open = skip_spaces(text, after);
             if let Some(end) = group_end(text, open) {
                 let env = text[open + 1..end - 1].trim();
-                if let Some((_, pattern)) = ENVIRONMENTS.iter().find(|(e, _)| *e == env) {
+                if let Some(pattern) = pattern_of(env, true) {
                     let owner = Owner::Environment(env.to_owned());
-                    argument_slots(text, end, pattern, &owner, &mut out);
+                    argument_slots(text, i, end, &pattern, &owner, &mut out);
                 }
             }
-        } else if let Some((_, pattern)) = COMMANDS.iter().find(|(c, _)| *c == name) {
+        } else if let Some(pattern) = pattern_of(name, false) {
             let owner = Owner::Command(name.to_owned());
-            argument_slots(text, after, pattern, &owner, &mut out);
+            argument_slots(text, i, after, &pattern, &owner, &mut out);
         } else {
             let bare = BARE.iter().find(|(c, _)| *c == name);
             let register = REGISTERS.iter().find(|(c, _)| *c == name);
@@ -618,6 +694,7 @@ fn slots(text: &str, region: Span) -> Vec<Slot> {
                     kind,
                     owner: Owner::Command(name.to_owned()),
                     comma: None,
+                    taken: false,
                 });
             }
         }
@@ -714,11 +791,18 @@ pub(super) fn numbers(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Ve
         e.end
             .as_ref()
             .is_some_and(|x| x.start < point && point <= x.end)
-    }) && let Some((_, pattern)) = ENVIRONMENTS.iter().find(|(e, _)| *e == env.name)
+    }) && let Some(pattern) = pattern_of(&env.name, true)
     {
         let mut at_begin = Vec::new();
         let owner = Owner::Environment(env.name.clone());
-        argument_slots(&text, env.begin.end, pattern, &owner, &mut at_begin);
+        argument_slots(
+            &text,
+            env.begin.start,
+            env.begin.end,
+            &pattern,
+            &owner,
+            &mut at_begin,
+        );
         if at_begin
             .iter()
             .any(|slot| check(&text[slot.value.clone()], slot.kind) != Verdict::Fine)
@@ -785,6 +869,20 @@ pub(super) fn numbers(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Ve
             d.advise(format!(
                 "{subject} {attend} {what}, {}",
                 lang.pick("mais rien n'est écrit.", "but nothing is written.")
+            ));
+            Vec::new()
+        }
+        Verdict::NotNumber if slot.taken => {
+            place(d, &src, slot.shell.clone());
+            d.advise(lang.pick(
+                &format!(
+                    "Il manque un argument à {subject} : à la place d'{what}, TeX a lu `{}`.",
+                    quote(value)
+                ),
+                &format!(
+                    "An argument of {subject} is missing: instead of {what}, TeX read `{}`.",
+                    quote(value)
+                ),
             ));
             Vec::new()
         }
@@ -932,6 +1030,21 @@ fn candidates(src: &Src, text: &str, at: &At) -> Vec<Slot> {
             .into_iter()
             .filter(|s| s.value.start <= point),
     );
+    // A value at the very end of the line before (`\parindent=10`): TeX
+    // goes on reading it on this line, and stops here.
+    if out.is_empty()
+        && let Some(prev) = (0..at.line)
+            .rev()
+            .map(|l| src.line(l).0)
+            .find(|l| !text[l.clone()].trim().is_empty())
+    {
+        let end = prev.start + text[prev.clone()].trim_end().len();
+        out.extend(
+            slots(text, prev.start..end)
+                .into_iter()
+                .filter(|s| s.value.end == end && s.shell == s.value),
+        );
+    }
     out
 }
 
@@ -1012,7 +1125,7 @@ fn unit_before(src: &Src, at: &At, lang: Lang) -> Vec<Fix> {
 }
 
 /// Start of the command whose arguments end at `end`: `\cmd[…]{…}{…}`.
-fn command_start(text: &str, line_start: usize, end: usize) -> Option<usize> {
+pub(super) fn command_start(text: &str, line_start: usize, end: usize) -> Option<usize> {
     let b = text.as_bytes();
     let mut i = end;
     loop {

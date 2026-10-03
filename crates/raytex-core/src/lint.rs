@@ -72,6 +72,28 @@ struct Linter<'a> {
     excluded: Vec<Span>,
 }
 
+/// The structural problems of a text (braces, formulas, environments) as
+/// the live checks report them, with their place, explanation and fixes.
+/// They give the compiler's errors their cause ([`crate::fixes`]).
+pub(crate) fn structure(path: &Path, text: &str, lang: Lang) -> Vec<Diagnostic> {
+    let ws = Workspace::empty(path.parent().unwrap_or(Path::new("")));
+    let doc = Document::new(path.to_path_buf(), DocKind::Tex, text.to_owned(), 0, false);
+    let opts = LintOptions {
+        lang,
+        ..Default::default()
+    };
+    let mut l = Linter {
+        ws: &ws,
+        doc: &doc,
+        root: path.to_path_buf(),
+        opts: &opts,
+        out: Vec::new(),
+        excluded: Vec::new(),
+    };
+    l.structure(false);
+    l.out
+}
+
 /// Lints `file` in the context of its project.
 pub fn lint(ws: &Workspace, file: &Path, opts: &LintOptions<'_>) -> Vec<Diagnostic> {
     let Some(doc) = ws.document(file) else {
