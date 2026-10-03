@@ -251,6 +251,8 @@
     position: relative;
     width: 20px;
     height: 20px;
+    /* Without it, the padding of a button pushes the cross off the centre. */
+    padding: 0;
     display: grid;
     place-items: center;
     border: none;
