@@ -173,7 +173,37 @@ impl Linter<'_> {
 
     fn structure(&mut self, package_file: bool) {
         let problems = self.doc.index.problems.clone();
+        // The first thing left open (an environment, a formula): a formula
+        // "inside a formula" and a document "never closed" after it are
+        // what it makes of the rest, not other mistakes.
+        let left_open = problems
+            .iter()
+            .filter(|p| match &p.kind {
+                ProblemKind::UnclosedEnvironment(name) => name != "document",
+                ProblemKind::UnclosedMath => true,
+                _ => false,
+            })
+            .map(|p| p.span.start)
+            .min();
         for p in problems.clone() {
+            let follows = match &p.kind {
+                ProblemKind::NestedMath
+                | ProblemKind::UnclosedMath
+                | ProblemKind::UnmatchedMathClose => {
+                    left_open.is_some_and(|open| open < p.span.start)
+                }
+                ProblemKind::UnclosedEnvironment(name) => name == "document" && left_open.is_some(),
+                // An `\end` alone, after an environment left open above it:
+                // the same mistake, shown on the environment.
+                ProblemKind::UnmatchedEnd(_) => problems.iter().any(|q| {
+                    matches!(&q.kind, ProblemKind::UnclosedEnvironment(n) if n != "document")
+                        && q.span.start < p.span.start
+                }),
+                _ => false,
+            };
+            if follows {
+                continue;
+            }
             if package_file
                 && !matches!(
                     p.kind,
@@ -216,6 +246,17 @@ impl Linter<'_> {
                     self.t("Chaque `\\left` doit avoir son `\\right` dans la même formule (`\\right.` pour un délimiteur invisible).", "Every `\\left` needs a `\\right` in the same formula (`\\right.` for an invisible one)."),
                 ),
             };
+            // One `$` too few in a paragraph: what is read as text before
+            // the last one tells which, and that is where the problem is.
+            if matches!(p.kind, ProblemKind::UnclosedMath)
+                && &self.doc.text[p.span.clone()] == "$"
+                && let Some((span, msg, fixes)) = self.lost_dollar(p.span.start)
+            {
+                let d = self.push(Severity::Error, Source::Syntax, "syntax", &span, msg);
+                d.hint = Some(Hint::new(d.message.clone(), hint));
+                d.fixes = fixes;
+                continue;
+            }
             let fixes = self.syntax_fixes(&p, &problems);
             let d = self.push(Severity::Error, Source::Syntax, "syntax", &p.span, msg);
             d.hint = Some(Hint::new(d.message.clone(), hint));
@@ -352,10 +393,18 @@ impl Linter<'_> {
         let text = &self.doc.text;
         let one = |title: String, edits: Vec<FileEdit>| vec![Fix::Edits { title, edits }];
         match &p.kind {
-            ProblemKind::UnmatchedCloseBrace => one(
-                self.t("Supprimer cette }", "Delete this }").into(),
-                vec![self.edit(p.span.clone(), "")],
-            ),
+            ProblemKind::UnmatchedCloseBrace => {
+                let delete = Fix::Edits {
+                    title: self.t("Supprimer cette }", "Delete this }").into(),
+                    edits: vec![self.edit(p.span.clone(), "")],
+                };
+                // `\textbf gras}`: the brace that is missing is the one
+                // that opens the argument of the command before.
+                match self.open_after_command(p.span.start) {
+                    Some(open) => vec![open, delete],
+                    None => vec![delete],
+                }
+            }
             ProblemKind::UnclosedBrace => {
                 let open = p.span.start;
                 let start = text[..open]
@@ -363,6 +412,17 @@ impl Linter<'_> {
                     .filter(|&b| text[b + 1..open].chars().all(|c| c.is_ascii_alphabetic()))
                     .unwrap_or(open);
                 let what = &text[start..open];
+                // A `%` on the line hides the brace that closes: closing it
+                // again, in the comment, repairs nothing.
+                if let Some(percent) = crate::fixes::latex::percent_hides_brace(text, open) {
+                    if !crate::fixes::text::takes_text(text, open) {
+                        return Vec::new();
+                    }
+                    return one(
+                        self.t("Écrire \\%", "Write \\%").into(),
+                        vec![self.edit(percent..percent + 1, "\\%")],
+                    );
+                }
                 let at = brace_close_at(text, open);
                 one(
                     if what.is_empty() {
@@ -410,6 +470,11 @@ impl Linter<'_> {
                 {
                     return self.rename_end(&p.span, other);
                 }
+                // Deleting it repairs nothing when items or cells are above:
+                // they would be left without their environment.
+                if name == "document" || !crate::fixes::text::end_can_go(text, p.span.start) {
+                    return Vec::new();
+                }
                 one(
                     format!("{} \\end{{{name}}}", self.t("Supprimer", "Delete")),
                     vec![self.delete(p.span.clone())],
@@ -429,6 +494,32 @@ impl Linter<'_> {
                         .into(),
                         vec![self.edit(start..end, "")],
                     );
+                }
+                // `$$ … $`: in a line of text, the `$$` has a `$` too many.
+                if token == "$$"
+                    && let Some((single, inline)) =
+                        crate::fixes::text::display_closed_by_one(text, p.span.start)
+                {
+                    let one = Fix::Edits {
+                        title: self
+                            .t(
+                                "Ouvrir la formule avec un seul $",
+                                "Open the formula with a single $",
+                            )
+                            .into(),
+                        edits: vec![self.edit(p.span.clone(), "$")],
+                    };
+                    let two = Fix::Edits {
+                        title: self
+                            .t("Fermer la formule avec $$", "Close the formula with $$")
+                            .into(),
+                        edits: vec![self.edit(single..single, "$")],
+                    };
+                    return if inline {
+                        vec![one, two]
+                    } else {
+                        vec![two, one]
+                    };
                 }
                 let close = match token {
                     "$" => "$",
@@ -461,6 +552,27 @@ impl Linter<'_> {
                     );
                 }
                 let line = line_end(text, p.span.end);
+                // It ends where what is written stops being a formula: at
+                // the end of a cell or of a row, before the words of the
+                // sentence.
+                if close == "$" {
+                    let mode = |name: &str| kb().command(name, None).map(|c| c.mode);
+                    let end = crate::fixes::text::formula_end(
+                        text,
+                        &(p.span.end..line),
+                        p.span.end,
+                        &mode,
+                    );
+                    if end > p.span.end {
+                        return one(
+                            format!(
+                                "{} {close}",
+                                self.t("Fermer la formule avec", "Close the formula with")
+                            ),
+                            vec![self.edit(end..end, close)],
+                        );
+                    }
+                }
                 if matches!(close, "$" | "\\)")
                     && let Some(at) = text_resumes(text, p.span.end, line)
                 {
@@ -496,6 +608,123 @@ impl Linter<'_> {
             ),
             ProblemKind::NestedMath | ProblemKind::LeftRightMismatch => Vec::new(),
         }
+    }
+
+    /// The `$` a paragraph lacks, when the `$` at `last` is left alone:
+    /// where it shows, what to call it and what repairs it.
+    fn lost_dollar(&self, last: usize) -> Option<(Span, String, Vec<Fix>)> {
+        use crate::fixes::text::LostDollar;
+        // The macros of the document that are made of a command of
+        // formulas are of formulas too.
+        let learned = crate::fixes::known::Learned::new([&self.doc.index], &[]);
+        let mode = |name: &str| learned.command(name).map(|k| k.mode);
+        let lost = crate::fixes::text::lost_dollar(&self.doc.text, last, &mode, None)?;
+        let insert = |title: &str, at: usize| {
+            vec![Fix::Edits {
+                title: title.into(),
+                edits: vec![self.edit(at..at, "$")],
+            }]
+        };
+        Some(match lost {
+            LostDollar::Opening { token, at } => (
+                token,
+                self.t(
+                    "Formule mathématique jamais ouverte",
+                    "Math closed and never opened",
+                )
+                .into(),
+                insert(
+                    self.t("Ouvrir la formule avec $", "Open the formula with $"),
+                    at,
+                ),
+            ),
+            LostDollar::Closing { open, at, .. } => (
+                open..open + 1,
+                self.t(
+                    "Formule mathématique non fermée (ou ligne vide dans une formule)",
+                    "Math not closed (or blank line inside math)",
+                )
+                .into(),
+                at.map_or_else(Vec::new, |at| {
+                    insert(
+                        self.t("Fermer la formule avec $", "Close the formula with $"),
+                        at,
+                    )
+                }),
+            ),
+            LostDollar::Unknown { token } => (
+                token,
+                self.t(
+                    "Un $ manque dans ce paragraphe",
+                    "A $ is missing in this paragraph",
+                )
+                .into(),
+                Vec::new(),
+            ),
+            LostDollar::Unpaired { dollar } => (
+                dollar..dollar + 1,
+                self.t(
+                    "Un $ manque dans ce paragraphe",
+                    "A $ is missing in this paragraph",
+                )
+                .into(),
+                Vec::new(),
+            ),
+        })
+    }
+
+    /// For a `}` that closes nothing: the command before it on the line
+    /// that takes an argument in braces and has none (`\\textbf gras}`).
+    fn open_after_command(&self, close: usize) -> Option<Fix> {
+        let text = &self.doc.text;
+        let line = line_start(text, close);
+        // The last command of the line that has text after it and no brace:
+        // those written in its options are passed.
+        text[line..close].rmatch_indices('\\').find_map(|(i, _)| {
+            let at = line + i;
+            let letters = text[at + 1..close]
+                .bytes()
+                .take_while(u8::is_ascii_alphabetic)
+                .count();
+            let name = &text[at + 1..at + 1 + letters];
+            let mut after = at + 1 + letters;
+            let options = text[after..close].starts_with('[');
+            if options {
+                after += text[after..close].find(']')? + 1;
+            }
+            let blank = text[after..close].len() - text[after..close].trim_start().len();
+            // What the knowledge base or the document says of it; a
+            // command nothing is known of is taken to have an argument.
+            let own = self.doc.index.command_defs.iter().find(|c| c.name == name);
+            // Of a package the document does not load, the knowledge base
+            // describes another command of the same name.
+            let described = kb().commands_named(name).find(|c| {
+                c.package == crate::kb::KERNEL || crate::fixes::text::has_package(text, &c.package)
+            });
+            let takes = match (described, own) {
+                (Some(c), _) => crate::completion::hints::signature_groups(&c.args)
+                    .iter()
+                    .any(|(open, _)| *open == '{'),
+                (None, Some(own)) => own.signature.as_ref().is_some_and(|s| s.contains('{')),
+                (None, None) => true,
+            };
+            let written = &text[after + blank..close];
+            if letters == 0
+                || (blank == 0 && !options)
+                || !takes
+                || written.is_empty()
+                || written.contains(['{', '}'])
+            {
+                return None;
+            }
+            Some(Fix::Edits {
+                title: format!(
+                    "{} \\{name}",
+                    self.t("Ouvrir l'accolade après", "Open the brace after")
+                ),
+                edits: vec![self.edit(after..after + blank, "{")],
+            })
+        })
     }
 
     // --------------------------------------------------------- references
@@ -1987,6 +2216,38 @@ mod tests {
             }
         }
         assert!(checked >= 12, "{checked} fixes checked");
+    }
+
+    #[test]
+    fn a_lost_dollar_is_shown_where_it_is_missing() {
+        let found = |body: &str| {
+            let text = format!(
+                "\\documentclass{{article}}\n\\usepackage{{amssymb}}\n\\newcommand{{\\R}}{{\\mathbb{{R}}}}\n\\begin{{document}}\n{body}\n\\end{{document}}\n"
+            );
+            let d = structure(Path::new("main.tex"), &text, Lang::Fr);
+            assert_eq!(d.len(), 1, "{d:?}");
+            let fixed = d[0].fixes.first().map(|f| {
+                let read = |_: &Path| Some(text.clone());
+                let out = crate::fixes::apply(f, &d[0], Path::new("main.tex"), &read).unwrap();
+                out[0].1.lines().nth(4).unwrap().to_owned()
+            });
+            (d[0].range.unwrap().start, d[0].message.clone(), fixed)
+        };
+        // Not closed: shown on the `$` that opens it, three lines above the
+        // one the pairing leaves alone. `\R` is a macro of the document.
+        let (at, message, fixed) =
+            found("Soit $x \\in \\R un nombre.\nOn note $\\R$ et\n$y$ puis\nenfin $z$.");
+        assert_eq!((at.line, at.character), (4, 5));
+        assert!(message.contains("non fermée"), "{message}");
+        assert_eq!(fixed.as_deref(), Some("Soit $x \\in \\R$ un nombre."));
+        // Not opened: shown on the formula.
+        let (at, message, fixed) = found("Soit x \\in \\R$ un nombre et $y$.");
+        assert_eq!((at.line, at.character), (4, 7));
+        assert!(message.contains("jamais ouverte"), "{message}");
+        assert_eq!(
+            fixed.as_deref(),
+            Some("Soit $x \\in \\R$ un nombre et $y$.")
+        );
     }
 
     #[test]

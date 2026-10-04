@@ -3954,6 +3954,7 @@
     "wrapfigure{1}",
     "wraptable{1}"
    ],
+   "exact": true,
    "keys": [
     {
      "k": "r",
@@ -3992,6 +3993,7 @@
    "for": [
     "\\definecolor{2}"
    ],
+   "exact": true,
    "keys": [
     {
      "k": "HTML",
@@ -5430,6 +5432,7 @@
     "\\pagestyle{1}",
     "\\thispagestyle{1}"
    ],
+   "exact": true,
    "keys": [
     {
      "k": "plain",
@@ -5463,6 +5466,7 @@
    "for": [
     "\\pagenumbering{1}"
    ],
+   "exact": true,
    "keys": [
     {
      "k": "arabic",
@@ -5496,6 +5500,7 @@
    "for": [
     "\\usetikzlibrary{1}"
    ],
+   "exact": true,
    "keys": [
     {
      "k": "arrows.meta",

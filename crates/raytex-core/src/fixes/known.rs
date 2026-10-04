@@ -63,6 +63,8 @@ pub(crate) struct Learned {
     own_environments: HashMap<String, Entry>,
     package_commands: HashMap<String, Entry>,
     package_environments: HashMap<String, Entry>,
+    /// The packages and the class the document loads, when they are known.
+    loaded: std::collections::HashSet<String>,
 }
 
 static COMMAND: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\\([A-Za-z@]+)").unwrap());
@@ -104,6 +106,7 @@ impl Learned {
             }
         }
         for info in packages {
+            out.loaded.insert(info.name.clone());
             for c in &info.commands {
                 out.package_commands
                     .entry(c.name.clone())
@@ -169,7 +172,15 @@ impl Learned {
         if let Some(own) = self.own_commands.get(name) {
             return Some(own.known());
         }
-        if let Some(k) = kb().command(name, None) {
+        // What the knowledge base describes is the command of one package:
+        // when the document loads another one that has a command of the
+        // same name (`\qty` of `physics` and of `siunitx`, `\While` of
+        // `algorithm2e` and of `algpseudocode`), it does not describe it.
+        let described = kb()
+            .commands_named(name)
+            .find(|k| self.loads(&k.package))
+            .or_else(|| kb().command(name, None).filter(|_| self.loaded.is_empty()));
+        if let Some(k) = described {
             return Some(Known {
                 args: Some(k.args.clone()),
                 mode: k.mode,
@@ -180,12 +191,22 @@ impl Learned {
         self.package_commands.get(name).map(Entry::known)
     }
 
+    /// Whether the document loads `package`, as far as it is known: the
+    /// kernel always is.
+    fn loads(&self, package: &str) -> bool {
+        package == crate::kb::KERNEL || self.loaded.contains(package)
+    }
+
     /// An environment, looked for like a command.
     pub(crate) fn environment(&self, name: &str) -> Option<Known> {
         if let Some(own) = self.own_environments.get(name) {
             return Some(own.known());
         }
-        if let Some(k) = kb().environment(name, None) {
+        // Like a command: of the packages the document loads only.
+        let described = kb()
+            .environment(name, Some(&self.loaded))
+            .filter(|k| self.loaded.is_empty() || self.loads(&k.package));
+        if let Some(k) = described {
             return Some(Known {
                 args: Some(k.args.clone()),
                 mode: k.mode,

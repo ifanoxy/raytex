@@ -36,6 +36,7 @@ pub fn scan_with(text: &str, options: ScanOptions) -> DocumentIndex {
         pos: 0,
         at_letter: options.at_letter,
         descend: options.descend_definitions,
+        swallowed: false,
         idx: DocumentIndex::default(),
         envs: Vec::new(),
         braces: Vec::new(),
@@ -101,6 +102,8 @@ struct Scanner<'a> {
     pos: usize,
     at_letter: bool,
     descend: bool,
+    /// Verbatim text that is never ended took the rest of the file.
+    swallowed: bool,
     idx: DocumentIndex,
     envs: Vec<EnvFrame>,
     braces: Vec<usize>,
@@ -145,10 +148,12 @@ impl<'a> Scanner<'a> {
             self.problem(m.open, ProblemKind::UnclosedMath);
         }
         while let Some(frame) = self.envs.pop() {
-            self.problem(
-                frame.begin.clone(),
-                ProblemKind::UnclosedEnvironment(frame.name.clone()),
-            );
+            if !self.swallowed {
+                self.problem(
+                    frame.begin.clone(),
+                    ProblemKind::UnclosedEnvironment(frame.name.clone()),
+                );
+            }
             self.close_frame(frame, None);
         }
         for open in self.braces.iter().rev().take(20) {
@@ -1391,6 +1396,8 @@ impl<'a> Scanner<'a> {
                     begin.clone(),
                     ProblemKind::UnclosedEnvironment(name.to_owned()),
                 );
+                // What is around it is closed in the text it swallows.
+                self.swallowed = true;
             }
             self.pos = end.as_ref().map_or(self.bytes.len(), |e| e.end);
             self.idx.environments.push(EnvironmentSpan {

@@ -84,11 +84,15 @@ pub struct PackageInfo {
 /// exists somewhere else.
 static DEFINITION: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(concat!(
-        r"\\(?:(?:provide|new)command|DeclareRobustCommand",
-        r"|(?:New|Provide|Declare)(?:Expandable)?DocumentCommand",
-        r"|(?:new|provide)robustcmd|DeclareMathOperator",
-        r"|DeclareMath(?:Symbol|Delimiter|Accent|Alphabet|Radical)",
-        r"|DeclarePairedDelimiter(?:X|XPP)?|[gex]?def)\*?\s*\{?\s*\\([A-Za-z@_:]+)",
+        r"\\(?:(?:provide|new)command",
+        r"|(?:New|Provide)(?:Expandable)?DocumentCommand",
+        r"|(?:new|provide)robustcmd",
+        // Whatever declares a command (`\DeclareMathOperator`, the
+        // `\DeclareSIUnit` of a package, `\siunitx_declare_unit:Nn`), but
+        // an option, which is not one.
+        r"|Declare(?:[A-NP-Z]|O[^p])[A-Za-z]*",
+        r"|[A-Za-z@_]+_declare_[A-Za-z_]*:[A-Za-z]+",
+        r"|[gex]?def)\*?\s*\{?\s*\\([A-Za-z@_:]+)",
         // The end of an environment made by hand: `\let\endfoo\endlist`.
         r"|\\let\s*\\(end[A-Za-z]+)\b",
         r"|\\(?:newenvironment|(?:New|Provide|Declare)DocumentEnvironment)\*?\s*\{\s*([A-Za-z@]+\*?)\s*\}",

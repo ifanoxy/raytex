@@ -21,6 +21,10 @@ static QUOTED: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"`([^']+)'").unwra
 static SPACE_AFTER_CS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\\[A-Za-z@]+) ").unwrap());
 static NAMED_COMMAND: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\\[A-Za-z@]+").unwrap());
 
+/// How many times the search for a cause failed on a fault of its own (the
+/// problem is then shown without a cause). The tests check that it stays 0.
+pub static FAULTS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
 /// Locates every diagnostic precisely, then adds fixes and explanations.
 /// `root` is the main file of the project.
 /// `packages` reads the sources of the installed packages: with it, what a
@@ -42,16 +46,42 @@ pub fn refine_all(
             let lines = LineIndex::new(&text);
             refine(d, &text, &lines);
         }
-        fixes::suggest(d, &mut sources, lang);
+        // Looking for a cause reads the sources in many ways: a fault there
+        // must never cost the build its problems. The problem is then left
+        // as the log gives it.
+        let before = d.clone();
+        let looked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            fixes::suggest(d, &mut sources, lang);
+        }));
+        if looked.is_err() {
+            *d = before;
+            FAULTS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
         hints::fallback(d, lang);
+        fixes::load_before_use(d, &mut sources, lang);
     }
+    agree_on_packages(diags, packages);
+    drop_after_preamble_error(diags, root, source);
     drop_math_consequences(diags, source);
     diags.retain(|d| d.code.as_deref() != Some(fixes::CONSEQUENCE));
     drop_what_follows(diags, source);
+    drop_in_unknown_environments(diags, source);
     drop_unconfirmed(diags, source);
     // Characters that a font lacks, reported without a line: as long as
     // there are errors, they are what TeX printed while going on after
     // them. They come back once the document compiles, if they are real.
+    // While the document does not compile, LaTeX has not written the labels
+    // it knows, and what it says of references and citations cannot be
+    // trusted. The live checks still tell the ones the sources do not have.
+    if diags.iter().any(|d| d.severity == Severity::Error) {
+        diags.retain(|d| {
+            d.severity != Severity::Warning
+                || !matches!(
+                    d.code.as_deref(),
+                    Some("undefined-reference" | "undefined-citation")
+                )
+        });
+    }
     // A character of text in a formula is not in the font of the formulas:
     // TeX then writes the same lines, and they say nothing more.
     let text_in_formula = diags.iter().any(|d| {
@@ -64,6 +94,85 @@ pub fn refine_all(
         diags.retain(|d| {
             d.line.is_some() || !matches!(d.code.as_deref(), Some("missing-character" | "nullfont"))
         });
+    }
+}
+
+/// A name that several packages define (`\qty`: `physics` and `siunitx`)
+/// is offered the one the other unknown commands of the build come from:
+/// one package that is not loaded is what a build mostly lacks.
+fn agree_on_packages(diags: &mut [Diagnostic], packages: Option<super::PackageSource<'_>>) {
+    use crate::diagnostics::Fix;
+    let offered: Vec<(usize, String, String)> = diags
+        .iter()
+        .enumerate()
+        .filter(|(_, d)| d.code.as_deref() == Some("undefined-control-sequence"))
+        .filter_map(|(i, d)| {
+            let name = hints::undefined_command(d)?.trim_start_matches('\\');
+            let package = d.fixes.iter().find_map(|f| match f {
+                Fix::AddPackage { package, .. } => Some(package.clone()),
+                _ => None,
+            })?;
+            Some((i, name.to_owned(), package))
+        })
+        .collect();
+    if !offered.iter().any(|(_, _, p)| *p != offered[0].2) {
+        return;
+    }
+    // How many other names a package is offered for.
+    let others = |package: &str, name: &str| {
+        let mut names: Vec<&str> = offered
+            .iter()
+            .filter(|(_, n, p)| p == package && n != name)
+            .map(|(_, n, _)| n.as_str())
+            .collect();
+        names.sort_unstable();
+        names.dedup();
+        names.len()
+    };
+    let analyzer = packages.and_then(|get| get());
+    for (i, name, package) in &offered {
+        let mut defined_by: Vec<String> = crate::kb::kb()
+            .command_providers(name)
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+        if let Some(analyzer) = &analyzer {
+            defined_by.extend(
+                analyzer
+                    .providers()
+                    .of_command(name)
+                    .into_iter()
+                    .filter(|p| p.main)
+                    .map(|p| p.package.to_owned()),
+            );
+        }
+        let own = others(package, name);
+        let Some(better) = defined_by
+            .into_iter()
+            .filter(|q| q != package && others(q, name) > own)
+            .max_by_key(|q| others(q, name))
+        else {
+            continue;
+        };
+        let d = &mut diags[*i];
+        for fix in &mut d.fixes {
+            if let Fix::AddPackage {
+                package: p,
+                options,
+            } = fix
+                && p == package
+            {
+                (*p, *options) = (better.clone(), None);
+            }
+        }
+        if let Some(advice) = d.hint.as_mut().and_then(|h| h.advice.as_mut()) {
+            *advice = advice.replace(&format!("`{package}`"), &format!("`{better}`"));
+        }
+        if let Some(hint) = d.hint.as_mut() {
+            hint.explanation = hint
+                .explanation
+                .replace(&format!("`{package}`"), &format!("`{better}`"));
+        }
     }
 }
 
@@ -117,8 +226,14 @@ fn drop_what_follows(diags: &mut Vec<Diagnostic>, source: &dyn Fn(&Path) -> Opti
                 continue;
             }
             if explained(next) {
-                // The same place found twice.
-                dropped[j] = j > i && next.range == d.range;
+                // The same place found twice; or, after a mistake that
+                // leaves the structure wrong (something open, a `\begin`
+                // that is not one), a cause found for what TeX reads out
+                // of its place in the rest of the paragraph.
+                let after = next
+                    .line
+                    .is_some_and(|l| first < l as usize && l as usize <= last + 2);
+                dropped[j] = j > i && (next.range == d.range || (d.swallows && after));
                 continue;
             }
             let Some(line) = next.line.map(|l| l as usize - 1) else {
@@ -137,7 +252,7 @@ fn drop_what_follows(diags: &mut Vec<Diagnostic>, source: &dyn Fn(&Path) -> Opti
             // A warning whose cause is found is kept, but when it is the
             // place of the error, or text read as a formula because of it.
             let same = if explained(next) {
-                next.range == d.range || (in_formula && fixes::about_structure(d))
+                next.range == d.range || (in_formula && (fixes::about_structure(d) || d.swallows))
             } else {
                 next.line == d.line || in_formula
             };
@@ -150,6 +265,100 @@ fn drop_what_follows(diags: &mut Vec<Diagnostic>, source: &dyn Fn(&Path) -> Opti
                     .is_some_and(|l| (first..=last).contains(&(l as usize - 1)))
                 && same
             {
+                dropped[j] = true;
+            }
+        }
+    }
+    let mut i = 0;
+    diags.retain(|_| {
+        i += 1;
+        !dropped[i - 1]
+    });
+}
+
+/// A mistake in the preamble (a class or a package that is not loaded, a
+/// command LaTeX does not know there) or in the frame of the document
+/// (`\begin{document}` that is missing) leaves LaTeX without what the rest
+/// needs: what it reports after it follows from it, in every line of the
+/// document. Only that first error is kept; the others come back at the
+/// next build if they are real.
+fn drop_after_preamble_error(
+    diags: &mut Vec<Diagnostic>,
+    root: &Path,
+    source: &dyn Fn(&Path) -> Option<String>,
+) {
+    let Some(text) = source(root) else { return };
+    let index = crate::syntax::scan(&text);
+    let begin = index
+        .begin_document
+        .map(|offset| LineIndex::new(&text).line_of(offset) as u32 + 1);
+    // A document that ends without having begun: all of it is preamble.
+    let never_begins = begin.is_none() && index.document_class.is_some() && index.has_end_document;
+    let compiler = |d: &Diagnostic| {
+        d.severity == Severity::Error && d.source == crate::diagnostics::Source::Latex
+    };
+    let in_preamble = |d: &Diagnostic| {
+        d.code.as_deref() == Some("missing-begin-document")
+            || (d.file.as_deref() == Some(root)
+                && (never_begins || d.line.is_some_and(|line| begin.is_some_and(|b| line < b))))
+    };
+    let Some(first) = diags.iter().position(|d| compiler(d) && in_preamble(d)) else {
+        return;
+    };
+    let mut i = 0;
+    diags.retain(|d| {
+        i += 1;
+        i - 1 <= first || !compiler(d)
+    });
+    // Its warnings too: a package that is not loaded makes "unused" what
+    // was written for it.
+    diags.retain(|d| {
+        d.source != crate::diagnostics::Source::Latex || d.severity != Severity::Warning
+    });
+}
+
+/// An environment LaTeX does not know: what it holds is read out of its
+/// place (rows of a table as text, a formula as words), and so is its
+/// `\end`. What TeX reports there follows from the unknown name.
+fn drop_in_unknown_environments(
+    diags: &mut Vec<Diagnostic>,
+    source: &dyn Fn(&Path) -> Option<String>,
+) {
+    static NAME: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"Environment (\S+) undefined").unwrap());
+    let mut dropped = vec![false; diags.len()];
+    for i in 0..diags.len() {
+        let d = &diags[i];
+        let (Some(file), Some(m)) = (&d.file, NAME.captures(&d.message)) else {
+            continue;
+        };
+        if d.severity != Severity::Error {
+            continue;
+        }
+        let Some(text) = source(file) else { continue };
+        let lines = LineIndex::new(&text);
+        let name = &m[1];
+        // Its lines: from the `\begin` that is the nearest above the place
+        // TeX gave to the `\end` of the same name.
+        let at = d.line.map_or(0, |l| l as usize - 1);
+        let (Some(begin), Some(end)) = (
+            text.match_indices(&format!("\\begin{{{name}}}"))
+                .map(|(o, _)| lines.line_of(o))
+                .filter(|l| *l <= at)
+                .last()
+                .or(Some(at)),
+            text.match_indices(&format!("\\end{{{name}}}"))
+                .map(|(o, _)| lines.line_of(o))
+                .find(|l| *l >= at),
+        ) else {
+            continue;
+        };
+        for (j, next) in diags.iter().enumerate().skip(i + 1) {
+            let inside = next.file.as_ref() == Some(file)
+                && next
+                    .line
+                    .is_some_and(|l| (begin..=end).contains(&(l as usize).saturating_sub(1)));
+            if next.severity == Severity::Error && inside {
                 dropped[j] = true;
             }
         }
@@ -401,11 +610,24 @@ fn find_command(line: &str, name: &str) -> Option<usize> {
 
 /// Byte offset in `line` where TeX's context fragment `before` ends.
 fn locate(line: &str, before: &str) -> Option<usize> {
+    let whole = !before.starts_with("...");
     let before = before.trim_start_matches("...");
     let variants = [
         before.to_owned(),
         SPACE_AFTER_CS.replace_all(before, "$1").into_owned(),
     ];
+    // TeX did not cut the fragment: it is the start of the line, and the
+    // place is its end, whatever is written again further on the line
+    // (`\abs{a} + \abs{b}`).
+    if whole {
+        let written = line.trim_start();
+        for v in &variants {
+            let v = v.trim_start();
+            if !v.is_empty() && written.starts_with(v) {
+                return Some(line.len() - written.len() + v.len());
+            }
+        }
+    }
     for v in &variants {
         let v = v.trim_start();
         // Longest suffix of the fragment present in the line.
@@ -483,10 +705,9 @@ mod tests {
                 Some("Voici une commande inconnue \\textbff"),
             ),
             diag("Missing $ inserted.", 4, Some("$\\frac {1}{2")),
-            diag(
+            warning(
                 "Reference `sec:nope' on page 1 undefined on input line 5.",
-                5,
-                None,
+                Some(5),
             ),
             {
                 let mut d = diag("LaTeX Error: File `nonexistentpkg.sty' not found.", 1, None);
@@ -511,14 +732,31 @@ mod tests {
             (r.start.line, r.start.character, r.end.character),
             (3, 9, 10)
         );
+        // While the document does not compile, what LaTeX says of the
+        // references is not listed: the live checks tell the labels that
+        // the sources do not have.
+        assert_eq!(ds.len(), 3, "{ds:#?}");
         let r = ds[2].range.unwrap();
-        assert_eq!((r.start.character, r.end.character), (9, 17));
-        let r = ds[3].range.unwrap();
         assert_eq!(
             (r.start.line, r.start.character, r.end.character),
             (1, 21, 35)
         );
-        assert_eq!(ds[3].line, Some(2));
+        assert_eq!(ds[2].line, Some(2));
+
+        // Alone, the reference is shown on its name.
+        let mut alone = vec![warning(
+            "Reference `sec:nope' on page 1 undefined on input line 5.",
+            Some(5),
+        )];
+        refine_all(
+            &mut alone,
+            Path::new("/p/main.tex"),
+            &source,
+            None,
+            Lang::En,
+        );
+        let r = alone[0].range.unwrap();
+        assert_eq!((r.start.character, r.end.character), (9, 17));
     }
 
     fn shown(text: &str, d: &Diagnostic) -> String {

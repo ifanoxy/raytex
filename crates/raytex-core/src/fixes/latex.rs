@@ -299,6 +299,33 @@ impl<'a> Sources<'a> {
         (!known.is_empty()).then_some((class, known))
     }
 
+    /// Where `command` is written when it is not on the line TeX gives: the
+    /// nearest place above that line in the same file, else the only place
+    /// of the project that has it.
+    pub(super) fn written_before(
+        &mut self,
+        src: &Rc<Src>,
+        line: usize,
+        command: &str,
+    ) -> Option<(Rc<Src>, Span)> {
+        let masked = mask(&src.text);
+        let limit = src.line(line).0.start;
+        if let Some(i) = whole_commands(&masked[..limit], command).last() {
+            return Some((src.clone(), i..i + command.len()));
+        }
+        let mut found = None;
+        for other in self.srcs() {
+            let masked = mask(&other.text);
+            for i in whole_commands(&masked, command) {
+                if found.is_some() {
+                    return None;
+                }
+                found = Some((other.clone(), i..i + command.len()));
+            }
+        }
+        found
+    }
+
     /// Where `command` (`\mathbb`) is written in the definition of the
     /// macro `owner` of the project (`R` for `\newcommand{\R}{\mathbb{R}}`).
     pub(super) fn in_definition(&mut self, owner: &str, command: &str) -> Option<(Rc<Src>, Span)> {
@@ -586,7 +613,7 @@ pub(super) fn advise(d: &mut Diagnostic, lang: Lang, fr: &str, en: &str) {
 
 /// The `%` that comes after the brace opened at `open`, on its line, when
 /// the comment it starts holds the `}` (`\\textbf{50% de réduction}`).
-pub(super) fn percent_hides_brace(text: &str, open: usize) -> Option<usize> {
+pub(crate) fn percent_hides_brace(text: &str, open: usize) -> Option<usize> {
     let b = text.as_bytes();
     let line_end = text[open..].find('\n').map_or(text.len(), |i| open + i);
     (open..line_end)
@@ -620,6 +647,77 @@ fn whole_commands<'t>(text: &'t str, name: &'t str) -> impl Iterator<Item = usiz
 
 /// What a loaded package only defines inside one of its environments: the
 /// commands of TikZ in a `tikzpicture`, those of pgfplots in an `axis`.
+/// The package that defines what TeX does not know is loaded further down
+/// in the preamble: it is not there yet where its command is written.
+fn loaded_below(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang, package: &str) -> bool {
+    let Some(at) = at(d, s) else { return false };
+    let src = &at.src;
+    let (line, _) = src.line(at.line);
+    let Some(load) = tx::loaded_packages(&src.text)
+        .into_iter()
+        .find(|l| l.from > line.end && l.names.iter().any(|n| n == package))
+    else {
+        return false;
+    };
+    let written = src.text[load.from..load.to].to_owned();
+    let below = src.line_of(load.from);
+    advise(
+        d,
+        lang,
+        &format!(
+            "Le package `{package}` est chargé plus bas, ligne {} : il ne l'est pas encore ici.",
+            below + 1
+        ),
+        &format!(
+            "The `{package}` package is loaded further down, on line {}: it is not yet here.",
+            below + 1
+        ),
+    );
+    // Only a line that holds nothing else is moved.
+    if src.line(below).1.trim() == written {
+        d.fixes = edits(
+            format!(
+                "{} {written} {}",
+                lang.pick("Déplacer", "Move"),
+                lang.pick("au-dessus de cette ligne", "above this line")
+            ),
+            vec![
+                src.insert(line.start, format!("{written}\n")),
+                src.edit(src.full_line(below), ""),
+            ],
+        );
+    }
+    true
+}
+
+/// A package to add for something the preamble uses above the place where
+/// packages are added: it is loaded right above that use.
+pub(crate) fn load_before_use(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) {
+    if !d.fixes.iter().any(|f| matches!(f, Fix::AddPackage { .. })) {
+        return;
+    }
+    let Some(at) = at(d, s) else { return };
+    let src = &at.src;
+    let (line, _) = src.line(at.line);
+    if tx::insertion_point(&src.text).is_none_or(|point| line.start >= point)
+        || line.start >= tx::preamble_end(&src.text)
+    {
+        return;
+    }
+    for fix in &mut d.fixes {
+        if let Fix::AddPackage { package, options } = fix {
+            let load = match options {
+                Some(options) => format!("\\usepackage[{options}]{{{package}}}"),
+                None => format!("\\usepackage{{{package}}}"),
+            };
+            *fix = Fix::Edits {
+                title: format!("{} {load}", lang.pick("Ajouter", "Add")),
+                edits: vec![src.insert(line.start, format!("{load}\n"))],
+            };
+        }
+    }
+}
+
 fn scoped(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang, package: &str, environment: bool) {
     let inside = match (package, environment) {
         ("tikz" | "pgf", _) | ("pgfplots", true) => "tikzpicture",
@@ -677,41 +775,16 @@ const THEOREMS: &[(&str, &str)] = &[
     ("exercice", "Exercice"),
 ];
 
-/// What can be said of the installed packages that define a name the
-/// document does not have.
-enum Provided {
-    /// One package stands out: the one named like what it defines, or the
-    /// only one of the distribution that defines it (a name of four letters
-    /// at least, in the main file of a folder).
-    By(String),
-    /// Two or three packages define it, each the main file of its folder:
-    /// they are named, none is chosen.
-    Among(Vec<String>),
-    Unknown,
-}
-
-fn provided(name: &str, packages: Vec<(String, bool)>) -> Provided {
-    let Some((first, _)) = packages.first() else {
-        return Provided::Unknown;
-    };
-    if first == name {
-        return Provided::By(first.clone());
-    }
-    // A short name (`\\R`) is defined in passing by many packages, and a
-    // package that is a part of something else defines names for itself:
-    // neither tells which package the user means. With few packages
-    // installed, "the only one" could be one of those: only the main files
-    // of their folders count.
-    let main: Vec<String> = packages
+/// The installed package that brings a name the document does not have:
+/// the one that is named like it (`marginnote` for `\\marginnote`), and no
+/// other. Which packages define a name depends on what is installed: with
+/// few of them, "the only one" is often a package that defines the name in
+/// passing, for itself. The name of the package does not depend on that.
+fn provided(name: &str, packages: Vec<(String, bool)>) -> Option<String> {
+    packages
         .into_iter()
-        .filter(|(_, main)| *main)
-        .map(|(p, _)| p)
-        .collect();
-    match (name.len() >= 4, main.len()) {
-        (true, 1) => Provided::By(main[0].clone()),
-        (true, 2 | 3) => Provided::Among(main),
-        _ => Provided::Unknown,
-    }
+        .map(|(package, _)| package)
+        .find(|package| package == name)
 }
 
 /// Says that the classes `classes` define `what` and that the class of the
@@ -770,7 +843,23 @@ pub(super) fn find_on_line(
     let limit = before
         .filter(|b| (span.start..=span.end).contains(b))
         .map_or(text.len(), |b| b - span.start);
-    let i = text[..limit].rfind(word).or_else(|| text.find(word))?;
+    // The word itself, not a part of a longer one (`widt` in
+    // `widt=\linewidth`): the last one before the point, else the first one
+    // of the line.
+    let whole = |i: &usize| {
+        let before = text[..*i].chars().next_back();
+        let after = text[*i + word.len()..].chars().next();
+        let letter = |c: Option<char>| c.is_some_and(char::is_alphanumeric);
+        !(word.starts_with(char::is_alphanumeric) && letter(before))
+            && !(word.ends_with(char::is_alphanumeric) && letter(after))
+    };
+    let all = |part: &str| -> Vec<usize> { part.match_indices(word).map(|(i, _)| i).collect() };
+    let i = all(&text[..limit])
+        .into_iter()
+        .rfind(whole)
+        .or_else(|| all(text).into_iter().find(whole))
+        .or_else(|| text[..limit].rfind(word))
+        .or_else(|| text.find(word))?;
     Some(span.start + i..span.start + i + word.len())
 }
 
@@ -790,6 +879,48 @@ pub(crate) fn relocate(d: &mut Diagnostic, s: &mut Sources<'_>) {
         .extension()
         .map(|e| e.to_string_lossy().to_lowercase())
         .unwrap_or_default();
+    // beamer writes the body of a fragile frame to a file and reads it
+    // back: the line TeX gives is counted in that file.
+    if ext == "vrb" {
+        let line = d.line.unwrap_or(1) as usize;
+        let wanted = d
+            .context_before
+            .as_deref()
+            .map(str::trim)
+            .filter(|c| !c.is_empty())
+            .map(str::to_owned);
+        for src in s.srcs() {
+            for frame in src.index.environments.iter().filter(|e| e.name == "frame") {
+                let begin = src.line_of(frame.begin.start);
+                let last = frame
+                    .end
+                    .as_ref()
+                    .map_or(src.line_count() - 1, |e| src.line_of(e.start));
+                // With a title, the file starts with a line for it.
+                for candidate in [begin + line - 1, begin + line] {
+                    if candidate > last {
+                        continue;
+                    }
+                    let written = src.line(candidate).1;
+                    let matches = wanted
+                        .as_ref()
+                        .is_none_or(|w| !written.trim().is_empty() && w.ends_with(written.trim()));
+                    if matches {
+                        d.file = Some(src.path.clone());
+                        d.line = Some(candidate as u32 + 1);
+                        d.range = None;
+                        return;
+                    }
+                }
+            }
+        }
+        if let Some(root) = s.root() {
+            d.file = Some(root.path.clone());
+            d.line = None;
+            d.range = None;
+        }
+        return;
+    }
     let dir = s.dir();
     let generated = matches!(
         ext.as_str(),
@@ -912,12 +1043,65 @@ pub(crate) fn suggest(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) {
             if let Some(hint) = &mut d.hint {
                 hint.advice = None;
             }
-            scoped(d, s, lang, &package, code == "env-undefined");
+            if !loaded_below(d, s, lang, &package) {
+                scoped(d, s, lang, &package, code == "env-undefined");
+            }
             return;
         }
     }
     // A frame of beamer with verbatim text and no `fragile` option.
     if compiler && let Some(fixes) = super::cause::fragile_frame(d, s, lang) {
+        d.fixes = fixes;
+        return;
+    }
+    // Verbatim text that is never ended: the rest of the file is read as
+    // text, and what TeX reports there comes from it.
+    if compiler
+        && d.line.is_some()
+        && let Some(fixes) = super::cause::explain_swallowed(d, s, lang)
+    {
+        d.fixes = fixes;
+        return;
+    }
+    // The line above lacks an argument: TeX took the start of this one
+    // for it.
+    if compiler
+        && d.line.is_some()
+        && let Some(fixes) = super::cause::explain_argument_above(d, s, lang)
+    {
+        d.fixes = fixes;
+        return;
+    }
+    // What is written above an `\end` that has no `\begin` is read out of
+    // its environment: whatever TeX says of it comes from there.
+    if compiler
+        && d.line.is_some()
+        && !matches!(
+            code.as_str(),
+            "undefined-control-sequence" | "env-undefined" | "env-mismatch"
+        )
+        && let Some(fixes) = super::cause::explain_missing_begin(d, s, lang)
+    {
+        d.fixes = fixes;
+        return;
+    }
+    // A brace that closes nothing, or that is never closed, on the very line
+    // TeX stopped at: whatever TeX makes of it, that is the mistake. An
+    // unknown name says what it is by itself.
+    if compiler
+        && d.line.is_some()
+        && !matches!(
+            code.as_str(),
+            "undefined-control-sequence"
+                | "env-undefined"
+                | "env-mismatch"
+                | "file-ended"
+                | "paragraph-ended"
+                | "runaway-argument"
+        )
+        && !super::cause::is_symptom(&code, &d.message)
+        && let Some(fixes) = super::cause::explain_braces_of_the_line(d, s, lang)
+    {
         d.fixes = fixes;
         return;
     }
@@ -1098,6 +1282,11 @@ fn undefined_cs(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
     let Some(cmd) = undefined_command(d).map(|c| c.trim_start_matches('\\').to_owned()) else {
         return Vec::new();
     };
+    // A command of the inside of a package (`\beamer@colbox@sep`): the
+    // document does not write it, and nothing can be said from it.
+    if cmd.contains('@') {
+        return Vec::new();
+    }
     let Some(mut at) = at(d, s) else {
         return Vec::new();
     };
@@ -1142,18 +1331,40 @@ fn undefined_cs(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
                         .to_owned(),
                     );
                 }
-                // A macro that is not of the project: nothing to change in
-                // it, the problem stays where it is used.
-                None => {
-                    lead = Some(
-                        lang.pick(
-                            &format!("`{written}` vient de ce que `{owner}` écrit ici."),
-                            &format!("`{written}` comes from what `{owner}` writes here."),
-                        )
-                        .to_owned(),
-                    );
-                }
+                // A macro that is not of the project: the command is in
+                // what the document gave it (the body of an environment
+                // that is read whole, an option kept for later), or nowhere
+                // in the document.
+                None => match s.written_before(&at.src, at.line, &written) {
+                    Some((src, span)) => {
+                        place(d, &src, span.clone());
+                        at = At {
+                            line: src.line_of(span.start),
+                            token: span,
+                            src,
+                        };
+                    }
+                    None if !owner.contains('@') => {
+                        lead = Some(
+                            lang.pick(
+                                &format!("`{written}` vient de ce que `{owner}` écrit ici."),
+                                &format!("`{written}` comes from what `{owner}` writes here."),
+                            )
+                            .to_owned(),
+                        );
+                    }
+                    None => {}
+                },
             }
+        } else if let Some((src, span)) = s.written_before(&at.src, at.line, &written) {
+            // An environment that reads its body whole (a table, an
+            // alignment, a frame) reports it at its end.
+            place(d, &src, span.clone());
+            at = At {
+                line: src.line_of(span.start),
+                token: span,
+                src,
+            };
         }
     }
     let fixes = unknown_command(d, s, lang, &cmd, &at, lead.is_none());
@@ -1192,9 +1403,10 @@ fn unknown_command(
         class_feature(d, lang, (&name, &name), &class, &classes);
         return Vec::new();
     }
-    // An installed package the knowledge base does not describe defines it.
+    // An installed package the knowledge base does not describe, named like
+    // the command, defines it.
     let installed = if described {
-        Provided::Unknown
+        None
     } else {
         provided(cmd, s.providers_of(cmd, false))
     };
@@ -1208,9 +1420,7 @@ fn unknown_command(
         vec![crate::log::hints::package_fix(package.to_owned())]
     };
     // The package named like the command: nothing is closer.
-    if let Provided::By(package) = &installed
-        && package == cmd
-    {
+    if let Some(package) = &installed {
         return not_loaded(d, package);
     }
     // A macro of the project, misspelled.
@@ -1228,9 +1438,6 @@ fn unknown_command(
         );
         return vec![replace(best)];
     }
-    if let Provided::By(package) = &installed {
-        return not_loaded(d, package);
-    }
     // A command of the kernel or of a loaded package, misspelled. When a
     // package defines the command, loading it comes first.
     // Among the hundreds of commands LaTeX has, a name of three letters is
@@ -1246,27 +1453,14 @@ fn unknown_command(
         .map(|c| c.name.as_str());
     // Then a command of a loaded package the knowledge base does not
     // describe, as the source of the package defines it.
+    // A source defines names under conditions nobody checks here: only a
+    // name one typing mistake away is offered.
     let read = || {
         (cmd.len() >= 4)
-            .then(|| closest(cmd, learned.package_commands(), max))
+            .then(|| closest(cmd, learned.package_commands(), 1))
             .flatten()
     };
     let Some(best) = closest(cmd, names, max).or_else(read) else {
-        // A few installed packages define it: they are named, none chosen.
-        if let Provided::Among(packages) = installed {
-            advise(
-                d,
-                lang,
-                &format!(
-                    "`\\{cmd}` est défini par les packages {}, qui ne sont pas chargés.",
-                    listed(&packages, "et")
-                ),
-                &format!(
-                    "`\\{cmd}` is defined by the packages {}, which are not loaded.",
-                    listed(&packages, "and")
-                ),
-            );
-        }
         return Vec::new();
     };
     // A package defines exactly this command: loading it is the fix, a
@@ -1275,6 +1469,9 @@ fn unknown_command(
         return Vec::new();
     }
     did_you_mean(d, lang, &format!("\\{best}"));
+    // `\begin` or `\end` misspelled: the environment is not one for TeX,
+    // and what it holds is read out of its place.
+    d.swallows = matches!(best, "begin" | "end");
     vec![replace(best)]
 }
 
@@ -1289,11 +1486,20 @@ fn env_undefined(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
         return Vec::new();
     };
     let src = &at.src;
+    // What an unknown environment holds is read out of its place.
+    d.swallows = true;
     // The name is what LaTeX does not know: the problem is shown on it.
     {
+        let opening = format!("\\begin{{{name}}}");
         let (line, text) = src.line(at.line);
-        if let Some(i) = text.find(&format!("\\begin{{{name}}}")) {
-            let start = line.start + i + "\\begin{".len();
+        let masked = mask(&src.text);
+        let found = text.find(&opening).map(|i| line.start + i).or_else(|| {
+            // Elsewhere in the file, when it is written once.
+            let mut all = masked.match_indices(&opening).map(|(i, _)| i);
+            all.next().filter(|_| all.next().is_none())
+        });
+        if let Some(i) = found {
+            let start = i + "\\begin{".len();
             place(d, src, start..start + name.len());
         }
     }
@@ -1333,8 +1539,7 @@ fn env_undefined(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
         return Vec::new();
     }
     // An installed package the knowledge base does not describe defines it.
-    let installed = provided(&name, s.providers_of(&name, true));
-    if let Provided::By(package) = &installed {
+    if let Some(package) = &provided(&name, s.providers_of(&name, true)) {
         advise(
             d,
             lang,
@@ -1432,6 +1637,11 @@ fn env_mismatch(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
     let src = &at.src;
     if let Some(m) = MISMATCH.captures(&d.message) {
         let (open, close) = (m[1].to_owned(), m[3].to_owned());
+        // An environment of the inside of a package (`beamer@framepauses`)
+        // is not one the document writes: nothing can be said from it.
+        if open.contains('@') || close.contains('@') {
+            return Vec::new();
+        }
         let begin_line = m[2].parse::<usize>().unwrap_or(1).saturating_sub(1);
         if close == "document" {
             // The source closes it: TeX lost count after an earlier error,
@@ -1446,6 +1656,35 @@ fn env_mismatch(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
             let begin = src
                 .line(begin_line.min(src.line_count().saturating_sub(1)))
                 .0;
+            // TeX names what the environment is made of (`list` for
+            // `algorithmic`): the one the document opens on that line and
+            // never closes is the one to say.
+            let open = if src.text[begin.clone()].contains(&format!("\\begin{{{open}}}")) {
+                open
+            } else {
+                // The last one opened at or above the line TeX gives.
+                let written = src
+                    .index
+                    .problems
+                    .iter()
+                    .filter_map(|p| match &p.kind {
+                        crate::syntax::ProblemKind::UnclosedEnvironment(name)
+                            if name != "document" && src.line_of(p.span.start) <= begin_line =>
+                        {
+                            Some((p.span.start, name.clone()))
+                        }
+                        _ => None,
+                    })
+                    .max_by_key(|(at, _)| *at);
+                match written {
+                    Some((_, name)) => name,
+                    None => return Vec::new(),
+                }
+            };
+            // Where the document opens it.
+            let begin = src.text[..begin.end]
+                .rfind(&format!("\\begin{{{open}}}"))
+                .map_or(begin.clone(), |i| src.line(src.line_of(i)).0);
             let begin_end = src.text[begin.clone()]
                 .find(&format!("\\begin{{{open}}}"))
                 .map_or(begin.end, |i| begin.start + i + open.len() + 8);
@@ -1473,6 +1712,50 @@ fn env_mismatch(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
         let Some(span) = find_on_line(src, at.line, &format!("\\end{{{close}}}"), None) else {
             return Vec::new();
         };
+        // Unless `close` is open around `open`: its `\end` is right, and
+        // `open` is the one that is never closed.
+        let masked = mask(&src.text);
+        let begin = src
+            .line(begin_line.min(src.line_count().saturating_sub(1)))
+            .0;
+        let opening = format!("\\begin{{{open}}}");
+        if let Some(i) = masked[begin.clone()].find(&opening) {
+            let at_open = begin.start + i;
+            let around = masked[..at_open]
+                .matches(&format!("\\begin{{{close}}}"))
+                .count()
+                > masked[..at_open]
+                    .matches(&format!("\\end{{{close}}}"))
+                    .count();
+            if around {
+                place(d, src, at_open..at_open + opening.len());
+                d.swallows = true;
+                advise(
+                    d,
+                    lang,
+                    &format!(
+                        "Ce `\\begin{{{open}}}` n'est pas fermé avant le `\\end{{{close}}}` de la ligne {} : il lui manque son `\\end{{{open}}}`.",
+                        at.line + 1
+                    ),
+                    &format!(
+                        "This `\\begin{{{open}}}` is not closed before the `\\end{{{close}}}` of line {}: its `\\end{{{open}}}` is missing.",
+                        at.line + 1
+                    ),
+                );
+                let line_start = src.line(at.line).0.start;
+                let alone = src.text[line_start..span.start].trim().is_empty();
+                let edit = if alone {
+                    let indent = src.text[line_start..span.start].to_owned();
+                    src.insert(line_start, format!("{indent}\\end{{{open}}}\n"))
+                } else {
+                    src.insert(span.start, format!("\\end{{{open}}} "))
+                };
+                return edits(
+                    format!("{} \\end{{{open}}}", lang.pick("Fermer avec", "Close with")),
+                    vec![edit],
+                );
+            }
+        }
         place(d, src, span.clone());
         advise(
             d,
@@ -1510,6 +1793,10 @@ fn env_mismatch(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
             &format!("Ce `\\end{{{close}}}` ne ferme aucun `\\begin{{{close}}}`."),
             &format!("This `\\end{{{close}}}` closes no `\\begin{{{close}}}`."),
         );
+        // Deleting it repairs nothing when items or cells are above.
+        if !tx::end_can_go(&src.text, span.start) {
+            return Vec::new();
+        }
         return edits(
             format!("{} \\end{{{close}}}", lang.pick("Supprimer", "Delete")),
             vec![src.delete(span)],
@@ -1681,6 +1968,11 @@ fn unclosed_brace(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
                 "Le `%` de cette ligne met la fin de la ligne en commentaire, avec la `}` qui ferme cette accolade. Un pourcentage s'écrit `\\%`.",
                 "The `%` of this line turns the end of the line into a comment, with the `}` that closes this brace. A percent sign is written `\\%`.",
             );
+            // Only in text is a `%` a percent sign: in a name (a label, a
+            // file, a command), writing `\%` repairs nothing.
+            if !tx::takes_text(&src.text, open) {
+                return Vec::new();
+            }
             return edits(
                 lang.pick("Écrire \\%", "Write \\%").into(),
                 vec![src.edit(percent..percent + 1, "\\%")],
@@ -1839,51 +2131,8 @@ fn missing_dollar(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
     let p = at.point();
     let text = &src.text;
     if text[..p].ends_with('_') || text[..p].ends_with('^') {
-        // The word around the point.
-        let start = text[line_span.start..p - 1]
-            .rfind(|c: char| c.is_whitespace() || "({[~$".contains(c))
-            .map_or(line_span.start, |i| line_span.start + i + 1);
-        let mut end = p;
-        let bytes = text.as_bytes();
-        while end < line_span.end {
-            let c = bytes[end];
-            if c == b'{' {
-                end = group_end(text, end).unwrap_or(end + 1);
-                continue;
-            }
-            let next_is_word = bytes
-                .get(end + 1)
-                .is_some_and(|n| n.is_ascii_alphanumeric());
-            if c.is_ascii_whitespace() || b"),;:!?".contains(&c) || (c == b'.' && !next_is_word) {
-                break;
-            }
-            end += 1;
-        }
-        let word = &text[start..end];
-        let escaped = word.replace('_', "\\_").replace('^', "\\^{}");
-        let escape = Fix::Edits {
-            title: format!("{} {escaped}", lang.pick("Écrire", "Write")),
-            edits: word
-                .match_indices(['_', '^'])
-                .map(|(i, c)| {
-                    src.edit(
-                        start + i..start + i + 1,
-                        if c == "_" { "\\_" } else { "\\^{}" },
-                    )
-                })
-                .collect(),
-        };
-        let wrap = Fix::Edits {
-            title: format!(
-                "{} ${word}$",
-                lang.pick("Mettre en mode mathématique :", "Make it math:")
-            ),
-            edits: vec![src.insert(start, "$"), src.insert(end, "$")],
-        };
-        // `mon_fichier` is text, `x^2` or `a_n` is math.
-        let first = word.split(['_', '^']).next().unwrap_or("");
-        let identifier = text[..p].ends_with('_')
-            && first.chars().filter(char::is_ascii_alphabetic).count() >= 2;
+        let learned = s.learned();
+        let fixes = script_fixes(src, &line_span, p, &learned, lang);
         let script = &text[p - 1..p];
         place(d, src, p - 1..p);
         advise(
@@ -1902,11 +2151,10 @@ fn missing_dollar(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
                 }
             ),
         );
-        return if identifier {
-            vec![escape, wrap]
-        } else {
-            vec![wrap, escape]
-        };
+        // TeX goes on in a formula: the rest of the paragraph is read
+        // the other way round.
+        d.swallows = true;
+        return fixes;
     }
     if let Some(m) = TRAILING_COMMAND.find(&text[line_span.start..p]) {
         let start = line_span.start + m.start();
@@ -1914,12 +2162,21 @@ fn missing_dollar(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
         while text[end..].starts_with('{') {
             end = group_end(text, end).unwrap_or(end + 1);
         }
-        let code = &text[start..end];
         let name = m.as_str();
-        let math_only = kb()
-            .command(name.trim_start_matches('\\').trim_end_matches('*'), None)
-            .is_some_and(|c| c.mode == crate::kb::Mode::Math);
+        // Inside a formula of the source, TeX was not reading one any
+        // more: what it reports comes from something before.
+        if src
+            .index
+            .math
+            .iter()
+            .any(|f| f.start <= start && start <= f.end)
+        {
+            return Vec::new();
+        }
+        let learned = s.learned();
+        let math_only = learned.math_only(name.trim_start_matches('\\').trim_end_matches('*'));
         if math_only {
+            d.swallows = true;
             place(d, src, start..start + name.len());
             advise(
                 d,
@@ -1928,15 +2185,101 @@ fn missing_dollar(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
                 &format!("`{name}` only exists in a formula, and this one is in text."),
             );
         }
-        return edits(
-            format!(
-                "{} ${code}$",
-                lang.pick("Mettre en mode mathématique :", "Make it math:")
-            ),
-            vec![src.insert(start, "$"), src.insert(end, "$")],
-        );
+        return vec![wrap_formula(src, &line_span, start, end, &learned, lang)];
     }
     Vec::new()
+}
+
+/// What repairs a `_` or a `^` written in text, right before `p`: its word
+/// put in a formula with what is beside it, or the character written as
+/// text. `mon_fichier` is text first, `x^2` or `a_n` a formula first.
+pub(super) fn script_fixes(
+    src: &Src,
+    line: &Span,
+    p: usize,
+    learned: &super::known::Learned,
+    lang: Lang,
+) -> Vec<Fix> {
+    let text = &src.text;
+    // The word around the point.
+    let start = text[line.start..p - 1]
+        .rfind(|c: char| c.is_whitespace() || "({[~$".contains(c))
+        .map_or(line.start, |i| {
+            line.start
+                + i
+                + text[line.start + i..]
+                    .chars()
+                    .next()
+                    .map_or(1, char::len_utf8)
+        });
+    let mut end = p;
+    let bytes = text.as_bytes();
+    while end < line.end {
+        let c = bytes[end];
+        if c == b'{' {
+            end = group_end(text, end).unwrap_or(end + 1);
+            continue;
+        }
+        let next_is_word = bytes
+            .get(end + 1)
+            .is_some_and(|n| n.is_ascii_alphanumeric());
+        if c.is_ascii_whitespace() || b"),;:!?$".contains(&c) || (c == b'.' && !next_is_word) {
+            break;
+        }
+        end += 1;
+    }
+    let end = end.min(line.end);
+    let word = &text[start..end];
+    let escaped = word.replace('_', "\\_").replace('^', "\\^{}");
+    let escape = Fix::Edits {
+        title: format!("{} {escaped}", lang.pick("Écrire", "Write")),
+        edits: word
+            .match_indices(['_', '^'])
+            .map(|(i, c)| {
+                src.edit(
+                    start + i..start + i + 1,
+                    if c == "_" { "\\_" } else { "\\^{}" },
+                )
+            })
+            .collect(),
+    };
+    let wrap = wrap_formula(src, line, start, end, learned, lang);
+    let first = word.split(['_', '^']).next().unwrap_or("");
+    let identifier =
+        text[..p].ends_with('_') && first.chars().filter(char::is_ascii_alphabetic).count() >= 2;
+    if identifier {
+        vec![escape, wrap]
+    } else {
+        vec![wrap, escape]
+    }
+}
+
+/// Puts in a formula what is written at `start..end` with what is around
+/// it that reads like the same formula (`a^2 + b^2 = c^2` for `a^2`). A `$`
+/// right after it is the one that closes the formula: only the opening one
+/// is added.
+fn wrap_formula(
+    src: &Src,
+    line: &Span,
+    start: usize,
+    end: usize,
+    learned: &super::known::Learned,
+    lang: Lang,
+) -> Fix {
+    let mode = |name: &str| learned.command(name).map(|k| k.mode);
+    let (formula, closed) = tx::formula_around(&src.text, line, start, end, &mode);
+    let mut list = vec![src.insert(formula.start, "$")];
+    if !closed {
+        list.push(src.insert(formula.end, "$"));
+    }
+    Fix::Edits {
+        title: format!(
+            "{} ${}$",
+            lang.pick("Mettre en mode mathématique :", "Make it math:"),
+            &src.text[formula]
+        ),
+        edits: list,
+    }
 }
 
 /// Start of the argument of a script ending at `end` (exclusive).
@@ -2063,11 +2406,21 @@ fn missing_right(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
         .iter()
         .find(|(o, _)| after_left.starts_with(o))
         .map_or(".", |(_, c)| c);
-    let mut at_ = p;
-    for end in ["$$", "$", "\\]", "\\)"] {
-        if before.ends_with(end) {
-            at_ = p - end.len();
-            break;
+    // Before what closes the formula of this `\left`: TeX may have stopped
+    // further, at the end of the argument the formula is in.
+    let from = span.start + left;
+    let mut at_ = ["$", "\\]", "\\)"]
+        .iter()
+        .filter_map(|end| src.text[from..span.end].find(end).map(|i| from + i))
+        .min()
+        .unwrap_or(p);
+    if at_ > p {
+        at_ = p;
+        for end in ["$$", "$", "\\]", "\\)"] {
+            if before.ends_with(end) {
+                at_ = p - end.len();
+                break;
+            }
         }
     }
     let space = if src.text[..at_].ends_with(' ') {
@@ -2435,10 +2788,13 @@ fn extra_column(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
         return Vec::new();
     };
     let text = &src.text;
+    let env_end = env.end.as_ref().map_or(text.len(), |e| e.start);
+    if p < spec.end || p > env_end {
+        return Vec::new();
+    }
     let row_start = text[spec.end..p]
         .rfind("\\\\")
         .map_or(spec.end + 1, |i| spec.end + i + 2);
-    let env_end = env.end.as_ref().map_or(text.len(), |e| e.start);
     let row_end = text[p..env_end].find("\\\\").map_or(env_end, |i| p + i);
     let row = mask(&text[row_start..row_end]);
     let needed = row.matches('&').count() - row.matches("\\&").count() + 1;
@@ -2507,8 +2863,9 @@ fn end_row(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     };
     // A rule of tables written where there is no table.
     if src
-        .environment_at(line.start + rule_at, &[])
-        .is_none_or(|e| e.name == "document")
+        .environment_at(line.start + rule_at, TABULARS)
+        .or(src.environment_at(line.start + rule_at, ALIGNMENTS))
+        .is_none()
     {
         place(
             d,
@@ -3647,8 +4004,24 @@ fn begin_document(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
             "Add \\begin{document} before this text",
         )
         .into(),
-        vec![src.insert(span.start, "\\begin{document}\n")],
+        vec![src.insert(printed_from(src, at.line), "\\begin{document}\n")],
     )
+}
+
+/// Where what TeX was printing starts: the first line of the paragraph of
+/// `line` (TeX reports the end of a paragraph on the blank line after it).
+fn printed_from(src: &Src, line: usize) -> usize {
+    let blank = |l: usize| src.line(l).1.trim().is_empty();
+    let mut first = line;
+    while first > 0 && blank(first) {
+        first -= 1;
+    }
+    // The lines of text above it are the same paragraph; a line that starts
+    // with a command is a declaration of the preamble.
+    while first > 0 && !blank(first - 1) && !src.line(first - 1).1.trim_start().starts_with('\\') {
+        first -= 1;
+    }
+    src.line(first).0.start
 }
 
 fn end_document(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
@@ -4752,7 +5125,11 @@ static TITLE_COMMAND: LazyLock<Regex> = LazyLock::new(|| {
 fn pdf_string(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     if !d.message.contains("math shift") {
         // The message names what is left out: a command, a line break…
-        if let Some(token) = quoted(&d.message).filter(|t| t.starts_with('\\')) {
+        // Only when the title holds it: what a bookmark leaves out may come
+        // from somewhere else (the number of the page).
+        let line = at(d, s).map(|at| at.src.line(at.line).1.to_owned());
+        let written = |token: &str| line.as_deref().is_some_and(|l| l.contains(token));
+        if let Some(token) = quoted(&d.message).filter(|t| t.starts_with('\\') && written(t)) {
             advise(
                 d,
                 lang,

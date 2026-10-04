@@ -118,7 +118,7 @@ The cause of a problem in a given document is not written here, and is not tied 
 
 - their `mode`: a command or an environment of formulas written in text, and the reverse;
 - their `args`: an argument of the signature that is not written, and what an argument expects by its name (`{width}`, `{length}`: a length; `{number}`: a number; `{label}`, `{counter}`: a name without command);
-- the values of an argument listed in `data/keys.json` (`\pagestyle{1}`): a value close to one of them is a typo;
+- the values of an argument, for the sets of `data/keys.json` marked `"exact": true` (`\pagestyle{1}`: every value is listed, so a value close to one of them is a typo). The other sets are proposals for completion: `\vspace{1em}` in a set does not make `\vspace{1cm}` a mistake;
 - the keys of an argument (`name=value`), whoever reads them (keyval, xkeyval, kvsetkeys, pgfkeys, the keys of LaTeX3): the sets of `data/keys.json`, the keys their `learn` pattern finds in the installed source of the package, and the options a package declares;
 - the structure of the paragraph as the live checks see it (braces, formulas, environments).
 
@@ -131,7 +131,7 @@ What is known comes from three places, asked in this order (`fixes/known.rs`):
 
 So a package that is not described here still gets a misspelled command, environment, option or key corrected, an argument that is not written reported, and a symbol of formulas written in text explained.
 
-A command or an environment that nothing loaded defines is looked for in the whole distribution (`tex::Providers`: every `.sty` is searched once for the definitions it holds). A package is offered, with the fix that loads it, when it is named like the command, or when it is the only main file of a folder that defines a name of four letters or more; two or three such packages are named; otherwise nothing is said. What classes define is looked at first: a command that `report` and `book` have and `article` does not is said so, and no package is offered for it.
+A command or an environment that nothing loaded defines is looked for in the whole distribution (`tex::Providers`: every `.sty` is searched once for the definitions it holds). A package is offered, with the fix that loads it, only when it is named like the command (`marginnote` for `\marginnote`): which other packages define a name depends on what is installed, and says nothing sure. What classes define is looked at first: a command that `report` and `book` have and `article` does not is said so, and no package is offered for it.
 
 A command described here gets, on top of that, the names of its arguments in the messages and the checks of what each one expects: the problem is placed on the word or the argument to change, its title names the mistake and its *advice* (the light bulb) says what is wrong, with a fix when there is one. A problem whose cause is not found keeps its explanation and gets no advice.
 

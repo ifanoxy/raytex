@@ -7,7 +7,7 @@
 
 mod cause;
 mod data;
-mod known;
+pub(crate) mod known;
 pub(crate) mod latex;
 mod numeric;
 pub mod text;
@@ -19,7 +19,7 @@ use crate::diagnostics::{Diagnostic, FileEdit, Fix};
 use crate::i18n::Lang;
 use crate::text::LineIndex;
 
-pub(crate) use latex::{CONSEQUENCE, Sources, relocate, suggest};
+pub(crate) use latex::{CONSEQUENCE, Sources, load_before_use, relocate, suggest};
 
 /// Whether an error is about the structure TeX is in (a group, a formula,
 /// an environment): after a mistake that leaves one open, such an error

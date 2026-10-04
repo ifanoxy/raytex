@@ -1478,30 +1478,13 @@ fn dynamic_cases() -> Vec<Located> {
             Some("`\\marginnote` est défini par le package `marginnote`, qui n'est pas chargé."),
         )
         .installed(&["marginnote.sty"]),
+        // Only the package named like the command is offered: which other
+        // packages define a name depends on what is installed.
         located(
-            "unknown-environment-package-not-loaded",
-            any,
-            doc("", "\\begin{compactitem}\n\\item a\n\\end{compactitem}"),
-            "compactitem",
-            Some("L'environnement `compactitem` est défini par le package `paralist`, qui n'est pas chargé."),
-        )
-        .installed(&["paralist.sty"]),
-        // Two packages define it (fancybox, pdfscreen): both are named.
-        located(
-            "unknown-among-a-few-packages",
+            "unknown-in-a-package-of-another-name",
             any,
             doc("", "Une \\shadowbox{boîte} ici."),
             "\\shadowbox",
-            Some("`fancybox`"),
-        )
-        .installed(&["fancybox.sty"]),
-        // A package that is a part of something else defines `\ding` for
-        // itself: no package is offered.
-        located(
-            "unknown-in-parts-of-bundles",
-            any,
-            doc("", "Un symbole \\ding{51} ici."),
-            "\\ding",
             None,
         ),
         // A name that only looks like another one is not offered: `\par`
@@ -1526,7 +1509,9 @@ fn dynamic_cases() -> Vec<Located> {
             any,
             doc("\\newcommand{\\R}{\\mathbb{R}}", "Soit $\\R$ ici."),
             "\\mathbb",
-            Some("`\\mathbb` est écrit dans la définition de `\\R`, que la ligne 4 utilise. `\\mathbb` est défini par le package `amsfonts`."),
+            Some(
+                "`\\mathbb` est écrit dans la définition de `\\R`, que la ligne 4 utilise. `\\mathbb` est défini par le package `amsfonts`.",
+            ),
         ),
         located(
             "unknown-in-argument",
@@ -1646,6 +1631,81 @@ fn dynamic_cases() -> Vec<Located> {
 fn second_wave_cases() -> Vec<Located> {
     let any = "";
     vec![
+        // What three documents written after the rules showed.
+        located(
+            "dollar-that-closes-is-missing",
+            any,
+            doc("", "Soit $\\alpha + 1 un nombre, et $\\beta^2$ son carré."),
+            "$",
+            Some("La formule ouverte par ce `$` n'est pas refermée : le `$` suivant"),
+        ),
+        located(
+            "dollar-that-opens-is-missing",
+            any,
+            doc("", "Soit \\alpha + 1$ un nombre, et $\\beta^2$ son carré."),
+            "\\alpha",
+            Some("le `$` qui l'ouvre manque"),
+        ),
+        located(
+            "dollar-missing-in-a-cell",
+            any,
+            doc("", "\\begin{tabular}{lll}\nLinéaire & n/2$ & $n$ \\\\\n\\end{tabular}"),
+            "n/2",
+            Some("le `$` qui l'ouvre manque"),
+        ),
+        located(
+            "same-command-twice-on-a-line",
+            any,
+            doc("\\newcommand{\\abss}[1]{|#1|}", "On a $\\abs{a} + \\abss{b}$ et $\\abss{c}$."),
+            "\\abs",
+            Some("Vouliez-vous écrire `\\abss`"),
+        ),
+        located(
+            "key-written-again-in-its-value",
+            any,
+            doc("\\usepackage{graphicx}", "\\includegraphics[widt=\\linewidth]{example-image}"),
+            "widt",
+            Some("Vouliez-vous écrire `width` ?"),
+        ),
+        located(
+            "option-with-a-value-misspelled",
+            any,
+            doc("\\usepackage[versionn=4]{mhchem}", "\\ce{H2O}"),
+            "versionn",
+            Some("Vouliez-vous écrire `version` ?"),
+        )
+        .installed(&["mhchem.sty"]),
+        located(
+            "package-loaded-below-its-use",
+            any,
+            doc("\\pgfplotsset{compat=1.16}\n\\usepackage{pgfplots}", "Texte."),
+            "\\pgfplotsset",
+            Some("Le package `pgfplots` est chargé plus bas, ligne 3"),
+        )
+        .installed(&["pgfplots.sty"]),
+        located(
+            "argument-missing-on-the-line-above",
+            any,
+            doc("\\usepackage{amsthm}\n\\newtheorem{lemme}\n\\newcommand{\\N}{\\mathbf{N}}", "Texte."),
+            "\\newtheorem{lemme}",
+            Some("il manque l'argument"),
+        ),
+        located(
+            "command-of-another-package-of-that-name",
+            any,
+            doc("\\usepackage{siunitx}", "Une masse de \\qty{3}{\\kilo\\gram et plus.\n\nSuite."),
+            "{",
+            Some("jamais refermée"),
+        )
+        .installed(&["siunitx.sty"]),
+        located(
+            "environment-made-of-another",
+            any,
+            doc("\\usepackage{algpseudocode}", "\\begin{algorithmic}\n\\State $i \\gets 0$\n\nSuite."),
+            "\\begin{algorithmic}",
+            Some("`\\begin{algorithmic}` n'est jamais fermé"),
+        )
+        .installed(&["algpseudocode.sty"]),
         located(
             "key-length-without-unit",
             any,

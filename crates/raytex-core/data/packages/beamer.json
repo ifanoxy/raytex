@@ -33,7 +33,7 @@
     { "name": "inserttotalframenumber", "doc": { "en": "Total number of frames.", "fr": "Nombre total de frames." } }
   ],
   "environments": [
-    { "name": "frame", "args": "[options]{title}", "mode": "text", "body": "\t${2}", "doc": { "en": "A slide. Options: fragile (for verbatim), t (top-aligned), allowframebreaks.", "fr": "Une diapositive. Options : fragile (pour le verbatim), t (aligné en haut), allowframebreaks." }, "example": "\\begin{frame}{Titre}\n  \\begin{itemize}\n    \\item<1-> Premier point\n    \\item<2-> Second point\n  \\end{itemize}\n\\end{frame}" },
+    { "name": "frame", "args": "[options]", "mode": "text", "body": "\t${2}", "doc": { "en": "A slide. Options: fragile (for verbatim), t (top-aligned), allowframebreaks.", "fr": "Une diapositive. Options : fragile (pour le verbatim), t (aligné en haut), allowframebreaks." }, "example": "\\begin{frame}{Titre}\n  \\begin{itemize}\n    \\item<1-> Premier point\n    \\item<2-> Second point\n  \\end{itemize}\n\\end{frame}" },
     { "name": "block", "args": "{title}", "mode": "text", "body": "\t${2}", "doc": { "en": "Block with a title.", "fr": "Bloc avec un titre." } },
     { "name": "alertblock", "args": "{title}", "mode": "text", "doc": { "en": "Highlighted block.", "fr": "Bloc mis en valeur." } },
     { "name": "exampleblock", "args": "{title}", "mode": "text", "doc": { "en": "Example block.", "fr": "Bloc d'exemple." } },

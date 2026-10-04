@@ -29,6 +29,11 @@ pub struct KeySet {
     /// Packages whose options (`\usepackage[…]{geometry}`) take them too.
     #[serde(default)]
     pub options_of: Vec<String>,
+    /// The argument is one of these names and nothing else (`\pagestyle`).
+    /// Without it, the keys are proposals: `\vspace{1em}` does not make
+    /// `\vspace{1cm}` a mistake.
+    #[serde(default)]
+    pub exact: bool,
     /// How to find more keys in the sources of the package.
     #[serde(default)]
     pub learn: Option<Learn>,

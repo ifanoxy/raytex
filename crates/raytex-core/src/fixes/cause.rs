@@ -58,6 +58,7 @@ pub(super) fn explain(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Op
             text_in_formula,
             text_command_in_formula,
             path_in_text,
+            lost_dollar,
             call_at_point,
             group_closed_in_environment,
             float_in_box,
@@ -91,10 +92,152 @@ pub(super) fn explain_structure(
             dollar_in_formula,
             display_closed_by_one_dollar,
             group_closed_in_environment,
+            lost_dollar,
             structure,
             text_in_formula,
         ],
     )
+}
+
+/// An `\end{name}` that has no `\begin{name}`, a few lines below the place
+/// TeX stopped at: what is written there is read outside the environment
+/// it was meant for, and that is what TeX complains about.
+pub(super) fn explain_missing_begin(
+    d: &mut Diagnostic,
+    s: &mut Sources<'_>,
+    lang: Lang,
+) -> Option<Vec<Fix>> {
+    run(d, s, lang, &[begin_missing])
+}
+
+fn begin_missing(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
+    use crate::syntax::ProblemKind as Kind;
+    // The next `\end` without `\begin`, with no blank line in between.
+    let (end, name) = h
+        .src
+        .index
+        .problems
+        .iter()
+        .filter(|p| p.span.start >= h.line.start)
+        .find_map(|p| match &p.kind {
+            Kind::UnmatchedEnd(name) if name != "document" => Some((p.span.clone(), name)),
+            _ => None,
+        })?;
+    let between = &h.text[h.line.start..end.start];
+    if between.contains("\n\n") || between.matches('\n').count() > 40 {
+        return None;
+    }
+    let line = h.at.line + 1;
+    found(
+        d,
+        h,
+        end,
+        (
+            &format!("`\\begin{{{name}}}` manquant"),
+            &format!("`\\begin{{{name}}}` is missing"),
+        ),
+        (
+            &format!(
+                "Ce `\\end{{{name}}}` n'a pas de `\\begin{{{name}}}` : ce qui est écrit au-dessus (ligne {line}) est lu hors de l'environnement."
+            ),
+            &format!(
+                "This `\\end{{{name}}}` has no `\\begin{{{name}}}`: what is written above (line {line}) is read outside the environment."
+            ),
+        ),
+    );
+    d.swallows = true;
+    Some(Vec::new())
+}
+
+/// Verbatim text that is never ended takes the rest of the file with it:
+/// whatever TeX reports after its `\begin` comes from there.
+pub(super) fn explain_swallowed(
+    d: &mut Diagnostic,
+    s: &mut Sources<'_>,
+    lang: Lang,
+) -> Option<Vec<Fix>> {
+    run(d, s, lang, &[swallowed])
+}
+
+fn swallowed(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
+    use crate::syntax::ProblemKind as Kind;
+    let span = h.src.index.problems.iter().find_map(|p| match &p.kind {
+        Kind::UnclosedEnvironment(name) if crate::syntax::is_verbatim_environment(name) => {
+            Some(p.span.clone())
+        }
+        _ => None,
+    })?;
+    if span.start > h.line.end {
+        return None;
+    }
+    let live = crate::lint::structure(&h.src.path, &h.src.text, h.lang)
+        .into_iter()
+        .find(|p| p.range.is_some_and(|r| h.src.offset(r.start) == span.start))?;
+    place(d, h.src, span);
+    d.swallows = true;
+    d.hint = Some(Hint {
+        title: live.message,
+        explanation: String::new(),
+        advice: Some(
+            h.fr_en(
+                "TeX a lu jusqu'à la fin du fichier en cherchant ce qui ferme ceci.",
+                "TeX read to the end of the file looking for what closes this.",
+            )
+            .to_owned(),
+        ),
+    });
+    Some(live.fixes)
+}
+
+/// The line above ends with a command that lacks an argument: TeX takes
+/// what this line starts with for it, and whatever it reports here comes
+/// from there.
+pub(super) fn explain_argument_above(
+    d: &mut Diagnostic,
+    s: &mut Sources<'_>,
+    lang: Lang,
+) -> Option<Vec<Fix>> {
+    run(d, s, lang, &[argument_above])
+}
+
+fn argument_above(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
+    if h.at.line == 0 || h.text[h.line.clone()].trim_start().starts_with(['{', '[']) {
+        return None;
+    }
+    let (above, written) = h.src.line(h.at.line - 1);
+    let end = above.start + written.trim_end().len();
+    let start = command_start(h.text, above.start, end)?;
+    let call = read_call(h.text, &h.known, start)?;
+    if call.environment || call.missing().is_none() || call.end != end {
+        return None;
+    }
+    d.swallows = true;
+    Some(missing_argument(d, h, &call, None))
+}
+
+/// The braces of the line TeX stopped at, when one of them closes nothing
+/// or is never closed.
+pub(super) fn explain_braces_of_the_line(
+    d: &mut Diagnostic,
+    s: &mut Sources<'_>,
+    lang: Lang,
+) -> Option<Vec<Fix>> {
+    run(d, s, lang, &[braces_of_the_line])
+}
+
+fn braces_of_the_line(d: &mut Diagnostic, s: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
+    use crate::syntax::ProblemKind as Kind;
+    h.src
+        .index
+        .problems
+        .iter()
+        .any(|p| {
+            matches!(p.kind, Kind::UnmatchedCloseBrace | Kind::UnclosedBrace)
+                && h.line.start <= p.span.start
+                && p.span.start <= h.line.end
+        })
+        .then(|| structure(d, s, h))
+        .flatten()
 }
 
 /// A path written in text (`C:\Users\nom`): each of its `\` gives an unknown
@@ -314,7 +457,13 @@ fn unknown_key(d: &mut Diagnostic, s: &mut Sources<'_>, h: &Here<'_>) -> Option<
         return None;
     }
     let span = written_key(h, key)?;
-    let known = keys_taken_at(s, h, span.start);
+    // The names of the keys: some are listed with a value (`version=4`).
+    let mut known: Vec<String> = keys_taken_at(s, h, span.start)
+        .iter()
+        .map(|k| k.split('=').next().unwrap_or(k).trim().to_owned())
+        .collect();
+    known.sort_unstable();
+    known.dedup();
     place(d, h.src, span.clone());
     let best = closest(key, known.iter().map(String::as_str), 2)?;
     did_you_mean(d, h.lang, best);
@@ -474,7 +623,13 @@ fn key_value_misspelled(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -
         if known.is_empty() || known.iter().any(|v| v.eq_ignore_ascii_case(written)) {
             continue;
         }
-        let Some(best) = closest(written, known.iter().copied(), 2) else {
+        // The values listed for a key are examples: only a plain word can
+        // be read as another one typed wrong (`lfet` for `left`), not
+        // something written on purpose (`(\roman*)`).
+        let word = |v: &str| v.chars().all(|c| c.is_alphanumeric() || c == '-');
+        let Some(best) =
+            closest(written, known.iter().copied(), 2).filter(|best| word(written) && word(best))
+        else {
             continue;
         };
         let at = start + value.start()..start + value.start() + written.len();
@@ -501,11 +656,12 @@ fn key_value_misspelled(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -
     None
 }
 
-/// The values the knowledge base lists for an argument (`\pagestyle{1}`).
+/// The values an argument takes, when the knowledge base lists them all
+/// (`\pagestyle{1}`): a value that is not one of them is then a mistake.
 fn values_of(target: &str) -> Vec<String> {
     keys::sets()
         .iter()
-        .filter(|set| set.targets.iter().any(|t| t == target))
+        .filter(|set| set.exact && set.targets.iter().any(|t| t == target))
         .flat_map(|set| set.keys.iter().map(|k| k.name.clone()))
         .collect()
 }
@@ -626,57 +782,77 @@ fn paragraph_start(text: &str, offset: usize) -> usize {
     start
 }
 
-/// `$$ … $`: a formula opened with two dollars, closed with one.
+/// `$$ … $`: a formula opened with two dollars, closed with one. In a
+/// line of text it is the `$$` that has a `$` too many; alone on its
+/// lines, it is the `$` that lacks one.
 fn display_closed_by_one_dollar(
     d: &mut Diagnostic,
     _: &mut Sources<'_>,
     h: &Here<'_>,
 ) -> Option<Vec<Fix>> {
-    if !d.message.contains("Display math should end with $$") {
-        return None;
+    use crate::syntax::ProblemKind as Kind;
+    let start = paragraph_start(h.text, h.line.start);
+    // The `$$` of this paragraph the live checks find left open.
+    let open = h
+        .src
+        .index
+        .problems
+        .iter()
+        .filter(|p| matches!(p.kind, Kind::UnclosedMath) && &h.text[p.span.clone()] == "$$")
+        .map(|p| p.span.start)
+        .find(|&p| start <= p && p <= h.line.end)?;
+    let (single, inline) = super::text::display_closed_by_one(h.text, open)?;
+    let title = (
+        "Formule `$$` fermée par un seul `$`",
+        "`$$` formula closed by a single `$`",
+    );
+    if inline {
+        found(
+            d,
+            h,
+            open..open + 2,
+            title,
+            (
+                "Cette formule est ouverte par `$$` et fermée par un seul `$` : dans une ligne de texte, une formule s'ouvre et se ferme par un seul `$`.",
+                "This formula is opened with `$$` and closed by a single `$`: in a line of text, a formula is opened and closed by a single `$`.",
+            ),
+        );
+    } else {
+        let line = h.line_number(open);
+        found(
+            d,
+            h,
+            single..single + 1,
+            title,
+            (
+                &format!(
+                    "La formule ouverte par `$$` ligne {line} est fermée ici par un seul `$`."
+                ),
+                &format!(
+                    "The formula opened with `$$` on line {line} is closed here by a single `$`."
+                ),
+            ),
+        );
     }
-    let start = paragraph_start(h.text, h.point);
-    let all = dollars(h.text, start..h.point);
-    // Runs of `$`: `$$` opens or closes a displayed formula, `$` an inline one.
-    let mut open: Option<(usize, usize)> = None;
-    let mut i = 0;
-    while i < all.len() {
-        let double = all.get(i + 1) == Some(&(all[i] + 1));
-        let (at, len) = (all[i], if double { 2 } else { 1 });
-        i += len;
-        match open {
-            None => open = Some((at, len)),
-            Some((_, l)) if l == len => open = None,
-            Some((opened, 2)) => {
-                found(
-                    d,
-                    h,
-                    at..at + 1,
-                    (
-                        "Formule `$$` fermée par un seul `$`",
-                        "`$$` formula closed by a single `$`",
-                    ),
-                    (
-                        &format!(
-                            "La formule ouverte par `$$` ligne {} est fermée ici par un seul `$`.",
-                            h.line_number(opened)
-                        ),
-                        &format!(
-                            "The formula opened with `$$` on line {} is closed here by a single `$`.",
-                            h.line_number(opened)
-                        ),
-                    ),
-                );
-                return Some(edits(
-                    h.fr_en("Fermer la formule avec $$", "Close the formula with $$")
-                        .into(),
-                    vec![h.src.insert(at, "$")],
-                ));
-            }
-            Some(_) => return None,
-        }
-    }
-    None
+    d.swallows = true;
+    let one = edits(
+        h.fr_en(
+            "Ouvrir la formule avec un seul $",
+            "Open the formula with a single $",
+        )
+        .into(),
+        vec![h.src.edit(open..open + 2, "$")],
+    );
+    let two = edits(
+        h.fr_en("Fermer la formule avec $$", "Close the formula with $$")
+            .into(),
+        vec![h.src.insert(single, "$")],
+    );
+    Some(if inline {
+        one.into_iter().chain(two).collect()
+    } else {
+        two.into_iter().chain(one).collect()
+    })
 }
 
 static SIZED_DELIMITER: LazyLock<Regex> = LazyLock::new(|| {
@@ -1337,6 +1513,43 @@ fn in_collected_body(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> O
         .find(|&i| !h.in_math(i) && h.text.as_bytes()[i - 1] != b'\\')?;
     let written = h.src.text[token..token + 1].to_owned();
     let used = h.at.line + 1;
+    // One `$` too few in its paragraph.
+    let alone = h
+        .src
+        .index
+        .problems
+        .iter()
+        .filter(|p| {
+            matches!(p.kind, crate::syntax::ProblemKind::UnclosedMath)
+                && &h.text[p.span.clone()] == "$"
+        })
+        .map(|p| p.span.start)
+        .find(|&p| {
+            body.start <= p && p < body.end && !has_blank_line(&h.text[token.min(p)..token.max(p)])
+        });
+    if let Some(last) = alone {
+        if let Some(fixes) = explain_lost_dollar(d, h, last) {
+            return Some(fixes);
+        }
+        // It is in the formula that `$` opens and nothing closes.
+        if last < token {
+            let live = crate::lint::structure(&h.src.path, &h.src.text, h.lang)
+                .into_iter()
+                .find(|p| p.range.is_some_and(|r| h.src.offset(r.start) == last));
+            found(
+                d,
+                h,
+                last..last + 1,
+                ("Formule jamais fermée", "Formula never closed"),
+                (
+                    "La formule ouverte par ce `$` n'est pas refermée avant la fin du paragraphe.",
+                    "The formula opened by this `$` is not closed before the end of the paragraph.",
+                ),
+            );
+            d.swallows = true;
+            return Some(live.map(|p| p.fixes).unwrap_or_default());
+        }
+    }
     found(
         d,
         h,
@@ -1356,10 +1569,14 @@ fn in_collected_body(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> O
             ),
         ),
     );
-    let fix = if written == "_" { "\\_" } else { "\\^{}" };
-    Some(edits(
-        format!("{} {fix}", h.fr_en("Écrire", "Write")),
-        vec![h.src.edit(token..token + 1, fix)],
+    d.swallows = true;
+    let line = h.src.line(h.src.line_of(token)).0;
+    Some(super::latex::script_fixes(
+        h.src,
+        &line,
+        token + 1,
+        &h.known,
+        h.lang,
     ))
 }
 
@@ -1616,9 +1833,18 @@ pub(super) fn fragile_frame(
 fn left_open(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Option<Vec<Fix>> {
     use crate::syntax::ProblemKind as Kind;
     for src in s.srcs() {
-        let Some(problem) = src.index.problems.iter().find(|p| {
-            matches!(&p.kind, Kind::UnclosedEnvironment(n) if n != "document")
-                || matches!(p.kind, Kind::UnclosedBrace | Kind::UnclosedMath)
+        // TeX names what it was reading: verbatim text, the body of a frame,
+        // the argument of a command. What is left open must be that.
+        let reading_verbatim = d.message.contains("verbatim");
+        let reading_frame = d.message.contains("beamer@");
+        let Some(problem) = src.index.problems.iter().find(|p| match &p.kind {
+            Kind::UnclosedEnvironment(n) if reading_verbatim => {
+                n.to_ascii_lowercase().contains("verbatim")
+            }
+            Kind::UnclosedEnvironment(n) if reading_frame => n == "frame",
+            Kind::UnclosedEnvironment(n) => n != "document" && d.message.contains(n.as_str()),
+            Kind::UnclosedBrace | Kind::UnclosedMath => !reading_verbatim && !reading_frame,
+            _ => false,
         }) else {
             continue;
         };
@@ -2080,8 +2306,15 @@ fn math_in_text(h: &Here<'_>, span: Span) -> Option<Span> {
 
 fn explain_call(d: &mut Diagnostic, h: &Here<'_>, call: &Call) -> Option<Vec<Fix>> {
     let head = &call.head;
+    // The name a definition gives is not a use of the command.
+    let defined_here = h
+        .src
+        .index
+        .command_defs
+        .iter()
+        .any(|c| c.span.start <= call.start + 1 && call.start < c.span.end);
     // A command or an environment of formulas, written in text.
-    if call.mode == Mode::Math && !call.math && !h.in_math(call.start) {
+    if call.mode == Mode::Math && !call.math && !h.in_math(call.start) && !defined_here {
         let (from, to, open, close) = if call.environment {
             let end = h
                 .src
@@ -2093,7 +2326,18 @@ fn explain_call(d: &mut Diagnostic, h: &Here<'_>, call: &Call) -> Option<Vec<Fix
                 .map_or(call.end, |e| e.end);
             (call.start, end, "\\[\n", "\n\\]")
         } else {
-            (call.start, call.end, "$", "$")
+            // With what is written beside it and belongs to the formula.
+            let line = h.src.line(h.src.line_of(call.start)).0;
+            let mode = |name: &str| h.known.command(name).map(|k| k.mode);
+            match call.end <= line.end {
+                true => {
+                    let (formula, closed) =
+                        super::text::formula_around(h.text, &line, call.start, call.end, &mode);
+                    let close = if closed { "" } else { "$" };
+                    (formula.start, formula.end, "$", close)
+                }
+                false => (call.start, call.end, "$", "$"),
+            }
         };
         let (fr, en) = match &call.because {
             // A macro of the project: what it is made of needs a formula.
@@ -2127,14 +2371,23 @@ fn explain_call(d: &mut Diagnostic, h: &Here<'_>, call: &Call) -> Option<Vec<Fix
             },
             (&fr, &en),
         );
+        // Where TeX added a `$`, it goes on in a formula: the rest of the
+        // paragraph is read the other way round.
+        d.swallows |= d.code.as_deref() == Some("missing-dollar");
+        let (first, last) = (
+            open.trim(),
+            if call.environment { close.trim() } else { "$" },
+        );
+        let mut list = vec![h.src.insert(from, open)];
+        if !close.is_empty() {
+            list.push(h.src.insert(to, close));
+        }
         return Some(edits(
             format!(
-                "{} {} … {}",
+                "{} {first} … {last}",
                 h.fr_en("Mettre dans une formule :", "Put in a formula:"),
-                open.trim(),
-                close.trim()
             ),
-            vec![h.src.insert(from, open), h.src.insert(to, close)],
+            list,
         ));
     }
     // An argument of the signature that is not written.
@@ -2348,6 +2601,11 @@ fn inside<'a>(
 fn float_in_box(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
     let float = inside(h, FLOATS, h.point)?;
     let around = inside(h, BOXES, float.begin.start)?;
+    // An environment that is left open holds everything after it: what is
+    // "inside" it is then not said to be.
+    if float.end.is_none() || around.end.is_none() {
+        return None;
+    }
     found(
         d,
         h,
@@ -2411,9 +2669,10 @@ fn blank_line_in_argument(
     }
     let from = h.src.line(h.at.line.saturating_sub(40)).0.start;
     // The nearest group that is still open at the error and holds a blank line.
+    let b = h.text.as_bytes();
     let (open, end) = (from..h.point)
         .rev()
-        .filter(|&i| h.text[i..].starts_with('{') && !h.text[..i].ends_with('\\'))
+        .filter(|&i| b[i] == b'{' && (i == 0 || b[i - 1] != b'\\'))
         .filter_map(|i| group_end(h.text, i).map(|end| (i, end)))
         .find(|(i, end)| h.point <= *end && BLANK_LINE.is_match(&h.text[*i..*end]))?;
     let blank = open + BLANK_LINE.find(&h.text[open..end])?.start() + 1;
@@ -2451,7 +2710,9 @@ fn value_misspelled_elsewhere(
     s: &mut Sources<'_>,
     h: &Here<'_>,
 ) -> Option<Vec<Fix>> {
-    for set in keys::sets().iter().filter(|set| set.keys.len() <= 12) {
+    // Only where every value is listed: elsewhere the list is a proposal,
+    // and a value that is not in it is not a mistake.
+    for set in keys::sets().iter().filter(|set| set.exact) {
         for target in set
             .targets
             .iter()
@@ -2510,6 +2771,140 @@ fn value_misspelled_elsewhere(
 
 // ------------------------------------------------------------ structure
 
+/// Whether a blank line is between the first and the last line of `text`.
+fn has_blank_line(text: &str) -> bool {
+    let lines: Vec<&str> = text.split('\n').collect();
+    lines.len() > 2
+        && lines[1..lines.len() - 1]
+            .iter()
+            .any(|l| l.trim().is_empty())
+}
+
+/// One `$` too few in the paragraph TeX stopped in: every `$` after the
+/// missing one is read the other way round, and what TeX reports from
+/// there on comes from it.
+fn lost_dollar(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
+    use crate::syntax::ProblemKind as Kind;
+    let first = paragraph_start(h.text, h.line.start);
+    // The `$` left alone at the end of this paragraph.
+    let last = h
+        .src
+        .index
+        .problems
+        .iter()
+        .filter(|p| matches!(p.kind, Kind::UnclosedMath) && &h.text[p.span.clone()] == "$")
+        .map(|p| p.span.start)
+        .find(|&p| p >= first)?;
+    if h.line.start < last && has_blank_line(&h.text[h.line.start..last]) {
+        return None;
+    }
+    explain_lost_dollar(d, h, last)
+}
+
+/// Says which `$` the paragraph that ends with the `$` at `last` lacks.
+fn explain_lost_dollar(d: &mut Diagnostic, h: &Here<'_>, last: usize) -> Option<Vec<Fix>> {
+    use super::text::LostDollar;
+    let mode = |name: &str| h.known.command(name).map(|k| k.mode);
+    // Where TeX added a `$` by itself, what is written only exists in a
+    // formula, whatever is known of it.
+    let seen = (d.code.as_deref() == Some("missing-dollar") && h.at.token.len() < h.line.len())
+        .then_some(h.at.token.start);
+    let lost = super::text::lost_dollar(h.text, last, &mode, seen)?;
+    // What TeX reports before it has another cause.
+    let token = match &lost {
+        LostDollar::Opening { token, .. } | LostDollar::Unknown { token } => token.start,
+        LostDollar::Closing { open, .. } => *open,
+        LostDollar::Unpaired { dollar } => *dollar,
+    };
+    if h.line.end < token {
+        return None;
+    }
+    let line = |at: usize| h.src.line_of(at) + 1;
+    d.swallows = true;
+    Some(match lost {
+        LostDollar::Opening { token, at } => {
+            found(
+                d,
+                h,
+                token,
+                ("Formule jamais ouverte", "Formula never opened"),
+                (
+                    "Ce qui est écrit ici est une formule, et le `$` qui l'ouvre manque : celui qui la suit ouvre une formule au lieu de la fermer.",
+                    "What is written here is a formula, and the `$` that opens it is missing: the one after it opens a formula instead of closing it.",
+                ),
+            );
+            edits(
+                h.fr_en("Ouvrir la formule avec $", "Open the formula with $")
+                    .into(),
+                vec![h.src.insert(at, "$")],
+            )
+        }
+        LostDollar::Closing { open, next, at } => {
+            found(
+                d,
+                h,
+                open..open + 1,
+                ("Formule jamais fermée", "Formula never closed"),
+                (
+                    &format!(
+                        "La formule ouverte par ce `$` n'est pas refermée : le `$` suivant (ligne {}) ouvre la formule d'après, et TeX le lit comme sa fermeture.",
+                        line(next)
+                    ),
+                    &format!(
+                        "The formula opened by this `$` is not closed: the next `$` (line {}) opens the formula after it, and TeX reads it as its end.",
+                        line(next)
+                    ),
+                ),
+            );
+            at.map_or_else(Vec::new, |at| {
+                edits(
+                    h.fr_en("Fermer la formule avec $", "Close the formula with $")
+                        .into(),
+                    vec![h.src.insert(at, "$")],
+                )
+            })
+        }
+        LostDollar::Unpaired { dollar } => {
+            found(
+                d,
+                h,
+                dollar..dollar + 1,
+                (
+                    "Un `$` manque dans ce paragraphe",
+                    "A `$` is missing in this paragraph",
+                ),
+                (
+                    "Ce `$` est lu comme le début d'une formule, et ce qui le suit n'en est pas une : celui qui va avec lui manque, avant lui s'il ferme une formule, après lui s'il en ouvre une.",
+                    "This `$` is read as the start of a formula, and what follows it is not one: the `$` that goes with it is missing, before it if it closes a formula, after it if it opens one.",
+                ),
+            );
+            Vec::new()
+        }
+        LostDollar::Unknown { token } => {
+            found(
+                d,
+                h,
+                token,
+                (
+                    "Un `$` manque dans ce paragraphe",
+                    "A `$` is missing in this paragraph",
+                ),
+                (
+                    &format!(
+                        "Ce paragraphe compte un nombre impair de `$` : ce qui est écrit ici n'existe que dans une formule et se trouve lu comme du texte, et le dernier `$` (ligne {}) ouvre une formule que rien ne ferme.",
+                        line(last)
+                    ),
+                    &format!(
+                        "This paragraph has an odd number of `$`: what is written here only exists in a formula and is read as text, and the last `$` (line {}) opens a formula that nothing closes.",
+                        line(last)
+                    ),
+                ),
+            );
+            Vec::new()
+        }
+    })
+}
+
 /// What the live checks find wrong in the structure of the paragraph
 /// (a brace, a formula or an environment that is not closed, or closed
 /// twice): it is the cause of what TeX reports there.
@@ -2559,12 +2954,27 @@ fn structure(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Ve
     let (title, mut fixes) =
         live.map_or_else(|| (d.message.clone(), Vec::new()), |p| (p.message, p.fixes));
     let written = h.src.text[span.clone()].to_owned();
+    // One `$` too few in the paragraph: which one is read in what is
+    // written before this one.
+    if matches!(problem.kind, Kind::UnclosedMath)
+        && written == "$"
+        && let Some(fixes) = explain_lost_dollar(d, h, span.start)
+    {
+        return Some(fixes);
+    }
     // A formula closed further down, after a blank line: the blank line is
     // the mistake.
     let closer = problems
         .iter()
         .filter(|p| matches!(p.kind, Kind::UnmatchedMathClose))
         .filter(|p| p.span.start > span.start)
+        .filter(|p| {
+            matches!(
+                (written.as_str(), &h.src.text[p.span.clone()]),
+                ("\\[", "\\]") | ("\\(", "\\)")
+            )
+        })
+        .filter(|p| has_blank_line(&h.text[span.end..p.span.start]))
         .find(|p| h.src.line_of(p.span.start) - h.src.line_of(span.start) <= 15);
     let blank_line = matches!(problem.kind, Kind::UnclosedMath)
         && (written.trim().is_empty()
@@ -2626,10 +3036,15 @@ fn structure(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Ve
             // `\textbf{50% de réduction}`: the `%` hides the end of the line.
             match percent_hides_brace(&h.src.text, span.start) {
                 Some(at) => {
-                    fixes = edits(
-                        h.fr_en("Écrire \\%", "Write \\%").into(),
-                        vec![h.src.edit(at..at + 1, "\\%")],
-                    );
+                    // Only in text is a `%` a percent sign.
+                    fixes = if super::text::takes_text(&h.src.text, span.start) {
+                        edits(
+                            h.fr_en("Écrire \\%", "Write \\%").into(),
+                            vec![h.src.edit(at..at + 1, "\\%")],
+                        )
+                    } else {
+                        Vec::new()
+                    };
                     (
                         "Le `%` de cette ligne met la fin de la ligne en commentaire, avec la `}` qui ferme cette accolade. Un pourcentage s'écrit `\\%`.".into(),
                         "The `%` of this line turns the end of the line into a comment, with the `}` that closes this brace. A percent sign is written `\\%`.".into(),
