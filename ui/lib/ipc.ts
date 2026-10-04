@@ -4,6 +4,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type * as T from "./types";
+import type { CommandDraft, CommandSpec, CustomCommand } from "./commands";
 
 const call = <R>(cmd: string, args?: Record<string, unknown>) => invoke<R>(cmd, args);
 
@@ -78,6 +79,10 @@ export const renameSymbol = (path: string, line: number, character: number, newN
 export const applyEdits = (edits: T.TextEdit[]) => call<string[]>("apply_edits", { edits });
 export const mathAt = (path: string, line: number, character: number) => call<T.MathAt | null>("math_at", { path, line, character });
 export const mathMacros = (path: string) => call<Record<string, string>>("math_macros", { path });
+/** The commands and environments the project of `path` defines. */
+export const customCommands = (path: string) => call<CustomCommand[]>("custom_commands", { path });
+/** A new definition, written and checked against the project of `path`. */
+export const draftCommand = (path: string, spec: CommandSpec) => call<CommandDraft>("draft_command", { path, spec });
 export const structure = (path: string) => call<T.Structure | null>("structure", { path });
 export const search = (query: string, regex: boolean, caseSensitive: boolean) =>
   call<T.SearchMatch[]>("search", { query, regex, caseSensitive });

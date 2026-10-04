@@ -8,9 +8,77 @@
 import { emit } from "@tauri-apps/api/event";
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import type * as T from "../lib/types";
+import type { CommandDraft, CommandSpec, CustomCommand } from "../lib/commands";
 
 const ROOT = "/Users/demo/Documents/memoire";
 const p = (rel: string) => `${ROOT}/${rel}`;
+
+/** The definitions of the demonstration project, read like the engine does (roughly). */
+function customCommands(): CustomCommand[] {
+  const out: CustomCommand[] = [];
+  for (const [file, text] of Object.entries(files)) {
+    const lines = text.split("\n");
+    lines.forEach((line, i) => {
+      const m = /\\newcommand\{\\([A-Za-z]+)\}(?:\[(\d)\])?\{(.*)\}\s*$/.exec(line);
+      if (!m) return;
+      const [, name, n, body] = m;
+      const args = Number(n ?? 0);
+      const call = `\\${name}${Array.from({ length: args }, (_, k) => `{${String.fromCharCode(97 + k)}}`).join("")}`;
+      const math = /\\(mathbb|left|frac|vec|lVert)/.test(body);
+      const uses = Object.values(files).reduce((sum, t) => sum + (t.split(`\\${name}`).length - 1), 0) - 1;
+      out.push({
+        name,
+        kind: "command",
+        args,
+        firstOptional: false,
+        definition: body,
+        math,
+        usage: `\\${name}${Array.from({ length: args }, (_, k) => `{\${${k + 1}}}`).join("")}`,
+        sample: math ? `$${call}$` : call,
+        location: { file, range: range(i, line.indexOf(name), line.indexOf(name) + name.length) },
+        source: line.trim(),
+        inPreamble: true,
+        uses: Math.max(0, uses),
+      });
+    });
+  }
+  return out;
+}
+
+/** A definition written from its fields, with the checks a demonstration needs. */
+function draftCommand(spec: CommandSpec): CommandDraft {
+  const name = spec.name.trim().replace(/^\\+/, "");
+  const environment = spec.kind === "environment" || spec.kind === "theorem";
+  const args = spec.kind === "command" || spec.kind === "environment" ? spec.args : 0;
+  const count = args ? `[${args}]` : "";
+  const optional = spec.default ? `[${spec.default}]` : "";
+  const code =
+    spec.kind === "operator"
+      ? `\\DeclareMathOperator{\\${name}}{${spec.body}}`
+      : spec.kind === "theorem"
+        ? `\\newtheorem{${name}}{${spec.body}}`
+        : spec.kind === "environment"
+          ? `\\newenvironment{${name}}${count}${optional}{${spec.body}}{${spec.end}}`
+          : `\\newcommand{\\${name}}${count}${optional}{${spec.body}}`;
+  const problems: string[] = [];
+  if (!name) problems.push("Donnez un nom.");
+  else if (!/^[A-Za-z]+$/.test(name)) problems.push("Le nom d'une commande n'est fait que de lettres : ni chiffre, ni espace, ni accent.");
+  else if (customCommands().some((c) => c.name === name)) problems.push(`\`\\${name}\` est déjà défini dans le projet (main.tex, ligne 11).`);
+  if (!spec.body.trim() && spec.kind !== "environment") problems.push("La définition est vide.");
+  const math = spec.kind === "operator" || /\\(mathbb|left|frac|vec|lVert|langle)/.test(spec.body);
+  const given = Array.from({ length: args }, (_, k) => k + 1).filter((k) => !(k === 1 && spec.default));
+  const call = environment ? `\\begin{${name}}\nDu texte.\n\\end{${name}}` : `\\${name}${given.map((k) => `{${math ? String.fromCharCode(96 + k) : "texte"}}`).join("")}`;
+  return {
+    name,
+    code,
+    usage: environment ? `\\begin{${name}}\n\t\${1}\n\\end{${name}}` : `\\${name}${given.map((k) => `{\${${k}}}`).join("")}`,
+    sample: math && !environment ? `$${call}$` : call,
+    math,
+    packages: spec.kind === "operator" ? ["amsmath"] : [],
+    problems,
+    notes: [],
+  };
+}
 
 const files: Record<string, string> = {
   [p("main.tex")]: `% !TEX program = pdflatex
@@ -565,6 +633,10 @@ export function installMocks() {
           ];
         case "math_macros":
           return { "\\R": "\\mathbb{R}" };
+        case "custom_commands":
+          return customCommands();
+        case "draft_command":
+          return draftCommand(a.spec as CommandSpec);
         case "structure":
           return structure();
         case "search": {

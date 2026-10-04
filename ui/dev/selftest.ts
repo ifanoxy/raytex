@@ -344,6 +344,47 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     log(`fonts failed: ${e}`);
     ok = false;
   }
+  // ------------------------------------------------------------ commands
+  try {
+    const main = project.info!.main!;
+    const before = (await ipc.customCommands(main)).length;
+    ui.setVisible("sidebar", true);
+    ui.sidebar = "commands";
+    await editor.open(chapter);
+    editor.view!.dispatch({ selection: { anchor: editor.view!.state.doc.length } });
+    ui.openCommands({ create: { kind: "command", name: "motcle", args: 1, body: "\\textbf{#1}" } });
+    // The trial is compiled with the preamble of the project and the new definition.
+    await until(() => !!document.querySelector(".studio .ok-line"), 180_000, "command trial");
+    await drawn(".studio .preview-box canvas", log, "command trial preview");
+    await scene("command-studio");
+    const code = document.querySelector(".studio .left .code")?.textContent ?? "";
+    document.querySelector<HTMLButtonElement>(".studio .actions .btn.primary")!.click();
+    await until(() => ui.overlay === null, 20_000, "command added");
+    const inPreamble = editor.textOf(main)?.includes("\\newcommand{\\motcle}[1]{\\textbf{#1}}") ?? false;
+    const used = editor.textOf(chapter)?.includes("\\motcle{") ?? false;
+    // The engine lists it once the document is read again, and the panel with it.
+    let listed: Awaited<ReturnType<typeof ipc.customCommands>> = [];
+    await until(
+      () => {
+        void ipc.customCommands(main).then((l) => (listed = l));
+        return listed.some((c) => c.name === "motcle");
+      },
+      20_000,
+      "command listed",
+    );
+    await until(() => [...document.querySelectorAll(".sidebar .item .name, .item .name")].some((e) => e.textContent?.includes("\\motcle")), 10_000, "command in the panel");
+    const mine = listed.find((c) => c.name === "motcle")!;
+    log(`commands: code ${code}, in preamble ${inPreamble}, used ${used}, listed ${listed.length} (was ${before}), uses ${mine.uses}, in preamble ${mine.inPreamble}`);
+    await scene("commands-panel");
+    // An existing command is tried the same way, without touching the document.
+    ui.openCommands({ test: mine });
+    await until(() => !!document.querySelector(".studio .ok-line"), 180_000, "command tried");
+    ui.closeOverlay();
+    ok = inPreamble && used && listed.length === before + 1 && mine.inPreamble && (await buildOk(log, "commands")) && ok;
+  } catch (e) {
+    log(`commands failed: ${e}`);
+    ok = false;
+  }
   await editor.saveAll();
   log(`media scenes ${ok ? "PASSED" : "FAILED"}`);
   return ok;

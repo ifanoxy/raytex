@@ -8,6 +8,7 @@
 import { toggleComment } from "@codemirror/commands";
 import { gotoLine, openSearchPanel } from "@codemirror/search";
 import { EditorView, type KeyBinding } from "@codemirror/view";
+import { specFromSelection } from "./commands";
 import { REPOSITORY_URL } from "./constants";
 import type { GridKind } from "./grid";
 import { allDiagnostics, fixable, fixAllAndReport, quickFix } from "./fixes";
@@ -138,6 +139,7 @@ export const actions: Action[] = [
   { id: "view.search", title: "action.searchProject", category: "view", keys: "Mod-Shift-f", icon: "search", when: hasProject, run: () => searchStore.focus() },
   { id: "view.symbols", title: "action.showSymbols", category: "view", icon: "sigma", run: () => ui.showSidebar("symbols") },
   { id: "view.snippets", title: "action.showSnippets", category: "view", icon: "snippets", run: () => ui.showSidebar("snippets") },
+  { id: "view.commands", title: "action.showCommands", category: "view", icon: "macro", run: () => ui.showSidebar("commands") },
   { id: "view.packages", title: "action.showPackages", category: "view", icon: "packages", run: () => ui.showSidebar("packages") },
   { id: "view.templates", title: "action.showTemplates", category: "view", icon: "template", when: () => hasProject() && !project.info?.light, run: () => ui.showSidebar("templates") },
   { id: "view.formatBar", title: "action.toggleFormatBar", category: "view", icon: "type", run: () => ui.toggleFormatBar() },
@@ -213,6 +215,20 @@ export const actions: Action[] = [
   snippetAction("insert.ref", "action.insertReference", () => `\\ref{\${1}}\${0}`),
   snippetAction("insert.link", "action.insertLink", () => `\\href{\${1:https://}}{\${2:\${SELECTION}}}\${0}`),
   { id: "insert.image", title: "action.insertImage", category: "insert", keys: "Mod-Alt-i", icon: "image", when: hasTex, run: () => media.openImages() },
+  {
+    id: "insert.command",
+    title: "action.newCommand",
+    category: "insert",
+    keys: "Mod-Alt-n",
+    icon: "macro",
+    when: hasProject,
+    // The selection of the editor, when there is one, is what the new command stands for.
+    run: () => {
+      const view = editor.view;
+      const range = view?.state.selection.main;
+      ui.openCommands({ create: specFromSelection(view && range ? view.state.sliceDoc(range.from, range.to) : "") });
+    },
+  },
   { id: "insert.tikz", title: "action.tikzStudio", category: "insert", keys: "Mod-Alt-t", icon: "sparkles", when: hasProject, run: () => openTikz() },
   { id: "format.fonts", title: "action.fonts", category: "edit", icon: "type", when: hasProject, run: () => media.openFonts() },
 

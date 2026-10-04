@@ -64,6 +64,19 @@ Pour ce qui doit apparaître dans le document, préférez une commande LaTeX dan
 
 RayTeX les reconnaît aussitôt : autocomplétion avec le bon nombre d'arguments, aperçu mathématique, <kbd>F12</kbd> pour aller à leur définition, <kbd>F2</kbd> pour les renommer dans tout le projet.
 
+La vue **Commandes du projet** (l'icône `{\}` de la barre latérale) les liste toutes, pour le projet entier ou pour le fichier ouvert : leur nom avec ses arguments, ce qu'elles écrivent, où elles sont définies et combien de fois elles servent. Un clic va à la définition ; au survol, **Insérer** écrit la commande à l'endroit du curseur et **Essayer** l'ouvre dans l'atelier.
+
+### Créer une commande sans retenir la syntaxe
+
+**Nouvelle commande** (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>N</kbd>, ou le `+` de la vue) ouvre l'atelier :
+
+1. choisissez ce que vous définissez : une **commande**, un **opérateur** de formule (`\argmax`), un **environnement** ou un **théorème** ;
+2. donnez son nom, son nombre d'arguments (le premier peut être facultatif, avec une valeur par défaut) et ce qu'elle écrit, où `#1`, `#2`… désignent les arguments ;
+3. à droite, l'**essai** compile un petit texte qui l'utilise, avec le préambule de votre projet : vous voyez le résultat avant de toucher au document ;
+4. **Ajouter au préambule** écrit la définition après les autres, dans le document principal ; **Ajouter et insérer** écrit aussi la commande là où se trouve le curseur.
+
+Si du texte est sélectionné quand vous ouvrez l'atelier, il devient la définition : sélectionnez `\mathbb{R}^n`, donnez un nom, c'est fait. L'atelier signale ce qui empêcherait la commande de fonctionner : un nom déjà pris par LaTeX, par un package chargé ou par le projet, un `#3` pour une commande à deux arguments, des accolades non fermées.
+
 ## Raccourcis de mise en forme
 
 | Action | Raccourci |

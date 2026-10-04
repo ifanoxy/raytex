@@ -16,6 +16,7 @@
     { id: "search", icon: "search", title: "sidebar.search", action: "view.search" },
     { id: "symbols", icon: "sigma", title: "sidebar.symbols", action: "view.symbols" },
     { id: "snippets", icon: "at", title: "sidebar.snippets", action: "view.snippets" },
+    { id: "commands", icon: "macro", title: "sidebar.commands", action: "view.commands" },
     { id: "packages", icon: "packages", title: "sidebar.packages", action: "view.packages" },
   ];
 

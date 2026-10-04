@@ -64,6 +64,19 @@ For what must appear in the document, prefer a LaTeX command in the preamble:
 
 RayTeX recognises them at once: completion with the right number of arguments, math preview, <kbd>F12</kbd> to go to their definition, <kbd>F2</kbd> to rename them across the project.
 
+The **Commands of the project** view (the `{\}` icon of the sidebar) lists them all, for the whole project or for the open file: their name with its arguments, what they write, where they are defined and how many times they are used. A click goes to the definition; on hover, **Insert** writes the command at the cursor and **Try** opens it in the studio.
+
+### Making a command without remembering the syntax
+
+**New command** (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>N</kbd>, or the `+` of the view) opens the studio:
+
+1. choose what you define: a **command**, a formula **operator** (`\argmax`), an **environment** or a **theorem**;
+2. give its name, its number of arguments (the first one can be optional, with a default value) and what it writes, where `#1`, `#2`… stand for the arguments;
+3. on the right, the **trial** compiles a small text that uses it, with the preamble of your project: you see the result before touching the document;
+4. **Add to the preamble** writes the definition after the others, in the main document; **Add and insert** also writes the command where the cursor is.
+
+If some text is selected when you open the studio, it becomes the definition: select `\mathbb{R}^n`, give a name, done. The studio tells what would keep the command from working: a name LaTeX, a loaded package or the project already uses, a `#3` in a command with two arguments, braces that are not closed.
+
 ## Formatting shortcuts
 
 | Action | Shortcut |

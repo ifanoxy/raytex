@@ -1,9 +1,10 @@
 // Layout, overlays, dialogs and notifications.
 
+import type { CommandRequest } from "../commands";
 import { uid } from "../utils";
 
-export type SidebarView = "files" | "templates" | "outline" | "search" | "symbols" | "snippets" | "packages";
-export type Overlay = null | "settings" | "help" | "newProject" | "setup" | "palette" | "shortcuts" | "image" | "fonts" | "tikz" | "projects" | "convert" | "grid";
+export type SidebarView = "files" | "templates" | "outline" | "search" | "symbols" | "snippets" | "commands" | "packages";
+export type Overlay = null | "settings" | "help" | "newProject" | "setup" | "palette" | "shortcuts" | "image" | "fonts" | "tikz" | "projects" | "convert" | "grid" | "commands";
 export type BottomTab = "problems" | "output" | "jobs";
 
 export interface Toast {
@@ -92,6 +93,10 @@ class UiStore {
   paletteMode = $state<"commands" | "files">("commands");
   settingsSection = $state("general");
   helpTarget = $state<{ section: string; id?: string } | null>(null);
+  /** What the command studio was opened for. */
+  commandRequest = $state<CommandRequest>({});
+  /** Bumped when a definition is added: the lists of commands read the project again. */
+  commandsRevision = $state(0);
   toasts = $state<Toast[]>([]);
   dialog = $state<DialogState | null>(null);
   /** Package or file to highlight in the packages panel. */
@@ -171,6 +176,12 @@ class UiStore {
   openSettings(section = "general") {
     this.settingsSection = section;
     this.overlay = "settings";
+  }
+
+  /** Opens the command studio: to try a command of the project, or to make a new one. */
+  openCommands(request: CommandRequest = {}) {
+    this.commandRequest = request;
+    this.overlay = "commands";
   }
 
   openHelp(section = "guides", id?: string) {

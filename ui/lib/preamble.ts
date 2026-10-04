@@ -190,6 +190,34 @@ function statementEnd(text: string, from: number, command: string): number {
   }
 }
 
+const DEFINITION_RE =
+  /\\(?:(?:re)?newcommand|providecommand|DeclareRobustCommand|DeclareMathOperator|(?:New|Renew|Provide|Declare)DocumentCommand|(?:re)?newenvironment|newtheorem)\*?(?![A-Za-z@])/g;
+
+/**
+ * Adds a definition (`\newcommand…`) to the preamble: after the last
+ * definition written there, else after the last package, with a blank line
+ * before the first one. Nothing changes without a preamble, or when the
+ * same definition is already there.
+ */
+export function addDefinition(text: string, code: string): string {
+  const wanted = code.trim();
+  const end = preambleEnd(text);
+  const masked = mask(text).slice(0, end);
+  if (!wanted || masked.includes(wanted)) return text;
+  let last: RegExpExecArray | null = null;
+  for (const m of masked.matchAll(DEFINITION_RE)) last = m;
+  if (last) {
+    const stop = lineEnd(text, statementEnd(text, last.index, last[0]));
+    return insertAt(text, Math.min(stop, end), `\n${wanted}`);
+  }
+  // After every package (a definition may use any of them), else after the class.
+  const packages = loadedPackages(text);
+  const cls = masked.indexOf("\\documentclass");
+  const after = packages.length ? packages[packages.length - 1].to : cls >= 0 ? statementEnd(text, cls, "\\documentclass") : -1;
+  if (after < 0) return text;
+  return insertAt(text, lineEnd(text, after), `\n\n${wanted}`);
+}
+
 /**
  * Sets `\setmainfont…` (or any font command): replaces the existing
  * statement, or inserts `code` after `after` (a package name) or the last package.

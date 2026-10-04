@@ -163,6 +163,8 @@ pub fn run() {
             commands::language::apply_edits,
             commands::language::math_at,
             commands::language::math_macros,
+            commands::language::custom_commands,
+            commands::language::draft_command,
             commands::language::structure,
             commands::language::search,
             commands::language::word_count,

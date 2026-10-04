@@ -50,7 +50,7 @@ import { fixLabel, runFix, suggestionOf } from "../fixes";
 import { figureAt } from "../images";
 import { i18n, type MessageKey, t } from "../i18n.svelte";
 import * as ipc from "../ipc";
-import { addPackages, graphicsPaths, hasPackage, insertionPoint } from "../preamble";
+import { addDefinition, addPackages, graphicsPaths, hasPackage, insertionPoint } from "../preamble";
 import type { Diagnostic, Location, Macro, Position, Range, Settings, TextEdit } from "../types";
 import { basename, debounce, dirname, escapeSnippet, fileKind, type FileKind, inlineMarkdown, isMac, join, prettyKey, relative, samePath } from "../utils";
 import { app } from "./app.svelte";
@@ -1172,6 +1172,21 @@ class EditorStore {
     }
     if (added && !quiet) ui.toast("success", t("editor.packageAdded", { pkg, file: basename(root) }));
     return true;
+  }
+
+  /**
+   * Adds a definition (`\newcommand…`) to the preamble of the root
+   * document, with the packages it needs, as one undoable change.
+   * Returns the root path, or null when there is no preamble to add it to.
+   */
+  async addDefinition(code: string, packages: string[] = [], from: string | null = this.active): Promise<string | null> {
+    let added = false;
+    const root = await this.transformRoot((text) => {
+      const out = addDefinition(addPackages(text, packages.map((name) => ({ name }))), code);
+      added = out !== text && out.includes(code.trim());
+      return added ? out : text;
+    }, from);
+    return root && added ? root : null;
   }
 
   /** The TikZ picture under the cursor (or the picture file of an `\input` line). */

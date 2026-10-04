@@ -2,16 +2,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  addLines,
-  addPackages,
-  addTikzLibraries,
-  commentOutPackages,
-  graphicsPaths,
-  hasPackage,
-  loadedPackages,
-  setStatement,
-} from "./preamble.ts";
+import { addDefinition, addLines, addPackages, addTikzLibraries, commentOutPackages, graphicsPaths, hasPackage, loadedPackages, setStatement } from "./preamble.ts";
 
 const doc = `\\documentclass{article}
 \\usepackage[T1]{fontenc}
@@ -75,4 +66,23 @@ test("commentOutPackages keeps the other packages of the line", () => {
   assert.match(out, /\\usepackage\{graphicx\}\n% \\usepackage\{amsmath\} % fontspec/);
   assert.equal(hasPackage(out, "fontenc"), false);
   assert.equal(hasPackage(out, "graphicx"), true);
+});
+
+test("addDefinition puts a definition after the others, else after the packages", () => {
+  const code = "\\newcommand{\\norme}[1]{\\lVert #1 \\rVert}";
+  // After the last package, with a blank line before the first definition.
+  const first = addDefinition(doc, code);
+  assert.ok(first.includes(`\n\n${code}\n`), first);
+  assert.ok(first.indexOf(code) < first.indexOf("\\begin{document}"));
+  assert.ok(first.includes(`\\usepackage{amsmath, graphicx}\n\n${code}\n\\graphicspath`), first);
+  // After the last definition, also when it takes several lines.
+  const src = `\\documentclass{article}\n\\usepackage{amsmath}\n\\newcommand{\\R}{\\mathbb{R}}\n\\newcommand{\\long}[1]{%\n  \\textbf{#1}%\n}\n\\title{T}\n\\begin{document}\n\\newcommand{\\tard}{x}\n`;
+  const out = addDefinition(src, code);
+  assert.ok(out.includes(`  \\textbf{#1}%\n}\n${code}\n\\title{T}`), out);
+  // The same definition is not added twice; nothing without a preamble.
+  assert.equal(addDefinition(out, code), out);
+  assert.equal(addDefinition("Du texte seul.\n", code), "Du texte seul.\n");
+  // A commented definition is not one.
+  const commented = `\\documentclass{article}\n\\usepackage{amsmath}\n% \\newcommand{\\vieux}{x}\n\\begin{document}\n`;
+  assert.ok(addDefinition(commented, code).includes(`\\usepackage{amsmath}\n\n${code}\n% \\newcommand`));
 });

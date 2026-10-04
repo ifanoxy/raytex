@@ -5,6 +5,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use raytex_core::completion::{self, CompletionList, CompletionRequest};
+use raytex_core::custom::{self, CommandDraft, CommandSpec, CustomCommand};
 use raytex_core::diagnostics::Diagnostic;
 use raytex_core::help::markdown_to_html;
 use raytex_core::lint::{self, LintOptions};
@@ -363,6 +364,43 @@ pub async fn math_macros(
             .filter(|(d, _)| !d.body.is_empty() && !d.name.contains('@') && !d.first_optional)
             .map(|(d, _)| (format!("\\{}", d.name), d.body.clone()))
             .collect()
+    })
+    .await
+}
+
+/// The commands and the environments the project of a file defines.
+#[tauri::command]
+pub async fn custom_commands(app: AppHandle, path: String) -> CmdResult<Vec<CustomCommand>> {
+    let p = abs(&path);
+    blocking(&app, move |_, state| {
+        let project = state.project();
+        let Some(pr) = project.as_ref() else {
+            return Vec::new();
+        };
+        let root = pr.ws.root_for(&p);
+        custom::list(&pr.ws, &root)
+    })
+    .await
+}
+
+/// Writes a new definition and checks it against the project of a file.
+#[tauri::command]
+pub async fn draft_command(
+    app: AppHandle,
+    path: String,
+    spec: CommandSpec,
+) -> CmdResult<CommandDraft> {
+    let p = abs(&path);
+    blocking(&app, move |_, state| {
+        let lang = state.lang();
+        let project = state.project();
+        match project.as_ref() {
+            Some(pr) => {
+                let root = pr.ws.root_for(&p);
+                custom::draft(Some(&pr.ws), Some(&root), &spec, lang)
+            }
+            None => custom::draft(None, None, &spec, lang),
+        }
     })
     .await
 }

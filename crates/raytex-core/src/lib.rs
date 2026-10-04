@@ -33,6 +33,7 @@ pub mod auxfile;
 pub mod bib;
 pub mod build;
 pub mod completion;
+pub mod custom;
 pub mod diagnostics;
 pub mod fixes;
 pub mod fonts;
