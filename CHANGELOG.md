@@ -4,7 +4,7 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
-## [0.3.0] — 2026-10-04
+## [0.3.0] — 2026-10-05
 
 - **Commands of the project**: a new view of the sidebar lists every command, formula operator, environment and theorem the project defines (`\newcommand`, `\DeclareMathOperator`, `\newenvironment`, `\newtheorem`…), for the whole project or for the open file, with what each one writes, where it is defined and how many times it is used. A click goes to the definition, **Insert** writes the command at the cursor, **Try** opens it in the studio.
   - The **command studio** (*New command*, Ctrl/⌘ + Alt + N, or the `+` of the view) makes a new one from a name, a number of arguments (the first one optional, with a default value) and a definition, without the syntax to remember; the text selected in the editor becomes the definition.
