@@ -4,6 +4,8 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-04
+
 - **Commands of the project**: a new view of the sidebar lists every command, formula operator, environment and theorem the project defines (`\newcommand`, `\DeclareMathOperator`, `\newenvironment`, `\newtheorem`…), for the whole project or for the open file, with what each one writes, where it is defined and how many times it is used. A click goes to the definition, **Insert** writes the command at the cursor, **Try** opens it in the studio.
   - The **command studio** (*New command*, Ctrl/⌘ + Alt + N, or the `+` of the view) makes a new one from a name, a number of arguments (the first one optional, with a default value) and a definition, without the syntax to remember; the text selected in the editor becomes the definition.
   - It says what would keep the command from working before it is added: a name LaTeX, a loaded package or the project already uses, `#3` in a command with two arguments, braces that are not closed.
@@ -162,5 +164,6 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[0.3.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.3.0
 [0.2.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.2.0
 [0.1.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.1.0
