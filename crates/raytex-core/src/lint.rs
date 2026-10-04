@@ -927,13 +927,23 @@ impl Linter<'_> {
                         "inputenc is useless with XeLaTeX/LuaLaTeX (native UTF-8)",
                     )
                     .to_owned();
-                self.push(
+                let explanation = self.t(
+                    "XeLaTeX et LuaLaTeX lisent l'UTF-8 sans package : avec eux, `inputenc` ne fait rien.",
+                    "XeLaTeX and LuaLaTeX read UTF-8 without a package: with them, `inputenc` does nothing.",
+                );
+                let fix = Fix::Edits {
+                    title: self.t("Supprimer la ligne", "Delete the line").into(),
+                    edits: vec![self.delete(p.command_span.clone())],
+                };
+                let d = self.push(
                     Severity::Hint,
                     Source::Lint,
                     "obsolete",
                     &p.command_span,
                     msg,
                 );
+                d.hint = Some(Hint::new(d.message.clone(), explanation));
+                d.fixes.push(fix);
             }
         }
         if !self.opts.shell_escape {
@@ -1327,45 +1337,77 @@ impl Linter<'_> {
                         "eqnarray is obsolete: use align (amsmath)",
                     )
                     .to_owned();
-                self.push(Severity::Hint, Source::Lint, "obsolete", &env.begin, msg);
+                let explanation = self.t(
+                    "`eqnarray` laisse trop d'espace autour du signe `=`, et le numéro d'une équation longue peut passer sur la formule. `align` (package amsmath) aligne de la même façon : `a &= b` au lieu de `a &=& b`.",
+                    "`eqnarray` leaves too much space around the `=` sign, and the number of a long equation can overprint the formula. `align` (amsmath package) aligns the same way: `a &= b` instead of `a &=& b`.",
+                );
+                let d = self.push(Severity::Hint, Source::Lint, "obsolete", &env.begin, msg);
+                d.hint = Some(Hint::new(d.message.clone(), explanation));
             }
         }
-        // $$ … $$
+        // $$ … $$, read like TeX does: a `$` that closes `$a$` is not the
+        // half of a `$$` (`$a$$b$`), and no formula goes past a blank line.
         let bytes = doc.text.as_bytes();
         let mut i = 0;
+        let mut inline: Option<usize> = None;
         let mut open: Option<usize> = None;
-        while let Some(k) = memchr::memmem::find(&bytes[i..], b"$$") {
+        while let Some(k) = memchr::memchr(b'$', &bytes[i..]) {
             let pos = i + k;
-            i = pos + 2;
-            if (pos > 0 && bytes[pos - 1] == b'\\') || self.excluded(pos) {
+            i = pos + 1;
+            let escaped = bytes[..pos]
+                .iter()
+                .rev()
+                .take_while(|b| **b == b'\\')
+                .count()
+                % 2
+                == 1;
+            if escaped || self.excluded(pos) {
                 continue;
             }
-            match open.take() {
-                None => open = Some(pos),
-                Some(start) => {
-                    let msg = self
-                        .t(
-                            "$$ … $$ est déconseillé en LaTeX : utilisez \\[ … \\]",
-                            "$$ … $$ is discouraged in LaTeX: use \\[ … \\]",
-                        )
-                        .to_owned();
-                    let range_open = doc.range(&(start..start + 2));
-                    let range_close = doc.range(&(pos..pos + 2));
-                    let span = start..start + 2;
-                    let d = self.push(Severity::Hint, Source::Lint, "obsolete", &span, msg);
-                    // Fixes are applied in order; the closing one first keeps positions valid.
-                    d.fixes.push(Fix::Replace {
-                        title: "\\[ … \\]".into(),
-                        range: range_close,
-                        text: "\\]".into(),
-                    });
-                    d.fixes.push(Fix::Replace {
-                        title: "\\[ … \\]".into(),
-                        range: range_open,
-                        text: "\\[".into(),
-                    });
-                }
+            if inline.is_some_and(|start| blank_line_between(&doc.text, start, pos)) {
+                inline = None;
             }
+            if open.is_some_and(|start| blank_line_between(&doc.text, start, pos)) {
+                open = None;
+            }
+            if inline.take().is_some() {
+                continue;
+            }
+            if bytes.get(pos + 1) != Some(&b'$') {
+                if open.is_none() {
+                    inline = Some(pos);
+                }
+                continue;
+            }
+            i = pos + 2;
+            let Some(start) = open.take() else {
+                open = Some(pos);
+                continue;
+            };
+            let msg = self
+                .t(
+                    "$$ … $$ est déconseillé en LaTeX : utilisez \\[ … \\]",
+                    "$$ … $$ is discouraged in LaTeX: use \\[ … \\]",
+                )
+                .to_owned();
+            let explanation = self.t(
+                "`$$ … $$` est l'écriture de TeX : avec elle, LaTeX ne règle pas l'espace au-dessus et au-dessous de la formule, et l'option `fleqn` est sans effet. `\\[ … \\]` compose la même formule.",
+                "`$$ … $$` is the writing of TeX: with it, LaTeX does not set the space above and below the formula, and the `fleqn` option has no effect. `\\[ … \\]` typesets the same formula.",
+            );
+            // Both ends change together: one alone leaves a formula open.
+            let fix = Fix::Edits {
+                title: self
+                    .t("Remplacer par \\[ … \\]", "Replace with \\[ … \\]")
+                    .into(),
+                edits: vec![
+                    self.edit(start..start + 2, "\\["),
+                    self.edit(pos..pos + 2, "\\]"),
+                ],
+            };
+            let span = start..start + 2;
+            let d = self.push(Severity::Hint, Source::Lint, "obsolete", &span, msg);
+            d.hint = Some(Hint::new(d.message.clone(), explanation));
+            d.fixes.push(fix);
         }
         // Obsolete packages.
         let packages: &[(&str, &str)] = &[
@@ -1397,7 +1439,12 @@ impl Linter<'_> {
                     p.name,
                     self.t("est obsolète : préférez", "is obsolete: prefer")
                 );
-                self.push(Severity::Hint, Source::Lint, "obsolete", &p.span, msg);
+                let explanation = self.t(
+                    "Ce package n'est plus maintenu : celui qui le remplace fait la même chose et fonctionne avec les packages récents.",
+                    "This package is no longer maintained: the one that replaces it does the same and works with recent packages.",
+                );
+                let d = self.push(Severity::Hint, Source::Lint, "obsolete", &p.span, msg);
+                d.hint = Some(Hint::new(d.message.clone(), explanation));
             }
         }
     }
@@ -1620,6 +1667,17 @@ impl Linter<'_> {
             }
         }
     }
+}
+
+/// Whether a blank line (the end of a paragraph) is between two places.
+fn blank_line_between(text: &str, from: usize, to: usize) -> bool {
+    let mut lines = text[from..to].split('\n').skip(1).peekable();
+    while let Some(line) = lines.next() {
+        if lines.peek().is_some() && line.trim().is_empty() {
+            return true;
+        }
+    }
+    false
 }
 
 /// Where the text of an unclosed inline formula resumes: before the first
@@ -1853,6 +1911,96 @@ mod tests {
             pkg.1.contains("\\mathbb") && pkg.1.contains("amsfonts"),
             "{pkg:?}"
         );
+    }
+
+    /// `text` after a fix made of edits (the others change nothing here).
+    fn applied(text: &str, fix: &Fix) -> Option<String> {
+        let lines = crate::text::LineIndex::new(text);
+        let at = |r: &crate::text::Range| lines.offset(text, r.start)..lines.offset(text, r.end);
+        let mut edits: Vec<(Span, String)> = match fix {
+            Fix::Replace {
+                range, text: new, ..
+            } => vec![(at(range), new.clone())],
+            Fix::Edits { edits, .. } => edits
+                .iter()
+                .map(|e| (at(&e.range), e.text.clone()))
+                .collect(),
+            _ => return None,
+        };
+        edits.sort_by_key(|(span, _)| std::cmp::Reverse(span.start));
+        let mut out = text.to_owned();
+        for (span, new) in edits {
+            out.replace_range(span, &new);
+        }
+        Some(out)
+    }
+
+    fn lint_one(text: &str) -> Vec<Diagnostic> {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("main.tex"), text).unwrap();
+        let ws = Workspace::open(dir.path());
+        let opts = LintOptions {
+            lang: Lang::En,
+            style_hints: true,
+            engine: Some(Engine::Xelatex),
+            ..Default::default()
+        };
+        lint(
+            &ws,
+            &crate::log::normalize(&dir.path().join("main.tex")),
+            &opts,
+        )
+    }
+
+    /// A fix is the whole repair: applied alone, it removes its problem and
+    /// leaves nothing open (`$$ … $$` used to change one end only).
+    #[test]
+    fn every_fix_leaves_a_sound_document() {
+        let docs = [
+            "\\documentclass{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage{amsmath}\n\\begin{document}\n\\section{A}\\label{sec:a}\nSee Section \\ref{sec:a}, and so on... {\\bf bold} and {\\it italic}.\n  $$ a = b $$\nTwo formulas $a$$b$ in a row, a price of 3\\$\\$, then\n$$\n  c = d\n$$\nA note \\footnote{x}. The end.\\\\\n\n\\begin{figure}\\label{fig:x}\\caption{C}\\end{figure}\n\\end{document}\n",
+            "\\documentclass{article}\n\\begin{document}\nAn \\textbf{open brace\n\nA formula $a = b left open.\n\n\\begin{center}\nx\n\\end{centre}\n\\end{document}\n",
+            "\\documentclass{article}\n\\begin{document}\n\\begin{itemize}\n\\item a }\n\\end{itemize}\nx \\] y\n\\end{document}\n",
+        ];
+        let count = |d: &[Diagnostic], code: &str| {
+            d.iter().filter(|x| x.code.as_deref() == Some(code)).count()
+        };
+        let mut checked = 0;
+        for doc in docs {
+            let before = lint_one(doc);
+            for d in &before {
+                let code = d.code.clone().unwrap_or_default();
+                for fix in &d.fixes {
+                    let Some(fixed) = applied(doc, fix) else {
+                        continue;
+                    };
+                    let after = lint_one(&fixed);
+                    assert!(
+                        count(&after, &code) < count(&before, &code),
+                        "{code}: the problem stays after {fix:?}\n{fixed}"
+                    );
+                    assert!(
+                        count(&after, "syntax") <= count(&before, "syntax"),
+                        "{code}: {fix:?} breaks the document\n{fixed}\n{after:#?}"
+                    );
+                    checked += 1;
+                }
+            }
+        }
+        assert!(checked >= 12, "{checked} fixes checked");
+    }
+
+    #[test]
+    fn display_dollars_are_paired_like_tex() {
+        let doc = "\\documentclass{article}\n\\begin{document}\n$a$$b$ and 3\\$\\$\n\n  $$ c = d $$\n\\end{document}\n";
+        let d = lint_one(doc);
+        let found: Vec<_> = d
+            .iter()
+            .filter(|x| x.code.as_deref() == Some("obsolete"))
+            .collect();
+        assert_eq!(found.len(), 1, "{found:#?}");
+        assert_eq!(found[0].range.unwrap().start.line, 4);
+        let fixed = applied(doc, &found[0].fixes[0]).unwrap();
+        assert!(fixed.contains("  \\[ c = d \\]\n"), "{fixed}");
     }
 
     #[test]
