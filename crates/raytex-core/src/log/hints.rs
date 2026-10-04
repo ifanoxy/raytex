@@ -107,14 +107,9 @@ pub fn enrich(d: &mut Diagnostic, lang: Lang) {
                         )
                         .to_owned();
                     push_fix(d, package_fix(pkg));
-                } else if let Some(best) = closest_command(&name) {
-                    extra = lang
-                        .pick(
-                            &format!("Vouliez-vous écrire `\\{best}` ?"),
-                            &format!("Did you mean `\\{best}`?"),
-                        )
-                        .to_owned();
                 }
+                // A name close to this one is looked for with the sources
+                // of the project ([`crate::fixes`]), not guessed here.
             }
         }
         Some("env-undefined") => {
@@ -324,11 +319,38 @@ fn push_fix(d: &mut Diagnostic, fix: Fix) {
     }
 }
 
-/// The undefined command named by an "Undefined control sequence" error.
+static CONTEXT_LINE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^l\.\d+").unwrap());
+static EXPANSION: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(\\[A-Za-z@]+) ?(?:#\d|[^-\\])*->").unwrap());
+
+/// The line TeX prints right under "Undefined control sequence" when the
+/// command is not written where it stopped: what a macro is made of
+/// (`\R ->\mathbb `) or an argument being read (`<argument> \foo `).
+fn top_line(d: &Diagnostic) -> Option<&str> {
+    let mut lines = d
+        .raw
+        .as_deref()?
+        .lines()
+        .skip_while(|l| !l.contains("Undefined control sequence"));
+    lines.next()?;
+    lines.next().filter(|top| !CONTEXT_LINE.is_match(top))
+}
+
+/// The undefined command named by an "Undefined control sequence" error:
+/// the one that ends the first line TeX shows under its message. That line
+/// is the line of the document, or what is being expanded there.
 pub fn undefined_command(d: &Diagnostic) -> Option<&str> {
-    let before = d.context_before.as_deref()?;
+    let line = top_line(d).or(d.context_before.as_deref())?;
     UNDEFINED_CS
-        .captures(before)
+        .captures(line)
+        .map(|m| m.get(1).unwrap().as_str())
+}
+
+/// The macro whose definition holds the undefined command (`\R` for
+/// `\R ->\mathbb `), when the command is not written in the document itself.
+pub fn expanded_macro(d: &Diagnostic) -> Option<&str> {
+    EXPANSION
+        .captures(top_line(d)?)
         .map(|m| m.get(1).unwrap().as_str())
 }
 
@@ -337,23 +359,6 @@ fn best_provider(providers: Vec<&str>) -> Option<String> {
         return None;
     }
     providers.first().map(|p| (*p).to_owned())
-}
-
-/// The command of the LaTeX kernel closest to `name` (edit distance ≤ 2), if any.
-pub fn closest_command(name: &str) -> Option<String> {
-    let max = if name.len() <= 4 { 1 } else { 2 };
-    let mut best: Option<(usize, &str)> = None;
-    for cmd in kb().commands().iter().filter(|c| c.package == KERNEL) {
-        let candidate = cmd.name.as_str();
-        if candidate == name || candidate.len().abs_diff(name.len()) > max {
-            continue;
-        }
-        let dist = levenshtein(name, candidate);
-        if dist <= max && best.is_none_or(|(d, c)| dist < d || (dist == d && candidate < c)) {
-            best = Some((dist, candidate));
-        }
-    }
-    best.map(|(_, c)| c.to_owned())
 }
 
 /// Edit distance between two short strings.
@@ -388,12 +393,26 @@ mod tests {
         enrich(&mut d, Lang::Fr);
         let hint = d.hint.unwrap();
         assert_eq!(hint.title, "Commande inconnue");
-        assert_eq!(
-            hint.advice.as_deref(),
-            Some("Vouliez-vous écrire `\\textbf` ?")
-        );
-        // The explanation says what the message means, without guessing.
+        // The explanation says what the message means, without guessing: a
+        // close name is looked for with the sources of the project
+        // (`crate::fixes`), not from the message alone.
+        assert_eq!(hint.advice, None);
         assert!(!hint.explanation.contains("textbf"), "{}", hint.explanation);
+
+        // The command is the one TeX shows first: in what a macro is made of.
+        let mut d = Diagnostic::new(
+            Severity::Error,
+            Source::Latex,
+            "Undefined control sequence.",
+        );
+        d.context_before = Some("\\R".into());
+        d.raw = Some(
+            "! Undefined control sequence.\n\\R ->\\mathbb \n             {R}\nl.31 \\R".into(),
+        );
+        assert_eq!(undefined_command(&d), Some("\\mathbb"));
+        assert_eq!(expanded_macro(&d), Some("\\R"));
+        enrich(&mut d, Lang::Fr);
+        assert_eq!(d.fixes, [Fix::add_package("amsfonts")]);
 
         let mut d = Diagnostic::new(
             Severity::Error,

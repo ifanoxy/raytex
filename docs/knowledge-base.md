@@ -130,6 +130,8 @@ What is known comes from three places, asked in this order (`fixes/known.rs`):
 
 So a package that is not described here still gets a misspelled command, environment, option or key corrected, an argument that is not written reported, and a symbol of formulas written in text explained.
 
+A command or an environment that nothing loaded defines is looked for in the whole distribution (`tex::Providers`: every `.sty` is searched once for the definitions it holds). One package that stands out (named like the command, the only one, the only one described here, or the only main file of a folder) is offered with the fix that loads it; a few are named; many are not mentioned.
+
 A command described here gets, on top of that, the names of its arguments in the messages and the checks of what each one expects: the problem is placed on the word or the argument to change, its title names the mistake and its *advice* (the light bulb) says what is wrong, with a fix when there is one. A problem whose cause is not found keeps its explanation and gets no advice.
 
 To check a new kind of mistake, add a case to `tests/common_mistakes.rs` (`forum_cases`, `dynamic_cases` for what is not in this knowledge base, `warning_cases` for what LaTeX only warns about: a document, the text that must be shown and what the advice must say; the message TeX gives is not part of the case). They run with a real TeX distribution: `cargo test -p raytex-core --release --test common_mistakes -- --ignored causes_are_found --nocapture` (`LBT_PROBE=1` prints what is found instead of checking).

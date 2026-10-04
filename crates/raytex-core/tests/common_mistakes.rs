@@ -560,6 +560,16 @@ struct Located {
     /// A part of the advice; `None` when nothing may be said about the
     /// cause, because it cannot be told.
     advice: Option<&'static str>,
+    /// Files the distribution must have for the case to mean something
+    /// (a package that is looked for among the installed ones).
+    needs: &'static [&'static str],
+}
+
+impl Located {
+    fn installed(mut self, files: &'static [&'static str]) -> Self {
+        self.needs = files;
+        self
+    }
 }
 
 fn located(
@@ -575,6 +585,7 @@ fn located(
         main,
         shown,
         advice,
+        needs: &[],
     }
 }
 
@@ -1458,6 +1469,62 @@ fn dynamic_cases() -> Vec<Located> {
             "framd",
             Some("Vouliez-vous écrire `framed` ?"),
         ),
+        // ------------------- a command LaTeX does not know: where, and why
+        located(
+            "unknown-package-not-loaded",
+            any,
+            doc("", "Texte\\marginnote{1019} ici."),
+            "\\marginnote",
+            Some("`\\marginnote` est défini par le package `marginnote`, qui n'est pas chargé."),
+        )
+        .installed(&["marginnote.sty"]),
+        located(
+            "unknown-environment-package-not-loaded",
+            any,
+            doc("", "\\begin{compactitem}\n\\item a\n\\end{compactitem}"),
+            "compactitem",
+            Some("L'environnement `compactitem` est défini par le package `paralist`, qui n'est pas chargé."),
+        )
+        .installed(&["paralist.sty"]),
+        located(
+            "unknown-among-a-few-packages",
+            any,
+            doc("", "Un symbole \\ding{51} ici."),
+            "\\ding",
+            Some("`pifont`"),
+        )
+        .installed(&["pifont.sty"]),
+        // A name that only looks like another one is not offered: `\par`
+        // for `\paire`, `\P` for `\R`.
+        located(
+            "unknown-not-guessed",
+            any,
+            doc("", "\\paire{10}"),
+            "\\paire",
+            None,
+        ),
+        located(
+            "unknown-short-not-guessed",
+            any,
+            doc("", "Soit $\\R$ ici."),
+            "\\R",
+            None,
+        ),
+        // The command TeX does not know is in what a macro is made of.
+        located(
+            "unknown-in-own-macro",
+            any,
+            doc("\\newcommand{\\R}{\\mathbb{R}}", "Soit $\\R$ ici."),
+            "\\mathbb",
+            Some("`\\mathbb` est écrit dans la définition de `\\R`, que la ligne 4 utilise. `\\mathbb` est défini par le package `amsfonts`."),
+        ),
+        located(
+            "unknown-in-argument",
+            any,
+            doc("", "Un \\textbf{mot \\inconnue ici} là."),
+            "\\inconnue",
+            None,
+        ),
         // ------------------------------------- keys, whoever reads them
         located(
             "key-siunitx-setup",
@@ -1742,6 +1809,12 @@ fn run_located(
     case: &Located,
     probe: bool,
 ) -> (String, bool) {
+    if let Some(missing) = case.needs.iter().find(|f| index.find(f).is_none()) {
+        return (
+            format!("– {:<32} skipped: {missing} is not installed", case.name),
+            true,
+        );
+    }
     let dir = tempfile::tempdir().unwrap();
     let main = dir.path().join("main.tex");
     std::fs::write(&main, &case.main).unwrap();

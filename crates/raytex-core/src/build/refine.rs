@@ -678,6 +678,59 @@ mod tests {
     }
 
     #[test]
+    fn an_unknown_command_is_shown_where_it_is_written() {
+        let text = "\\documentclass{article}\n\\begin{document}\n\\newcommand{\\R}{\\mathbb{R}}\n\\paire{10}\n\n\\R\n\nUn \\textbf{mot \\inconnue ici}.\n\\end{document}\n";
+        let source = |_: &Path| Some(text.to_owned());
+        let with_raw = |mut d: Diagnostic, raw: &str| {
+            d.raw = Some(raw.to_owned());
+            d.hint = None;
+            d.code = None;
+            crate::log::hints::enrich(&mut d, Lang::En);
+            d
+        };
+        let mut ds = vec![
+            diag("Undefined control sequence.", 4, Some("\\paire")),
+            // TeX shows what `\R` is made of above the line of the document.
+            with_raw(
+                diag("Undefined control sequence.", 6, Some("\\R")),
+                "! Undefined control sequence.\n\\R ->\\mathbb \n             {R}\nl.6 \\R\n       ",
+            ),
+            // And the argument it is reading.
+            with_raw(
+                diag(
+                    "Undefined control sequence.",
+                    8,
+                    Some("Un \\textbf{mot \\inconnue ici}"),
+                ),
+                "! Undefined control sequence.\n<argument> mot \\inconnue \n                        ici\nl.8 Un \\textbf{mot \\inconnue ici}\n                                .",
+            ),
+        ];
+        refine_all(&mut ds, Path::new("/p/main.tex"), &source, None, Lang::En);
+        assert_eq!(ds.len(), 3, "{ds:#?}");
+        // No name is close enough to `\paire`: `\par` is not offered.
+        assert_eq!(shown(text, &ds[0]), "\\paire");
+        assert_eq!(ds[0].hint.clone().unwrap().advice, None);
+        assert!(ds[0].fixes.is_empty(), "{:?}", ds[0].fixes);
+        // `\mathbb`, in the definition of `\R`, with the package it needs.
+        assert_eq!(shown(text, &ds[1]), "\\mathbb");
+        assert_eq!(ds[1].range.unwrap().start.line, 2);
+        let advice = ds[1].hint.clone().unwrap().advice.unwrap();
+        assert!(
+            advice.contains("is written in the definition of `\\R`, which line 6 uses")
+                && advice.contains("`amsfonts`"),
+            "{advice}"
+        );
+        assert_eq!(
+            ds[1].fixes,
+            vec![Fix::AddPackage {
+                package: "amsfonts".into(),
+                options: None
+            }]
+        );
+        assert_eq!(shown(text, &ds[2]), "\\inconnue");
+    }
+
+    #[test]
     fn what_follows_a_formula_tex_opened_is_dropped() {
         let text = "\\documentclass{article}\n\\begin{document}\nLe fichier mon_fichier est prêt.\n\\end{document}\n";
         let source = |_: &Path| Some(text.to_owned());

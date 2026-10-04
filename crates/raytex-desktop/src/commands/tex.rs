@@ -129,6 +129,9 @@ pub fn start_indexing(app: AppHandle) {
         if let Some((class, packages)) = loaded {
             let _ = analyzer.closure(class.as_deref(), packages.iter().map(String::as_str));
         }
+        // Which installed package defines what: read now, so that an unknown
+        // command gets its package at the first build.
+        let _ = analyzer.providers();
     });
 }
 

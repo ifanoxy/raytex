@@ -10,7 +10,9 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex, OnceLock};
+
+use regex::Regex;
 
 use serde::Serialize;
 
@@ -76,11 +78,184 @@ pub struct PackageInfo {
     pub requires: Vec<String>,
 }
 
+/// The forms a definition takes in the source of a package: the name of the
+/// command (first two groups) or of the environment (third group) it defines.
+/// Redefinitions (`\renewcommand`, `\let`) are left out: what they change
+/// exists somewhere else.
+static DEFINITION: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(concat!(
+        r"\\(?:(?:provide|new)command|DeclareRobustCommand",
+        r"|(?:New|Provide|Declare)(?:Expandable)?DocumentCommand",
+        r"|(?:new|provide)robustcmd|DeclareMathOperator",
+        r"|DeclareMath(?:Symbol|Delimiter|Accent|Alphabet|Radical)",
+        r"|DeclarePairedDelimiter(?:X|XPP)?|[gex]?def)\*?\s*\{?\s*\\([A-Za-z@_:]+)",
+        // The end of an environment made by hand: `\let\endfoo\endlist`.
+        r"|\\let\s*\\(end[A-Za-z]+)\b",
+        r"|\\(?:newenvironment|(?:New|Provide|Declare)DocumentEnvironment)\*?\s*\{\s*([A-Za-z@]+\*?)\s*\}",
+    ))
+    .unwrap()
+});
+
+/// Which installed packages define a command or an environment, for the
+/// whole distribution: every `.sty` is searched once for the definitions it
+/// holds (their forms only, not the full scan of [`PackageAnalyzer::analyze`]).
+/// This is what tells that `\marginnote` needs the package `marginnote`
+/// when nothing describes that package.
+#[derive(Debug, Default)]
+pub struct Providers {
+    packages: Vec<String>,
+    /// Whether the package is the one its folder is named after (the main
+    /// file of what is installed there), by package.
+    main: Vec<bool>,
+    commands: HashMap<Box<str>, Vec<u32>>,
+    environments: HashMap<Box<str>, Vec<u32>>,
+}
+
+impl Providers {
+    fn build(index: &TexmfIndex) -> Self {
+        // A bundle read file by file through a program is not searched.
+        if !index.on_disk() {
+            return Self::default();
+        }
+        // The `lwarp-*` files stand for other packages when a document is
+        // converted to HTML: nobody loads them.
+        let packages: Vec<String> = index
+            .packages()
+            .into_iter()
+            .filter(|p| !p.starts_with("lwarp-"))
+            .collect();
+        let threads = std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
+        let chunk = packages.len().div_ceil(threads).max(1);
+        type Found = (u32, bool, Vec<String>, Vec<String>);
+        let found: Vec<Found> = std::thread::scope(|scope| {
+            let workers: Vec<_> = packages
+                .chunks(chunk)
+                .enumerate()
+                .map(|(n, names)| {
+                    scope.spawn(move || {
+                        let mut out: Vec<Found> = Vec::new();
+                        for (i, name) in names.iter().enumerate() {
+                            let file = format!("{name}.sty");
+                            let Some(text) = index.read(&file) else {
+                                continue;
+                            };
+                            if text.len() > MAX_FILE {
+                                continue;
+                            }
+                            let mut commands: Vec<String> = Vec::new();
+                            let mut environments = Vec::new();
+                            for c in DEFINITION.captures_iter(&text) {
+                                if let Some(m) = c.get(1).or(c.get(2)) {
+                                    if is_public(m.as_str()) {
+                                        commands.push(m.as_str().to_owned());
+                                    }
+                                } else if let Some(m) = c.get(3) {
+                                    environments.push(m.as_str().to_owned());
+                                }
+                            }
+                            // `\def\foo … \def\endfoo` defines environment `foo`.
+                            for end in &commands {
+                                if let Some(env) = end.strip_prefix("end")
+                                    && !env.is_empty()
+                                    && commands.iter().any(|c| c == env)
+                                {
+                                    environments.push(env.to_owned());
+                                }
+                            }
+                            let main = index
+                                .find(&file)
+                                .and_then(|p| {
+                                    p.parent()
+                                        .and_then(|d| d.file_name())
+                                        .map(|d| d.to_string_lossy() == name.as_str())
+                                })
+                                .unwrap_or(false);
+                            out.push(((n * chunk + i) as u32, main, commands, environments));
+                        }
+                        out
+                    })
+                })
+                .collect();
+            workers
+                .into_iter()
+                .flat_map(|w| w.join().unwrap_or_default())
+                .collect()
+        });
+        let mut out = Self {
+            main: vec![false; packages.len()],
+            packages,
+            ..Self::default()
+        };
+        for (package, main, commands, environments) in found {
+            out.main[package as usize] = main;
+            for (names, map) in [
+                (commands, &mut out.commands),
+                (environments, &mut out.environments),
+            ] {
+                for name in names {
+                    let list = map.entry(name.into_boxed_str()).or_default();
+                    if !list.contains(&package) {
+                        list.push(package);
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    fn named(&self, list: Option<&Vec<u32>>, name: &str) -> Vec<Provider<'_>> {
+        let mut out: Vec<Provider<'_>> = list
+            .into_iter()
+            .flatten()
+            .map(|&i| Provider {
+                package: self.packages[i as usize].as_str(),
+                main: self.main[i as usize],
+            })
+            .collect();
+        // The package named like what it defines comes first, then the
+        // main file of a folder, then the others.
+        out.sort_by_key(|p| (p.package != name, !p.main, p.package));
+        out
+    }
+
+    /// The installed packages that define command `name` (without
+    /// backslash), the most likely first.
+    pub fn of_command(&self, name: &str) -> Vec<Provider<'_>> {
+        self.named(self.commands.get(name), name)
+    }
+
+    /// The installed packages that define environment `name`.
+    pub fn of_environment(&self, name: &str) -> Vec<Provider<'_>> {
+        self.named(self.environments.get(name), name)
+    }
+
+    /// Number of packages searched.
+    pub fn len(&self) -> usize {
+        self.packages.len()
+    }
+
+    /// Whether nothing was searched (no distribution on disk).
+    pub fn is_empty(&self) -> bool {
+        self.packages.is_empty()
+    }
+}
+
+/// A package that defines a name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Provider<'a> {
+    /// Its name.
+    pub package: &'a str,
+    /// Whether its folder is named after it: the main file of what is
+    /// installed there, not a part of something else.
+    pub main: bool,
+}
+
 /// Analyses packages of a distribution, with a cache.
 #[derive(Debug)]
 pub struct PackageAnalyzer {
     index: Arc<TexmfIndex>,
     cache: Mutex<HashMap<(String, bool), Arc<PackageInfo>>>,
+    providers: OnceLock<Providers>,
 }
 
 impl PackageAnalyzer {
@@ -89,7 +264,15 @@ impl PackageAnalyzer {
         Self {
             index,
             cache: Mutex::new(HashMap::new()),
+            providers: OnceLock::new(),
         }
+    }
+
+    /// Which installed packages define what: every package of the
+    /// distribution is searched the first time this is asked (some seconds;
+    /// the application asks in the background, when it starts).
+    pub fn providers(&self) -> &Providers {
+        self.providers.get_or_init(|| Providers::build(&self.index))
     }
 
     /// The file index.
@@ -328,6 +511,44 @@ mod tests {
         );
         let tikz = analyzer.analyze("tikz", false);
         assert!(tikz.commands.iter().any(|c| c.name == "draw"));
+        // Which package defines what, for the whole distribution.
+        let started = std::time::Instant::now();
+        let providers = analyzer.providers();
+        println!(
+            "{} packages searched in {:?}",
+            providers.len(),
+            started.elapsed()
+        );
+        for name in [
+            "marginnote",
+            "lipsum",
+            "todo",
+            "R",
+            "paire",
+            "shadowbox",
+            "ding",
+        ] {
+            println!("\\{name}: {:?}", providers.of_command(name));
+        }
+        for name in ["compactitem", "tcolorbox", "multicols"] {
+            println!("{name}: {:?}", providers.of_environment(name));
+        }
+        if analyzer.index().find("marginnote.sty").is_some() {
+            assert_eq!(
+                providers
+                    .of_command("marginnote")
+                    .first()
+                    .map(|p| p.package),
+                Some("marginnote")
+            );
+        }
+        if analyzer.index().find("paralist.sty").is_some() {
+            let found = providers.of_environment("compactitem");
+            assert!(
+                found.iter().any(|p| p.package == "paralist" && p.main),
+                "{found:?}"
+            );
+        }
         if siunitx_here {
             let siunitx = analyzer.analyze("siunitx", false);
             assert!(siunitx.commands.iter().any(|c| c.name == "qty"));

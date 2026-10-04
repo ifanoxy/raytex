@@ -123,6 +123,11 @@ impl TexmfIndex {
         self.files.contains_key(name)
     }
 
+    /// Whether the files are read on disk (not one by one from a bundle).
+    pub fn on_disk(&self) -> bool {
+        matches!(self.reader, Reader::Disk)
+    }
+
     /// Reads an installed file.
     pub fn read(&self, name: &str) -> Option<String> {
         match &self.reader {

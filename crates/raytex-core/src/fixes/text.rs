@@ -296,13 +296,19 @@ pub fn distance(a: &str, b: &str) -> usize {
 }
 
 /// The closest candidate to `word` (edit distance ≤ a third of its length,
-/// at most `max`), ignoring `word` itself.
+/// at most `max`), ignoring `word` itself. A name of one or two characters
+/// is close to too many others (`\\R` and `\\P`, `\\r` and `\\R`): nothing is
+/// offered for it.
 pub fn closest<'a>(
     word: &str,
     candidates: impl IntoIterator<Item = &'a str>,
     max: usize,
 ) -> Option<&'a str> {
-    let limit = (word.chars().count() / 3).clamp(1, max);
+    let length = word.chars().count();
+    if length <= 2 {
+        return None;
+    }
+    let limit = (length / 3).clamp(1, max);
     let lower = word.to_lowercase();
     candidates
         .into_iter()
@@ -429,6 +435,17 @@ pub fn group_start(text: &str, close: usize) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_name_that_only_looks_like_another_is_not_offered() {
+        // One or two characters are close to too many names.
+        assert_eq!(closest("R", ["P", "S", "r"], 2), None);
+        assert_eq!(closest("RR", ["rr", "RN"], 2), None);
+        // Two letters to remove out of five is another word.
+        assert_eq!(closest("paire", ["par", "pair"], 2), Some("pair"));
+        assert_eq!(closest("paire", ["par"], 2), None);
+        assert_eq!(closest("marginnot", ["marginnote"], 2), Some("marginnote"));
+    }
 
     const DOC: &str = "\\documentclass{article}\n\\usepackage[T1]{fontenc}\n% \\usepackage{tikz}\n\\usepackage{amsmath,xcolor}\n\\usepackage{hyperref}\n\\begin{document}\nx\n\\end{document}\n";
 

@@ -86,6 +86,16 @@ pub(super) fn explain_structure(
     )
 }
 
+/// A path written in text (`C:\Users\nom`): each of its `\` gives an unknown
+/// command, and none of them is a misspelled name.
+pub(super) fn explain_path(
+    d: &mut Diagnostic,
+    s: &mut Sources<'_>,
+    lang: Lang,
+) -> Option<Vec<Fix>> {
+    run(d, s, lang, &[path_in_text])
+}
+
 /// The cause of what LaTeX only warns about: a warning gives a line and no
 /// place in it, so the whole line is read.
 pub(super) fn explain_warning(

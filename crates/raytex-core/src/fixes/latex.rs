@@ -16,11 +16,11 @@ use regex::Regex;
 
 use super::data::*;
 use super::known::Learned;
-use super::text::{self as tx, closest, content_end, distance, group_end, group_start, mask};
+use super::text::{self as tx, closest, content_end, group_end, group_start, mask};
 use crate::diagnostics::{Diagnostic, FileEdit, Fix};
 use crate::i18n::Lang;
 use crate::kb::kb;
-use crate::log::hints::undefined_command;
+use crate::log::hints::{expanded_macro, undefined_command};
 
 use crate::syntax::{
     DocumentIndex, EnvironmentSpan, IncludeKind, ProblemKind, ScanOptions, scan, scan_with,
@@ -214,6 +214,57 @@ impl<'a> Sources<'a> {
         ));
         self.learned = Some(learned.clone());
         learned
+    }
+
+    /// The installed packages that define command or environment `name`
+    /// and that the document does not load, the most likely first. Empty
+    /// when a loaded package is one of them: the name should then exist,
+    /// and something else is wrong.
+    pub(super) fn providers_of(&mut self, name: &str, environment: bool) -> Vec<(String, bool)> {
+        let Some(analyzer) = self.analyzer() else {
+            return Vec::new();
+        };
+        let providers = analyzer.providers();
+        let found = if environment {
+            providers.of_environment(name)
+        } else {
+            providers.of_command(name)
+        };
+        if found.is_empty() {
+            return Vec::new();
+        }
+        let (class, packages) = self.class_and_packages();
+        let loaded: HashSet<String> = analyzer
+            .closure(class.as_deref(), packages.iter().map(String::as_str))
+            .iter()
+            .map(|info| info.name.clone())
+            .collect();
+        if found.iter().any(|p| loaded.contains(p.package)) {
+            return Vec::new();
+        }
+        found
+            .into_iter()
+            .map(|p| (p.package.to_owned(), p.main))
+            .collect()
+    }
+
+    /// Where `command` (`\mathbb`) is written in the definition of the
+    /// macro `owner` of the project (`R` for `\newcommand{\R}{\mathbb{R}}`).
+    pub(super) fn in_definition(&mut self, owner: &str, command: &str) -> Option<(Rc<Src>, Span)> {
+        for src in self.srcs() {
+            let text = mask(&src.text);
+            for def in src.index.command_defs.iter().filter(|c| c.name == owner) {
+                // The definition ends with its paragraph at the latest.
+                let end = text[def.span.end..]
+                    .find("\n\n")
+                    .map_or(text.len(), |i| def.span.end + i);
+                if let Some(i) = whole_commands(&text[def.span.end..end], command).next() {
+                    let start = def.span.end + i;
+                    return Some((src.clone(), start..start + command.len()));
+                }
+            }
+        }
+        None
     }
 
     /// The keys a set of the knowledge base reads in the installed source
@@ -509,6 +560,59 @@ pub(super) fn edits(title: String, edits: Vec<FileEdit>) -> Vec<Fix> {
     vec![Fix::Edits { title, edits }]
 }
 
+/// Where the command `name` (`\\over`, not `\\overline`) is written in `text`.
+fn whole_commands<'t>(text: &'t str, name: &'t str) -> impl Iterator<Item = usize> + 't {
+    text.match_indices(name).map(|(i, _)| i).filter(move |&i| {
+        !text[i + name.len()..].starts_with(|c: char| c.is_ascii_alphabetic() || c == '@')
+    })
+}
+
+/// What can be said of the installed packages that define a name the
+/// document does not have.
+enum Provided {
+    /// One package stands out: the one named like what it defines, the only
+    /// one, the only one the knowledge base describes, or the only one that
+    /// is not a part of something else.
+    By(String),
+    /// A few packages define it: they are named, none is chosen.
+    Among(Vec<String>),
+    Unknown,
+}
+
+fn provided(name: &str, packages: Vec<(String, bool)>) -> Provided {
+    let only = |keep: &dyn Fn(&(String, bool)) -> bool| {
+        let mut kept = packages.iter().filter(|p| keep(p));
+        match (kept.next(), kept.next()) {
+            (Some((package, _)), None) => Some(package.clone()),
+            _ => None,
+        }
+    };
+    let Some((first, _)) = packages.first() else {
+        return Provided::Unknown;
+    };
+    if first == name {
+        Provided::By(first.clone())
+    } else if let Some(package) = only(&|_| true)
+        .or_else(|| only(&|(p, _)| kb().package(p).is_some()))
+        .or_else(|| only(&|(_, main)| *main))
+    {
+        Provided::By(package)
+    } else if packages.len() <= 4 {
+        Provided::Among(packages.into_iter().map(|(p, _)| p).collect())
+    } else {
+        Provided::Unknown
+    }
+}
+
+/// `a`, `b` and `c`, each as code.
+fn listed(names: &[String], and: &str) -> String {
+    let quoted: Vec<String> = names.iter().map(|n| format!("`{n}`")).collect();
+    match quoted.split_last() {
+        Some((last, rest)) if !rest.is_empty() => format!("{} {and} {last}", rest.join(", ")),
+        _ => quoted.concat(),
+    }
+}
+
 static QUOTED: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[`']([^'`]+)'").unwrap());
 
 fn quoted(message: &str) -> Option<String> {
@@ -644,6 +748,14 @@ pub(crate) fn suggest(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) {
     if compiler
         && super::cause::is_symptom(&code, &d.message)
         && let Some(fixes) = super::cause::explain_structure(d, s, lang)
+    {
+        d.fixes = fixes;
+        return;
+    }
+    // The `\` of a path are not commands to look for.
+    if compiler
+        && code == "undefined-control-sequence"
+        && let Some(fixes) = super::cause::explain_path(d, s, lang)
     {
         d.fixes = fixes;
         return;
@@ -817,20 +929,122 @@ fn undefined_cs(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
     let Some(cmd) = undefined_command(d).map(|c| c.trim_start_matches('\\').to_owned()) else {
         return Vec::new();
     };
-    let Some(at) = at(d, s) else {
+    let Some(mut at) = at(d, s) else {
         return Vec::new();
     };
+    // The command TeX does not know is not always the one it stopped after:
+    // it may be in an argument of the line, or in what a macro is made of
+    // (`\R ->\mathbb`). The problem goes where the command is written.
+    let written = format!("\\{cmd}");
+    let mut lead: Option<String> = None;
+    if at.src.text.get(at.token.clone()) != Some(written.as_str()) {
+        let (line, text) = at.src.line(at.line);
+        let on_line: Vec<usize> = whole_commands(text, &written).collect();
+        let point = at.point().saturating_sub(line.start);
+        if let Some(&i) = on_line
+            .iter()
+            .rev()
+            .find(|&&i| i < point)
+            .or(on_line.first())
+        {
+            let span = line.start + i..line.start + i + written.len();
+            place(d, &at.src, span.clone());
+            at.token = span;
+        } else if let Some(owner) = expanded_macro(d).map(str::to_owned) {
+            let used = at.line + 1;
+            let name = owner.trim_start_matches('\\');
+            match s.in_definition(name, &written) {
+                Some((src, span)) => {
+                    place(d, &src, span.clone());
+                    at = At {
+                        line: src.line_of(span.start),
+                        token: span,
+                        src,
+                    };
+                    lead = Some(
+                        lang.pick(
+                            &format!(
+                                "`{written}` est écrit dans la définition de `{owner}`, que la ligne {used} utilise."
+                            ),
+                            &format!(
+                                "`{written}` is written in the definition of `{owner}`, which line {used} uses."
+                            ),
+                        )
+                        .to_owned(),
+                    );
+                }
+                // A macro that is not of the project: nothing to change in
+                // it, the problem stays where it is used.
+                None => {
+                    lead = Some(
+                        lang.pick(
+                            &format!("`{written}` vient de ce que `{owner}` écrit ici."),
+                            &format!("`{written}` comes from what `{owner}` writes here."),
+                        )
+                        .to_owned(),
+                    );
+                }
+            }
+        }
+    }
+    let fixes = unknown_command(d, s, lang, &cmd, &at, lead.is_none());
+    // Where the command is comes first, then what is known of it.
+    if let Some(lead) = lead {
+        let known = d.hint.as_ref().and_then(|h| h.advice.clone());
+        d.advise(match known {
+            Some(known) => format!("{lead} {known}"),
+            None => lead,
+        });
+    }
+    fixes
+}
+
+/// What is known of a command LaTeX does not have: the package that
+/// defines it, or the name it is close to. `own` is false when the command
+/// is not written by the user where the problem is (a macro of a package
+/// writes it): its name is then not looked for among the macros of the
+/// project.
+fn unknown_command(
+    d: &mut Diagnostic,
+    s: &mut Sources<'_>,
+    lang: Lang,
+    cmd: &str,
+    at: &At,
+    own: bool,
+) -> Vec<Fix> {
     let replace = |best: &str| Fix::Edits {
         title: format!("{} \\{best}", lang.pick("Remplacer par", "Replace with")),
         edits: vec![at.src.edit(at.token.clone(), format!("\\{best}"))],
     };
+    let described = d.fixes.iter().any(|f| matches!(f, Fix::AddPackage { .. }));
+    // An installed package the knowledge base does not describe defines it.
+    let installed = if described {
+        Provided::Unknown
+    } else {
+        provided(cmd, s.providers_of(cmd, false))
+    };
+    let not_loaded = |d: &mut Diagnostic, package: &str| {
+        advise(
+            d,
+            lang,
+            &format!("`\\{cmd}` est défini par le package `{package}`, qui n'est pas chargé."),
+            &format!("`\\{cmd}` is defined by the `{package}` package, which is not loaded."),
+        );
+        vec![crate::log::hints::package_fix(package.to_owned())]
+    };
+    // The package named like the command: nothing is closer.
+    if let Provided::By(package) = &installed
+        && package == cmd
+    {
+        return not_loaded(d, package);
+    }
     // A macro of the project, misspelled.
     let user: Vec<String> = s
         .srcs()
         .iter()
         .flat_map(|src| src.index.command_defs.iter().map(|c| c.name.clone()))
         .collect();
-    if let Some(best) = closest(&cmd, user.iter().map(String::as_str), 2) {
+    if own && let Some(best) = closest(cmd, user.iter().map(String::as_str), 2) {
         advise(
             d,
             lang,
@@ -839,34 +1053,54 @@ fn undefined_cs(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
         );
         return vec![replace(best)];
     }
+    if let Provided::By(package) = &installed {
+        return not_loaded(d, package);
+    }
     // A command of the kernel or of a loaded package, misspelled. When a
     // package defines the command, loading it comes first.
+    // Among the hundreds of commands LaTeX has, a name of three letters is
+    // one edit away from several (`\nom`: `\hom`, `\not`, `\num`): nothing
+    // tells which, and none is offered.
     let loaded = s.loaded();
     let learned = s.learned();
     let max = if cmd.len() <= 4 { 1 } else { 2 };
     let names = kb()
         .commands()
         .iter()
-        .filter(|c| loaded.contains(&c.package))
+        .filter(|c| cmd.len() >= 4 && loaded.contains(&c.package))
         .map(|c| c.name.as_str());
     // Then a command of a loaded package the knowledge base does not
     // describe, as the source of the package defines it.
     let read = || {
         (cmd.len() >= 4)
-            .then(|| closest(&cmd, learned.package_commands(), max))
+            .then(|| closest(cmd, learned.package_commands(), max))
             .flatten()
     };
-    let Some(best) = closest(&cmd, names, max).or_else(read) else {
+    let Some(best) = closest(cmd, names, max).or_else(read) else {
+        // A few installed packages define it: they are named, none chosen.
+        if let Provided::Among(packages) = installed {
+            advise(
+                d,
+                lang,
+                &format!(
+                    "`\\{cmd}` est défini par les packages {}, qui ne sont pas chargés.",
+                    listed(&packages, "et")
+                ),
+                &format!(
+                    "`\\{cmd}` is defined by the packages {}, which are not loaded.",
+                    listed(&packages, "and")
+                ),
+            );
+        }
         return Vec::new();
     };
-    if !d.fixes.iter().any(|f| matches!(f, Fix::AddPackage { .. })) {
-        did_you_mean(d, lang, &format!("\\{best}"));
-        return vec![replace(best)];
+    // A package defines exactly this command: loading it is the fix, a
+    // name that looks like it is not offered next to it.
+    if described {
+        return Vec::new();
     }
-    if distance(&cmd, best) == 1 && cmd.len() >= 5 {
-        d.fixes.push(replace(best));
-    }
-    Vec::new()
+    did_you_mean(d, lang, &format!("\\{best}"));
+    vec![replace(best)]
 }
 
 static ENV_NAME: LazyLock<Regex> =
@@ -900,6 +1134,28 @@ fn env_undefined(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
     }
     if d.fixes.iter().any(|f| matches!(f, Fix::AddPackage { .. })) {
         return Vec::new();
+    }
+    // An installed package the knowledge base does not describe defines it.
+    let installed = provided(&name, s.providers_of(&name, true));
+    let placed_on_name = |d: &mut Diagnostic| {
+        let (line, text) = src.line(at.line);
+        if let Some(i) = text.find(&format!("{{{name}}}")) {
+            place(d, src, line.start + i + 1..line.start + i + 1 + name.len());
+        }
+    };
+    if let Provided::By(package) = &installed {
+        placed_on_name(d);
+        advise(
+            d,
+            lang,
+            &format!(
+                "L'environnement `{name}` est défini par le package `{package}`, qui n'est pas chargé."
+            ),
+            &format!(
+                "The `{name}` environment is defined by the `{package}` package, which is not loaded."
+            ),
+        );
+        return vec![crate::log::hints::package_fix(package.clone())];
     }
     // A misspelled environment: \begin and \end are renamed together.
     let loaded = s.loaded();

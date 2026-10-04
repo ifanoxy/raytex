@@ -9,5 +9,5 @@ pub mod packages;
 pub mod texmf;
 
 pub use discovery::{Distribution, DistroKind, Engine, PackageManager, detect};
-pub use packages::{PackageAnalyzer, PackageInfo};
+pub use packages::{PackageAnalyzer, PackageInfo, Provider, Providers};
 pub use texmf::TexmfIndex;

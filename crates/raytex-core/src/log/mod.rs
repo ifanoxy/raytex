@@ -610,7 +610,17 @@ pub fn normalize(path: &Path) -> PathBuf {
 
 fn dedupe(diags: &mut Vec<Diagnostic>) {
     let mut seen = std::collections::HashSet::new();
-    diags.retain(|d| seen.insert((d.file.clone(), d.line, d.message.clone())));
+    // The same message at the same place is said once. Two commands of a
+    // line that TeX does not know are two problems: where it stopped tells
+    // them apart.
+    diags.retain(|d| {
+        seen.insert((
+            d.file.clone(),
+            d.line,
+            d.message.clone(),
+            d.context_before.clone(),
+        ))
+    });
     // What is not a number where TeX expects one gives "Missing number",
     // then other errors as TeX reads on from the same place ("Illegal unit
     // of measure", "Missing = inserted for \ifdim"). They say nothing
