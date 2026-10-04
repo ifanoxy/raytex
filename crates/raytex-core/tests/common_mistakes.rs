@@ -1486,14 +1486,24 @@ fn dynamic_cases() -> Vec<Located> {
             Some("L'environnement `compactitem` est défini par le package `paralist`, qui n'est pas chargé."),
         )
         .installed(&["paralist.sty"]),
+        // Two packages define it (fancybox, pdfscreen): both are named.
         located(
             "unknown-among-a-few-packages",
             any,
+            doc("", "Une \\shadowbox{boîte} ici."),
+            "\\shadowbox",
+            Some("`fancybox`"),
+        )
+        .installed(&["fancybox.sty"]),
+        // A package that is a part of something else defines `\ding` for
+        // itself: no package is offered.
+        located(
+            "unknown-in-parts-of-bundles",
+            any,
             doc("", "Un symbole \\ding{51} ici."),
             "\\ding",
-            Some("`pifont`"),
-        )
-        .installed(&["pifont.sty"]),
+            None,
+        ),
         // A name that only looks like another one is not offered: `\par`
         // for `\paire`, `\P` for `\R`.
         located(
@@ -1626,6 +1636,204 @@ fn dynamic_cases() -> Vec<Located> {
             Some(
                 "`É` est une lettre de texte : une formule ne compose pas les lettres accentuées.",
             ),
+        ),
+    ]
+}
+
+/// Mistakes found by trying the engine on documents it had never seen (two
+/// batches of fifty and thirty): the ones it did not explain, or explained
+/// wrongly, and that it now does.
+fn second_wave_cases() -> Vec<Located> {
+    let any = "";
+    vec![
+        located(
+            "key-length-without-unit",
+            any,
+            doc("\\usepackage{geometry}\n\\geometry{margin=2}", "Texte."),
+            "2",
+            Some("L'option `margin` de `\\geometry` attend une longueur"),
+        ),
+        located(
+            "verb-not-closed",
+            any,
+            doc("", "Le code \\verb|a+b ici.\n\nSuite."),
+            "\\verb|a+b ici.",
+            Some("il n'y en a pas d'autre sur la ligne"),
+        ),
+        located(
+            "lstinline-not-closed",
+            any,
+            doc("\\usepackage{listings}", "Le code \\lstinline|a+b ici.\n\nSuite."),
+            "\\lstinline|a+b ici.",
+            Some("il n'y en a pas d'autre sur la ligne"),
+        ),
+        located(
+            "consequences-of-a-package-error",
+            any,
+            doc("\\usepackage{tikz}", "\\begin{tikzpicture}\n\\node at (0,0) texte;\n\\end{tikzpicture}"),
+            "t",
+            None,
+        ),
+        located(
+            "argument-taken-from-what-follows",
+            any,
+            doc("", "{\\fontsize{12}\\selectfont Texte}"),
+            "\\fontsize{12}",
+            Some("`\\selectfont`, écrit à sa place, a été lu comme cet argument."),
+        ),
+        located(
+            "starred-environment-of-a-package",
+            any,
+            doc("", "\\begin{equation*}\na = b\n\\end{equation*}"),
+            "equation*",
+            Some("`amsmath`"),
+        ),
+        located(
+            "optional-bracket-never-closed",
+            any,
+            doc("", "\\begin{itemize}\n\\item[a) texte\n\\item b\n\\end{itemize}"),
+            "[",
+            Some("Ce `[` ouvre l'argument optionnel de `\\item`, et aucun `]` ne le ferme."),
+        ),
+        located(
+            "key-value-typo",
+            any,
+            doc("\\usepackage{listings}", "\\begin{lstlisting}[language=Pyton]\nprint(1)\n\\end{lstlisting}"),
+            "Pyton",
+            Some("`language` ne connaît pas `Pyton`. Vouliez-vous écrire `Python` ?"),
+        ),
+        located(
+            "command-of-other-classes",
+            any,
+            doc("", "\\chapter{Introduction}\nTexte."),
+            "\\chapter",
+            Some("la classe `article` de ce document ne le définit pas"),
+        ),
+        located(
+            "no-such-level-of-title",
+            any,
+            doc("", "\\subsubsubsection{Détail}\nTexte."),
+            "\\subsubsubsection",
+            None,
+        ),
+        located(
+            "ampersand-in-the-title",
+            any,
+            doc("\\title{Recherche & Développement}\n\\author{A}", "\\maketitle\nTexte."),
+            "&",
+            Some("Ce `&` est dans `\\title{…}`, que `\\maketitle` compose ligne 5"),
+        ),
+        located(
+            "printing-in-the-preamble",
+            any,
+            doc("\\usepackage{graphicx}\n\\includegraphics{example-image}", "Texte."),
+            "\\includegraphics",
+            Some("avant `\\begin{document}` (ligne 4)"),
+        ),
+        located(
+            "matrix-with-too-many-columns",
+            any,
+            doc("\\usepackage{amsmath}", "\\[\n\\begin{pmatrix} 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 \\end{pmatrix}\n\\]"),
+            "&",
+            Some("a 11 colonnes, et les matrices d'amsmath en ont 10 au plus"),
+        ),
+        located(
+            "left-and-right-in-two-rows",
+            any,
+            doc("\\usepackage{amsmath}", "\\begin{align}\na &= \\left( b \\\\\n  &+ c \\right)\n\\end{align}"),
+            "\\left",
+            Some("ne sont pas dans la même case"),
+        ),
+        located(
+            "verbatim-never-closed",
+            any,
+            doc("", "\\begin{verbatim}\ncode\n\nTexte après."),
+            "\\begin{verbatim}",
+            Some("TeX a lu jusqu'à la fin du fichier"),
+        ),
+        located(
+            "text-before-the-first-item",
+            any,
+            doc("", "\\begin{itemize}\nitem premier\n\\end{itemize}"),
+            "item premier",
+            Some("Ce texte vient avant le premier `\\item`"),
+        ),
+        located(
+            "rule-outside-a-table",
+            any,
+            doc("", "Texte.\n\\hline\nSuite."),
+            "\\hline",
+            Some("celui-ci n'est dans aucun tableau"),
+        ),
+        located(
+            "environment-outside-its-picture",
+            any,
+            doc("\\usepackage{pgfplots}\n\\pgfplotsset{compat=1.18}", "\\begin{axis}\n\\addplot {x^2};\n\\end{axis}"),
+            "axis",
+            Some("`axis` n'existe que dans un environnement `tikzpicture` (le package `pgfplots` est bien chargé)"),
+        ),
+        located(
+            "value-named-by-the-package",
+            any,
+            doc("\\usepackage{siunitx}", "Une valeur de \\num{abc} ici."),
+            "abc",
+            None,
+        ),
+        located(
+            "theorem-not-declared",
+            any,
+            doc("", "\\begin{theorem}\nÉnoncé.\n\\end{theorem}"),
+            "theorem",
+            Some("se déclare dans le préambule, avec `\\newtheorem{theorem}{Theorem}`"),
+        ),
+        located(
+            "empty-subscript",
+            any,
+            doc("", "Soit $x_$ ici."),
+            "_",
+            Some("Ce `_` n'est suivi de rien : un indice s'écrit `_{…}`."),
+        ),
+        located(
+            "color-given-by-its-code",
+            any,
+            doc("\\usepackage{xcolor}", "Un \\textcolor{FF0000}{mot} ici."),
+            "FF0000",
+            Some("`[HTML]{FF0000}`"),
+        ),
+        located(
+            "beamer-verbatim-without-fragile",
+            any,
+            "\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}{Titre}\n\\begin{verbatim}\ncode\n\\end{verbatim}\n\\end{frame}\n\\end{document}\n".to_owned(),
+            "\\begin{frame}",
+            Some("demande l'option `[fragile]`"),
+        ),
+        located(
+            "beamer-frame-never-closed",
+            any,
+            "\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}{Titre}\nTexte.\n\n\\begin{frame}{Deux}\nSuite.\n\\end{frame}\n\\end{document}\n".to_owned(),
+            "\\begin{frame}",
+            Some("TeX a lu jusqu'à la fin du fichier"),
+        ),
+        located(
+            "beamer-underscore-in-a-frame",
+            any,
+            "\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}\n\\frametitle{Fichier mon_fichier}\nTexte.\n\\end{frame}\n\\end{document}\n".to_owned(),
+            "_",
+            Some("dans le texte de `frame` (TeX ne le signale qu'à son `\\end`, ligne 6)"),
+        ),
+        located(
+            "environment-of-other-classes",
+            any,
+            "\\documentclass{book}\n\\begin{document}\n\\begin{abstract}\nRésumé.\n\\end{abstract}\n\\end{document}\n".to_owned(),
+            "abstract",
+            Some("la classe `book` de ce document ne le définit pas"),
+        ),
+        located(
+            "text-in-the-preamble",
+            any,
+            "\\documentclass{article}\nBonjour\n\\begin{document}\nTexte.\n\\end{document}\n".to_owned(),
+            "Bonjour",
+            Some("avant `\\begin{document}` (ligne 3)"),
         ),
     ]
 }
@@ -1900,6 +2108,7 @@ fn causes_are_found_and_shown() {
     let mut cases = located_cases();
     cases.extend(forum_cases());
     cases.extend(dynamic_cases());
+    cases.extend(second_wave_cases());
     for case in cases
         .iter()
         .filter(|c| only.as_deref().is_none_or(|o| c.name.contains(o)))

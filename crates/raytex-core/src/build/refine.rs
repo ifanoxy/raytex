@@ -48,6 +48,7 @@ pub fn refine_all(
     drop_math_consequences(diags, source);
     diags.retain(|d| d.code.as_deref() != Some(fixes::CONSEQUENCE));
     drop_what_follows(diags, source);
+    drop_unconfirmed(diags, source);
     // Characters that a font lacks, reported without a line: as long as
     // there are errors, they are what TeX printed while going on after
     // them. They come back once the document compiles, if they are real.
@@ -152,6 +153,62 @@ fn drop_what_follows(diags: &mut Vec<Diagnostic>, source: &dyn Fn(&Path) -> Opti
                 dropped[j] = true;
             }
         }
+    }
+    let mut i = 0;
+    diags.retain(|_| {
+        i += 1;
+        !dropped[i - 1]
+    });
+}
+
+/// How far before a complaint about the structure the error it follows from
+/// may be.
+const BEFORE: u32 = 40;
+
+/// What TeX says of the structure (a group or an environment closed too
+/// early or never, something inserted to go on) after another error, when
+/// the source shows nothing of the kind: its braces, formulas and
+/// environments are balanced. TeX lost count while going on after the first
+/// error; the complaint comes back at the next build if it is real. The
+/// same for what TeX itself adds, on the same line, to the message of a
+/// package.
+fn drop_unconfirmed(diags: &mut Vec<Diagnostic>, source: &dyn Fn(&Path) -> Option<String>) {
+    let explained = |d: &Diagnostic| d.hint.as_ref().is_some_and(|h| h.advice.is_some());
+    let compiler = |d: &Diagnostic| {
+        d.severity == Severity::Error && d.source == crate::diagnostics::Source::Latex
+    };
+    let mut sound: std::collections::HashMap<std::path::PathBuf, bool> =
+        std::collections::HashMap::new();
+    let mut dropped = vec![false; diags.len()];
+    for j in 0..diags.len() {
+        let d = &diags[j];
+        let (Some(file), Some(line)) = (&d.file, d.line) else {
+            continue;
+        };
+        if !compiler(d) || explained(d) {
+            continue;
+        }
+        let earlier = |same_line: bool| {
+            diags[..j].iter().enumerate().any(|(i, first)| {
+                !dropped[i]
+                    && compiler(first)
+                    && first.file.as_ref() == Some(file)
+                    && first.line.is_some_and(|l| {
+                        if same_line {
+                            l == line && first.message.contains(" Error: ")
+                        } else {
+                            l + BEFORE >= line
+                        }
+                    })
+            })
+        };
+        let recovery = d.code.as_deref() == Some("use-mismatch") && earlier(true);
+        let structure = fixes::about_structure(d)
+            && earlier(false)
+            && *sound.entry(file.clone()).or_insert_with(|| {
+                source(file).is_some_and(|text| fixes::structure_is_sound(file, &text))
+            });
+        dropped[j] = recovery || structure;
     }
     let mut i = 0;
     diags.retain(|_| {
@@ -535,8 +592,15 @@ mod tests {
             ),
             // "Missing } inserted" for an argument that is not written.
             diag("Missing } inserted.", 5, Some("Soit $\\frac{1}$")),
-            // Nothing wrong in the source: the message is read by its shape,
-            // or left as TeX wrote it. Nothing says it is not understood.
+            // What TeX says of the structure after these, where the source
+            // shows nothing wrong: it lost count, and this is not listed.
+            diag("Missing \\endgroup inserted.", 7, Some("Un texte")),
+        ];
+        refine_all(&mut ds, Path::new("/p/main.tex"), &source, None, Lang::En);
+        assert_eq!(ds.len(), 2, "{ds:#?}");
+        // Alone, nothing wrong in the source: the message is read by its
+        // shape, or left as TeX wrote it. Nothing says it is not understood.
+        let mut alone = vec![
             diag("Missing \\endgroup inserted.", 7, Some("Un texte")),
             diag(
                 "Something TeX says that nobody knows.",
@@ -544,7 +608,14 @@ mod tests {
                 Some("Un texte sans"),
             ),
         ];
-        refine_all(&mut ds, Path::new("/p/main.tex"), &source, None, Lang::En);
+        refine_all(
+            &mut alone,
+            Path::new("/p/main.tex"),
+            &source,
+            None,
+            Lang::En,
+        );
+        ds.extend(alone);
         assert_eq!(ds.len(), 4, "{ds:#?}");
         let hint = |d: &Diagnostic| d.hint.clone().unwrap();
         assert_eq!(shown(text, &ds[0]), "$");

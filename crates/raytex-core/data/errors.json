@@ -1722,5 +1722,17 @@
       "en": "The `picture` environment only draws circles of a few diameters and lines of a few slopes; the closest one was used. The `pict2e` package removes this limit.",
       "fr": "L'environnement `picture` ne trace que des cercles de quelques diamètres et des lignes de quelques pentes ; la valeur la plus proche a été utilisée. Le package `pict2e` lève cette limite."
     }
+  },
+  {
+    "id": "verb-unclosed",
+    "match": "\\\\verb ended by end of line",
+    "title": {
+      "en": "\\verb is not closed on its line",
+      "fr": "\\verb n'est pas fermé sur sa ligne"
+    },
+    "explanation": {
+      "en": "`\\verb` writes its text between two occurrences of the same character (`\\verb|x|`), on one line; the line ended before the second one.",
+      "fr": "`\\verb` écrit son texte entre deux fois le même caractère (`\\verb|x|`), sur une seule ligne ; la ligne s'est terminée avant le second."
+    }
   }
 ]

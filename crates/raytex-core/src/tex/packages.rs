@@ -109,6 +109,94 @@ pub struct Providers {
     main: Vec<bool>,
     commands: HashMap<Box<str>, Vec<u32>>,
     environments: HashMap<Box<str>, Vec<u32>>,
+    /// The same for the classes: what a class defines is not something a
+    /// package adds (`\chapter` in `article`).
+    classes: Vec<String>,
+    class_commands: HashMap<Box<str>, Vec<u32>>,
+    class_environments: HashMap<Box<str>, Vec<u32>>,
+}
+
+/// What one file defines: its rank in the list it comes from, whether it is
+/// the main file of its folder, its commands and its environments.
+type Found = (u32, bool, Vec<String>, Vec<String>);
+
+/// Searches the files `names` (with extension `ext`) for what they define.
+fn search(index: &TexmfIndex, names: &[String], ext: &str) -> Vec<Found> {
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
+    let chunk = names.len().div_ceil(threads).max(1);
+    std::thread::scope(|scope| {
+        let workers: Vec<_> = names
+            .chunks(chunk)
+            .enumerate()
+            .map(|(n, names)| {
+                scope.spawn(move || {
+                    let mut out: Vec<Found> = Vec::new();
+                    for (i, name) in names.iter().enumerate() {
+                        let file = format!("{name}.{ext}");
+                        let Some(text) = index.read(&file) else {
+                            continue;
+                        };
+                        if text.len() > MAX_FILE {
+                            continue;
+                        }
+                        let mut commands: Vec<String> = Vec::new();
+                        let mut environments = Vec::new();
+                        for c in DEFINITION.captures_iter(&text) {
+                            if let Some(m) = c.get(1).or(c.get(2)) {
+                                if is_public(m.as_str()) {
+                                    commands.push(m.as_str().to_owned());
+                                }
+                            } else if let Some(m) = c.get(3) {
+                                environments.push(m.as_str().to_owned());
+                            }
+                        }
+                        // `\def\foo … \def\endfoo` defines environment `foo`.
+                        for end in &commands {
+                            if let Some(env) = end.strip_prefix("end")
+                                && !env.is_empty()
+                                && commands.iter().any(|c| c == env)
+                            {
+                                environments.push(env.to_owned());
+                            }
+                        }
+                        let main = index
+                            .find(&file)
+                            .and_then(|p| {
+                                p.parent()
+                                    .and_then(|d| d.file_name())
+                                    .map(|d| d.to_string_lossy() == name.as_str())
+                            })
+                            .unwrap_or(false);
+                        out.push(((n * chunk + i) as u32, main, commands, environments));
+                    }
+                    out
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .flat_map(|w| w.join().unwrap_or_default())
+            .collect()
+    })
+}
+
+/// Files by what they define.
+type Defined = HashMap<Box<str>, Vec<u32>>;
+
+fn by_name(found: Vec<Found>, main: &mut [bool]) -> (Defined, Defined) {
+    let (mut commands, mut environments) = (Defined::new(), Defined::new());
+    for (file, is_main, cs, envs) in found {
+        main[file as usize] = is_main;
+        for (names, map) in [(cs, &mut commands), (envs, &mut environments)] {
+            for name in names {
+                let list = map.entry(name.into_boxed_str()).or_default();
+                if !list.contains(&file) {
+                    list.push(file);
+                }
+            }
+        }
+    }
+    (commands, environments)
 }
 
 impl Providers {
@@ -124,82 +212,41 @@ impl Providers {
             .into_iter()
             .filter(|p| !p.starts_with("lwarp-"))
             .collect();
-        let threads = std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
-        let chunk = packages.len().div_ceil(threads).max(1);
-        type Found = (u32, bool, Vec<String>, Vec<String>);
-        let found: Vec<Found> = std::thread::scope(|scope| {
-            let workers: Vec<_> = packages
-                .chunks(chunk)
-                .enumerate()
-                .map(|(n, names)| {
-                    scope.spawn(move || {
-                        let mut out: Vec<Found> = Vec::new();
-                        for (i, name) in names.iter().enumerate() {
-                            let file = format!("{name}.sty");
-                            let Some(text) = index.read(&file) else {
-                                continue;
-                            };
-                            if text.len() > MAX_FILE {
-                                continue;
-                            }
-                            let mut commands: Vec<String> = Vec::new();
-                            let mut environments = Vec::new();
-                            for c in DEFINITION.captures_iter(&text) {
-                                if let Some(m) = c.get(1).or(c.get(2)) {
-                                    if is_public(m.as_str()) {
-                                        commands.push(m.as_str().to_owned());
-                                    }
-                                } else if let Some(m) = c.get(3) {
-                                    environments.push(m.as_str().to_owned());
-                                }
-                            }
-                            // `\def\foo … \def\endfoo` defines environment `foo`.
-                            for end in &commands {
-                                if let Some(env) = end.strip_prefix("end")
-                                    && !env.is_empty()
-                                    && commands.iter().any(|c| c == env)
-                                {
-                                    environments.push(env.to_owned());
-                                }
-                            }
-                            let main = index
-                                .find(&file)
-                                .and_then(|p| {
-                                    p.parent()
-                                        .and_then(|d| d.file_name())
-                                        .map(|d| d.to_string_lossy() == name.as_str())
-                                })
-                                .unwrap_or(false);
-                            out.push(((n * chunk + i) as u32, main, commands, environments));
-                        }
-                        out
-                    })
-                })
-                .collect();
-            workers
-                .into_iter()
-                .flat_map(|w| w.join().unwrap_or_default())
-                .collect()
-        });
-        let mut out = Self {
-            main: vec![false; packages.len()],
+        let classes = index.classes();
+        let mut main = vec![false; packages.len()];
+        let (commands, environments) = by_name(search(index, &packages, "sty"), &mut main);
+        let mut class_main = vec![false; classes.len()];
+        let (class_commands, class_environments) =
+            by_name(search(index, &classes, "cls"), &mut class_main);
+        Self {
             packages,
-            ..Self::default()
-        };
-        for (package, main, commands, environments) in found {
-            out.main[package as usize] = main;
-            for (names, map) in [
-                (commands, &mut out.commands),
-                (environments, &mut out.environments),
-            ] {
-                for name in names {
-                    let list = map.entry(name.into_boxed_str()).or_default();
-                    if !list.contains(&package) {
-                        list.push(package);
-                    }
-                }
-            }
+            main,
+            commands,
+            environments,
+            classes,
+            class_commands,
+            class_environments,
         }
+    }
+
+    /// The installed classes that define command `name` themselves
+    /// (`report` and `book` for `chapter`).
+    pub fn classes_with_command(&self, name: &str) -> Vec<&str> {
+        self.classes_in(self.class_commands.get(name))
+    }
+
+    /// The installed classes that define environment `name` themselves.
+    pub fn classes_with_environment(&self, name: &str) -> Vec<&str> {
+        self.classes_in(self.class_environments.get(name))
+    }
+
+    fn classes_in(&self, list: Option<&Vec<u32>>) -> Vec<&str> {
+        let mut out: Vec<&str> = list
+            .into_iter()
+            .flatten()
+            .map(|&i| self.classes[i as usize].as_str())
+            .collect();
+        out.sort_unstable();
         out
     }
 
@@ -323,8 +370,24 @@ impl PackageAnalyzer {
         out
     }
 
+    /// What LaTeX itself defines (`latex.ltx`): the commands of the kernel
+    /// that nothing else describes are read there, like those of a package.
+    pub fn kernel(&self) -> Arc<PackageInfo> {
+        let key = ("latex.ltx".to_owned(), false);
+        if let Some(info) = self.cache.lock().unwrap().get(&key) {
+            return info.clone();
+        }
+        let info = Arc::new(self.analyze_file("latex", "latex.ltx".to_owned(), false));
+        self.cache.lock().unwrap().insert(key, info.clone());
+        info
+    }
+
     fn analyze_uncached(&self, name: &str, class: bool) -> PackageInfo {
         let file = format!("{name}.{}", if class { "cls" } else { "sty" });
+        self.analyze_file(name, file, class)
+    }
+
+    fn analyze_file(&self, name: &str, file: String, class: bool) -> PackageInfo {
         let mut info = PackageInfo {
             name: name.to_owned(),
             class,
@@ -511,6 +574,20 @@ mod tests {
         );
         let tikz = analyzer.analyze("tikz", false);
         assert!(tikz.commands.iter().any(|c| c.name == "draw"));
+        // The kernel is read like a package: `\fontsize` takes two arguments.
+        let started = std::time::Instant::now();
+        let kernel = analyzer.kernel();
+        println!(
+            "kernel: {} commands in {:?}",
+            kernel.commands.len(),
+            started.elapsed()
+        );
+        let fontsize = kernel.commands.iter().find(|c| c.name == "fontsize");
+        assert_eq!(
+            fontsize.and_then(|c| c.signature.as_deref()),
+            Some("{}{}"),
+            "{fontsize:?}"
+        );
         // Which package defines what, for the whole distribution.
         let started = std::time::Instant::now();
         let providers = analyzer.providers();
@@ -530,6 +607,17 @@ mod tests {
         ] {
             println!("\\{name}: {:?}", providers.of_command(name));
         }
+        println!(
+            "classes with \\chapter: {:?}",
+            providers.classes_with_command("chapter")
+        );
+        let classes = providers.classes_with_command("chapter");
+        assert!(classes.contains(&"book") && !classes.contains(&"article"));
+        assert!(
+            providers
+                .classes_with_environment("abstract")
+                .contains(&"article")
+        );
         for name in ["compactitem", "tcolorbox", "multicols"] {
             println!("{name}: {:?}", providers.of_environment(name));
         }

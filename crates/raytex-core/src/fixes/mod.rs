@@ -38,6 +38,12 @@ pub(crate) fn about_structure(d: &Diagnostic) -> bool {
         )
 }
 
+/// The problems of structure the source itself shows (braces, formulas and
+/// environments left open or closed too many times).
+pub(crate) fn structure_is_sound(path: &Path, text: &str) -> bool {
+    crate::lint::structure(path, text, Lang::En).is_empty()
+}
+
 /// Whether a fix can be applied without asking (not an installation, a
 /// security setting or a page of documentation).
 pub fn is_automatic(fix: &Fix) -> bool {

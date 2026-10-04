@@ -126,11 +126,12 @@ What is known comes from three places, asked in this order (`fixes/known.rs`):
 
 1. the definitions of the project: `\newcommand`, `\NewDocumentCommand`, `\def`, `\DeclareMathOperator`, `\newenvironment`, `\newtheorem` give the arguments of a macro, and what it is made of tells where it can be written (`\newcommand{\R}{\mathbb{R}}` only works in a formula);
 2. this knowledge base, which also names the arguments and says what they expect;
-3. the source of every package the document loads, read in the TeX distribution: its commands with their arguments, its symbols of formulas, its environments, its options.
+3. the source of every package the document loads, read in the TeX distribution: its commands with their arguments, its symbols of formulas, its environments, its options;
+4. the kernel itself (`latex.ltx`), read the same way for the commands nothing else describes.
 
 So a package that is not described here still gets a misspelled command, environment, option or key corrected, an argument that is not written reported, and a symbol of formulas written in text explained.
 
-A command or an environment that nothing loaded defines is looked for in the whole distribution (`tex::Providers`: every `.sty` is searched once for the definitions it holds). One package that stands out (named like the command, the only one, the only one described here, or the only main file of a folder) is offered with the fix that loads it; a few are named; many are not mentioned.
+A command or an environment that nothing loaded defines is looked for in the whole distribution (`tex::Providers`: every `.sty` is searched once for the definitions it holds). A package is offered, with the fix that loads it, when it is named like the command, or when it is the only main file of a folder that defines a name of four letters or more; two or three such packages are named; otherwise nothing is said. What classes define is looked at first: a command that `report` and `book` have and `article` does not is said so, and no package is offered for it.
 
 A command described here gets, on top of that, the names of its arguments in the messages and the checks of what each one expects: the problem is placed on the word or the argument to change, its title names the mistake and its *advice* (the light bulb) says what is wrong, with a fix when there is one. A problem whose cause is not found keeps its explanation and gets no advice.
 

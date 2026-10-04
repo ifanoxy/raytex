@@ -164,6 +164,11 @@ impl<'a> Sources<'a> {
             .clone()
     }
 
+    /// The class of the document.
+    pub(super) fn document_class(&mut self) -> Option<String> {
+        self.class_and_packages().0
+    }
+
     /// The class of the document and the packages it loads, as written.
     fn class_and_packages(&mut self) -> (Option<String>, Vec<String>) {
         let srcs = self.srcs();
@@ -185,9 +190,15 @@ impl<'a> Sources<'a> {
             return learned.clone();
         }
         let (class, packages) = self.class_and_packages();
+        // The packages the document loads, then LaTeX itself: what the
+        // knowledge base does not describe of the kernel is read there.
         let infos = self
             .analyzer()
-            .map(|a| a.closure(class.as_deref(), packages.iter().map(String::as_str)))
+            .map(|a| {
+                let mut infos = a.closure(class.as_deref(), packages.iter().map(String::as_str));
+                infos.push(a.kernel());
+                infos
+            })
             .unwrap_or_default();
         // A package or a class of the project itself (`macros.sty` next to
         // the document) is read like the documents.
@@ -246,6 +257,46 @@ impl<'a> Sources<'a> {
             .into_iter()
             .map(|p| (p.package.to_owned(), p.main))
             .collect()
+    }
+
+    /// The class of the document, and the well-known classes that define
+    /// command or environment `name` themselves when it does not: what a
+    /// class brings (`\chapter`, `abstract`) is not added by a package.
+    pub(super) fn classes_defining(
+        &mut self,
+        name: &str,
+        environment: bool,
+    ) -> Option<(String, Vec<String>)> {
+        let analyzer = self.analyzer()?;
+        let (class, _) = self.class_and_packages();
+        let class = class?;
+        let providers = analyzer.providers();
+        let found = if environment {
+            providers.classes_with_environment(name)
+        } else {
+            providers.classes_with_command(name)
+        };
+        // The class of the document, or the one it is built on, has it: the
+        // name should exist, and something else is wrong.
+        let own: Vec<String> = analyzer
+            .closure(Some(&class), [])
+            .iter()
+            .filter(|info| info.class)
+            .map(|info| info.name.clone())
+            .collect();
+        if found.iter().any(|c| own.iter().any(|o| o == c)) {
+            return None;
+        }
+        // The usual classes first, then the others the knowledge base describes.
+        const USUAL: &[&str] = &["article", "report", "book"];
+        let mut known: Vec<String> = found
+            .into_iter()
+            .filter(|c| kb().class(c).is_some())
+            .map(str::to_owned)
+            .collect();
+        known.sort_by_key(|c| USUAL.iter().position(|u| u == c).unwrap_or(USUAL.len()));
+        known.truncate(4);
+        (!known.is_empty()).then_some((class, known))
     }
 
     /// Where `command` (`\mathbb`) is written in the definition of the
@@ -567,41 +618,130 @@ fn whole_commands<'t>(text: &'t str, name: &'t str) -> impl Iterator<Item = usiz
     })
 }
 
+/// What a loaded package only defines inside one of its environments: the
+/// commands of TikZ in a `tikzpicture`, those of pgfplots in an `axis`.
+fn scoped(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang, package: &str, environment: bool) {
+    let inside = match (package, environment) {
+        ("tikz" | "pgf", _) | ("pgfplots", true) => "tikzpicture",
+        ("pgfplots", false) => "axis",
+        _ => return,
+    };
+    let Some(mut at) = at(d, s) else { return };
+    if environment {
+        // The name of the environment, not the brace TeX stopped after.
+        let Some(name) = ENV_NAME.captures(&d.message).map(|m| m[1].to_owned()) else {
+            return;
+        };
+        let (line, text) = at.src.line(at.line);
+        let Some(i) = text.find(&format!("\\begin{{{name}}}")) else {
+            return;
+        };
+        let start = line.start + i + "\\begin{".len();
+        at.token = start..start + name.len();
+        place(d, &at.src, at.token.clone());
+        // What the unknown environment holds is read out of its place.
+        d.swallows = true;
+    }
+    if at.src.environment_at(at.token.start, &[inside]).is_some() {
+        return;
+    }
+    let written = at.src.text[at.token.clone()].to_owned();
+    advise(
+        d,
+        lang,
+        &format!(
+            "`{written}` n'existe que dans un environnement `{inside}` (le package `{package}` est bien chargé), et celui-ci est en dehors."
+        ),
+        &format!(
+            "`{written}` only exists inside a `{inside}` environment (the `{package}` package is loaded), and this one is outside."
+        ),
+    );
+}
+
+/// Names people give to theorems: an environment of that name is declared
+/// by the document itself, with `\\newtheorem`.
+const THEOREMS: &[(&str, &str)] = &[
+    ("theorem", "Theorem"),
+    ("lemma", "Lemma"),
+    ("proposition", "Proposition"),
+    ("corollary", "Corollary"),
+    ("definition", "Definition"),
+    ("remark", "Remark"),
+    ("example", "Example"),
+    ("exercise", "Exercise"),
+    ("theoreme", "Théorème"),
+    ("lemme", "Lemme"),
+    ("corollaire", "Corollaire"),
+    ("remarque", "Remarque"),
+    ("exemple", "Exemple"),
+    ("exercice", "Exercice"),
+];
+
 /// What can be said of the installed packages that define a name the
 /// document does not have.
 enum Provided {
-    /// One package stands out: the one named like what it defines, the only
-    /// one, the only one the knowledge base describes, or the only one that
-    /// is not a part of something else.
+    /// One package stands out: the one named like what it defines, or the
+    /// only one of the distribution that defines it (a name of four letters
+    /// at least, in the main file of a folder).
     By(String),
-    /// A few packages define it: they are named, none is chosen.
+    /// Two or three packages define it, each the main file of its folder:
+    /// they are named, none is chosen.
     Among(Vec<String>),
     Unknown,
 }
 
 fn provided(name: &str, packages: Vec<(String, bool)>) -> Provided {
-    let only = |keep: &dyn Fn(&(String, bool)) -> bool| {
-        let mut kept = packages.iter().filter(|p| keep(p));
-        match (kept.next(), kept.next()) {
-            (Some((package, _)), None) => Some(package.clone()),
-            _ => None,
-        }
-    };
     let Some((first, _)) = packages.first() else {
         return Provided::Unknown;
     };
     if first == name {
-        Provided::By(first.clone())
-    } else if let Some(package) = only(&|_| true)
-        .or_else(|| only(&|(p, _)| kb().package(p).is_some()))
-        .or_else(|| only(&|(_, main)| *main))
-    {
-        Provided::By(package)
-    } else if packages.len() <= 4 {
-        Provided::Among(packages.into_iter().map(|(p, _)| p).collect())
-    } else {
-        Provided::Unknown
+        return Provided::By(first.clone());
     }
+    // A short name (`\\R`) is defined in passing by many packages, and a
+    // package that is a part of something else defines names for itself:
+    // neither tells which package the user means. With few packages
+    // installed, "the only one" could be one of those: only the main files
+    // of their folders count.
+    let main: Vec<String> = packages
+        .into_iter()
+        .filter(|(_, main)| *main)
+        .map(|(p, _)| p)
+        .collect();
+    match (name.len() >= 4, main.len()) {
+        (true, 1) => Provided::By(main[0].clone()),
+        (true, 2 | 3) => Provided::Among(main),
+        _ => Provided::Unknown,
+    }
+}
+
+/// Says that the classes `classes` define `what` and that the class of the
+/// document does not.
+fn class_feature(
+    d: &mut Diagnostic,
+    lang: Lang,
+    what: (&str, &str),
+    class: &str,
+    classes: &[String],
+) {
+    let (fr, en) = if classes.len() == 1 {
+        ("dans la classe", "in the class")
+    } else {
+        ("dans les classes", "in the classes")
+    };
+    advise(
+        d,
+        lang,
+        &format!(
+            "{} existe {fr} {} ; la classe `{class}` de ce document ne le définit pas.",
+            what.0,
+            listed(classes, "et")
+        ),
+        &format!(
+            "{} exists {en} {}; the class `{class}` of this document does not define it.",
+            what.1,
+            listed(classes, "and")
+        ),
+    );
 }
 
 /// `a`, `b` and `c`, each as code.
@@ -749,6 +889,35 @@ pub(crate) fn suggest(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) {
         && super::cause::is_symptom(&code, &d.message)
         && let Some(fixes) = super::cause::explain_structure(d, s, lang)
     {
+        d.fixes = fixes;
+        return;
+    }
+    // The knowledge base names the package of an unknown command or
+    // environment. When the document loads that package, loading it is not
+    // the fix: what it defines only exists in some places.
+    if compiler
+        && matches!(
+            code.as_str(),
+            "undefined-control-sequence" | "env-undefined"
+        )
+    {
+        let loaded = s.loaded();
+        let package = d.fixes.iter().find_map(|f| match f {
+            Fix::AddPackage { package, .. } if loaded.contains(package) => Some(package.clone()),
+            _ => None,
+        });
+        if let Some(package) = package {
+            d.fixes
+                .retain(|f| !matches!(f, Fix::AddPackage { package: p, .. } if *p == package));
+            if let Some(hint) = &mut d.hint {
+                hint.advice = None;
+            }
+            scoped(d, s, lang, &package, code == "env-undefined");
+            return;
+        }
+    }
+    // A frame of beamer with verbatim text and no `fragile` option.
+    if compiler && let Some(fixes) = super::cause::fragile_frame(d, s, lang) {
         d.fixes = fixes;
         return;
     }
@@ -1017,6 +1186,12 @@ fn unknown_command(
         edits: vec![at.src.edit(at.token.clone(), format!("\\{best}"))],
     };
     let described = d.fixes.iter().any(|f| matches!(f, Fix::AddPackage { .. }));
+    // What a class brings (`\chapter`) is not added by a package.
+    if !described && let Some((class, classes)) = s.classes_defining(cmd, false) {
+        let name = format!("`\\{cmd}`");
+        class_feature(d, lang, (&name, &name), &class, &classes);
+        return Vec::new();
+    }
     // An installed package the knowledge base does not describe defines it.
     let installed = if described {
         Provided::Unknown
@@ -1114,6 +1289,14 @@ fn env_undefined(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
         return Vec::new();
     };
     let src = &at.src;
+    // The name is what LaTeX does not know: the problem is shown on it.
+    {
+        let (line, text) = src.line(at.line);
+        if let Some(i) = text.find(&format!("\\begin{{{name}}}")) {
+            let start = line.start + i + "\\begin{".len();
+            place(d, src, start..start + name.len());
+        }
+    }
     // `\renewenvironment` of an environment that does not exist.
     if let Some(span) = find_on_line(src, at.line, "\\renewenvironment", Some(at.point())) {
         advise(
@@ -1135,16 +1318,23 @@ fn env_undefined(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
     if d.fixes.iter().any(|f| matches!(f, Fix::AddPackage { .. })) {
         return Vec::new();
     }
+    // What a class brings (`abstract`) is not added by a package.
+    if let Some((class, classes)) = s.classes_defining(&name, true) {
+        class_feature(
+            d,
+            lang,
+            (
+                &format!("L'environnement `{name}`"),
+                &format!("The `{name}` environment"),
+            ),
+            &class,
+            &classes,
+        );
+        return Vec::new();
+    }
     // An installed package the knowledge base does not describe defines it.
     let installed = provided(&name, s.providers_of(&name, true));
-    let placed_on_name = |d: &mut Diagnostic| {
-        let (line, text) = src.line(at.line);
-        if let Some(i) = text.find(&format!("{{{name}}}")) {
-            place(d, src, line.start + i + 1..line.start + i + 1 + name.len());
-        }
-    };
     if let Provided::By(package) = &installed {
-        placed_on_name(d);
         advise(
             d,
             lang,
@@ -1156,6 +1346,27 @@ fn env_undefined(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
             ),
         );
         return vec![crate::log::hints::package_fix(package.clone())];
+    }
+    // An environment of theorems is declared by the document itself.
+    if let Some((_, title)) = THEOREMS.iter().find(|(n, _)| *n == name) {
+        advise(
+            d,
+            lang,
+            &format!(
+                "Aucun package ne définit `{name}` : un environnement de théorème se déclare dans le préambule, avec `\\newtheorem{{{name}}}{{{title}}}`."
+            ),
+            &format!(
+                "No package defines `{name}`: a theorem environment is declared in the preamble, with `\\newtheorem{{{name}}}{{{title}}}`."
+            ),
+        );
+        return vec![Fix::AddToPreamble {
+            title: format!(
+                "{} \\newtheorem{{{name}}}{{{title}}}",
+                lang.pick("Déclarer avec", "Declare with")
+            ),
+            code: format!("\\newtheorem{{{name}}}{{{title}}}"),
+            after: None,
+        }];
     }
     // A misspelled environment: \begin and \end are renamed together.
     let loaded = s.loaded();
@@ -1223,6 +1434,14 @@ fn env_mismatch(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
         let (open, close) = (m[1].to_owned(), m[3].to_owned());
         let begin_line = m[2].parse::<usize>().unwrap_or(1).saturating_sub(1);
         if close == "document" {
+            // The source closes it: TeX lost count after an earlier error,
+            // and nothing is missing here.
+            let closed = src.index.environments.iter().any(|e| {
+                e.name == open && src.line_of(e.begin.start) == begin_line && e.end.is_some()
+            });
+            if closed {
+                return Vec::new();
+            }
             // `\begin{open}` never closed: closed at the end of its paragraph.
             let begin = src
                 .line(begin_line.min(src.line_count().saturating_sub(1)))
@@ -1333,6 +1552,12 @@ fn missing_item(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
     if body[i..].starts_with("\\item") || body[i..].starts_with('%') {
         return Vec::new();
     }
+    // Shown on the text itself, not where TeX noticed it.
+    let start = from + i;
+    let end = src.text[start..]
+        .find('\n')
+        .map_or(src.text.len(), |k| start + k);
+    place(d, src, start..start + src.text[start..end].trim_end().len());
     advise(
         d,
         lang,
@@ -2156,12 +2381,53 @@ fn count_columns(spec: &str) -> usize {
     n
 }
 
+/// The matrices of amsmath, which have a largest number of columns.
+const MATRICES: &[&str] = &[
+    "matrix", "pmatrix", "bmatrix", "Bmatrix", "vmatrix", "Vmatrix",
+];
+
 fn extra_column(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     let Some(at) = at(d, s) else {
         return Vec::new();
     };
     let src = &at.src;
     let p = at.point();
+    // A matrix of amsmath: ten columns unless `MaxMatrixCols` says more.
+    if let Some(env) = src.environment_at(p, MATRICES) {
+        let text = mask(&src.text);
+        let row_start = text[env.begin.end..p]
+            .rfind("\\\\")
+            .map_or(env.begin.end, |i| env.begin.end + i + 2);
+        let env_end = env.end.as_ref().map_or(text.len(), |e| e.start);
+        let row_end = text[p..env_end].find("\\\\").map_or(env_end, |i| p + i);
+        let row = &text[row_start..row_end];
+        let columns = row.matches('&').count() - row.matches("\\&").count() + 1;
+        if columns <= 10 || mask(&src.text).contains("MaxMatrixCols") {
+            return Vec::new();
+        }
+        advise(
+            d,
+            lang,
+            &format!(
+                "Cette ligne de `{}` a {columns} colonnes, et les matrices d'amsmath en ont 10 au plus tant que le compteur `MaxMatrixCols` n'en autorise pas davantage.",
+                env.name
+            ),
+            &format!(
+                "This row of `{}` has {columns} columns, and the matrices of amsmath have 10 at most unless the counter `MaxMatrixCols` allows more.",
+                env.name
+            ),
+        );
+        let code = format!("\\setcounter{{MaxMatrixCols}}{{{columns}}}");
+        return vec![Fix::AddToPreamble {
+            title: format!(
+                "{} {columns} {} ({code})",
+                lang.pick("Autoriser", "Allow"),
+                lang.pick("colonnes", "columns")
+            ),
+            code,
+            after: Some("amsmath".into()),
+        }];
+    }
     let Some(env) = src.environment_at(p, TABULARS) else {
         return Vec::new();
     };
@@ -2239,6 +2505,28 @@ fn end_row(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     else {
         return Vec::new();
     };
+    // A rule of tables written where there is no table.
+    if src
+        .environment_at(line.start + rule_at, &[])
+        .is_none_or(|e| e.name == "document")
+    {
+        place(
+            d,
+            src,
+            line.start + rule_at..line.start + rule_at + rule.len(),
+        );
+        advise(
+            d,
+            lang,
+            &format!(
+                "`{rule}` trace un filet entre deux lignes d'un tableau, et celui-ci n'est dans aucun tableau."
+            ),
+            &format!(
+                "`{rule}` draws a rule between two rows of a table, and this one is in no table."
+            ),
+        );
+        return Vec::new();
+    }
     let before = line_text[..rule_at].trim();
     let (insert_at, content) = if before.is_empty() {
         let Some(prev) = (0..at.line).rev().find(|&l| {
@@ -3309,6 +3597,41 @@ fn begin_document(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
     };
     let src = &at.src;
     let (span, line) = src.line(at.line);
+    // The document begins further down: what prints is written after it.
+    if let Some(begin) = src.index.begin_document
+        && span.start < begin
+    {
+        let begin_line = src.line_of(begin);
+        let start = span.start + (line.len() - line.trim_start().len());
+        // A command stays the place of the problem; text is shown whole.
+        if !line.trim_start().starts_with('\\') {
+            place(d, src, start..span.end);
+        }
+        advise(
+            d,
+            lang,
+            &format!(
+                "Ceci s'imprime, et c'est écrit avant `\\begin{{document}}` (ligne {}) : le préambule ne peut rien imprimer.",
+                begin_line + 1
+            ),
+            &format!(
+                "This prints something, and it is written before `\\begin{{document}}` (line {}): the preamble cannot print anything.",
+                begin_line + 1
+            ),
+        );
+        let moved = format!("{}\n", line.trim());
+        return edits(
+            lang.pick(
+                "Déplacer après \\begin{document}",
+                "Move after \\begin{document}",
+            )
+            .into(),
+            vec![
+                src.edit(src.full_line(at.line), ""),
+                src.insert(src.full_line(begin_line).end, moved),
+            ],
+        );
+    }
     if line.trim_start().starts_with('\\') || src.index.begin_document.is_some() {
         return Vec::new();
     }
@@ -3798,6 +4121,33 @@ fn color(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     else {
         return Vec::new();
     };
+    // The name is what xcolor does not know: the problem is shown on it.
+    if let Some(at) = at(d, s)
+        && let Some(span) = find_on_line(&at.src, at.line, &name, Some(at.point()))
+    {
+        place(d, &at.src, span.clone());
+        // Six hexadecimal digits: a color given by its code, not by a name.
+        if name.len() == 6 && name.bytes().all(|b| b.is_ascii_hexdigit()) {
+            advise(
+                d,
+                lang,
+                &format!(
+                    "`{name}` est un code de couleur, pas un nom : un code hexadécimal se donne avec le modèle `HTML`, `[HTML]{{{name}}}`."
+                ),
+                &format!(
+                    "`{name}` is a color code, not a name: a hexadecimal code is given with the `HTML` model, `[HTML]{{{name}}}`."
+                ),
+            );
+            let brace = span.start - 1;
+            if at.src.text.as_bytes().get(brace) == Some(&b'{') {
+                return edits(
+                    format!("{} [HTML]{{{name}}}", lang.pick("Écrire", "Write")),
+                    vec![at.src.insert(brace, "[HTML]")],
+                );
+            }
+            return Vec::new();
+        }
+    }
     let root_text = s.root().map(|r| r.text.clone()).unwrap_or_default();
     let options: Vec<String> = tx::loaded_packages(&root_text)
         .into_iter()

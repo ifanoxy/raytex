@@ -21,8 +21,8 @@ use crate::process;
 
 /// Extensions worth indexing.
 const INDEXED: &[&str] = &[
-    "sty", "cls", "tex", "def", "cfg", "ldf", "clo", "fd", "bbx", "cbx", "lbx", "dbx", "bst",
-    "bib", "pdf", "png", "jpg", "jpeg", "eps",
+    "sty", "cls", "tex", "ltx", "def", "cfg", "ldf", "clo", "fd", "bbx", "cbx", "lbx", "dbx",
+    "bst", "bib", "pdf", "png", "jpg", "jpeg", "eps",
 ];
 
 /// Where file contents come from.

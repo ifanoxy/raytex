@@ -58,7 +58,11 @@ pub fn parse_bibtex(blg: &str, dir: &Path) -> Vec<Diagnostic> {
             if !ctx.is_empty() {
                 d.context_before = Some(ctx.join("\n"));
             }
-            out.push(d);
+            // The place alone, under a message already read on the line
+            // above ("I couldn't open style file…"): nothing more to say.
+            if !d.message.is_empty() {
+                out.push(d);
+            }
         } else if line.starts_with("I couldn't open")
             || line.starts_with("I found no")
             || line.starts_with("Illegal, another \\bib")

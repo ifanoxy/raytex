@@ -46,6 +46,12 @@ pub(super) fn explain(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Op
         &[
             unknown_name,
             unknown_key,
+            key_value_misspelled,
+            stored_text,
+            in_collected_body,
+            verb_unclosed,
+            empty_script,
+            left_right_across_cells,
             dollar_in_formula,
             display_closed_by_one_dollar,
             delimiter_expected,
@@ -60,6 +66,7 @@ pub(super) fn explain(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Op
             blank_line_in_argument,
             structure,
             value_misspelled_elsewhere,
+            named_by_the_message,
         ],
     )
 }
@@ -77,6 +84,10 @@ pub(super) fn explain_structure(
         s,
         lang,
         &[
+            stored_text,
+            in_collected_body,
+            empty_script,
+            left_right_across_cells,
             dollar_in_formula,
             display_closed_by_one_dollar,
             group_closed_in_environment,
@@ -348,7 +359,40 @@ fn written_key(h: &Here<'_>, key: &str) -> Option<Span> {
 /// or the class it is given to. The knowledge base lists the usual ones;
 /// the others are read in the source of the package.
 fn keys_taken_at(s: &mut Sources<'_>, h: &Here<'_>, at: usize) -> Vec<String> {
-    // The bracket or the brace the key is in, then what is written before it.
+    match key_owner(h, at) {
+        Some(KeyOwner::Options { name, class }) => {
+            let mut out = s.options_of(&name, class);
+            for (index, set) in keys::sets().iter().enumerate() {
+                if set.options_of.contains(&name) {
+                    out.extend(set.keys.iter().map(|k| k.name.clone()));
+                    out.extend(s.learned_keys(index));
+                }
+            }
+            out
+        }
+        Some(KeyOwner::Sets(sets)) => {
+            let mut out = Vec::new();
+            for index in sets {
+                out.extend(keys::sets()[index].keys.iter().map(|k| k.name.clone()));
+                out.extend(s.learned_keys(index));
+            }
+            out
+        }
+        None => Vec::new(),
+    }
+}
+
+/// What takes the keys of a list.
+enum KeyOwner {
+    /// `\usepackage[…]{name}`, `\documentclass[…]{name}`.
+    Options { name: String, class: bool },
+    /// A command or an environment: the key sets (of `keys.json`) that name it.
+    Sets(Vec<usize>),
+}
+
+/// What takes the key written at `at`: the bracket or the brace it is in,
+/// then what is written before it.
+fn key_owner(h: &Here<'_>, at: usize) -> Option<KeyOwner> {
     let b = h.text.as_bytes();
     let mut depth = 0i32;
     let mut open = None;
@@ -364,12 +408,9 @@ fn keys_taken_at(s: &mut Sources<'_>, h: &Here<'_>, at: usize) -> Vec<String> {
             _ => {}
         }
     }
-    let Some(open) = open else {
-        return Vec::new();
-    };
+    let open = open?;
     let bracket = b[open] as char;
     let head = h.text[floor..open].trim_end();
-    // `\usepackage[…]{name}`, `\documentclass[…]{name}`: the options of `name`.
     if let Some(command) = ["\\usepackage", "\\RequirePackage", "\\documentclass"]
         .iter()
         .find(|c| head.ends_with(*c))
@@ -377,44 +418,87 @@ fn keys_taken_at(s: &mut Sources<'_>, h: &Here<'_>, at: usize) -> Vec<String> {
         let close = h.text[open..].find(']').map(|i| open + i + 1);
         let name = close
             .filter(|&c| b.get(c) == Some(&b'{'))
-            .and_then(|c| group_end(h.text, c).map(|end| h.text[c + 1..end - 1].trim()));
-        let Some(name) = name else {
-            return Vec::new();
-        };
-        let class = *command == "\\documentclass";
-        let mut out = s.options_of(name, class);
-        for (index, set) in keys::sets().iter().enumerate() {
-            if set.options_of.iter().any(|p| p == name) {
-                out.extend(set.keys.iter().map(|k| k.name.clone()));
-                out.extend(s.learned_keys(index));
-            }
-        }
-        return out;
+            .and_then(|c| group_end(h.text, c).map(|end| h.text[c + 1..end - 1].trim()))?;
+        return Some(KeyOwner::Options {
+            name: name.to_owned(),
+            class: *command == "\\documentclass",
+        });
     }
-    // `\command[…]`, `\command{…}`, `\begin{name}[…]`: the keys of the sets
-    // that name it, whatever the rank of the argument.
+    // `\command[…]`, `\command{…}`, `\begin{name}[…]`: the sets that name
+    // it, whatever the rank of the argument.
     static OWNER: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(
             r"(?:\\begin\s*\{([^{}]+)\}|(\\[A-Za-z@]+)\*?)\s*(?:\[[^\]]*\]|\{[^{}]*\}|\([^)]*\))*$",
         )
         .unwrap()
     });
-    let Some(m) = OWNER.captures(head) else {
-        return Vec::new();
-    };
+    let m = OWNER.captures(head)?;
     let owner = m.get(1).or(m.get(2)).map_or("", |x| x.as_str());
-    let mut out = Vec::new();
-    for (index, set) in keys::sets().iter().enumerate() {
-        let takes = set.targets.iter().any(|t| {
-            t.strip_prefix(owner)
-                .is_some_and(|rest| rest.trim_start_matches('*').starts_with(bracket))
-        });
-        if takes {
-            out.extend(set.keys.iter().map(|k| k.name.clone()));
-            out.extend(s.learned_keys(index));
+    let sets = keys::sets()
+        .iter()
+        .enumerate()
+        .filter(|(_, set)| {
+            set.targets.iter().any(|t| {
+                t.strip_prefix(owner)
+                    .is_some_and(|rest| rest.trim_start_matches('*').starts_with(bracket))
+            })
+        })
+        .map(|(index, _)| index)
+        .collect();
+    Some(KeyOwner::Sets(sets))
+}
+
+static KEY_VALUE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([A-Za-z][A-Za-z -]*?)\s*=\s*([^,\]\}=\s][^,\]\}]*)").unwrap());
+
+/// A key whose values are listed (`language=`, `numbers=`, `backend=`),
+/// written with a value close to one of them. The list of a key is not
+/// always whole: a value is only called wrong where TeX stopped on the
+/// list, and only for the one that looks like a known value.
+fn key_value_misspelled(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
+    let start = paragraph_start(h.text, h.line.start);
+    let region = &h.text[start..h.line.end];
+    let pairs: Vec<regex::Captures<'_>> = KEY_VALUE.captures_iter(region).collect();
+    for pair in pairs.iter().rev() {
+        let (key, value) = (pair.get(1)?, pair.get(2)?);
+        let Some(KeyOwner::Sets(sets)) = key_owner(h, start + key.start()) else {
+            continue;
+        };
+        let written = value.as_str().trim();
+        let known: Vec<&str> = sets
+            .iter()
+            .flat_map(|&i| keys::sets()[i].keys.iter())
+            .filter(|k| k.name == key.as_str().trim())
+            .flat_map(|k| k.values.iter().map(|v| v.name()))
+            .collect();
+        if known.is_empty() || known.iter().any(|v| v.eq_ignore_ascii_case(written)) {
+            continue;
         }
+        let Some(best) = closest(written, known.iter().copied(), 2) else {
+            continue;
+        };
+        let at = start + value.start()..start + value.start() + written.len();
+        let name = key.as_str().trim();
+        found(
+            d,
+            h,
+            at.clone(),
+            ("Valeur inconnue", "Unknown value"),
+            (
+                &format!("`{name}` ne connaît pas `{written}`. Vouliez-vous écrire `{best}` ?"),
+                &format!("`{name}` does not know `{written}`. Did you mean `{best}`?"),
+            ),
+        );
+        return Some(edits(
+            format!(
+                "{} {written} {} {best}",
+                h.fr_en("Remplacer", "Replace"),
+                h.fr_en("par", "with")
+            ),
+            vec![h.src.edit(at, best)],
+        ));
     }
-    out
+    None
 }
 
 /// The values the knowledge base lists for an argument (`\pagestyle{1}`).
@@ -1089,6 +1173,518 @@ fn text_in_formula(d: &mut Diagnostic, s: &mut Sources<'_>, h: &Here<'_>) -> Opt
     Some(fixes)
 }
 
+/// What `\maketitle` typesets is written before it, in `\title{…}`,
+/// `\author{…}` and `\date{…}`: TeX reports a character it cannot read
+/// there on the line of `\maketitle`.
+fn stored_text(d: &mut Diagnostic, s: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
+    if !h.text[h.line.start..h.point]
+        .trim_end()
+        .ends_with("\\maketitle")
+    {
+        return None;
+    }
+    let wanted: &[u8] = match d.code.as_deref() {
+        Some("misplaced-alignment-tab") => b"&",
+        Some("hash-in-text") => b"#",
+        Some("missing-dollar") => b"_^",
+        _ => return None,
+    };
+    let used = h.at.line + 1;
+    for src in s.srcs() {
+        let text = mask(&src.text);
+        let b = text.as_bytes();
+        for command in ["\\title", "\\author", "\\date"] {
+            // `&` separates the authors: it has a meaning of its own there.
+            if command == "\\author" && wanted == b"&" {
+                continue;
+            }
+            for (start, _) in text.match_indices(command) {
+                let mut open = start + command.len();
+                if b.get(open) == Some(&b'[') {
+                    open = text[open..].find(']').map_or(open, |i| open + i + 1);
+                }
+                if b.get(open) != Some(&b'{') {
+                    continue;
+                }
+                let Some(end) = group_end(&text, open) else {
+                    continue;
+                };
+                // The first of the characters, outside a formula.
+                let (mut i, mut math, mut at) = (open + 1, false, None);
+                while i < end - 1 {
+                    match b[i] {
+                        b'\\' => i += 1,
+                        b'$' => math = !math,
+                        c if !math && wanted.contains(&c) => {
+                            at = Some(i);
+                            break;
+                        }
+                        _ => {}
+                    }
+                    i += 1;
+                }
+                let Some(at) = at else { continue };
+                let c = b[at] as char;
+                let escaped = if c == '^' {
+                    "\\^{}".to_owned()
+                } else {
+                    format!("\\{c}")
+                };
+                place(d, &src, at..at + 1);
+                d.hint = Some(Hint {
+                    title: h
+                        .fr_en("Caractère spécial dans du texte", "Special character in text")
+                        .to_owned(),
+                    explanation: String::new(),
+                    advice: Some(
+                        h.fr_en(
+                            &format!(
+                                "Ce `{c}` est dans `{command}{{…}}`, que `\\maketitle` compose ligne {used} : dans du texte, il s'écrit `{escaped}`."
+                            ),
+                            &format!(
+                                "This `{c}` is in `{command}{{…}}`, which `\\maketitle` typesets on line {used}: in text, it is written `{escaped}`."
+                            ),
+                        )
+                        .to_owned(),
+                    ),
+                });
+                return Some(edits(
+                    format!("{} {escaped}", h.fr_en("Écrire", "Write")),
+                    vec![src.edit(at..at + 1, escaped)],
+                ));
+            }
+        }
+    }
+    None
+}
+
+/// `\verb|…` without its second `|` on the line.
+fn verb_unclosed(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
+    let name = if d.message.contains("\\verb ended by end of line") {
+        "\\verb"
+    } else if d.message.contains("lstinline ended by EOL") {
+        "\\lstinline"
+    } else {
+        return None;
+    };
+    let line = &h.text[h.line.clone()];
+    let start = line
+        .match_indices(name)
+        .map(|(i, _)| i)
+        .filter(|&i| !line[i + name.len()..].starts_with(|c: char| c.is_ascii_alphabetic()))
+        .last()?;
+    let mut after = start + name.len();
+    if line[after..].starts_with('*') {
+        after += 1;
+    }
+    let delimiter = line[after..].chars().next()?;
+    if line[after + delimiter.len_utf8()..].contains(delimiter) {
+        return None;
+    }
+    found(
+        d,
+        h,
+        h.line.start + start..h.line.start + line.trim_end().len(),
+        (
+            &format!("`{name}` jamais fermé"),
+            &format!("`{name}` never closed"),
+        ),
+        (
+            &format!(
+                "Ce `{name}{delimiter}` s'arrête au `{delimiter}` suivant, et il n'y en a pas d'autre sur la ligne."
+            ),
+            &format!(
+                "This `{name}{delimiter}` stops at the next `{delimiter}`, and there is no other one on the line."
+            ),
+        ),
+    );
+    Some(Vec::new())
+}
+
+/// Environments that read their whole body before typesetting it: TeX
+/// reports what is wrong in the body on the line of their `\end`.
+const COLLECTED: &[&str] = &[
+    "frame",
+    "tabularx",
+    "tabular*",
+    "tcolorbox",
+    "align",
+    "gather",
+];
+
+/// `_` or `^` in the text of an environment that collects its body (a
+/// `frame` of beamer): the error is reported at its `\end`, far from the
+/// character.
+fn in_collected_body(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
+    if d.code.as_deref() != Some("missing-dollar") {
+        return None;
+    }
+    let env = h
+        .src
+        .index
+        .environments
+        .iter()
+        .filter(|e| COLLECTED.contains(&e.name.as_str()) && !is_math_environment(&e.name))
+        .find(|e| {
+            e.end
+                .as_ref()
+                .is_some_and(|end| h.src.line_of(end.start) == h.at.line && end.end <= h.point)
+        })?;
+    let body = env.begin.end..env.end.as_ref()?.start;
+    // The formulas written with environments are left out.
+    let token = (body.start..body.end)
+        .filter(|&i| matches!(h.text.as_bytes()[i], b'_' | b'^'))
+        .find(|&i| !h.in_math(i) && h.text.as_bytes()[i - 1] != b'\\')?;
+    let written = h.src.text[token..token + 1].to_owned();
+    let used = h.at.line + 1;
+    found(
+        d,
+        h,
+        token..token + 1,
+        (
+            "Élément de formule dans du texte",
+            "Something of formulas in text",
+        ),
+        (
+            &format!(
+                "`{written}` n'existe que dans une formule, et celui-ci est dans le texte de `{}` (TeX ne le signale qu'à son `\\end`, ligne {used}).",
+                env.name
+            ),
+            &format!(
+                "`{written}` only exists in a formula, and this one is in the text of `{}` (TeX only reports it at its `\\end`, line {used}).",
+                env.name
+            ),
+        ),
+    );
+    let fix = if written == "_" { "\\_" } else { "\\^{}" };
+    Some(edits(
+        format!("{} {fix}", h.fr_en("Écrire", "Write")),
+        vec![h.src.edit(token..token + 1, fix)],
+    ))
+}
+
+/// `_` or `^` with nothing after it (`$x_$`).
+fn empty_script(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
+    if d.code.as_deref() != Some("missing-open-brace") {
+        return None;
+    }
+    let before = h.text[h.line.start..h.point].trim_end();
+    let before = before
+        .strip_suffix("$$")
+        .or_else(|| before.strip_suffix('$'))
+        .or_else(|| before.strip_suffix('}'))
+        .or_else(|| before.strip_suffix("\\]"))
+        .unwrap_or(before)
+        .trim_end();
+    let script = before
+        .chars()
+        .next_back()
+        .filter(|c| matches!(c, '_' | '^'))?;
+    let at = h.line.start + before.len() - 1;
+    let (fr, en) = if script == '_' {
+        ("indice", "subscript")
+    } else {
+        ("exposant", "superscript")
+    };
+    found(
+        d,
+        h,
+        at..at + 1,
+        (
+            &format!("{} vide", if script == '_' { "Indice" } else { "Exposant" }),
+            &format!("Empty {en}"),
+        ),
+        (
+            &format!("Ce `{script}` n'est suivi de rien : un {fr} s'écrit `{script}{{…}}`."),
+            &format!("Nothing follows this `{script}`: a {en} is written `{script}{{…}}`."),
+        ),
+    );
+    Some(Vec::new())
+}
+
+static QUOTED_NAME: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[`']([^'`\s]{2,})'").unwrap());
+
+/// What a package names in its message, shown where it is written on the
+/// line. Nothing is said of the cause: only the place is known.
+fn named_by_the_message(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
+    if !d.message.contains(" Error: ") {
+        return None;
+    }
+    let message = d.message.clone();
+    let name = &QUOTED_NAME.captures(&message)?[1];
+    let span = find_on_line(h.src, h.at.line, name, Some(h.point))?;
+    place(d, h.src, span);
+    None
+}
+
+/// Environments whose body is made of cells (`&`) and rows (`\\`): each
+/// cell is a group of its own.
+const CELLS: &[&str] = &[
+    "align",
+    "alignat",
+    "aligned",
+    "alignedat",
+    "flalign",
+    "gather",
+    "gathered",
+    "multline",
+    "split",
+    "eqnarray",
+    "array",
+    "cases",
+    "matrix",
+    "pmatrix",
+    "bmatrix",
+    "Bmatrix",
+    "vmatrix",
+    "Vmatrix",
+];
+
+/// `\left` in one cell of an alignment and its `\right` in another: each
+/// cell is a group, and the pair must be whole in it.
+fn left_right_across_cells(
+    d: &mut Diagnostic,
+    _: &mut Sources<'_>,
+    h: &Here<'_>,
+) -> Option<Vec<Fix>> {
+    if !d.message.contains("\\right") && !d.message.contains("\\left") {
+        return None;
+    }
+    let env = h
+        .src
+        .index
+        .environments
+        .iter()
+        .filter(|e| CELLS.contains(&e.name.trim_end_matches('*')))
+        .filter(|e| e.begin.start <= h.point && e.end.as_ref().is_none_or(|x| h.point <= x.end))
+        .max_by_key(|e| e.begin.start)?;
+    let body = env.begin.end..env.end.as_ref().map_or(h.text.len(), |e| e.start);
+    // The cells: between `&` and `\\`.
+    let b = h.text.as_bytes();
+    let mut cells: Vec<Span> = Vec::new();
+    let (mut start, mut i) = (body.start, body.start);
+    while i < body.end {
+        match b[i] {
+            b'\\' if b.get(i + 1) == Some(&b'\\') => {
+                cells.push(start..i);
+                i += 2;
+                start = i;
+            }
+            b'\\' => i += 2,
+            b'&' => {
+                cells.push(start..i);
+                i += 1;
+                start = i;
+            }
+            _ => i += 1,
+        }
+    }
+    cells.push(start..body.end);
+    let whole = |cell: &Span, name: &str| -> Vec<usize> {
+        h.text[cell.clone()]
+            .match_indices(name)
+            .map(|(k, _)| cell.start + k)
+            .filter(|&k| !h.text[k + name.len()..].starts_with(|c: char| c.is_ascii_alphabetic()))
+            .collect()
+    };
+    let (n, lefts) = cells
+        .iter()
+        .enumerate()
+        .map(|(n, cell)| (n, whole(cell, "\\left"), whole(cell, "\\right")))
+        .find(|(_, lefts, rights)| lefts.len() > rights.len())
+        .map(|(n, lefts, _)| (n, lefts))?;
+    // The cell where the pair is closed: the next one with a `\right` more.
+    let closing = cells[n + 1..]
+        .iter()
+        .find(|cell| whole(cell, "\\right").len() > whole(cell, "\\left").len())?;
+    let left = *lefts.last()?;
+    found(
+        d,
+        h,
+        left..left + "\\left".len(),
+        (
+            "`\\left` et `\\right` dans deux cases",
+            "`\\left` and `\\right` in two cells",
+        ),
+        (
+            "Ce `\\left` et son `\\right` ne sont pas dans la même case : dans un alignement, chaque case (entre `&` et `\\\\`) est un groupe à part. `\\right.` ferme la paire sans rien tracer, et `\\left.` la rouvre.",
+            "This `\\left` and its `\\right` are not in the same cell: in an alignment, each cell (between `&` and `\\\\`) is a group of its own. `\\right.` closes the pair without drawing anything, and `\\left.` opens it again.",
+        ),
+    );
+    // The pair left open makes TeX misread what follows.
+    d.swallows = true;
+    let end = cells[n].start + h.text[cells[n].clone()].trim_end().len();
+    let begin = closing.start
+        + (h.text[closing.clone()].len() - h.text[closing.clone()].trim_start().len());
+    Some(edits(
+        h.fr_en(
+            "Fermer avec \\right. et rouvrir avec \\left.",
+            "Close with \\right. and open again with \\left.",
+        )
+        .into(),
+        vec![
+            h.src.insert(end, " \\right."),
+            h.src.insert(begin, "\\left. "),
+        ],
+    ))
+}
+
+/// What is read as it is written, and cannot be in a frame of beamer that
+/// is read in one piece.
+const VERBATIM: &[&str] = &[
+    "\\begin{verbatim}",
+    "\\begin{Verbatim}",
+    "\\begin{lstlisting}",
+    "\\begin{minted}",
+    "\\verb",
+    "\\lstinline",
+    "\\mintinline",
+];
+
+/// In beamer, a frame that holds verbatim text needs the `fragile` option:
+/// without it TeX reads to the end of the file looking for the end of the
+/// verbatim text.
+pub(super) fn fragile_frame(
+    d: &mut Diagnostic,
+    s: &mut Sources<'_>,
+    lang: Lang,
+) -> Option<Vec<Fix>> {
+    if !matches!(
+        d.code.as_deref(),
+        Some("file-ended" | "runaway-argument" | "paragraph-ended" | "verb-in-argument")
+    ) || s.document_class().as_deref() != Some("beamer")
+    {
+        return None;
+    }
+    for src in s.srcs() {
+        for env in src.index.environments.iter().filter(|e| e.name == "frame") {
+            let Some(end) = &env.end else { continue };
+            let body = &src.text[env.begin.end..end.start];
+            let Some(what) = VERBATIM.iter().find(|v| body.contains(*v)) else {
+                continue;
+            };
+            // `\begin{frame}<overlay>[options]{title}`.
+            let mut i = body.len() - body.trim_start_matches([' ', '\t']).len();
+            if body[i..].starts_with('<') {
+                i += body[i..].find('>').map_or(0, |k| k + 1);
+            }
+            let options = body[i..]
+                .starts_with('[')
+                .then(|| body[i..].find(']').map(|k| &body[i + 1..i + k]))
+                .flatten();
+            if options.is_some_and(|o| o.contains("fragile")) {
+                continue;
+            }
+            place(d, &src, env.begin.clone());
+            d.hint = Some(Hint {
+                title: lang
+                    .pick(
+                        "Frame sans l'option fragile",
+                        "Frame without the fragile option",
+                    )
+                    .to_owned(),
+                explanation: String::new(),
+                advice: Some(
+                    lang.pick(
+                        &format!(
+                            "Ce `frame` contient `{what}` : dans beamer, un frame qui contient du texte verbatim demande l'option `[fragile]`."
+                        ),
+                        &format!(
+                            "This `frame` holds `{what}`: in beamer, a frame that holds verbatim text needs the `[fragile]` option."
+                        ),
+                    )
+                    .to_owned(),
+                ),
+            });
+            let at = env.begin.end + i;
+            let edit = match options {
+                Some(_) => src.insert(at + 1, "fragile,"),
+                None => src.insert(at, "[fragile]"),
+            };
+            return Some(edits(
+                lang.pick("Ajouter l'option [fragile]", "Add the [fragile] option")
+                    .into(),
+                vec![edit],
+            ));
+        }
+    }
+    None
+}
+
+/// What the source leaves open (an environment, a brace, a formula), for an
+/// error TeX reports at the end of the file, without a place.
+fn left_open(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Option<Vec<Fix>> {
+    use crate::syntax::ProblemKind as Kind;
+    for src in s.srcs() {
+        let Some(problem) = src.index.problems.iter().find(|p| {
+            matches!(&p.kind, Kind::UnclosedEnvironment(n) if n != "document")
+                || matches!(p.kind, Kind::UnclosedBrace | Kind::UnclosedMath)
+        }) else {
+            continue;
+        };
+        let span = problem.span.clone();
+        let live = crate::lint::structure(&src.path, &src.text, lang)
+            .into_iter()
+            .find(|p| p.range.is_some_and(|r| src.offset(r.start) == span.start))?;
+        place(d, &src, span);
+        d.swallows = true;
+        d.hint = Some(Hint {
+            title: live.message,
+            explanation: String::new(),
+            advice: Some(
+                lang.pick(
+                    "TeX a lu jusqu'à la fin du fichier en cherchant ce qui ferme ceci.",
+                    "TeX read to the end of the file looking for what closes this.",
+                )
+                .to_owned(),
+            ),
+        });
+        return Some(live.fixes);
+    }
+    None
+}
+
+static SCANNED: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?:scanning use of|before) \\@*([A-Za-z]+)").unwrap());
+
+/// The `[` of an optional argument that no `]` closes (`\item[a) texte`),
+/// for the command TeX names when it reaches the end of the file.
+fn unclosed_bracket(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Option<Vec<Fix>> {
+    let name = SCANNED.captures(&d.message)?[1].to_owned();
+    let call = format!("\\{name}[");
+    for src in s.srcs() {
+        let text = mask(&src.text);
+        for (start, _) in text.match_indices(&call) {
+            let open = start + call.len() - 1;
+            let end = text[open..].find("\n\n").map_or(text.len(), |i| open + i);
+            if text[open..end].contains(']') {
+                continue;
+            }
+            place(d, &src, open..open + 1);
+            d.swallows = true;
+            d.hint = Some(Hint {
+                title: lang
+                    .pick("Crochet jamais fermé", "Bracket never closed")
+                    .to_owned(),
+                explanation: String::new(),
+                advice: Some(
+                    lang.pick(
+                        &format!(
+                            "Ce `[` ouvre l'argument optionnel de `\\{name}`, et aucun `]` ne le ferme."
+                        ),
+                        &format!(
+                            "This `[` opens the optional argument of `\\{name}`, and no `]` closes it."
+                        ),
+                    )
+                    .to_owned(),
+                ),
+            });
+            return Some(Vec::new());
+        }
+    }
+    None
+}
+
 /// A path of Windows written in text: its `\` are read as commands.
 fn path_in_text(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
     if d.code.as_deref() != Some("undefined-control-sequence") {
@@ -1318,6 +1914,63 @@ impl Call {
     }
 }
 
+/// Says that an argument of `call` is not written; `taken` is what follows
+/// the call and was read in its place.
+fn missing_argument(
+    d: &mut Diagnostic,
+    h: &Here<'_>,
+    call: &Call,
+    taken: Option<&str>,
+) -> Vec<Fix> {
+    let Some((position, name)) = call.missing() else {
+        return Vec::new();
+    };
+    let head = &call.head;
+    let n = call.mandatory();
+    let signature = call.signature(h.lang);
+    // An argument read in a definition has no name: its rank is said.
+    let (fr, en) = if name.is_empty() && n > 1 {
+        (
+            format!("son {position}ᵉ argument"),
+            format!("its argument {position}"),
+        )
+    } else if name.is_empty() {
+        ("son argument".to_owned(), "its argument".to_owned())
+    } else {
+        let argument = shown_name(&call.target, position, name, false, h.lang);
+        if n == 1 {
+            (
+                format!("son argument `{argument}`"),
+                format!("its argument `{argument}`"),
+            )
+        } else {
+            (
+                format!("l'argument `{argument}`"),
+                format!("the argument `{argument}`"),
+            )
+        }
+    };
+    let fr = fr.replace("son 1ᵉ ", "son 1ᵉʳ ");
+    let (after_fr, after_en) = match taken {
+        Some(next) => (
+            format!(" `{next}`, écrit à sa place, a été lu comme cet argument."),
+            format!(" `{next}`, written in its place, was read as this argument."),
+        ),
+        None => (String::new(), String::new()),
+    };
+    found(
+        d,
+        h,
+        call.start..call.end,
+        ("Argument manquant", "Missing argument"),
+        (
+            &format!("`{head}` s'écrit `{head}{signature}` : il manque {fr}.{after_fr}"),
+            &format!("`{head}` is written `{head}{signature}`: {en} is missing.{after_en}"),
+        ),
+    );
+    Vec::new()
+}
+
 /// What the command TeX stopped at or after needs, and does not have here:
 /// the formula it only exists in, an argument its signature asks for, a
 /// plain name where it builds one, a value it knows.
@@ -1343,6 +1996,18 @@ fn call_at_point(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Optio
         {
             return Some(fixes);
         }
+    }
+    // An argument that is not written is taken from what follows: the
+    // command TeX stopped after was read as the argument of the one before
+    // it (`\fontsize{12}\selectfont`).
+    let commands: Vec<regex::Match<'_>> = COMMAND.find_iter(before).collect();
+    if let [.., previous, last] = commands.as_slice()
+        && last.end() == before.trim_end().len()
+        && let Some(call) = read_call(h.text, &h.known, h.line.start + previous.start())
+        && call.missing().is_some()
+        && skip_blank(h.text, call.end) == h.line.start + last.start()
+    {
+        return Some(missing_argument(d, h, &call, Some(last.as_str())));
     }
     // The command whose arguments TeX is still reading (`\sqrt{` ⇥ `2}`).
     let last = COMMAND.find_iter(before).last()?;
@@ -1473,45 +2138,8 @@ fn explain_call(d: &mut Diagnostic, h: &Here<'_>, call: &Call) -> Option<Vec<Fix
         ));
     }
     // An argument of the signature that is not written.
-    if let Some((position, name)) = call.missing()
-        && (call.environment || nothing_follows(h.text, call.end))
-    {
-        let n = call.mandatory();
-        let signature = call.signature(h.lang);
-        // An argument read in a definition has no name: its rank is said.
-        let (fr, en) = if name.is_empty() && n > 1 {
-            (
-                format!("son {position}ᵉ argument"),
-                format!("its argument {position}"),
-            )
-        } else if name.is_empty() {
-            ("son argument".to_owned(), "its argument".to_owned())
-        } else {
-            let argument = shown_name(&call.target, position, name, false, h.lang);
-            if n == 1 {
-                (
-                    format!("son argument `{argument}`"),
-                    format!("its argument `{argument}`"),
-                )
-            } else {
-                (
-                    format!("l'argument `{argument}`"),
-                    format!("the argument `{argument}`"),
-                )
-            }
-        };
-        let fr = fr.replace("son 1ᵉ ", "son 1ᵉʳ ");
-        found(
-            d,
-            h,
-            call.start..call.end,
-            ("Argument manquant", "Missing argument"),
-            (
-                &format!("`{head}` s'écrit `{head}{signature}` : il manque {fr}."),
-                &format!("`{head}` is written `{head}{signature}`: {en} is missing."),
-            ),
-        );
-        return Some(Vec::new());
+    if call.missing().is_some() && (call.environment || nothing_follows(h.text, call.end)) {
+        return Some(missing_argument(d, h, call, None));
     }
     for (index, (optional, name, written)) in call.args.iter().enumerate() {
         let Some(span) = written else { continue };
@@ -2039,6 +2667,17 @@ fn structure(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Ve
 /// An error TeX reports without a line of the document (while it reads its
 /// auxiliary file): a name that holds a command is looked for in the project.
 fn unplaced(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Option<Vec<Fix>> {
+    // TeX reached the end of the file while reading something: what is
+    // left open in the sources is where it started.
+    if matches!(
+        d.code.as_deref(),
+        Some("file-ended" | "runaway-argument" | "paragraph-ended")
+    ) && let Some(fixes) = fragile_frame(d, s, lang)
+        .or_else(|| unclosed_bracket(d, s, lang))
+        .or_else(|| left_open(d, s, lang))
+    {
+        return Some(fixes);
+    }
     if !d.message.contains("\\endcsname") && !d.message.contains("\\csname") {
         return None;
     }

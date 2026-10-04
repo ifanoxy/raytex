@@ -130,6 +130,14 @@ fn check(text: &str, kind: Kind) -> Verdict {
                 Verdict::Fine
             }
         }
+        // A plain number followed by letters (`angle=90deg`, `scale=0.5cm`).
+        Kind::Factor
+            if rest[end..]
+                .trim_start()
+                .starts_with(|c: char| c.is_ascii_alphabetic()) =>
+        {
+            Verdict::NotNumber
+        }
         Kind::Factor | Kind::Columns => Verdict::Fine,
         Kind::Length | Kind::Auto | Kind::Size => {
             let after = rest[end..].trim_start();
@@ -321,18 +329,22 @@ fn pattern_of(name: &str, environment: bool) -> Option<String> {
             "number" => 'N',
             "value" if previous == "counter" => 'N',
             "factor" => 'F',
+            // A list of `key=value`: each value is read with its key.
+            "options" | "keys" => 'K',
             _ => 'm',
         };
         pattern.push(match (kind, open == '[') {
             ('L', true) => 'l',
             ('N', true) => 'n',
+            ('K', true) => 'K',
+            ('K', false) => 'G',
             (_, true) => 'o',
             (kind, false) => kind,
         });
         previous = param;
     }
     pattern
-        .contains(['L', 'l', 'N', 'n', 'F'])
+        .contains(['L', 'l', 'N', 'n', 'F', 'K', 'G'])
         .then_some(pattern)
 }
 
@@ -439,6 +451,39 @@ fn skip_spaces(text: &str, mut i: usize) -> usize {
     i
 }
 
+/// What a key expects. The usual keys are listed here; for the others, the
+/// example of value the key sets give (`margin`: `2.5cm`) tells it: a
+/// length when every set that has the key shows one, a number likewise.
+fn key_kind(key: &str) -> Option<Kind> {
+    if let Some((_, kind)) = KEYS.iter().find(|(k, _)| *k == key) {
+        return Some(*kind);
+    }
+    static EXAMPLE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^\$\{\d+:([^{}]*)\}$").unwrap());
+    static LENGTH_EXAMPLE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"^-?\d*[.,]?\d+\s*(?:pt|mm|cm|in|ex|em|bp|pc|dd|cc|sp|\\[a-z]+)$").unwrap()
+    });
+    let mut kinds = crate::completion::keys::sets()
+        .iter()
+        .flat_map(|set| set.keys.iter())
+        .filter(|k| k.name == key)
+        .map(|k| {
+            let example = k.value.as_deref()?;
+            let example = EXAMPLE
+                .captures(example)
+                .map_or(example, |m| m.get(1).unwrap().as_str());
+            if LENGTH_EXAMPLE.is_match(example) {
+                Some(Kind::Length)
+            } else if example.parse::<f64>().is_ok() {
+                Some(Kind::Factor)
+            } else {
+                None
+            }
+        });
+    let first = kinds.next()??;
+    kinds.all(|k| k == Some(first)).then_some(first)
+}
+
 /// The options of a `[key=value, …]` list (`inner` is inside the brackets)
 /// that are numbers or lengths.
 fn option_slots(text: &str, inner: Span, command: &str, out: &mut Vec<Slot>) {
@@ -464,7 +509,7 @@ fn option_slots(text: &str, inner: Span, command: &str, out: &mut Vec<Slot>) {
             continue;
         };
         let key = text[item.start..item.start + eq].trim();
-        let Some((_, kind)) = KEYS.iter().find(|(k, _)| *k == key) else {
+        let Some(kind) = key_kind(key) else {
             continue;
         };
         let value = item.start + eq + 1..item.end;
@@ -475,7 +520,7 @@ fn option_slots(text: &str, inner: Span, command: &str, out: &mut Vec<Slot>) {
         out.push(Slot {
             shell: value.clone(),
             value,
-            kind: *kind,
+            kind,
             owner: Owner::Key(key.to_owned(), command.to_owned()),
             comma,
             taken: false,
@@ -557,7 +602,7 @@ fn argument_slots(
             'A' => Kind::Auto,
             'S' => Kind::Size,
             'C' => Kind::Columns,
-            'K' => {
+            'K' | 'G' => {
                 if let Owner::Command(c) = owner {
                     option_slots(text, inner, c, out);
                 }
