@@ -16,8 +16,8 @@
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "tauri": "tauri",
-    "app:dev": "tauri dev",
-    "app:build": "tauri build",
+    "app:dev": "node scripts/tauri.mjs dev",
+    "app:build": "node scripts/tauri.mjs build",
     "site": "node site/serve.mjs --mock",
     "site:build": "node site/build.mjs",
     "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --test \"ui/**/*.test.ts\""

@@ -16,6 +16,7 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
   - Completion: the values of `\pagestyle`, `\pagenumbering` and `\usetikzlibrary`.
 - The cross that closes a tab is in the middle of its square.
 - A lighter application: the fonts of the formula previews ship in one format (WOFF2) instead of three, about 0.8 MB less in the interface.
+- For contributors: `npm run app:dev` and `npm run app:build` find cargo when it is not on the PATH (an IDE started from the Dock, rustup from Homebrew) instead of stopping on "failed to run 'cargo metadata'".
 - For contributors: the tools that made the pictures are gone from the repository (the scripts of the logo, the page of the sharing picture, `scripts/screenshots.mjs` and its scenes); the pictures stay. Icons that no installer used and two unused dependencies are removed.
 
 ## [0.2.0] — 2026-10-03
