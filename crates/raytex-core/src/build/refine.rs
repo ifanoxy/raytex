@@ -19,16 +19,20 @@ use crate::text::{LineIndex, Span};
 
 static QUOTED: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"`([^']+)'").unwrap());
 static SPACE_AFTER_CS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\\[A-Za-z@]+) ").unwrap());
+static NAMED_COMMAND: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\\[A-Za-z@]+").unwrap());
 
 /// Locates every diagnostic precisely, then adds fixes and explanations.
 /// `root` is the main file of the project.
+/// `packages` reads the sources of the installed packages: with it, what a
+/// package defines is known even when the knowledge base does not describe it.
 pub fn refine_all(
     diags: &mut Vec<Diagnostic>,
     root: &Path,
     source: &dyn Fn(&Path) -> Option<String>,
+    packages: Option<super::PackageSource<'_>>,
     lang: Lang,
 ) {
-    let mut sources = Sources::new(root, source);
+    let mut sources = Sources::new(root, source).with_packages(packages);
     for d in diags.iter_mut() {
         fixes::relocate(d, &mut sources);
         if d.range.is_none()
@@ -47,7 +51,15 @@ pub fn refine_all(
     // Characters that a font lacks, reported without a line: as long as
     // there are errors, they are what TeX printed while going on after
     // them. They come back once the document compiles, if they are real.
-    if diags.iter().any(|d| d.severity == Severity::Error) {
+    // A character of text in a formula is not in the font of the formulas:
+    // TeX then writes the same lines, and they say nothing more.
+    let text_in_formula = diags.iter().any(|d| {
+        matches!(
+            d.code.as_deref(),
+            Some("command-invalid-math" | "math-accent")
+        ) && d.hint.as_ref().is_some_and(|h| h.advice.is_some())
+    });
+    if text_in_formula || diags.iter().any(|d| d.severity == Severity::Error) {
         diags.retain(|d| {
             d.line.is_some() || !matches!(d.code.as_deref(), Some("missing-character" | "nullfont"))
         });
@@ -120,15 +132,22 @@ fn drop_what_follows(diags: &mut Vec<Diagnostic>, source: &dyn Fn(&Path) -> Opti
                 next.code.as_deref(),
                 Some("undefined-reference" | "undefined-citation" | "multiply-defined")
             );
+            let in_formula = next.code.as_deref() == Some("command-invalid-math");
+            // A warning whose cause is found is kept, but when it is the
+            // place of the error, or text read as a formula because of it.
+            let same = if explained(next) {
+                next.range == d.range || (in_formula && fixes::about_structure(d))
+            } else {
+                next.line == d.line || in_formula
+            };
             if next.severity == Severity::Warning
                 && next.source == crate::diagnostics::Source::Latex
                 && next.file.as_ref() == Some(file)
-                && !explained(next)
                 && !own
                 && next
                     .line
                     .is_some_and(|l| (first..=last).contains(&(l as usize - 1)))
-                && (next.line == d.line || next.code.as_deref() == Some("command-invalid-math"))
+                && same
             {
                 dropped[j] = true;
             }
@@ -237,11 +256,40 @@ fn refine(d: &mut Diagnostic, text: &str, lines: &LineIndex) {
     // Quoted names in warnings: "Reference `sec:x' on page 1 undefined".
     if d.context_before.is_none()
         && let Some(m) = QUOTED.captures(&d.message)
-        && let Some(i) = line_text.find(&m[1])
     {
-        let s = span.start + i;
-        d.range = Some(lines.range(text, s..s + m[1].len()));
-        return;
+        if let Some(i) = line_text.find(&m[1]) {
+            let s = span.start + i;
+            d.range = Some(lines.range(text, s..s + m[1].len()));
+            return;
+        }
+        // The line of a warning is where a statement ends: the name may be
+        // some lines above, in the same paragraph (`\hypersetup{` … `}`).
+        let mut first = line;
+        while first > 0
+            && line - first < 20
+            && !text[lines.line_span(text, first - 1)].trim().is_empty()
+        {
+            first -= 1;
+        }
+        let above = lines.line_span(text, first).start..span.start;
+        if let Some(i) = text[above.clone()].rfind(&m[1]) {
+            let s = above.start + i;
+            d.range = Some(lines.range(text, s..s + m[1].len()));
+            d.line = Some(lines.line_of(s) as u32 + 1);
+            return;
+        }
+    }
+
+    // Commands named in a warning ("Foreign command \over; \frac or \genfrac
+    // should be used instead"): the first of them written on the line.
+    if d.context_before.is_none() {
+        for m in NAMED_COMMAND.find_iter(&d.message) {
+            if let Some(i) = find_command(line_text, m.as_str()) {
+                let s = span.start + i;
+                d.range = Some(lines.range(text, s..s + m.as_str().len()));
+                return;
+            }
+        }
     }
 
     let found = d
@@ -285,6 +333,13 @@ fn refine(d: &mut Diagnostic, text: &str, lines: &LineIndex) {
     }
     let token = span.start + start..span.start + point;
     d.range = Some(lines.range(text, token));
+}
+
+/// Where the command `name` (`\over`, not `\overline`) is written in `line`.
+fn find_command(line: &str, name: &str) -> Option<usize> {
+    line.match_indices(name).map(|(i, _)| i).find(|&i| {
+        !line[i + name.len()..].starts_with(|c: char| c.is_ascii_alphabetic() || c == '@')
+    })
 }
 
 /// Byte offset in `line` where TeX's context fragment `before` ends.
@@ -382,7 +437,7 @@ mod tests {
                 d
             },
         ];
-        refine_all(&mut ds, Path::new("/p/main.tex"), &source, Lang::En);
+        refine_all(&mut ds, Path::new("/p/main.tex"), &source, None, Lang::En);
         let r = ds[0].range.unwrap();
         assert_eq!(
             (r.start.line, r.start.character, r.end.character),
@@ -435,7 +490,7 @@ mod tests {
             ),
             number(7, "\\espace{abc}"),
         ];
-        refine_all(&mut ds, Path::new("/p/main.tex"), &source, Lang::En);
+        refine_all(&mut ds, Path::new("/p/main.tex"), &source, None, Lang::En);
         let advice = |d: &Diagnostic| d.hint.as_ref().and_then(|h| h.advice.clone());
         // The value that is not a length, and what is wrong with it.
         assert_eq!(shown(text, &ds[0]), "abc");
@@ -489,7 +544,7 @@ mod tests {
                 Some("Un texte sans"),
             ),
         ];
-        refine_all(&mut ds, Path::new("/p/main.tex"), &source, Lang::En);
+        refine_all(&mut ds, Path::new("/p/main.tex"), &source, None, Lang::En);
         assert_eq!(ds.len(), 4, "{ds:#?}");
         let hint = |d: &Diagnostic| d.hint.clone().unwrap();
         assert_eq!(shown(text, &ds[0]), "$");
@@ -510,6 +565,118 @@ mod tests {
         assert_eq!(ds[3].hint, None);
     }
 
+    fn warning(message: &str, line: Option<u32>) -> Diagnostic {
+        let mut d = Diagnostic::new(Severity::Warning, Source::Latex, message);
+        d.line = line;
+        d.file = Some(PathBuf::from("/p/main.tex"));
+        crate::log::hints::enrich(&mut d, Lang::En);
+        d
+    }
+
+    #[test]
+    fn a_warning_is_placed_on_what_causes_it() {
+        let text = "\\documentclass[a4papr]{article}\n\\usepackage{amsmath}\n\\begin{document}\n$Écrivez ici$ puis $\\'e$ et $90°$.\nSoit $a \\over b$ et $\\text{été} + \\Large x$.\n\\end{document}\n";
+        let source = |_: &Path| Some(text.to_owned());
+        let mut ds = vec![
+            warning("Command \\' invalid in math mode on input line 4.", Some(4)),
+            warning(
+                "Command \\textdegree invalid in math mode on input line 4.",
+                Some(4),
+            ),
+            warning("Missing character: There is no É in font cmr10!", None),
+            warning(
+                "amsmath: Foreign command \\over; \\frac or \\genfrac should be used instead on input line 5.",
+                Some(5),
+            ),
+            warning(
+                "Font: Command \\Large invalid in math mode on input line 5.",
+                Some(5),
+            ),
+            warning("Unused global option(s): [a4papr].", None),
+        ];
+        refine_all(&mut ds, Path::new("/p/main.tex"), &source, None, Lang::En);
+        // The character the font of formulas lacks is the same problem.
+        assert_eq!(ds.len(), 5, "{ds:#?}");
+        let hint = |d: &Diagnostic| d.hint.clone().unwrap();
+        // The word with the accent, not the line; text goes in \text{…}.
+        assert_eq!(shown(text, &ds[0]), "Écrivez");
+        assert_eq!(hint(&ds[0]).title, "Accented text in a formula");
+        assert!(
+            hint(&ds[0])
+                .advice
+                .unwrap()
+                .contains("The word `Écrivez` goes in `\\text{…}`")
+        );
+        assert!(matches!(
+            &ds[0].fixes[0],
+            Fix::Edits { edits, .. } if edits[0].text == "\\text{Écrivez}"
+        ));
+        assert_eq!(shown(text, &ds[1]), "°");
+        assert!(hint(&ds[1]).advice.unwrap().contains("`^\\circ`"));
+        // A command the warning names, where it is written.
+        assert_eq!(shown(text, &ds[2]), "\\over");
+        // `\text{été}` is text: the accent is not there, `\Large` is.
+        assert_eq!(shown(text, &ds[3]), "\\Large");
+        assert_eq!(hint(&ds[3]).title, "Text command in a formula");
+        // An option nobody took, with the one that exists.
+        assert_eq!(shown(text, &ds[4]), "a4papr");
+        assert!(hint(&ds[4]).advice.unwrap().contains("`a4paper`"));
+    }
+
+    #[test]
+    fn macros_of_the_document_are_explained_like_the_others() {
+        let text = "\\documentclass{article}\n\\newcommand{\\R}{\\mathbb{R}}\n\\newcommand*{\\paire}[2]{(#1, #2)}\n\\begin{document}\nSoit \\R ici.\n\nLe couple \\paire{a}\n\nFin.\n\\end{document}\n";
+        let source = |_: &Path| Some(text.to_owned());
+        let mut ds = vec![
+            diag(
+                "LaTeX Error: \\mathbb allowed only in math mode.",
+                5,
+                Some("Soit \\R"),
+            ),
+            diag("Paragraph ended before \\paire was complete.", 8, Some("")),
+        ];
+        refine_all(&mut ds, Path::new("/p/main.tex"), &source, None, Lang::En);
+        assert_eq!(ds.len(), 2, "{ds:#?}");
+        let advice = |d: &Diagnostic| d.hint.clone().unwrap().advice.unwrap();
+        assert_eq!(shown(text, &ds[0]), "\\R");
+        assert!(
+            advice(&ds[0])
+                .contains("`\\R` is defined with `\\mathbb`, which only exists in a formula"),
+            "{}",
+            advice(&ds[0])
+        );
+        assert_eq!(shown(text, &ds[1]), "\\paire{a}");
+        assert!(
+            advice(&ds[1])
+                .contains("`\\paire` is written `\\paire{…}{…}`: its argument 2 is missing"),
+            "{}",
+            advice(&ds[1])
+        );
+    }
+
+    #[test]
+    fn a_package_of_the_project_is_read_like_its_documents() {
+        let main = "\\documentclass{article}\n\\usepackage{macros}\n\\begin{document}\nLe vecteur \\vect{AB} ici.\n\\end{document}\n";
+        let package = "\\ProvidesPackage{macros}\n\\newcommand{\\vect}[1]{\\vec{#1}}\n";
+        let source = |p: &Path| match p.file_name()?.to_str()? {
+            "main.tex" => Some(main.to_owned()),
+            "macros.sty" => Some(package.to_owned()),
+            _ => None,
+        };
+        let mut ds = vec![diag(
+            "Missing $ inserted.",
+            4,
+            Some("Le vecteur \\vect{AB}"),
+        )];
+        refine_all(&mut ds, Path::new("/p/main.tex"), &source, None, Lang::En);
+        let advice = ds[0].hint.clone().unwrap().advice.unwrap();
+        assert_eq!(shown(main, &ds[0]), "\\vect");
+        assert!(
+            advice.contains("`\\vect` is defined with `\\vec`"),
+            "{advice}"
+        );
+    }
+
     #[test]
     fn what_follows_a_formula_tex_opened_is_dropped() {
         let text = "\\documentclass{article}\n\\begin{document}\nLe fichier mon_fichier est prêt.\n\\end{document}\n";
@@ -523,7 +690,7 @@ mod tests {
             ),
             diag("Missing $ inserted.", 4, Some("\\end{document}")),
         ];
-        refine_all(&mut ds, Path::new("/p/main.tex"), &source, Lang::En);
+        refine_all(&mut ds, Path::new("/p/main.tex"), &source, None, Lang::En);
         assert_eq!(ds.len(), 1, "{ds:#?}");
         assert_eq!(shown(text, &ds[0]), "_");
     }

@@ -693,6 +693,7 @@ mod tests {
                     cancel: &cancel,
                     lang: Lang::En,
                     source: &source,
+                    packages: None,
                     background: false,
                 };
                 let outcome = crate::build::run(&plan, &ctx, &mut |_| {});

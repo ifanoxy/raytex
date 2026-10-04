@@ -338,6 +338,9 @@ pub struct CommandDef {
     pub body: String,
     /// Whether it is a math operator (`\DeclareMathOperator`).
     pub math: bool,
+    /// The arguments as they are written, `[]{}{}`; `None` when the
+    /// definition does not tell them (delimited parameters, a `\let`).
+    pub signature: Option<String>,
     /// Span of the name.
     pub span: Span,
 }
@@ -351,6 +354,9 @@ pub struct EnvironmentDef {
     pub args: u8,
     /// Theorem title for `\newtheorem`.
     pub theorem_title: Option<String>,
+    /// The arguments after `\begin{name}`, `[]{}`; `None` when the
+    /// definition does not tell them.
+    pub signature: Option<String>,
     /// Span of the name.
     pub span: Span,
 }

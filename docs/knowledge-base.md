@@ -114,16 +114,25 @@ Each entry says what a LaTeX, BibTeX or Biber message means:
 - `explanation` is shown in the Problems panel under every problem with this message, so it must hold for all of them: what the message means, in plain words, and nothing about a cause it cannot know ("often", "probably", "check that…").
 - `more` (optional) lists the usual causes and remedies. It is only shown in *Help › Errors*, after the explanation.
 
-The cause of a problem in a given document is not written here, and is not tied to a message: the engine looks for it in the source (`fixes/cause.rs`), where TeX stopped, with what this knowledge base says of the commands and environments written there:
+The cause of a problem in a given document is not written here, and is not tied to a message: the engine looks for it in the source (`fixes/cause.rs`), where TeX stopped, with what is known of the commands and environments written there:
 
 - their `mode`: a command or an environment of formulas written in text, and the reverse;
 - their `args`: an argument of the signature that is not written, and what an argument expects by its name (`{width}`, `{length}`: a length; `{number}`: a number; `{label}`, `{counter}`: a name without command);
 - the values of an argument listed in `data/keys.json` (`\pagestyle{1}`): a value close to one of them is a typo;
+- the keys of an argument (`name=value`), whoever reads them (keyval, xkeyval, kvsetkeys, pgfkeys, the keys of LaTeX3): the sets of `data/keys.json`, the keys their `learn` pattern finds in the installed source of the package, and the options a package declares;
 - the structure of the paragraph as the live checks see it (braces, formulas, environments).
 
-So a command described here gets its mistakes explained without anything else: the problem is placed on the word or the argument to change, its title names the mistake and its *advice* (the light bulb) says what is wrong, with a fix when there is one. A problem whose cause is not found keeps its explanation and gets no advice.
+What is known comes from three places, asked in this order (`fixes/known.rs`):
 
-To check a new kind of mistake, add a case to `tests/common_mistakes.rs` (`forum_cases`: a document, the text that must be shown and what the advice must say; the message TeX gives is not part of the case). They run with a real TeX distribution: `cargo test -p raytex-core --release --test common_mistakes -- --ignored causes_are_found --nocapture` (`LBT_PROBE=1` prints what is found instead of checking).
+1. the definitions of the project: `\newcommand`, `\NewDocumentCommand`, `\def`, `\DeclareMathOperator`, `\newenvironment`, `\newtheorem` give the arguments of a macro, and what it is made of tells where it can be written (`\newcommand{\R}{\mathbb{R}}` only works in a formula);
+2. this knowledge base, which also names the arguments and says what they expect;
+3. the source of every package the document loads, read in the TeX distribution: its commands with their arguments, its symbols of formulas, its environments, its options.
+
+So a package that is not described here still gets a misspelled command, environment, option or key corrected, an argument that is not written reported, and a symbol of formulas written in text explained.
+
+A command described here gets, on top of that, the names of its arguments in the messages and the checks of what each one expects: the problem is placed on the word or the argument to change, its title names the mistake and its *advice* (the light bulb) says what is wrong, with a fix when there is one. A problem whose cause is not found keeps its explanation and gets no advice.
+
+To check a new kind of mistake, add a case to `tests/common_mistakes.rs` (`forum_cases`, `dynamic_cases` for what is not in this knowledge base, `warning_cases` for what LaTeX only warns about: a document, the text that must be shown and what the advice must say; the message TeX gives is not part of the case). They run with a real TeX distribution: `cargo test -p raytex-core --release --test common_mistakes -- --ignored causes_are_found --nocapture` (`LBT_PROBE=1` prints what is found instead of checking).
 
 ## TikZ gallery: `data/tikz.json`
 

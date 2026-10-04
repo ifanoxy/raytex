@@ -441,19 +441,18 @@ impl<'a> Scanner<'a> {
             | "ProvidesExplPackage"
             | "ProvidesExplClass" => self.provides(name),
             "LoadClass" | "LoadClassWithOptions" => self.load_class(),
-            "DeclareMathSymbol"
-            | "DeclareMathDelimiter"
-            | "DeclareMathAccent"
-            | "DeclareMathRadical"
-            | "DeclareMathAlphabet"
-            | "DeclareSymbolFontAlphabet"
-            | "DeclarePairedDelimiter"
-            | "DeclarePairedDelimiterX" => self.declared_symbol(true),
-            "DeclareTextSymbol"
-            | "DeclareTextCommand"
-            | "DeclareTextCommandDefault"
-            | "DeclareTextSymbolDefault"
-            | "DeclareTextAccent" => self.declared_symbol(false),
+            "DeclareMathSymbol" | "DeclareMathDelimiter" => self.declared_symbol(true, Some("")),
+            "DeclareMathAccent" | "DeclareMathAlphabet" | "DeclareSymbolFontAlphabet" => {
+                self.declared_symbol(true, Some("{}"))
+            }
+            "DeclareMathRadical" | "DeclarePairedDelimiter" | "DeclarePairedDelimiterX" => {
+                self.declared_symbol(true, None)
+            }
+            "DeclareTextSymbol" | "DeclareTextSymbolDefault" => {
+                self.declared_symbol(false, Some(""))
+            }
+            "DeclareTextAccent" => self.declared_symbol(false, Some("{}")),
+            "DeclareTextCommand" | "DeclareTextCommandDefault" => self.declared_symbol(false, None),
             "makeatletter" => self.at_letter = true,
             "makeatother" => self.at_letter = false,
             "left" => self.left_right(1),
@@ -862,7 +861,8 @@ impl<'a> Scanner<'a> {
         };
         let Some(body) = body else { return };
         self.pos = self.after_definition(&name, cur.pos);
-        self.push_command(name, args, first_optional, &body, math);
+        let signature = counted_signature(args, first_optional);
+        self.push_command(name, args, first_optional, &body, math, Some(signature));
     }
 
     /// Where to continue after a definition: after its body, or inside it
@@ -878,6 +878,7 @@ impl<'a> Scanner<'a> {
         first_optional: bool,
         body: &Span,
         math: bool,
+        signature: Option<String>,
     ) {
         let body = squash_whitespace(self.slice(body));
         let definition = ellipsize(&body, 80);
@@ -893,6 +894,7 @@ impl<'a> Scanner<'a> {
             definition,
             body,
             math,
+            signature,
             span: name,
         });
     }
@@ -909,8 +911,9 @@ impl<'a> Scanner<'a> {
             return;
         };
         let (args, first_optional) = xparse_arity(self.slice(&spec));
+        let signature = xparse_signature(self.slice(&spec));
         self.pos = self.after_definition(&name, cur.pos);
-        self.push_command(name, args, first_optional, &body, false);
+        self.push_command(name, args, first_optional, &body, false, signature);
     }
 
     fn def(&mut self) {
@@ -934,7 +937,12 @@ impl<'a> Scanner<'a> {
             return;
         };
         self.pos = self.after_definition(&name, cur.pos);
-        self.push_command(name, args, false, &body, false);
+        // `#1#2`: arguments in braces. Anything else delimits them.
+        let plain = params
+            .chars()
+            .all(|c| c == '#' || c.is_ascii_digit() || c.is_whitespace());
+        let signature = plain.then(|| counted_signature(args, false));
+        self.push_command(name, args, false, &body, false, signature);
     }
 
     fn let_(&mut self) {
@@ -955,7 +963,7 @@ impl<'a> Scanner<'a> {
             }
         }
         let target = target_start..cur.pos;
-        self.push_command(name, 0, false, &target, false);
+        self.push_command(name, 0, false, &target, false, None);
         self.pos = cur.pos;
     }
 
@@ -975,6 +983,7 @@ impl<'a> Scanner<'a> {
             definition: "\\newif".into(),
             body: String::new(),
             math: false,
+            signature: Some(String::new()),
             span: name.clone(),
         });
         for suffix in ["true", "false"] {
@@ -985,6 +994,7 @@ impl<'a> Scanner<'a> {
                 definition: format!("\\newif\\{full}"),
                 body: String::new(),
                 math: false,
+                signature: Some(String::new()),
                 span: name.clone(),
             });
         }
@@ -1000,11 +1010,13 @@ impl<'a> Scanner<'a> {
         let args = cur
             .optional(SHORT_ARG)
             .and_then(|s| self.slice(&s).trim().parse::<u8>().ok());
-        cur.optional(LONG_ARG);
+        let default = cur.optional(LONG_ARG);
         if cur.group(LONG_ARG).is_none() || cur.group(LONG_ARG).is_none() {
             return;
         }
-        self.push_environment(trimmed(self.text, name), args.unwrap_or(0), None);
+        let args = args.unwrap_or(0);
+        let signature = counted_signature(args, default.is_some());
+        self.push_environment(trimmed(self.text, name), args, None, Some(signature));
         self.pos = cur.pos;
     }
 
@@ -1020,11 +1032,18 @@ impl<'a> Scanner<'a> {
             return;
         }
         let (args, _) = xparse_arity(self.slice(&spec));
-        self.push_environment(trimmed(self.text, name), args, None);
+        let signature = xparse_signature(self.slice(&spec));
+        self.push_environment(trimmed(self.text, name), args, None, signature);
         self.pos = cur.pos;
     }
 
-    fn push_environment(&mut self, span: Span, args: u8, theorem_title: Option<String>) {
+    fn push_environment(
+        &mut self,
+        span: Span,
+        args: u8,
+        theorem_title: Option<String>,
+        signature: Option<String>,
+    ) {
         let name = self.slice(&span).to_owned();
         if name.is_empty() || name.contains('#') {
             return;
@@ -1036,6 +1055,7 @@ impl<'a> Scanner<'a> {
             name,
             args,
             theorem_title,
+            signature,
             span,
         });
     }
@@ -1052,7 +1072,7 @@ impl<'a> Scanner<'a> {
         };
         cur.optional(SHORT_ARG);
         let title = to_plain(self.slice(&title));
-        self.push_environment(trimmed(self.text, name), 1, Some(title));
+        self.push_environment(trimmed(self.text, name), 1, Some(title), Some("[]".into()));
         self.pos = cur.pos;
     }
 
@@ -1072,7 +1092,7 @@ impl<'a> Scanner<'a> {
             })
         });
         let title = explicit.unwrap_or_else(|| capitalize(self.slice(&span)));
-        self.push_environment(span, 1, Some(title));
+        self.push_environment(span, 1, Some(title), Some("[]".into()));
         self.pos = cur.pos;
     }
 
@@ -1326,14 +1346,14 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn declared_symbol(&mut self, math: bool) {
+    fn declared_symbol(&mut self, math: bool, signature: Option<&str>) {
         let mut cur = self.cursor();
         cur.star();
         let Some(name) = cur.command_name() else {
             return;
         };
         let empty = name.end..name.end;
-        self.push_command(name, 0, false, &empty, math);
+        self.push_command(name, 0, false, &empty, math, signature.map(str::to_owned));
     }
 
     fn left_right(&mut self, delta: i32) {
@@ -1827,6 +1847,39 @@ pub(crate) fn split_list(text: &str, span: Span) -> Vec<(String, Span)> {
     }
     push(item_start, span.end, &mut out);
     out
+}
+
+/// `n` arguments as they are written: `[]{}{}` when the first is optional.
+fn counted_signature(args: u8, first_optional: bool) -> String {
+    (0..args)
+        .map(|i| if i == 0 && first_optional { "[]" } else { "{}" })
+        .collect()
+}
+
+/// The arguments an xparse specification describes, as they are written
+/// (`[]{}`); `None` when one of them has delimiters of its own.
+fn xparse_signature(spec: &str) -> Option<String> {
+    let mut out = String::new();
+    let mut depth = 0usize;
+    let mut chars = spec.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            '{' => depth += 1,
+            '}' => depth = depth.saturating_sub(1),
+            _ if depth > 0 || c.is_whitespace() => {}
+            'm' | 'v' => out.push_str("{}"),
+            'o' | 'O' => out.push_str("[]"),
+            // A star, embellishments, the body of an environment, and what
+            // only changes how an argument is read: nothing in braces.
+            's' | 'e' | 'E' | 'b' | '+' | '!' | '>' => {}
+            // `t` takes the token that follows it.
+            't' => {
+                chars.find(|c| !c.is_whitespace());
+            }
+            _ => return None,
+        }
+    }
+    Some(out)
 }
 
 /// Number of arguments described by an xparse argument specification.

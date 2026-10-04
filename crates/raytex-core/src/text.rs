@@ -141,6 +141,29 @@ pub fn utf16_to_byte(s: &str, units: usize) -> usize {
     s.len()
 }
 
+/// The text of a log of TeX: UTF-8, where a byte that is not (a character of
+/// an 8-bit font, written as it is: "There is no É in font cmr10") is read
+/// as Latin-1 instead of being lost.
+pub fn decode_log(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len());
+    let mut rest = bytes;
+    loop {
+        match std::str::from_utf8(rest) {
+            Ok(text) => {
+                out.push_str(text);
+                return out;
+            }
+            Err(e) => {
+                let (valid, after) = rest.split_at(e.valid_up_to());
+                out.push_str(&String::from_utf8_lossy(valid));
+                let bad = e.error_len().unwrap_or(after.len()).max(1);
+                out.extend(after[..bad].iter().map(|b| char::from(*b)));
+                rest = &after[bad..];
+            }
+        }
+    }
+}
+
 /// Largest char boundary `<= offset`.
 pub fn floor_char_boundary(s: &str, mut offset: usize) -> usize {
     if offset >= s.len() {
@@ -189,6 +212,16 @@ pub fn squash_whitespace(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_log_keeps_the_characters_of_8_bit_fonts() {
+        // UTF-8 is kept; the byte TeX writes for `É` in a T1 font is read.
+        let log = b"Missing character: There is no \xc9 in font cmr10!\nd\xc3\xa9but \xe2\x80\xa6";
+        assert_eq!(
+            decode_log(log),
+            "Missing character: There is no É in font cmr10!\ndébut …"
+        );
+    }
 
     #[test]
     fn positions_roundtrip_with_multibyte_characters() {

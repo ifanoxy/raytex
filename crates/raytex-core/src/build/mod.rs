@@ -30,7 +30,7 @@ use crate::log::{self, LogReport, bibtex};
 use crate::process::{self, Cmd, Stream};
 use crate::settings::{BibTool, BuildSettings, BuildTool, CustomStep};
 use crate::syntax::DocumentIndex;
-use crate::tex::{Distribution, DistroKind, Engine};
+use crate::tex::{Distribution, DistroKind, Engine, PackageAnalyzer};
 
 /// Facts about the document that influence the build.
 #[derive(Debug, Clone, Default)]
@@ -358,6 +358,10 @@ pub struct BuildOutcome {
     pub plan: BuildPlan,
 }
 
+/// Gives the analyzer of the installed packages (`None` when the files of
+/// the distribution are not indexed).
+pub type PackageSource<'a> = &'a dyn Fn() -> Option<std::sync::Arc<PackageAnalyzer>>;
+
 /// Environment of a build run.
 #[allow(missing_debug_implementations)]
 pub struct RunContext<'a> {
@@ -371,6 +375,10 @@ pub struct RunContext<'a> {
     pub lang: Lang,
     /// Current text of a source file (editor buffers first, then disk).
     pub source: &'a dyn Fn(&Path) -> Option<String>,
+    /// The sources of the installed packages, asked for when a problem
+    /// needs them: the cause of an error is then found for the commands of
+    /// any package, not only those the knowledge base describes.
+    pub packages: Option<PackageSource<'a>>,
     /// Long-lived caller (the application): work useful to the next builds
     /// may continue in the background (precompiled preambles).
     pub background: bool,
@@ -466,7 +474,13 @@ pub fn run(
             .diagnostics
             .retain(|d| !matches!(d.code.as_deref(), Some("overfull-box" | "underfull-box")));
     }
-    refine::refine_all(&mut report.diagnostics, &plan.root, ctx.source, ctx.lang);
+    refine::refine_all(
+        &mut report.diagnostics,
+        &plan.root,
+        ctx.source,
+        ctx.packages,
+        ctx.lang,
+    );
 
     let pdf_meta = std::fs::metadata(&plan.pdf).ok();
     let pdf_updated = pdf_meta
@@ -715,7 +729,7 @@ impl Runner<'_, '_> {
         let plan = self.plan;
         match std::fs::read(&plan.log) {
             Ok(bytes) => log::parse_log(
-                &String::from_utf8_lossy(&bytes),
+                &crate::text::decode_log(&bytes),
                 &plan.root_dir,
                 &plan.root,
                 self.ctx.lang,
@@ -1418,6 +1432,7 @@ mod tests {
             cancel: &cancel,
             lang: Lang::Fr,
             source: &source,
+            packages: None,
             background: false,
         };
         let mut lines = 0;
@@ -1517,6 +1532,7 @@ mod tests {
             cancel: &cancel,
             lang: Lang::Fr,
             source: &source,
+            packages: None,
             background: false,
         };
         for (engine, text) in [(Engine::Pdflatex, &pdf_text), (Engine::Lualatex, &lua_text)] {

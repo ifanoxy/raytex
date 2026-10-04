@@ -221,12 +221,14 @@ fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBo
             .cloned()
             .or_else(|| std::fs::read_to_string(p).ok())
     };
+    let packages = || state.tex().analyzer.clone();
     let ctx = RunContext {
         dist: &dist,
         settings: &prep.settings,
         cancel,
         lang,
         source: &source,
+        packages: Some(&packages),
         // The app lives on: formats of preambles are prepared for the next builds.
         background: true,
     };

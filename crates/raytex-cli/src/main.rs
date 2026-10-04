@@ -11,6 +11,7 @@
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
 use clap::{Parser, Subcommand, ValueEnum};
@@ -19,7 +20,7 @@ use raytex_core::diagnostics::{Diagnostic, Severity};
 use raytex_core::i18n::Lang;
 use raytex_core::lint::{self, LintOptions};
 use raytex_core::settings::{BuildSettings, BuildTool, EngineChoice, Settings};
-use raytex_core::tex::{self, Distribution, TexmfIndex, manager};
+use raytex_core::tex::{self, Distribution, PackageAnalyzer, TexmfIndex, manager};
 use raytex_core::workspace::{Workspace, project_root_for};
 use raytex_core::{templates, wordcount};
 
@@ -442,12 +443,20 @@ fn build_cmd(
     );
     let cancel = AtomicBool::new(false);
     let source = |p: &Path| std::fs::read_to_string(p).ok();
+    // The files of the distribution are only listed when a problem needs
+    // to know what a package defines.
+    let packages = || {
+        Some(Arc::new(PackageAnalyzer::new(Arc::new(TexmfIndex::build(
+            &dist,
+        )))))
+    };
     let ctx = RunContext {
         dist: &dist,
         settings: &b,
         cancel: &cancel,
         lang,
         source: &source,
+        packages: Some(&packages),
         background: false,
     };
     let outcome = build::run(&plan, &ctx, &mut |e| match e {

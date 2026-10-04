@@ -10,18 +10,22 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 
 use regex::Regex;
 
 use super::data::*;
+use super::known::Learned;
 use super::text::{self as tx, closest, content_end, distance, group_end, group_start, mask};
 use crate::diagnostics::{Diagnostic, FileEdit, Fix};
 use crate::i18n::Lang;
 use crate::kb::kb;
 use crate::log::hints::undefined_command;
 
-use crate::syntax::{DocumentIndex, EnvironmentSpan, IncludeKind, ProblemKind, scan};
+use crate::syntax::{
+    DocumentIndex, EnvironmentSpan, IncludeKind, ProblemKind, ScanOptions, scan, scan_with,
+};
+use crate::tex::PackageAnalyzer;
 use crate::text::{LineIndex, Range, Span};
 
 /// A source file, scanned.
@@ -126,6 +130,11 @@ pub(crate) struct Sources<'a> {
     read: &'a dyn Fn(&Path) -> Option<String>,
     cache: HashMap<PathBuf, Option<Rc<Src>>>,
     files: Option<Vec<PathBuf>>,
+    /// Gives the sources of the installed packages; asked once, when a
+    /// problem needs them.
+    packages: Option<crate::build::PackageSource<'a>>,
+    analyzer: Option<Option<Arc<PackageAnalyzer>>>,
+    learned: Option<Rc<Learned>>,
 }
 
 impl<'a> Sources<'a> {
@@ -136,7 +145,132 @@ impl<'a> Sources<'a> {
             read,
             cache: HashMap::new(),
             files: None,
+            packages: None,
+            analyzer: None,
+            learned: None,
         }
+    }
+
+    /// Reads what the packages of the document define in their sources.
+    pub fn with_packages(mut self, packages: Option<crate::build::PackageSource<'a>>) -> Self {
+        self.packages = packages;
+        self
+    }
+
+    fn analyzer(&mut self) -> Option<Arc<PackageAnalyzer>> {
+        let packages = self.packages;
+        self.analyzer
+            .get_or_insert_with(|| packages.and_then(|give| give()))
+            .clone()
+    }
+
+    /// The class of the document and the packages it loads, as written.
+    fn class_and_packages(&mut self) -> (Option<String>, Vec<String>) {
+        let srcs = self.srcs();
+        let class = srcs
+            .first()
+            .and_then(|s| s.index.document_class.as_ref())
+            .map(|c| c.name.clone());
+        let packages = srcs
+            .iter()
+            .flat_map(|s| s.index.packages.iter().map(|p| p.name.clone()))
+            .collect();
+        (class, packages)
+    }
+
+    /// What the document can use beyond the knowledge base: its own
+    /// definitions, and those of the packages it loads (read once).
+    pub(super) fn learned(&mut self) -> Rc<Learned> {
+        if let Some(learned) = &self.learned {
+            return learned.clone();
+        }
+        let (class, packages) = self.class_and_packages();
+        let infos = self
+            .analyzer()
+            .map(|a| a.closure(class.as_deref(), packages.iter().map(String::as_str)))
+            .unwrap_or_default();
+        // A package or a class of the project itself (`macros.sty` next to
+        // the document) is read like the documents.
+        let mut local = Vec::new();
+        let files = packages
+            .iter()
+            .map(|p| format!("{p}.sty"))
+            .chain(class.iter().map(|c| format!("{c}.cls")));
+        for file in files {
+            if let Some(text) = (self.read)(&self.dir().join(file)) {
+                local.push(scan_with(
+                    &text,
+                    ScanOptions {
+                        at_letter: true,
+                        descend_definitions: true,
+                    },
+                ));
+            }
+        }
+        let srcs = self.srcs();
+        let learned = Rc::new(Learned::new(
+            srcs.iter().map(|s| &s.index).chain(local.iter()),
+            &infos,
+        ));
+        self.learned = Some(learned.clone());
+        learned
+    }
+
+    /// The keys a set of the knowledge base reads in the installed source
+    /// of its package (`keys.json`, `learn`).
+    pub(super) fn learned_keys(&mut self, set: usize) -> Vec<String> {
+        match self.analyzer() {
+            Some(analyzer) => crate::completion::keys::learned(set, |f| analyzer.index().find(f)),
+            None => Vec::new(),
+        }
+    }
+
+    /// The options a package or a class declares: those the knowledge base
+    /// describes and those its source declares. For a class, the options of
+    /// the packages of the document too (they read the options of the class).
+    pub(super) fn options_of(&mut self, name: &str, class: bool) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        let mut add = |option: &str| {
+            let option = option.trim_end_matches('=');
+            if !option.is_empty() && !out.iter().any(|o| o == option) {
+                out.push(option.to_owned());
+            }
+        };
+        let mut names = vec![(name.to_owned(), class)];
+        if class {
+            let (_, packages) = self.class_and_packages();
+            names.extend(packages.into_iter().map(|p| (p, false)));
+        }
+        let analyzer = self.analyzer();
+        for (name, class) in names {
+            let described = if class {
+                kb().class(&name)
+            } else {
+                kb().package(&name)
+            };
+            for o in described.iter().flat_map(|p| p.options.iter()) {
+                add(&o.name);
+            }
+            let Some(analyzer) = &analyzer else {
+                continue;
+            };
+            // A class built on another one takes its options too.
+            let mut next = Some(analyzer.analyze(&name, class));
+            let mut depth = 0;
+            while let Some(info) = next.take() {
+                for o in &info.options {
+                    add(o);
+                }
+                depth += 1;
+                next = info
+                    .requires
+                    .iter()
+                    .find_map(|r| r.strip_prefix("class:"))
+                    .filter(|_| depth < 4)
+                    .map(|base| analyzer.analyze(base, true));
+            }
+        }
+        out
     }
 
     /// A file of the project.
@@ -237,16 +371,8 @@ impl<'a> Sources<'a> {
     }
 
     /// Packages effectively loaded (the kernel, the class, their dependencies).
-    fn loaded(&mut self) -> HashSet<String> {
-        let srcs = self.srcs();
-        let class = srcs
-            .first()
-            .and_then(|s| s.index.document_class.as_ref())
-            .map(|c| c.name.clone());
-        let packages: Vec<String> = srcs
-            .iter()
-            .flat_map(|s| s.index.packages.iter().map(|p| p.name.clone()))
-            .collect();
+    pub(super) fn loaded(&mut self) -> HashSet<String> {
+        let (class, packages) = self.class_and_packages();
         kb().loaded_closure(class.as_deref(), packages.iter().map(String::as_str))
     }
 
@@ -585,6 +711,13 @@ pub(crate) fn suggest(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) {
             super::numeric::numbers(d, s, lang)
         }
         "include-nested" => include_nested(d, s, lang),
+        "command-invalid-math" if !compiler => {
+            super::cause::explain_warning(d, s, lang).unwrap_or_default()
+        }
+        "picture-size" => vec![Fix::add_package("pict2e")],
+        "unused-option" => unused_option(d, s, lang),
+        "no-author" => no_author(d, s),
+        "bookmark-level" => bookmark_level(d, s, lang),
         "wrong-mode" => at_command(d, s, lang),
         "unknown-graphics-extension" => graphics_extension(d, s, lang),
         "capacity-exceeded" => recursion(d, s, lang),
@@ -609,6 +742,12 @@ pub(crate) fn suggest(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) {
         && compiler
         && let Some(fixes) = super::cause::explain(d, s, lang)
     {
+        // The fix of the cause found replaces the ones offered before it,
+        // which say the same thing or less.
+        if !fixes.is_empty() {
+            d.fixes
+                .retain(|f| !matches!(f, Fix::Edits { .. } | Fix::Replace { .. }));
+        }
         for f in fixes {
             if !d.fixes.contains(&f) {
                 d.fixes.push(f);
@@ -703,13 +842,21 @@ fn undefined_cs(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix>
     // A command of the kernel or of a loaded package, misspelled. When a
     // package defines the command, loading it comes first.
     let loaded = s.loaded();
+    let learned = s.learned();
     let max = if cmd.len() <= 4 { 1 } else { 2 };
     let names = kb()
         .commands()
         .iter()
         .filter(|c| loaded.contains(&c.package))
         .map(|c| c.name.as_str());
-    let Some(best) = closest(&cmd, names, max) else {
+    // Then a command of a loaded package the knowledge base does not
+    // describe, as the source of the package defines it.
+    let read = || {
+        (cmd.len() >= 4)
+            .then(|| closest(&cmd, learned.package_commands(), max))
+            .flatten()
+    };
+    let Some(best) = closest(&cmd, names, max).or_else(read) else {
         return Vec::new();
     };
     if !d.fixes.iter().any(|f| matches!(f, Fix::AddPackage { .. })) {
@@ -756,17 +903,21 @@ fn env_undefined(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
     }
     // A misspelled environment: \begin and \end are renamed together.
     let loaded = s.loaded();
+    let learned = s.learned();
     let user: Vec<String> = s
         .srcs()
         .iter()
         .flat_map(|x| x.index.environment_defs.iter().map(|e| e.name.clone()))
         .collect();
+    // The environments of the knowledge base, of the project, and those the
+    // sources of the loaded packages define.
     let names = kb()
         .environments()
         .iter()
         .filter(|e| loaded.contains(&e.package))
         .map(|e| e.name.as_str())
-        .chain(user.iter().map(String::as_str));
+        .chain(user.iter().map(String::as_str))
+        .chain(learned.package_environments());
     let Some(best) = closest(&name, names, 3) else {
         return Vec::new();
     };
@@ -789,6 +940,10 @@ fn env_undefined(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
         }
     }
     if !list.is_empty() {
+        // The name is what is wrong: the problem is shown on it.
+        if let Some(n) = name_in(&env.begin) {
+            place(d, src, n);
+        }
         did_you_mean(d, lang, best);
     }
     edits(
@@ -3172,10 +3327,12 @@ fn unknown_option(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
     };
     let span = command.start + i..command.start + i + option.len();
     place(d, &root, span.clone());
-    let known: Vec<String> = kb()
-        .package_or_class(&package)
-        .map(|p| p.options.iter().map(|o| o.name.clone()).collect())
-        .unwrap_or_default();
+    let is_class = root
+        .index
+        .document_class
+        .as_ref()
+        .is_some_and(|c| c.name == package);
+    let known = s.options_of(&package, is_class);
     if let Some(best) = closest(&option, known.iter().map(String::as_str), 2) {
         did_you_mean(d, lang, best);
         return edits(
@@ -3187,23 +3344,189 @@ fn unknown_option(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
             vec![root.edit(span, best)],
         );
     }
-    // Removed, with its comma (or the brackets when it is the only option).
-    let options = &stmt[open + 1..close];
-    let removal = if options.trim() == option {
-        command.start + open..command.start + close + 1
-    } else if stmt[i + option.len()..].trim_start().starts_with(',') {
-        let after = stmt[i + option.len()..].find(',').unwrap() + 1;
-        span.start..span.end + after
-    } else {
-        let before = stmt[..i].rfind(',').unwrap_or(i);
-        command.start + before..span.end
-    };
     edits(
         format!(
             "{} {option}",
             lang.pick("Retirer l'option", "Remove option")
         ),
-        vec![root.edit(removal, "")],
+        vec![root.edit(
+            option_removal(stmt, command.start, open, close, i, &option),
+            "",
+        )],
+    )
+}
+
+static UNUSED_OPTIONS: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"Unused global option\(s\):\s*\[([^\]]+)\]").unwrap());
+
+/// An option of `\documentclass[…]` that neither the class nor a package
+/// took: it is shown where it is written.
+fn unused_option(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
+    let Some(option) = UNUSED_OPTIONS
+        .captures(&d.message)
+        .and_then(|m| m[1].split(',').next().map(|o| o.trim().to_owned()))
+    else {
+        return Vec::new();
+    };
+    let Some(root) = s.root() else {
+        return Vec::new();
+    };
+    let Some(class) = root.index.document_class.clone() else {
+        return Vec::new();
+    };
+    let command = root.line(root.line_of(class.span.start)).0;
+    let stmt = &root.text[command.clone()];
+    let (Some(open), Some(close)) = (stmt.find('['), stmt.find(']')) else {
+        return Vec::new();
+    };
+    let Some(i) = stmt[open..close].find(&option).map(|i| open + i) else {
+        return Vec::new();
+    };
+    let span = command.start + i..command.start + i + option.len();
+    place(d, &root, span.clone());
+    let known = s.options_of(&class.name, true);
+    if let Some(best) = closest(&option, known.iter().map(String::as_str), 2) {
+        advise(
+            d,
+            lang,
+            &format!(
+                "Ni la classe `{}` ni un package ne connaît l'option `{option}`. Vouliez-vous écrire `{best}` ?",
+                class.name
+            ),
+            &format!(
+                "Neither the class `{}` nor a package knows the option `{option}`. Did you mean `{best}`?",
+                class.name
+            ),
+        );
+        return edits(
+            format!(
+                "{} {option} {} {best}",
+                lang.pick("Remplacer", "Replace"),
+                lang.pick("par", "with")
+            ),
+            vec![root.edit(span, best)],
+        );
+    }
+    advise(
+        d,
+        lang,
+        &format!(
+            "Ni la classe `{}` ni un package ne connaît l'option `{option}` : elle n'a aucun effet.",
+            class.name
+        ),
+        &format!(
+            "Neither the class `{}` nor a package knows the option `{option}`: it has no effect.",
+            class.name
+        ),
+    );
+    edits(
+        format!(
+            "{} {option}",
+            lang.pick("Retirer l'option", "Remove option")
+        ),
+        vec![root.edit(
+            option_removal(stmt, command.start, open, close, i, &option),
+            "",
+        )],
+    )
+}
+
+/// What to delete to remove an option of a list in brackets: the option
+/// with its comma, or the brackets when it is the only one.
+fn option_removal(
+    stmt: &str,
+    start: usize,
+    open: usize,
+    close: usize,
+    i: usize,
+    option: &str,
+) -> Span {
+    let options = &stmt[open + 1..close];
+    if options.trim() == option {
+        start + open..start + close + 1
+    } else if stmt[i + option.len()..].trim_start().starts_with(',') {
+        let after = stmt[i + option.len()..].find(',').unwrap() + 1;
+        start + i..start + i + option.len() + after
+    } else {
+        let before = stmt[..i].rfind(',').unwrap_or(i);
+        start + before..start + i + option.len()
+    }
+}
+
+/// "No \author given": the title is made by `\maketitle`.
+fn no_author(d: &mut Diagnostic, s: &mut Sources<'_>) -> Vec<Fix> {
+    for src in s.srcs() {
+        let text = mask(&src.text);
+        if let Some(i) = text.find("\\maketitle") {
+            place(d, &src, i..i + "\\maketitle".len());
+            break;
+        }
+    }
+    Vec::new()
+}
+
+const SECTIONING: &[&str] = &[
+    "part",
+    "chapter",
+    "section",
+    "subsection",
+    "subsubsection",
+    "paragraph",
+    "subparagraph",
+];
+static SECTION_COMMAND: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\b\*?")
+        .unwrap()
+});
+
+/// hyperref: "Difference (2) between bookmark levels is greater than one".
+/// A level of titles is skipped: the title is shown with the one before it.
+fn bookmark_level(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
+    let Some(at) = at(d, s) else {
+        return Vec::new();
+    };
+    let src = &at.src;
+    let text = mask(&src.text);
+    let (line, _) = src.line(at.line);
+    let level = |name: &str| SECTIONING.iter().position(|x| *x == name);
+    let Some(here) = SECTION_COMMAND
+        .captures_iter(&text[line.clone()])
+        .last()
+        .map(|c| (line.start + c.get(0).unwrap().start(), c[1].to_owned()))
+    else {
+        return Vec::new();
+    };
+    let Some(before) = SECTION_COMMAND
+        .captures_iter(&text[..here.0])
+        .last()
+        .map(|c| c[1].to_owned())
+    else {
+        return Vec::new();
+    };
+    let (Some(a), Some(b)) = (level(&before), level(&here.1)) else {
+        return Vec::new();
+    };
+    if b <= a + 1 {
+        return Vec::new();
+    }
+    let span = here.0..here.0 + 1 + here.1.len();
+    let skipped = SECTIONING[a + 1];
+    place(d, src, span.clone());
+    advise(
+        d,
+        lang,
+        &format!(
+            "`\\{}` vient après `\\{before}` : le niveau `\\{skipped}` est sauté.",
+            here.1
+        ),
+        &format!(
+            "`\\{}` comes after `\\{before}`: the level `\\{skipped}` is skipped.",
+            here.1
+        ),
+    );
+    edits(
+        format!("{} \\{skipped}", lang.pick("Écrire", "Write")),
+        vec![src.edit(span, format!("\\{skipped}"))],
     )
 }
 

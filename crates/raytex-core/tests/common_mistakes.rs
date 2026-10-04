@@ -14,8 +14,8 @@
 //! cases); `LBT_CASE=<name>` runs the cases whose name contains the text.
 
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
 use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use raytex_core::build::{self, BuildEvent, DocumentFacts, RunContext};
 use raytex_core::diagnostics::{Diagnostic, Severity, Source};
@@ -23,7 +23,7 @@ use raytex_core::fixes;
 use raytex_core::i18n::Lang;
 use raytex_core::lint::{self, LintOptions};
 use raytex_core::settings::BuildSettings;
-use raytex_core::tex::{Distribution, TexmfIndex};
+use raytex_core::tex::{Distribution, PackageAnalyzer, TexmfIndex};
 use raytex_core::workspace::Workspace;
 
 /// A mistake and the diagnostic that must report it.
@@ -237,6 +237,14 @@ struct Built {
     success: bool,
 }
 
+/// The analyzer of the installed packages, made once for all the cases.
+fn analyzer(dist: &Distribution) -> Arc<PackageAnalyzer> {
+    static ANALYZER: OnceLock<Arc<PackageAnalyzer>> = OnceLock::new();
+    ANALYZER
+        .get_or_init(|| Arc::new(PackageAnalyzer::new(Arc::new(TexmfIndex::build(dist)))))
+        .clone()
+}
+
 /// Compiles the project like the application does, then adds the live checks.
 fn compile(dist: &Distribution, index: &TexmfIndex, main: &Path, badboxes: bool) -> Built {
     let dir = main.parent().unwrap();
@@ -252,12 +260,15 @@ fn compile(dist: &Distribution, index: &TexmfIndex, main: &Path, badboxes: bool)
     let plan = build::plan(&root, &settings, Some(dist), &facts, Lang::Fr).expect("plan");
     let cancel = AtomicBool::new(false);
     let source = |p: &Path| std::fs::read_to_string(p).ok();
+    // Like the application: what a package defines is read in its source.
+    let packages = || Some(analyzer(dist));
     let ctx = RunContext {
         dist,
         settings: &settings,
         cancel: &cancel,
         lang: Lang::Fr,
         source: &source,
+        packages: Some(&packages),
         background: false,
     };
     let outcome = build::run(&plan, &ctx, &mut |_: BuildEvent| {});
@@ -1309,6 +1320,393 @@ fn forum_cases() -> Vec<Located> {
     ]
 }
 
+/// What the knowledge base does not describe: the macros of the document
+/// and packages read in the distribution (marginnote, fancybox, paralist,
+/// stmaryrd, units, lineno, ntheorem are not in it). Their mistakes are
+/// explained the same way, from what their definitions say.
+fn dynamic_cases() -> Vec<Located> {
+    let any = "";
+    vec![
+        // ------------------------------------------- macros of the document
+        located(
+            "own-macro-of-formulas-in-text",
+            any,
+            doc(
+                "\\usepackage{amssymb}\n\\newcommand{\\R}{\\mathbb{R}}",
+                "Soit \\R l'ensemble des réels.",
+            ),
+            "\\R",
+            Some("`\\R` est défini avec `\\mathbb`, qui n'existe que dans une formule"),
+        ),
+        located(
+            "own-nested-macro-in-text",
+            any,
+            doc(
+                "\\usepackage{amssymb}\n\\newcommand{\\R}{\\mathbb{R}}\n\\newcommand{\\plan}{\\R^2}",
+                "Dans le \\plan, un point.",
+            ),
+            "\\plan",
+            Some("`\\plan` est défini avec `\\R`, qui n'existe que dans une formule"),
+        ),
+        located(
+            "own-operator-in-text",
+            any,
+            doc(
+                "\\usepackage{amsmath}\n\\DeclareMathOperator{\\argmax}{argmax}",
+                "Le \\argmax de la fonction.",
+            ),
+            "\\argmax",
+            Some("`\\argmax` n'existe que dans une formule, et celui-ci est dans du texte."),
+        ),
+        located(
+            "own-macro-missing-argument",
+            any,
+            doc(
+                "\\newcommand*{\\paire}[2]{(#1, #2)}",
+                "Le couple \\paire{a}\n\nSuite.",
+            ),
+            "\\paire{a}",
+            Some("`\\paire` s'écrit `\\paire{…}{…}` : il manque son 2ᵉ argument."),
+        ),
+        located(
+            "own-xparse-missing-argument",
+            any,
+            doc(
+                "\\NewDocumentCommand{\\cadre}{O{1pt} m m}{\\fbox{#2 #3}}",
+                "Un \\cadre[2pt]{a}\n\nSuite.",
+            ),
+            "\\cadre[2pt]{a}",
+            Some("`\\cadre` s'écrit `\\cadre[…]{…}{…}` : il manque son 2ᵉ argument."),
+        ),
+        located(
+            "own-def-missing-argument",
+            any,
+            doc(
+                "\\def\\paire#1#2{(#1, #2)}",
+                "Le couple \\paire{a}\n\nSuite.",
+            ),
+            "\\paire{a}",
+            Some("il manque son 2ᵉ argument"),
+        ),
+        located(
+            "own-environment-typo",
+            any,
+            doc(
+                "\\newenvironment{encadre}{\\begin{center}}{\\end{center}}",
+                "\\begin{encadr}\nTexte.\n\\end{encadr}",
+            ),
+            "encadr",
+            Some("Vouliez-vous écrire `encadre` ?"),
+        ),
+        // --------------------------- packages read in the distribution
+        located(
+            "package-command-typo",
+            any,
+            doc("\\usepackage{marginnote}", "Texte\\marginnot{note} ici."),
+            "\\marginnot",
+            Some("Vouliez-vous écrire `\\marginnote` ?"),
+        ),
+        located(
+            "package-command-typo-2",
+            any,
+            doc("\\usepackage{fancybox}", "Une \\shadowbx{boîte} ici."),
+            "\\shadowbx",
+            Some("Vouliez-vous écrire `\\shadowbox` ?"),
+        ),
+        located(
+            "package-environment-typo",
+            any,
+            doc(
+                "\\usepackage{paralist}",
+                "\\begin{compactitm}\n\\item a\n\\end{compactitm}",
+            ),
+            "compactitm",
+            Some("Vouliez-vous écrire `compactitem` ?"),
+        ),
+        located(
+            "package-symbol-in-text",
+            any,
+            doc("\\usepackage{stmaryrd}", "Un crochet \\llbracket ici."),
+            "\\llbracket",
+            Some("`\\llbracket` n'existe que dans une formule, et celui-ci est dans du texte."),
+        ),
+        located(
+            "package-command-missing-argument",
+            any,
+            doc(
+                "\\usepackage{units}",
+                "Une vitesse de \\unitfrac{km}\n\nSuite.",
+            ),
+            "\\unitfrac{km}",
+            Some("`\\unitfrac` s'écrit `\\unitfrac[…]{…}{…}` : il manque son 2ᵉ argument."),
+        ),
+        located(
+            "package-option-typo",
+            any,
+            doc("\\usepackage[pagewize]{lineno}", "Texte."),
+            "pagewize",
+            Some("Vouliez-vous écrire `pagewise` ?"),
+        ),
+        located(
+            "package-option-typo-2",
+            any,
+            doc("\\usepackage[framd]{ntheorem}", "Texte."),
+            "framd",
+            Some("Vouliez-vous écrire `framed` ?"),
+        ),
+        // ------------------------------------- keys, whoever reads them
+        located(
+            "key-siunitx-setup",
+            any,
+            doc(
+                "\\usepackage{siunitx}",
+                "\\sisetup{round-mod=places}\nTexte \\num{1.2}.",
+            ),
+            "round-mod",
+            Some("Vouliez-vous écrire `round-mode` ?"),
+        ),
+        located(
+            "key-siunitx-inline",
+            any,
+            doc(
+                "\\usepackage{siunitx}",
+                "Texte \\num[round-mod=places]{1.2}.",
+            ),
+            "round-mod",
+            Some("Vouliez-vous écrire `round-mode` ?"),
+        ),
+        located(
+            "key-hyperref",
+            any,
+            doc(
+                "\\usepackage{hyperref}",
+                "\\hypersetup{colorlink=true}\nTexte.",
+            ),
+            "colorlink",
+            Some("Vouliez-vous écrire `colorlinks` ?"),
+        ),
+        located(
+            "key-on-another-line",
+            any,
+            doc(
+                "\\usepackage{hyperref}",
+                "\\hypersetup{\n  pdftitle={Titre},\n  linkcolour=blue,\n}\nTexte.",
+            ),
+            "linkcolour",
+            Some("Vouliez-vous écrire `linkcolor` ?"),
+        ),
+        located(
+            "key-listings",
+            any,
+            doc("\\usepackage{listings}", "\\lstset{langage=Python}\nTexte."),
+            "langage",
+            Some("Vouliez-vous écrire `language` ?"),
+        ),
+        located(
+            "key-caption",
+            any,
+            doc(
+                "\\usepackage{caption}",
+                "\\captionsetup{labelfnt=bf}\nTexte.",
+            ),
+            "labelfnt",
+            Some("Vouliez-vous écrire `labelfont` ?"),
+        ),
+        located(
+            "key-enumitem",
+            any,
+            doc(
+                "\\usepackage{enumitem}",
+                "\\begin{enumerate}[lable=\\alph*)]\n\\item a\n\\end{enumerate}",
+            ),
+            "lable",
+            Some("Vouliez-vous écrire `label` ?"),
+        ),
+        located(
+            "key-tcolorbox",
+            any,
+            doc(
+                "\\usepackage{tcolorbox}",
+                "\\begin{tcolorbox}[colbak=red!5]\nTexte.\n\\end{tcolorbox}",
+            ),
+            "colbak",
+            Some("Vouliez-vous écrire `colback` ?"),
+        ),
+        located(
+            "key-todonotes",
+            any,
+            doc("\\usepackage{todonotes}", "Texte\\todo[colour=red]{note}."),
+            "colour",
+            Some("Vouliez-vous écrire `color` ?"),
+        ),
+        located(
+            "key-geometry-command",
+            any,
+            doc("\\usepackage{geometry}", "\\newgeometry{margn=2cm}\nTexte."),
+            "margn",
+            Some("Vouliez-vous écrire `margin` ?"),
+        ),
+        // An accent of text in a formula is an error without T1 fonts.
+        located(
+            "accent-in-formula-error",
+            any,
+            doc("", "Soit $x = Écart$ ici."),
+            "Écart",
+            Some(
+                "`É` est une lettre de texte : une formule ne compose pas les lettres accentuées.",
+            ),
+        ),
+    ]
+}
+
+/// What LaTeX only warns about: the warning is placed on what causes it,
+/// like an error, and says what it is when the source shows it.
+fn warning_cases() -> Vec<Located> {
+    let warning = "*warning";
+    let t1 = "\\usepackage[T1]{fontenc}";
+    vec![
+        located(
+            "accent-in-formula",
+            warning,
+            doc(t1, "Avant.\n$Écrivez iciadizjdazd$\nAprès."),
+            "Écrivez",
+            Some("`É` est une lettre de texte : une formule ne compose pas les lettres accentuées. Le mot `Écrivez` se met dans `\\textrm{…}`."),
+        ),
+        located(
+            "accent-in-formula-amsmath",
+            warning,
+            doc(
+                "\\usepackage[T1]{fontenc}\n\\usepackage{amsmath}",
+                "Soit $v_{début} = 0$ ici.",
+            ),
+            "début",
+            Some("Le mot `début` se met dans `\\text{…}`."),
+        ),
+        located(
+            "accent-command-in-formula",
+            warning,
+            doc(t1, "Soit $x = \\'e$ ici."),
+            "\\'e",
+            Some("`\\'` est un accent de texte : une formule ne le compose pas. Dans une formule, cet accent s'écrit `\\acute{e}`."),
+        ),
+        located(
+            "accented-letter-alone",
+            warning,
+            doc(t1, "Soit $é + 1$ ici."),
+            "é",
+            Some("Dans une formule, cet accent s'écrit `\\acute{e}`."),
+        ),
+        located(
+            "cedilla-in-formula",
+            warning,
+            doc(t1, "Soit $x_{reçu}$ ici."),
+            "reçu",
+            Some("`ç` est une lettre de texte"),
+        ),
+        located(
+            "two-accents-in-formula",
+            warning,
+            doc(t1, "Soit $x_{été} + y_{forêt}$ ici."),
+            "été",
+            Some("Le mot `été` se met dans"),
+        ),
+        located(
+            "accent-in-display",
+            warning,
+            doc(t1, "\\[\n  v_{début} = 0\n\\]"),
+            "début",
+            Some("Le mot `début` se met dans"),
+        ),
+        located(
+            "accent-in-equation",
+            warning,
+            doc(
+                t1,
+                "\\begin{equation}\n  v = 0 \\quad où v est la vitesse\n\\end{equation}",
+            ),
+            "où",
+            Some("`ù` est une lettre de texte"),
+        ),
+        located(
+            "letter-of-text-in-formula",
+            warning,
+            doc(t1, "Soit $n_{œuvres}$ ici."),
+            "œuvres",
+            Some("`œ` est une lettre de texte : une formule ne la compose pas."),
+        ),
+        located(
+            "degree-in-formula",
+            warning,
+            doc(t1, "Un angle de $90°$ ici."),
+            "°",
+            Some("`°` est un caractère de texte : une formule ne le compose pas. Dans une formule, il s'écrit `^\\circ`."),
+        ),
+        located(
+            "euro-in-formula",
+            warning,
+            doc(t1, "Un prix de $5 €$ ici."),
+            "€",
+            Some("`€` est un caractère de texte : une formule ne le compose pas."),
+        ),
+        located(
+            "size-in-formula",
+            warning,
+            doc("", "Soit $\\Large x$ ici."),
+            "\\Large",
+            Some("`\\Large` ne fonctionne que dans du texte, et celui-ci est dans une formule."),
+        ),
+        // A command the warning names is shown where it is written.
+        located(
+            "command-named-by-the-warning",
+            warning,
+            doc("\\usepackage{amsmath}", "Soit $a \\over b$ ici."),
+            "\\over",
+            None,
+        ),
+        located(
+            "picture-size",
+            warning,
+            doc(
+                "",
+                "\\begin{picture}(10,10)\\put(5,5){\\circle{200}}\\end{picture}",
+            ),
+            "\\circle",
+            None,
+        ),
+        located(
+            "title-level-skipped",
+            warning,
+            doc(
+                "\\usepackage{hyperref}",
+                "\\section{A}\n\\subsubsection{B}\nTexte.",
+            ),
+            "\\subsubsection",
+            Some("`\\subsubsection` vient après `\\section` : le niveau `\\subsection` est sauté."),
+        ),
+        located(
+            "class-option-typo",
+            warning,
+            "\\documentclass[a4papr]{article}\n\\begin{document}\nTexte.\n\\end{document}\n".to_owned(),
+            "a4papr",
+            Some("Vouliez-vous écrire `a4paper` ?"),
+        ),
+        located(
+            "class-option-unknown",
+            warning,
+            "\\documentclass[11pt,brouillon]{article}\n\\begin{document}\nTexte.\n\\end{document}\n".to_owned(),
+            "brouillon",
+            Some("Ni la classe `article` ni un package ne connaît l'option `brouillon` : elle n'a aucun effet."),
+        ),
+        located(
+            "no-author",
+            warning,
+            doc("\\title{T}", "\\maketitle\nTexte."),
+            "\\maketitle",
+            None,
+        ),
+    ]
+}
+
 /// The text of the document a diagnostic is placed on.
 fn shown(text: &str, d: &Diagnostic) -> String {
     let Some(r) = d.range else {
@@ -1364,7 +1762,9 @@ fn run_located(
     };
     // Whatever message TeX gives when the case names none: its first error.
     let reported = |d: &&Diagnostic| {
-        if case.code.is_empty() {
+        if case.code == "*warning" {
+            d.severity == Severity::Warning && d.source == Source::Latex
+        } else if case.code.is_empty() {
             d.severity == Severity::Error && d.source == Source::Latex
         } else {
             has_code(d, case.code)
@@ -1422,7 +1822,28 @@ fn causes_are_found_and_shown() {
     let mut failed = 0;
     let mut cases = located_cases();
     cases.extend(forum_cases());
+    cases.extend(dynamic_cases());
     for case in cases
+        .iter()
+        .filter(|c| only.as_deref().is_none_or(|o| c.name.contains(o)))
+    {
+        let (line, ok) = run_located(&dist, &index, case, probe);
+        println!("{line}");
+        failed += usize::from(!ok);
+    }
+    assert!(failed == 0, "{failed} cases failed");
+}
+
+/// A warning is placed on what causes it, and says what it is.
+#[test]
+#[ignore = "depends on the local TeX installation"]
+fn warnings_are_placed_on_their_cause() {
+    let dist = distribution();
+    let index = TexmfIndex::build(&dist);
+    let probe = std::env::var_os("LBT_PROBE").is_some();
+    let only = std::env::var("LBT_CASE").ok();
+    let mut failed = 0;
+    for case in warning_cases()
         .iter()
         .filter(|c| only.as_deref().is_none_or(|o| c.name.contains(o)))
     {

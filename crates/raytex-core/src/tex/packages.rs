@@ -34,6 +34,9 @@ pub struct ExtractedCommand {
     pub first_optional: bool,
     /// Whether it is math-only (symbols, operators).
     pub math: bool,
+    /// The arguments as they are written, `[]{}{}`, when the definition
+    /// tells them.
+    pub signature: Option<String>,
 }
 
 /// An environment found in a package source.
@@ -44,6 +47,9 @@ pub struct ExtractedEnvironment {
     pub name: String,
     /// Number of arguments.
     pub args: u8,
+    /// The arguments after `\begin{name}`, `[]{}`, when the definition
+    /// tells them.
+    pub signature: Option<String>,
 }
 
 /// What a package provides, as read from its source.
@@ -182,6 +188,7 @@ impl PackageAnalyzer {
                             args: def.args,
                             first_optional: def.first_optional,
                             math: def.math,
+                            signature: def.signature.clone(),
                         });
                 }
             }
@@ -192,6 +199,7 @@ impl PackageAnalyzer {
                         .or_insert(ExtractedEnvironment {
                             name: env.name.clone(),
                             args: env.args,
+                            signature: env.signature.clone(),
                         });
                 }
             }
@@ -231,13 +239,15 @@ impl PackageAnalyzer {
         for n in &names {
             if let Some(env) = n.strip_prefix("end")
                 && !env.is_empty()
-                && commands.contains_key(env)
+                && let Some(begin) = commands.get(env)
             {
+                let signature = begin.signature.clone();
                 environments
                     .entry(env.to_owned())
                     .or_insert(ExtractedEnvironment {
                         name: env.to_owned(),
                         args: 0,
+                        signature,
                     });
                 commands.remove(n);
             }

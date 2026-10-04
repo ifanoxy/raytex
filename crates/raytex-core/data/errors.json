@@ -1674,5 +1674,53 @@
       "en": "TeX could not go on after the previous error and stopped.",
       "fr": "TeX n'a pas pu continuer après l'erreur précédente et s'est arrêté."
     }
+  },
+  {
+    "id": "bookmark-level",
+    "match": "between bookmark levels is greater than one",
+    "title": {
+      "en": "A level of titles is skipped",
+      "fr": "Un niveau de titre est sauté"
+    },
+    "explanation": {
+      "en": "In the bookmarks of the PDF, a title is more than one level below the one before it (a `\\subsubsection` right under a `\\section`); hyperref moved it up one level in the bookmarks. The pages are not changed.",
+      "fr": "Dans les signets du PDF, un titre est plus d'un niveau sous celui qui le précède (un `\\subsubsection` juste sous un `\\section`) ; hyperref l'a remonté d'un niveau dans les signets. Les pages ne changent pas."
+    }
+  },
+  {
+    "id": "no-author",
+    "match": "^No \\\\author given",
+    "title": {
+      "en": "No author",
+      "fr": "Auteur absent"
+    },
+    "explanation": {
+      "en": "`\\maketitle` typesets the title, the author and the date, and no `\\author{…}` was given before it: the place of the author stays empty.",
+      "fr": "`\\maketitle` compose le titre, l'auteur et la date, et aucun `\\author{…}` n'a été donné avant lui : la place de l'auteur reste vide."
+    }
+  },
+  {
+    "id": "foreign-command",
+    "match": "Foreign command \\\\",
+    "title": {
+      "en": "A fraction written the TeX way",
+      "fr": "Fraction écrite à la manière de TeX"
+    },
+    "explanation": {
+      "en": "With amsmath, `\\over`, `\\atop`, `\\choose` and their variants are replaced by `\\frac{…}{…}`, `\\binom{…}{…}` and `\\genfrac`: written the old way, the size of the fraction is not adjusted.",
+      "fr": "Avec amsmath, `\\over`, `\\atop`, `\\choose` et leurs variantes sont remplacés par `\\frac{…}{…}`, `\\binom{…}{…}` et `\\genfrac` : écrite à l'ancienne, la fraction n'est pas ajustée en taille."
+    }
+  },
+  {
+    "id": "picture-size",
+    "match": "\\\\oval, \\\\circle, or \\\\line size unavailable",
+    "title": {
+      "en": "Size not available in picture",
+      "fr": "Taille indisponible dans picture"
+    },
+    "explanation": {
+      "en": "The `picture` environment only draws circles of a few diameters and lines of a few slopes; the closest one was used. The `pict2e` package removes this limit.",
+      "fr": "L'environnement `picture` ne trace que des cercles de quelques diamètres et des lignes de quelques pentes ; la valeur la plus proche a été utilisée. Le package `pict2e` lève cette limite."
+    }
   }
 ]

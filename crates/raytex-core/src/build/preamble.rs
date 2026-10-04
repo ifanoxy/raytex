@@ -397,6 +397,7 @@ mod tests {
             cancel: &cancel,
             lang: Lang::Fr,
             source: &source,
+            packages: None,
             background: false,
         };
         for t in crate::templates::list(None) {

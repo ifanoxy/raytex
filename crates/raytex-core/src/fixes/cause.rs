@@ -4,12 +4,14 @@
 //! TeX reports where it stopped and what it expected next; its message
 //! rarely names the mistake, and one mistake gives many messages. Here,
 //! what is written at that place is checked against what LaTeX allows
-//! there, with the knowledge base: the mode a command or an environment
-//! needs (text or formula), the arguments its signature asks for, the
-//! values an argument takes, and the structure around it (formulas, groups,
-//! environments, as the live checks see them). These rules hold for every
-//! command and environment the knowledge base describes: a package added
-//! there gets its mistakes explained without anything written here.
+//! there: the mode a command or an environment needs (text or formula), the
+//! arguments its signature asks for, the values an argument takes, and the
+//! structure around it (formulas, groups, environments, as the live checks
+//! see them). What a command or an environment needs is asked to
+//! [`super::known`]: the knowledge base, the definitions of the project and
+//! the source of every package the document loads. So these rules hold for
+//! the macros of the user and for any installed package, without anything
+//! written here.
 //!
 //! A cause is only reported when the source shows it: the diagnostic is
 //! then placed on the text to change and its advice says what is wrong.
@@ -18,6 +20,7 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 
+use super::known::Learned;
 use super::latex::{
     At, Sources, Src, advise, at, did_you_mean, edits, find_on_line, inside_display,
     percent_hides_brace, place,
@@ -42,9 +45,11 @@ pub(super) fn explain(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Op
         lang,
         &[
             unknown_name,
+            unknown_key,
             dollar_in_formula,
             display_closed_by_one_dollar,
             delimiter_expected,
+            text_in_formula,
             text_command_in_formula,
             path_in_text,
             call_at_point,
@@ -76,8 +81,19 @@ pub(super) fn explain_structure(
             display_closed_by_one_dollar,
             group_closed_in_environment,
             structure,
+            text_in_formula,
         ],
     )
+}
+
+/// The cause of what LaTeX only warns about: a warning gives a line and no
+/// place in it, so the whole line is read.
+pub(super) fn explain_warning(
+    d: &mut Diagnostic,
+    s: &mut Sources<'_>,
+    lang: Lang,
+) -> Option<Vec<Fix>> {
+    run(d, s, lang, &[text_in_formula, text_command_in_formula])
 }
 
 /// Whether a message only tells how TeX went on.
@@ -110,6 +126,7 @@ fn run(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang, checks: &[Check]) ->
         point: at.point().clamp(line.start, line.end),
         at: &at,
         lang,
+        known: s.learned(),
     };
     checks.iter().find_map(|check| check(d, s, &here))
 }
@@ -137,6 +154,9 @@ struct Here<'a> {
     point: usize,
     at: &'a At,
     lang: Lang,
+    /// What the document can use: the knowledge base, its own definitions
+    /// and those of the packages it loads.
+    known: std::rc::Rc<Learned>,
 }
 
 impl Here<'_> {
@@ -244,6 +264,147 @@ fn unknown_name(d: &mut Diagnostic, s: &mut Sources<'_>, h: &Here<'_>) -> Option
         ),
         vec![h.src.edit(span, best)],
     ))
+}
+
+static UNKNOWN_KEY: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(concat!(
+        r"Error: (\S+) undefined\.?$",
+        r"|[`']([^'`]+)' undefined in famil",
+        r"|The key '([^']+)' is unknown",
+        r"|I do not know the key '([^']+)'",
+        r"|Undefined key [`']([^']+)'",
+        r"|Unknown key [`']([^']+)'",
+        r"|Unknown option [`']([^']+)'",
+    ))
+    .unwrap()
+});
+
+/// A key (`name=value`) that what takes it does not know, whatever the
+/// package that reads the keys (keyval, xkeyval, kvsetkeys, pgfkeys, the
+/// keys of LaTeX3): it is shown where it is written, with the closest key
+/// of the command or of the package that takes it.
+fn unknown_key(d: &mut Diagnostic, s: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
+    let message = d.message.clone();
+    let m = UNKNOWN_KEY.captures(&message)?;
+    let path = (1..m.len()).find_map(|i| m.get(i))?.as_str();
+    // `/tikz/colr`, `siunitx/round-mod`: the key is the last part.
+    let key = path.rsplit('/').next()?.trim_matches(['`', '\'', ' ']);
+    if key.is_empty() || key.starts_with('\\') {
+        return None;
+    }
+    let span = written_key(h, key)?;
+    let known = keys_taken_at(s, h, span.start);
+    place(d, h.src, span.clone());
+    let best = closest(key, known.iter().map(String::as_str), 2)?;
+    did_you_mean(d, h.lang, best);
+    Some(edits(
+        format!(
+            "{} {key} {} {best}",
+            h.fr_en("Remplacer", "Replace"),
+            h.fr_en("par", "with")
+        ),
+        vec![h.src.edit(span, best)],
+    ))
+}
+
+/// Where `key` is written as a key, at or before the place TeX stopped: in
+/// the list that ends there, which may start some lines above.
+fn written_key(h: &Here<'_>, key: &str) -> Option<Span> {
+    let start = paragraph_start(h.text, h.line.start);
+    let region = &h.text[start..h.line.end];
+    let whole = |i: usize| {
+        let before = region[..i].trim_end().chars().next_back();
+        let after = region[i + key.len()..].trim_start().chars().next();
+        before.is_none_or(|c| matches!(c, '[' | '{' | ','))
+            && after.is_none_or(|c| matches!(c, '=' | ',' | ']' | '}'))
+    };
+    let all: Vec<usize> = region
+        .match_indices(key)
+        .map(|(i, _)| i)
+        .filter(|&i| whole(i))
+        .collect();
+    let point = h.point - start;
+    let i = all
+        .iter()
+        .rev()
+        .find(|&&i| i < point)
+        .or(all.first())
+        .copied()?;
+    Some(start + i..start + i + key.len())
+}
+
+/// The keys known where one is written at `at`: those of the command or of
+/// the environment whose argument it is in, or the options of the package
+/// or the class it is given to. The knowledge base lists the usual ones;
+/// the others are read in the source of the package.
+fn keys_taken_at(s: &mut Sources<'_>, h: &Here<'_>, at: usize) -> Vec<String> {
+    // The bracket or the brace the key is in, then what is written before it.
+    let b = h.text.as_bytes();
+    let mut depth = 0i32;
+    let mut open = None;
+    let floor = paragraph_start(h.text, h.line.start);
+    for i in (floor..at).rev() {
+        match b[i] {
+            b']' | b'}' => depth += 1,
+            b'[' | b'{' if depth == 0 => {
+                open = Some(i);
+                break;
+            }
+            b'[' | b'{' => depth -= 1,
+            _ => {}
+        }
+    }
+    let Some(open) = open else {
+        return Vec::new();
+    };
+    let bracket = b[open] as char;
+    let head = h.text[floor..open].trim_end();
+    // `\usepackage[…]{name}`, `\documentclass[…]{name}`: the options of `name`.
+    if let Some(command) = ["\\usepackage", "\\RequirePackage", "\\documentclass"]
+        .iter()
+        .find(|c| head.ends_with(*c))
+    {
+        let close = h.text[open..].find(']').map(|i| open + i + 1);
+        let name = close
+            .filter(|&c| b.get(c) == Some(&b'{'))
+            .and_then(|c| group_end(h.text, c).map(|end| h.text[c + 1..end - 1].trim()));
+        let Some(name) = name else {
+            return Vec::new();
+        };
+        let class = *command == "\\documentclass";
+        let mut out = s.options_of(name, class);
+        for (index, set) in keys::sets().iter().enumerate() {
+            if set.options_of.iter().any(|p| p == name) {
+                out.extend(set.keys.iter().map(|k| k.name.clone()));
+                out.extend(s.learned_keys(index));
+            }
+        }
+        return out;
+    }
+    // `\command[…]`, `\command{…}`, `\begin{name}[…]`: the keys of the sets
+    // that name it, whatever the rank of the argument.
+    static OWNER: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(
+            r"(?:\\begin\s*\{([^{}]+)\}|(\\[A-Za-z@]+)\*?)\s*(?:\[[^\]]*\]|\{[^{}]*\}|\([^)]*\))*$",
+        )
+        .unwrap()
+    });
+    let Some(m) = OWNER.captures(head) else {
+        return Vec::new();
+    };
+    let owner = m.get(1).or(m.get(2)).map_or("", |x| x.as_str());
+    let mut out = Vec::new();
+    for (index, set) in keys::sets().iter().enumerate() {
+        let takes = set.targets.iter().any(|t| {
+            t.strip_prefix(owner)
+                .is_some_and(|rest| rest.trim_start_matches('*').starts_with(bracket))
+        });
+        if takes {
+            out.extend(set.keys.iter().map(|k| k.name.clone()));
+            out.extend(s.learned_keys(index));
+        }
+    }
+    out
 }
 
 /// The values the knowledge base lists for an argument (`\pagestyle{1}`).
@@ -535,6 +696,389 @@ fn text_command_in_formula(
     Some(Vec::new())
 }
 
+// ------------------------------------------------ text in a formula
+
+/// Letters with an accent: the accent of text LaTeX reads for them (`É` is
+/// `\'E`), the accent of formulas, the letters and what they are without it.
+const ACCENTS: &[(&str, &str, &str, &str)] = &[
+    (
+        "\\'",
+        "\\acute",
+        "áéíóúýÁÉÍÓÚÝćńśźĆŃŚŹ",
+        "aeiouyAEIOUYcnszCNSZ",
+    ),
+    ("\\`", "\\grave", "àèìòùÀÈÌÒÙ", "aeiouAEIOU"),
+    ("\\^", "\\hat", "âêîôûÂÊÎÔÛ", "aeiouAEIOU"),
+    ("\\\"", "\\ddot", "äëïöüÿÄËÏÖÜŸ", "aeiouyAEIOUY"),
+    ("\\~", "\\tilde", "ãñõÃÑÕ", "anoANO"),
+    ("\\c", "", "çÇşŞţŢ", "cCsStT"),
+    ("\\r", "\\mathring", "åÅůŮ", "aAuU"),
+    ("\\v", "\\check", "čšžřěňďťČŠŽŘĚŇĎŤ", "cszrendtCSZRENDT"),
+    ("\\k", "", "ąęĄĘ", "aeAE"),
+    ("\\H", "", "őűŐŰ", "ouOU"),
+    ("\\u", "\\breve", "ăğĂĞ", "agAG"),
+    ("\\.", "\\dot", "żŻėĖ", "zZeE"),
+    ("\\=", "\\bar", "āēīōūĀĒĪŌŪ", "aeiouAEIOU"),
+];
+
+/// Other characters of text: the command LaTeX reads for them and how they
+/// are written in a formula, when they have a form there.
+const TEXT_CHARACTERS: &[(char, &str, &str)] = &[
+    ('ß', "\\ss", ""),
+    ('æ', "\\ae", ""),
+    ('Æ', "\\AE", ""),
+    ('œ', "\\oe", ""),
+    ('Œ', "\\OE", ""),
+    ('ø', "\\o", ""),
+    ('Ø', "\\O", ""),
+    ('ł', "\\l", ""),
+    ('Ł', "\\L", ""),
+    ('°', "\\textdegree", "^\\circ"),
+    ('€', "\\texteuro", ""),
+    ('×', "\\texttimes", "\\times"),
+    ('÷', "\\textdiv", "\\div"),
+    ('±', "\\textpm", "\\pm"),
+    ('µ', "\\textmu", "\\mu"),
+    ('·', "\\textperiodcentered", "\\cdot"),
+    ('¬', "\\textlnot", "\\neg"),
+    ('¹', "\\textonesuperior", "^1"),
+    ('²', "\\texttwosuperior", "^2"),
+    ('³', "\\textthreesuperior", "^3"),
+    ('…', "\\textellipsis", "\\dots"),
+    ('£', "\\textsterling", "\\pounds"),
+    ('§', "\\textsection", "\\S"),
+    ('©', "\\textcopyright", ""),
+    ('«', "\\guillemetleft", ""),
+    ('»', "\\guillemetright", ""),
+    ('–', "\\textendash", ""),
+    ('—', "\\textemdash", ""),
+];
+
+/// Commands whose argument is not typeset as a formula: text, or a name.
+fn not_formula(name: &str) -> bool {
+    switches_to_text(name)
+        || matches!(
+            name,
+            "label" | "ref" | "eqref" | "pageref" | "cref" | "Cref" | "cite" | "begin" | "end"
+        )
+}
+
+/// A character or an accent of text written in a formula.
+struct TextInFormula {
+    span: Span,
+    /// The command of text LaTeX reads there (`\'` for `é`), when known.
+    command: Option<&'static str>,
+    /// How it is written in a formula (`\acute{e}`), when it has a form there.
+    math: Option<String>,
+    /// An accent (not another character of text).
+    accent: bool,
+    /// Written as a command (`\'e`), not as a character.
+    typed: bool,
+}
+
+/// The letter under an accent of formulas: `i` and `j` lose their dot.
+fn under_accent(letter: &str) -> String {
+    match letter {
+        "i" => "\\imath".into(),
+        "j" => "\\jmath".into(),
+        other => other.to_owned(),
+    }
+}
+
+/// What is text in the formulas of the line: characters with an accent,
+/// characters of text, accents written as commands (`\'e`).
+fn text_in_formulas(h: &Here<'_>) -> Vec<TextInFormula> {
+    let line = &h.text[h.line.clone()];
+    let b = h.text.as_bytes();
+    // Arguments that are text again (`\text{…}`) or a name (`\label{…}`).
+    let excluded: Vec<Span> = COMMAND
+        .find_iter(line)
+        .filter_map(|m| {
+            let name = m.as_str()[1..].trim_end_matches('*');
+            let after = h.line.start + m.end();
+            (not_formula(name) && b.get(after) == Some(&b'{'))
+                .then(|| group_end(h.text, after))
+                .flatten()
+                .map(|end| after..end)
+        })
+        .collect();
+    let formula = |offset: usize| {
+        h.in_math(offset) && !excluded.iter().any(|e| e.start <= offset && offset < e.end)
+    };
+    let mut out = Vec::new();
+    let mut chars = line.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        let at = h.line.start + i;
+        if c == '\\' {
+            let Some(&(_, next)) = chars.peek() else {
+                break;
+            };
+            chars.next();
+            // `\'e`, `\c{c}`: the accent and the letter it is put on.
+            let accent = ACCENTS.iter().find(|(command, ..)| {
+                command[1..].starts_with(next)
+                    && !(next.is_ascii_alphabetic()
+                        && b.get(at + 2).is_some_and(u8::is_ascii_alphabetic))
+            });
+            let Some((command, math, ..)) = accent else {
+                // A command: its name is not text.
+                while next.is_ascii_alphabetic()
+                    && chars.peek().is_some_and(|(_, c)| c.is_ascii_alphabetic())
+                {
+                    chars.next();
+                }
+                continue;
+            };
+            let open = skip_blank(h.text, at + 2);
+            let (letter, end) = if b.get(open) == Some(&b'{') {
+                match group_end(h.text, open) {
+                    Some(end) => (h.text[open + 1..end - 1].trim().to_owned(), end),
+                    None => continue,
+                }
+            } else {
+                match h.text[open..].chars().next() {
+                    Some(l) if l.is_alphabetic() => (l.to_string(), open + l.len_utf8()),
+                    _ => continue,
+                }
+            };
+            if !formula(at) || end > h.line.end {
+                continue;
+            }
+            out.push(TextInFormula {
+                span: at..end,
+                command: Some(command),
+                math: (!math.is_empty() && !letter.is_empty())
+                    .then(|| format!("{math}{{{}}}", under_accent(&letter))),
+                accent: true,
+                typed: true,
+            });
+            while chars.peek().is_some_and(|(j, _)| h.line.start + j < end) {
+                chars.next();
+            }
+            continue;
+        }
+        if c.is_ascii() || !formula(at) {
+            continue;
+        }
+        let span = at..at + c.len_utf8();
+        let accent = ACCENTS.iter().find_map(|(command, math, letters, bases)| {
+            let n = letters.chars().position(|l| l == c)?;
+            let base = bases.chars().nth(n)?.to_string();
+            Some((*command, *math, base))
+        });
+        if let Some((command, math, base)) = accent {
+            out.push(TextInFormula {
+                span,
+                command: Some(command),
+                math: (!math.is_empty()).then(|| format!("{math}{{{}}}", under_accent(&base))),
+                accent: true,
+                typed: false,
+            });
+        } else if let Some((_, command, math)) = TEXT_CHARACTERS.iter().find(|(l, ..)| *l == c) {
+            out.push(TextInFormula {
+                span,
+                command: Some(command),
+                math: (!math.is_empty()).then(|| (*math).to_owned()),
+                accent: false,
+                typed: false,
+            });
+        } else if c.is_alphabetic() {
+            out.push(TextInFormula {
+                span,
+                command: None,
+                math: None,
+                accent: false,
+                typed: false,
+            });
+        }
+    }
+    out
+}
+
+/// The word (letters only) around `span`, when it is more than `span`.
+fn word_around(text: &str, line: &Span, span: &Span) -> Option<Span> {
+    let before = text[line.start..span.start]
+        .chars()
+        .rev()
+        .take_while(|c| c.is_alphabetic())
+        .map(char::len_utf8)
+        .sum::<usize>();
+    let after = text[span.end..line.end]
+        .chars()
+        .take_while(|c| c.is_alphabetic())
+        .map(char::len_utf8)
+        .sum::<usize>();
+    let start = span.start - before;
+    // Letters right after a `\` are the name of a command.
+    let command = start > line.start && text.as_bytes()[start - 1] == b'\\';
+    (before + after > 0 && !command).then(|| start..span.end + after)
+}
+
+/// A letter with an accent, a character of text or an accent of text, in a
+/// formula: LaTeX reads a command of text there (`É` is `\'E`), warns that
+/// it is "invalid in math mode", and the character is not typeset as one of
+/// the formula.
+fn text_in_formula(d: &mut Diagnostic, s: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
+    let named = INVALID_IN_MATH
+        .captures(&d.message)
+        .map(|m| m[1].to_owned());
+    if named.is_none() && d.code.as_deref() != Some("math-accent") {
+        return None;
+    }
+    let all = text_in_formulas(h);
+    // An error stops right after the character; a warning only gives the line.
+    let error = d.severity == crate::diagnostics::Severity::Error;
+    let reached: Vec<&TextInFormula> = all
+        .iter()
+        .filter(|c| !error || c.span.end <= h.point)
+        .collect();
+    let pick = |fits: &dyn Fn(&TextInFormula) -> bool| {
+        let mut fitting = reached.iter().copied().filter(|c| fits(c));
+        if error {
+            fitting.last()
+        } else {
+            fitting.next()
+        }
+    };
+    let found_one = match &named {
+        Some(name) => pick(&|c| c.command == Some(name.as_str())).or_else(|| {
+            // A character this table does not know, when nothing else on the
+            // line can be what the message names.
+            let written = find_on_line(h.src, h.at.line, name, None).is_some();
+            (!written && reached.len() == 1 && reached[0].command.is_none()).then(|| reached[0])
+        }),
+        None => pick(&|c| c.accent),
+    }?;
+    let written = h.src.text[found_one.span.clone()].to_owned();
+    let loaded = s.loaded();
+    let text = if ["amsmath", "amstext", "mathtools"]
+        .iter()
+        .any(|p| loaded.contains(*p))
+    {
+        "\\text"
+    } else {
+        "\\textrm"
+    };
+    let word = (!found_one.typed)
+        .then(|| word_around(h.text, &h.line, &found_one.span))
+        .flatten();
+    let replace = |span: Span, new: String| Fix::Edits {
+        title: format!("{} {new}", h.fr_en("Écrire", "Write")),
+        edits: vec![h.src.edit(span, new)],
+    };
+    let mut fixes = Vec::new();
+    if let Some(word) = &word {
+        let whole = h.src.text[word.clone()].to_owned();
+        fixes.push(replace(word.clone(), format!("{text}{{{whole}}}")));
+        let (title, fr, en) = if found_one.accent {
+            (
+                (
+                    "Texte accentué dans une formule",
+                    "Accented text in a formula",
+                ),
+                "une formule ne compose pas les lettres accentuées",
+                "a formula does not typeset accented letters",
+            )
+        } else {
+            (
+                ("Texte dans une formule", "Text in a formula"),
+                "une formule ne la compose pas",
+                "a formula does not typeset it",
+            )
+        };
+        found(
+            d,
+            h,
+            word.clone(),
+            title,
+            (
+                &format!(
+                    "`{written}` est une lettre de texte : {fr}. Le mot `{whole}` se met dans `{text}{{…}}`."
+                ),
+                &format!(
+                    "`{written}` is a letter of text: {en}. The word `{whole}` goes in `{text}{{…}}`."
+                ),
+            ),
+        );
+        return Some(fixes);
+    }
+    if let Some(math) = &found_one.math {
+        fixes.push(replace(found_one.span.clone(), math.clone()));
+    }
+    if !found_one.typed {
+        fixes.push(replace(
+            found_one.span.clone(),
+            format!("{text}{{{written}}}"),
+        ));
+    }
+    let (fr, en) = match (&found_one.math, found_one.accent) {
+        (Some(math), true) => (
+            format!("Dans une formule, cet accent s'écrit `{math}`."),
+            format!("In a formula, this accent is written `{math}`."),
+        ),
+        (Some(math), false) => (
+            format!("Dans une formule, il s'écrit `{math}`."),
+            format!("In a formula, it is written `{math}`."),
+        ),
+        (None, _) => (
+            format!("Du texte se met dans `{text}{{…}}`."),
+            format!("Text goes in `{text}{{…}}`."),
+        ),
+    };
+    let (title, what) = if found_one.typed {
+        (
+            (
+                "Accent de texte dans une formule",
+                "Text accent in a formula",
+            ),
+            (
+                format!(
+                    "`{}` est un accent de texte : une formule ne le compose pas.",
+                    found_one.command.unwrap_or_default()
+                ),
+                format!(
+                    "`{}` is an accent of text: a formula does not typeset it.",
+                    found_one.command.unwrap_or_default()
+                ),
+            ),
+        )
+    } else if found_one.accent {
+        (
+            (
+                "Lettre accentuée dans une formule",
+                "Accented letter in a formula",
+            ),
+            (
+                format!(
+                    "`{written}` est une lettre de texte : une formule ne compose pas les lettres accentuées."
+                ),
+                format!(
+                    "`{written}` is a letter of text: a formula does not typeset accented letters."
+                ),
+            ),
+        )
+    } else {
+        (
+            (
+                "Caractère de texte dans une formule",
+                "Text character in a formula",
+            ),
+            (
+                format!("`{written}` est un caractère de texte : une formule ne le compose pas."),
+                format!("`{written}` is a character of text: a formula does not typeset it."),
+            ),
+        )
+    };
+    found(
+        d,
+        h,
+        found_one.span.clone(),
+        title,
+        (&format!("{} {fr}", what.0), &format!("{} {en}", what.1)),
+    );
+    Some(fixes)
+}
+
 /// A path of Windows written in text: its `\` are read as commands.
 fn path_in_text(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Option<Vec<Fix>> {
     if d.code.as_deref() != Some("undefined-control-sequence") {
@@ -604,9 +1148,12 @@ struct Call {
     /// Whether an environment opens a formula.
     math: bool,
     environment: bool,
+    /// For a macro of the project that needs a formula: the command of its
+    /// definition that does.
+    because: Option<String>,
 }
 
-fn read_call(text: &str, start: usize) -> Option<Call> {
+fn read_call(text: &str, known: &Learned, start: usize) -> Option<Call> {
     let b = text.as_bytes();
     let len = text[start + 1..]
         .bytes()
@@ -620,31 +1167,20 @@ fn read_call(text: &str, start: usize) -> Option<Call> {
     if b.get(i) == Some(&b'*') {
         i += 1;
     }
-    let (head, target, signature, mode, math, environment) = if name == "begin" {
+    let (head, target, found, environment) = if name == "begin" {
         let open = skip_blank(text, i);
         let end = group_end(text, open)?;
         let env = text[open + 1..end - 1].trim().to_owned();
-        let known = kb().environment(&env, None)?;
+        let found = known.environment(&env)?;
         i = end;
-        (
-            format!("\\begin{{{env}}}"),
-            env,
-            known.args.clone(),
-            known.mode,
-            known.math,
-            true,
-        )
+        (format!("\\begin{{{env}}}"), env, found, true)
     } else {
-        let known = kb().command(name, None)?;
-        (
-            format!("\\{name}"),
-            format!("\\{name}"),
-            known.args.clone(),
-            known.mode,
-            false,
-            false,
-        )
+        let found = known.command(name)?;
+        (format!("\\{name}"), format!("\\{name}"), found, false)
     };
+    // Arguments that cannot be told are not looked at.
+    let signature = found.args.clone().unwrap_or_default();
+    let (mode, math) = (found.mode, found.math);
     let head_end = i;
     let mut args = Vec::new();
     let mut complete = true;
@@ -681,6 +1217,7 @@ fn read_call(text: &str, start: usize) -> Option<Call> {
         mode,
         math,
         environment,
+        because: found.because,
     })
 }
 
@@ -720,6 +1257,12 @@ fn shown_name(target: &str, position: usize, name: &str, optional: bool, lang: L
         format!("{target}{{{position}}}")
     };
     let (local, _) = argument_name(&key, name, lang);
+    // An argument read in a definition has no name.
+    let local = if local.is_empty() {
+        "…".to_owned()
+    } else {
+        local
+    };
     if optional {
         format!("[{local}]")
     } else {
@@ -785,7 +1328,7 @@ fn call_at_point(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Optio
     }
     for (line_start, end) in ends {
         if let Some(start) = command_start(h.text, line_start, end)
-            && let Some(call) = read_call(h.text, start)
+            && let Some(call) = read_call(h.text, &h.known, start)
             && let Some(fixes) = explain_call(d, h, &call)
         {
             return Some(fixes);
@@ -797,7 +1340,7 @@ fn call_at_point(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> Optio
     if !(between.is_empty() || between.starts_with(['{', '['])) {
         return None;
     }
-    let call = read_call(h.text, h.line.start + last.start())?;
+    let call = read_call(h.text, &h.known, h.line.start + last.start())?;
     explain_call(d, h, &call)
 }
 
@@ -841,12 +1384,7 @@ fn math_in_text(h: &Here<'_>, span: Span) -> Option<Span> {
                     math = true;
                 } else if matches!(b.get(i + 1), Some(b')' | b']')) {
                     math = false;
-                } else if !math
-                    && len > 0
-                    && kb()
-                        .command(name, None)
-                        .is_some_and(|c| c.mode == Mode::Math)
-                {
+                } else if !math && len > 0 && h.known.math_only(name) {
                     return Some(i..i + 1 + len);
                 }
                 // The text of `\ensuremath{…}` is a formula.
@@ -882,6 +1420,21 @@ fn explain_call(d: &mut Diagnostic, h: &Here<'_>, call: &Call) -> Option<Vec<Fix
         } else {
             (call.start, call.end, "$", "$")
         };
+        let (fr, en) = match &call.because {
+            // A macro of the project: what it is made of needs a formula.
+            Some(inner) => (
+                format!(
+                    "`{head}` est défini avec `{inner}`, qui n'existe que dans une formule, et celui-ci est dans du texte."
+                ),
+                format!(
+                    "`{head}` is defined with `{inner}`, which only exists in a formula, and this one is in text."
+                ),
+            ),
+            None => (
+                format!("`{head}` n'existe que dans une formule, et celui-ci est dans du texte."),
+                format!("`{head}` only exists in a formula, and this one is in text."),
+            ),
+        };
         found(
             d,
             h,
@@ -897,10 +1450,7 @@ fn explain_call(d: &mut Diagnostic, h: &Here<'_>, call: &Call) -> Option<Vec<Fix
                     "Formula command in text",
                 )
             },
-            (
-                &format!("`{head}` n'existe que dans une formule, et celui-ci est dans du texte."),
-                &format!("`{head}` only exists in a formula, and this one is in text."),
-            ),
+            (&fr, &en),
         );
         return Some(edits(
             format!(
@@ -917,26 +1467,38 @@ fn explain_call(d: &mut Diagnostic, h: &Here<'_>, call: &Call) -> Option<Vec<Fix
         && (call.environment || nothing_follows(h.text, call.end))
     {
         let n = call.mandatory();
-        let argument = shown_name(&call.target, position, name, false, h.lang);
         let signature = call.signature(h.lang);
+        // An argument read in a definition has no name: its rank is said.
+        let (fr, en) = if name.is_empty() && n > 1 {
+            (
+                format!("son {position}ᵉ argument"),
+                format!("its argument {position}"),
+            )
+        } else if name.is_empty() {
+            ("son argument".to_owned(), "its argument".to_owned())
+        } else {
+            let argument = shown_name(&call.target, position, name, false, h.lang);
+            if n == 1 {
+                (
+                    format!("son argument `{argument}`"),
+                    format!("its argument `{argument}`"),
+                )
+            } else {
+                (
+                    format!("l'argument `{argument}`"),
+                    format!("the argument `{argument}`"),
+                )
+            }
+        };
+        let fr = fr.replace("son 1ᵉ ", "son 1ᵉʳ ");
         found(
             d,
             h,
             call.start..call.end,
             ("Argument manquant", "Missing argument"),
             (
-                &format!(
-                    "`{head}` s'écrit `{head}{signature}` : il manque {} `{argument}`.",
-                    if n == 1 { "son argument" } else { "l'argument" }
-                ),
-                &format!(
-                    "`{head}` is written `{head}{signature}`: {} `{argument}` is missing.",
-                    if n == 1 {
-                        "its argument"
-                    } else {
-                        "the argument"
-                    }
-                ),
+                &format!("`{head}` s'écrit `{head}{signature}` : il manque {fr}."),
+                &format!("`{head}` is written `{head}{signature}`: {en} is missing."),
             ),
         );
         return Some(Vec::new());
@@ -1060,7 +1622,7 @@ fn environment_begin(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> O
     if h.at.line > h.src.line_of(env.begin.start) + 2 {
         return None;
     }
-    let call = read_call(h.text, env.begin.start)?;
+    let call = read_call(h.text, &h.known, env.begin.start)?;
     explain_call(d, h, &call)
 }
 
