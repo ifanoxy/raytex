@@ -2180,6 +2180,73 @@ fn causes_are_found_and_shown() {
     assert!(failed == 0, "{failed} cases failed");
 }
 
+/// The mistakes of a document are listed together, each with its cause and
+/// its fix, when none of them follows from another: the document of the
+/// scene "fixes" of the application (`ui/dev/selftest.ts`), which has no
+/// blank line between them. A rule that drops what follows a mistake must
+/// not take the next mistakes with it.
+#[test]
+#[ignore = "depends on the local TeX installation"]
+fn independent_mistakes_are_listed_together() {
+    let dist = distribution();
+    let index = TexmfIndex::build(&dist);
+    let main = r"\documentclass{article}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{tikz}
+\begin{document}
+\section{Introduction}\label{sec:intro}
+Du texte en \textbff{gras} et le carré x^2 dans le texte.
+\begin{itemise}
+\item Premier point
+\end{itemise}
+Voir la section~\ref{sec:intr} et les équations
+\begin{align}
+a &= b
+\end{align}
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+\draw[-Stealth] (0,0) -- (1,0);
+\end{tikzpicture}
+\caption{Un schéma}
+\end{figure}
+Le fichier mon_fichier.txt de Dupont & Fils.
+\end{document}
+";
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("main.tex");
+    std::fs::write(&path, main).unwrap();
+    let built = compile(&dist, &index, &path, false);
+    // What is said of each error that has a cause and a fix.
+    let said: Vec<&str> = built
+        .diagnostics
+        .iter()
+        .filter(|d| d.severity == Severity::Error && !d.fixes.is_empty())
+        .filter_map(|d| d.hint.as_ref().and_then(|h| h.advice.as_deref()))
+        .collect();
+    for cause in [
+        "`\\textbf`",
+        "exposant",
+        "`itemize`",
+        "`amsmath`",
+        "`arrows.meta`",
+        "indice",
+        "`\\&`",
+    ] {
+        assert!(
+            said.iter().any(|s| s.contains(cause)),
+            "nothing says {cause}: {said:#?}\n{}",
+            built
+                .diagnostics
+                .iter()
+                .map(describe)
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
+    }
+}
+
 /// A warning is placed on what causes it, and says what it is.
 #[test]
 #[ignore = "depends on the local TeX installation"]

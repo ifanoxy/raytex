@@ -498,7 +498,6 @@ La courbe de la figure~\ref{fig:courbe} est obtenue avec \num{20} points.
 
 const BOOK: &str = r"\documentclass[11pt,oneside]{book}
 \usepackage[T1]{fontenc}
-\usepackage{microtype}
 \usepackage{csquotes}
 \usepackage{xcolor}
 \usepackage[most]{tcolorbox}

@@ -1569,7 +1569,6 @@ fn in_collected_body(d: &mut Diagnostic, _: &mut Sources<'_>, h: &Here<'_>) -> O
             ),
         ),
     );
-    d.swallows = true;
     let line = h.src.line(h.src.line_of(token)).0;
     Some(super::latex::script_fixes(
         h.src,
@@ -2371,9 +2370,6 @@ fn explain_call(d: &mut Diagnostic, h: &Here<'_>, call: &Call) -> Option<Vec<Fix
             },
             (&fr, &en),
         );
-        // Where TeX added a `$`, it goes on in a formula: the rest of the
-        // paragraph is read the other way round.
-        d.swallows |= d.code.as_deref() == Some("missing-dollar");
         let (first, last) = (
             open.trim(),
             if call.environment { close.trim() } else { "$" },

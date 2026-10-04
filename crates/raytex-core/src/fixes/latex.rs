@@ -1460,8 +1460,17 @@ fn unknown_command(
             .then(|| closest(cmd, learned.package_commands(), 1))
             .flatten()
     };
-    let Some(best) = closest(cmd, names, max).or_else(read) else {
-        return Vec::new();
+    // Two names equally close, one from each (`\Sate`: `\date` and the
+    // `\State` of a package), say nothing: none is offered.
+    let far = |name: &str| tx::distance(&cmd.to_lowercase(), &name.to_lowercase());
+    let best = match (closest(cmd, names, max), read()) {
+        (Some(known), Some(read)) if known != read => match far(known).cmp(&far(read)) {
+            std::cmp::Ordering::Less => known,
+            std::cmp::Ordering::Greater => read,
+            std::cmp::Ordering::Equal => return Vec::new(),
+        },
+        (Some(best), _) | (None, Some(best)) => best,
+        (None, None) => return Vec::new(),
     };
     // A package defines exactly this command: loading it is the fix, a
     // name that looks like it is not offered next to it.
@@ -1486,8 +1495,9 @@ fn env_undefined(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix
         return Vec::new();
     };
     let src = &at.src;
-    // What an unknown environment holds is read out of its place.
-    d.swallows = true;
+    // What an unknown environment holds is read out of its place: the
+    // errors inside it are not listed (`refine`). Those after it are
+    // other mistakes, and stay.
     // The name is what LaTeX does not know: the problem is shown on it.
     {
         let opening = format!("\\begin{{{name}}}");
@@ -2131,6 +2141,11 @@ fn missing_dollar(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
     let p = at.point();
     let text = &src.text;
     if text[..p].ends_with('_') || text[..p].ends_with('^') {
+        // Inside a formula of the source, TeX was not reading one any
+        // more: what it reports comes from something before.
+        if src.index.math.iter().any(|f| f.start < p && p <= f.end) {
+            return Vec::new();
+        }
         let learned = s.learned();
         let fixes = script_fixes(src, &line_span, p, &learned, lang);
         let script = &text[p - 1..p];
@@ -2151,9 +2166,8 @@ fn missing_dollar(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
                 }
             ),
         );
-        // TeX goes on in a formula: the rest of the paragraph is read
-        // the other way round.
-        d.swallows = true;
+        // The other mistakes of the paragraph are their own: they stay
+        // listed.
         return fixes;
     }
     if let Some(m) = TRAILING_COMMAND.find(&text[line_span.start..p]) {
@@ -2176,7 +2190,6 @@ fn missing_dollar(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
         let learned = s.learned();
         let math_only = learned.math_only(name.trim_start_matches('\\').trim_end_matches('*'));
         if math_only {
-            d.swallows = true;
             place(d, src, start..start + name.len());
             advise(
                 d,
