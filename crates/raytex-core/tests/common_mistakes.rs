@@ -239,10 +239,14 @@ struct Built {
 
 /// The analyzer of the installed packages, made once for all the cases.
 fn analyzer(dist: &Distribution) -> Arc<PackageAnalyzer> {
+    let new = || Arc::new(PackageAnalyzer::new(Arc::new(TexmfIndex::build(dist))));
+    // MiKTeX installs packages while it compiles: its files are listed
+    // again, like the application does after such a build.
+    if dist.kind == raytex_core::tex::DistroKind::MikTex {
+        return new();
+    }
     static ANALYZER: OnceLock<Arc<PackageAnalyzer>> = OnceLock::new();
-    ANALYZER
-        .get_or_init(|| Arc::new(PackageAnalyzer::new(Arc::new(TexmfIndex::build(dist)))))
-        .clone()
+    ANALYZER.get_or_init(new).clone()
 }
 
 /// Compiles the project like the application does, then adds the live checks.
