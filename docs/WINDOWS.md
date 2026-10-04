@@ -73,9 +73,10 @@ screenshot at each step (in `e2e-output/`):
 node scripts/e2e.mjs
 ```
 
-The CI runs the same on Windows with MiKTeX (workflow *Integration*, job
-*Application on Windows*; screenshots and the Windows installers are
-attached to the run). One scene group by hand:
+The CI runs the same on Windows with TeX Live at every push (workflow
+*Integration*, job *Application on Windows*; screenshots and the Windows
+installers are attached to the run), and with MiKTeX on demand (workflow
+*MiKTeX*, started by hand in *Actions*). One scene group by hand:
 
 The self-test variables are set this way in PowerShell (development builds
 only):

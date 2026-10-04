@@ -1,0 +1,103 @@
+name: MiKTeX
+
+# RayTeX with MiKTeX on Windows, on demand (Actions › MiKTeX › Run workflow).
+# MiKTeX downloads its packages while the tests run, so a failure of its
+# servers fails a run: the tests of every push are those of TeX Live
+# (workflow Integration), and this one says whether MiKTeX still works, when
+# it is asked, for instance before a release.
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  engine:
+    name: Integration tests on Windows (MiKTeX)
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: MiKTeX (packages installed on the fly)
+        shell: pwsh
+        run: |
+          # The installer sometimes fails to download its packages: up to three tries.
+          foreach ($try in 1..3) {
+            choco install miktex --no-progress -y
+            if (Test-Path "C:\Program Files\MiKTeX\miktex\bin\x64\pdflatex.exe") { break }
+            Write-Host "MiKTeX not installed (try $try), trying again"
+            choco uninstall miktex miktex.install -y --force 2>$null
+            Start-Sleep -Seconds 20
+          }
+          $bin = "C:\Program Files\MiKTeX\miktex\bin\x64"
+          if (-not (Test-Path "$bin\pdflatex.exe")) { exit 1 }
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          & "$bin\initexmf.exe" --admin --set-config-value="[MPM]AutoInstall=1"
+          & "$bin\initexmf.exe" --set-config-value="[MPM]AutoInstall=1"
+          & "$bin\miktex.exe" --admin packages update-package-database
+          & "$bin\initexmf.exe" --admin --update-fndb
+          & "$bin\pdflatex.exe" --version
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # One test at a time: two compilations installing the same package at
+      # once make one of them fail (MiKTeX locks its database).
+      - name: Engine tests needing TeX
+        run: cargo test -p raytex-core --release -- --ignored --skip ctan --nocapture --test-threads=1
+
+  # The application itself: the scenes of ui/dev/selftest.ts
+  # (scripts/e2e.mjs), with a screenshot at each step.
+  app:
+    name: Application on Windows (end to end, MiKTeX)
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: MiKTeX (packages installed on the fly)
+        shell: pwsh
+        run: |
+          foreach ($try in 1..3) {
+            choco install miktex --no-progress -y
+            if (Test-Path "C:\Program Files\MiKTeX\miktex\bin\x64\pdflatex.exe") { break }
+            Write-Host "MiKTeX not installed (try $try), trying again"
+            choco uninstall miktex miktex.install -y --force 2>$null
+            Start-Sleep -Seconds 20
+          }
+          $bin = "C:\Program Files\MiKTeX\miktex\bin\x64"
+          if (-not (Test-Path "$bin\pdflatex.exe")) { exit 1 }
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          & "$bin\initexmf.exe" --admin --set-config-value="[MPM]AutoInstall=1"
+          & "$bin\initexmf.exe" --set-config-value="[MPM]AutoInstall=1"
+          & "$bin\miktex.exe" --admin packages update-package-database
+          & "$bin\initexmf.exe" --admin --update-fndb
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Scenes of the application
+        # The runner's session is not interactive: without these, WebView2
+        # takes the window for hidden and stops drawing (no PDF, no preview).
+        env:
+          WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: --disable-features=CalculateNativeWinOcclusion --disable-renderer-backgrounding --disable-background-timer-throttling --disable-backgrounding-occluded-windows
+        run: node scripts/e2e.mjs workflow fixes files projects media
+      # Why MiKTeX could not install a package on the fly, when that happens.
+      - name: MiKTeX logs
+        if: always()
+        shell: pwsh
+        run: |
+          foreach ($pair in @(@("user", "$env:LOCALAPPDATA\MiKTeX\miktex\log"), @("admin", "$env:ProgramData\MiKTeX\miktex\log"))) {
+            $to = "e2e-output/miktex-logs/$($pair[0])"
+            New-Item -ItemType Directory -Force $to | Out-Null
+            if (Test-Path $pair[1]) { Copy-Item "$($pair[1])\*.log" $to -ErrorAction SilentlyContinue }
+          }
+      - name: Logs and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-app-miktex
+          path: e2e-output/
+          retention-days: 14
