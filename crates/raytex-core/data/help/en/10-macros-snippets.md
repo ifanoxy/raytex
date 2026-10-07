@@ -19,7 +19,7 @@ To discover them: the **Macros** button of the formatting bar opens the full lis
 
 ### Your own @ shortcuts
 
-In the **@ macros & snippets** view, *@ shortcuts* tab, the **New @ shortcut** block makes one from two fields: its key or keys (`v`, `vec`, `->`… twelve characters at most, without spaces) and what it writes (`\vec{}`: empty braces become fields where the cursor lands). It shows at once in the suggestions when you type `@`, before those of RayTeX, and next to its command (`\vec` → `@v`). A shortcut that takes a key of RayTeX replaces it. Untick *In formulas only* for a shortcut of text.
+In the **@ macros & snippets** view, the `+` at the top of the view opens **New @ shortcut**, which makes one from two fields: its key or keys (`v`, `vec`, `->`… twelve characters at most, without spaces) and what it writes (`\vec{}`: empty braces become fields where the cursor lands). It shows at once in the suggestions when you type `@`, before those of RayTeX, and next to its command (`\vec` → `@v`). A shortcut that takes a key of RayTeX replaces it. Untick *In formulas only* for a shortcut of text.
 
 They are macros whose trigger starts with `@`: you find them, with a body of several lines if you want, in *Settings › Macros*.
 
@@ -46,12 +46,14 @@ Once inserted, <kbd>Tab</kbd> moves to the next field, <kbd>⇧</kbd> + <kbd>Tab
 
 ## Your macros
 
-*Settings › Macros*: each macro has a name, a **trigger** (text followed by <kbd>Tab</kbd>), an optional **keyboard shortcut** and a **body**:
+*Settings › Macros*: each macro has a name, a **trigger** (text followed by <kbd>Tab</kbd>), an optional **keyboard shortcut** and a **body**. What you write is saved as you type, with nothing to confirm:
 
 ```text
 Trigger: ff        (math mode only)
 Body   : \frac{${1:a}}{${2:b}}${0}
 ```
+
+Type the trigger in the document then <kbd>Tab</kbd>: the body replaces it. A macro for *math mode only* is written in a formula only; elsewhere, <kbd>Tab</kbd> indents as usual. When the list of suggestions is open, <kbd>Tab</kbd> picks the suggestion first.
 
 For the keyboard shortcut, click its button then press the keys: <kbd>Esc</kbd> cancels, <kbd>⌫</kbd> removes it. A triangle marks a shortcut a command of RayTeX already has, which would run before the macro. On a Mac, <kbd>⌥</kbd> + a letter works too, also when the key writes an accent.
 

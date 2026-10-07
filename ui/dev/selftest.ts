@@ -405,8 +405,24 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     const deadKey = () => new KeyboardEvent("keydown", { key: "Dead", code: "KeyN", altKey: true, bubbles: true, cancelable: true });
     window.dispatchEvent(deadKey());
     await until(() => app.settings?.macros[0]?.key === "Alt-n", 5_000, "shortcut recorded");
+    // A macro typed in the settings is saved though its last field never
+    // loses the focus: on macOS, a click on the cross does not take it.
+    document.querySelector<HTMLButtonElement>(".macro-add .btn")!.click();
+    await until(() => document.querySelectorAll(".macro").length === 3, 5_000, "new macro");
+    const card = document.querySelectorAll(".macro")[2];
+    const type = (el: HTMLInputElement | HTMLTextAreaElement, text: string) => {
+      el.focus();
+      el.value = text;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    type(card.querySelector<HTMLInputElement>(".trigger")!, "zz");
+    type(card.querySelector<HTMLTextAreaElement>("textarea")!, "\\emph{${1:x}}");
     await scene("macros-settings");
-    ui.closeOverlay();
+    document.querySelector<HTMLButtonElement>(".modal header .icon-btn:last-of-type")!.click();
+    await until(() => ui.overlay === null, 5_000, "settings closed");
+    await pause(100);
+    const typedMacro = app.settings?.macros[2];
+    const savedTyped = typedMacro?.trigger === "zz" && typedMacro?.body === "\\emph{${1:x}}";
     // The shortcut runs the macro in a formula, and does nothing in text.
     await editor.open(chapter);
     await until(() => editor.active === chapter && !!editor.view, 5_000, "chapter shown");
@@ -423,6 +439,26 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     view.contentDOM.dispatchEvent(deadKey());
     await pause(200);
     const quietInText = view.state.doc.length === length;
+    // Its trigger then Tab writes it, also right after an Escape (the
+    // editor library would let that Tab leave the editor).
+    const key = (name: string, code: number) => new KeyboardEvent("keydown", { key: name, code: name, keyCode: code, which: code, bubbles: true, cancelable: true });
+    const tail = view.state.doc.length;
+    view.dispatch({ changes: { from: tail, insert: "Racine zz" }, selection: { anchor: tail + 9 }, userEvent: "input.type" });
+    view.contentDOM.dispatchEvent(key("Escape", 27));
+    view.contentDOM.dispatchEvent(key("Tab", 9));
+    await pause(300);
+    const byTab = view.state.doc.toString().includes("Racine \\emph{x}");
+    view.contentDOM.dispatchEvent(key("Escape", 27));
+    // The `+` of the panel opens the form of a new `@` shortcut.
+    ui.setVisible("sidebar", true);
+    ui.sidebar = "snippets";
+    await until(() => !!document.querySelector(".panel-header .icon-btn"), 5_000, "snippets panel");
+    const hidden = !document.querySelector(".at-new");
+    document.querySelector<HTMLButtonElement>(".panel-header .icon-btn")!.click();
+    await until(() => !!document.querySelector(".at-new"), 5_000, "new @ shortcut form");
+    const formOpens = hidden && !!document.querySelector(".at-new .at-key-input");
+    await scene("at-shortcut-new");
+    document.querySelector<HTMLButtonElement>(".panel-header .icon-btn")!.click();
     // The `@` shortcut of the user is offered by the engine, before those of RayTeX.
     const offered = await ipc.complete(chapter, "$ @v", "", false);
     const own = offered?.items.find((i) => i.label === "@vv");
@@ -437,8 +473,9 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     await editor.externalChanges([chapter]);
     await pause(200);
     const echo = ui.toasts.slice(before).map((t) => t.message);
+    log(`macros: typed and closed ${savedTyped}, by Tab ${byTab}, + opens the form ${formOpens}`);
     log(`macros: splash gone ${splashGone}, recorded ${app.settings?.macros[0]?.key}, ran ${ran}, quiet in text ${quietInText}, @vv offered ${own?.apply}, beside \\vec ${beside}, toasts after own save ${JSON.stringify(echo)}`);
-    ok = splashGone && ran && quietInText && own?.apply === "\\vec{${1}}" && beside === "@vv" && echo.length === 0 && (await buildOk(log, "macros")) && ok;
+    ok = savedTyped && byTab && formOpens && splashGone && ran && quietInText && own?.apply === "\\vec{${1}}" && beside === "@vv" && echo.length === 0 && (await buildOk(log, "macros")) && ok;
   } catch (e) {
     log(`macros failed: ${e}`);
     ok = false;

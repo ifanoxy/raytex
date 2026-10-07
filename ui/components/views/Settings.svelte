@@ -1,5 +1,6 @@
 <script lang="ts">
   // Settings: application-wide ones, and the open project's raytex.toml.
+  import { onDestroy } from "svelte";
   import { actions, keyFor } from "$lib/actions";
   import { specFromEvent } from "$lib/keys";
   import { REPOSITORY_URL } from "$lib/constants";
@@ -85,11 +86,13 @@
 
   // ------------------------------------------------------------ macros
   function addMacro() {
+    flushTyped();
     set((x) => x.macros.push({ name: t("settings.newMacro"), trigger: "", key: "", body: "", math: false }));
   }
 
   /** A macro that is an `@` shortcut: its trigger starts with `@`. */
   function addAtMacro() {
+    flushTyped();
     set((x) => x.macros.push({ name: t("settings.newAtMacro"), trigger: "@", key: "", body: "", math: true }));
   }
 
@@ -98,8 +101,35 @@
   }
 
   function removeMacro(i: number) {
+    flushTyped();
     set((x) => x.macros.splice(i, 1));
   }
+
+  // What is typed in a macro is saved a moment after the last key, not when
+  // the field loses the focus: on macOS a click on a button does not take
+  // the focus away, and closing the window right after typing lost the
+  // field that was being written (the body, most of the time).
+  let typed: (() => void) | null = null;
+  let typedField = "";
+  let typedTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** `field` names what is typed in: going on in another field saves the first one at once. */
+  function typing(field: string, save: () => void) {
+    if (typed && typedField !== field) flushTyped();
+    typed = save;
+    typedField = field;
+    clearTimeout(typedTimer);
+    typedTimer = setTimeout(flushTyped, 350);
+  }
+
+  function flushTyped() {
+    clearTimeout(typedTimer);
+    const save = typed;
+    typed = null;
+    save?.();
+  }
+
+  onDestroy(flushTyped);
 
   // ------------------------------------------------------- keybindings
 
@@ -405,8 +435,8 @@
         {#each s.macros as m, i (i)}
           <div class="macro card">
             <div class="macro-row">
-              <input class="input" value={m.name} placeholder={t("settings.macroName")} onchange={(e) => updateMacro(i, { name: value(e) })} />
-              <input class="input mono trigger" value={m.trigger} placeholder={t("settings.macroTrigger")} onchange={(e) => updateMacro(i, { trigger: value(e).trim() })} />
+              <input class="input" value={m.name} placeholder={t("settings.macroName")} oninput={(e) => { const v = value(e); typing(`name:${i}`, () => updateMacro(i, { name: v })); }} onchange={flushTyped} />
+              <input class="input mono trigger" value={m.trigger} placeholder={t("settings.macroTrigger")} oninput={(e) => { const v = value(e).trim(); typing(`trigger:${i}`, () => updateMacro(i, { trigger: v })); }} onchange={flushTyped} />
               <button class="btn small key-btn" class:recording={recording === `macro:${i}`} onclick={() => (recording = `macro:${i}`)}>
                 {recording === `macro:${i}` ? t("settings.pressKeys") : m.key ? prettyKey(m.key) : t("settings.noShortcut")}
               </button>
@@ -414,7 +444,7 @@
               <label class="inline"><input type="checkbox" checked={m.math} onchange={(e) => updateMacro(i, { math: checked(e) })} />{t("settings.macroMath")}</label>
               <button class="icon-btn" onclick={() => removeMacro(i)} title={t("common.delete")}><Icon name="trash" /></button>
             </div>
-            <textarea class="input" rows="3" value={m.body} placeholder={"\\frac{${1:a}}{${2:b}}${0}"} spellcheck="false" onchange={(e) => updateMacro(i, { body: (e.currentTarget as HTMLTextAreaElement).value })}></textarea>
+            <textarea class="input" rows="3" value={m.body} placeholder={"\\frac{${1:a}}{${2:b}}${0}"} spellcheck="false" oninput={(e) => { const v = (e.currentTarget as HTMLTextAreaElement).value; typing(`body:${i}`, () => updateMacro(i, { body: v })); }} onchange={flushTyped}></textarea>
           </div>
         {/each}
         <div class="macro-add">

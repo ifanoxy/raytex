@@ -23,26 +23,37 @@
     actions?: Snippet;
   } = $props();
 
+  /**
+   * Closes the window after the field being edited was committed: on macOS
+   * a click on a button (the cross) does not take the focus away, and the
+   * field never got its `change`.
+   */
+  function close() {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && active.matches("input, textarea, select")) active.blur();
+    onclose();
+  }
+
   function key(e: KeyboardEvent) {
     // Escape already used inside (a completion list, a snippet field closed).
     if (e.defaultPrevented) return;
     if (e.key === "Escape" && !ui.dialog && !ui.menu) {
       e.stopPropagation();
-      onclose();
+      close();
     }
   }
 </script>
 
 <svelte:window onkeydown={key} />
 
-<div class="overlay" role="presentation" onpointerdown={(e) => e.target === e.currentTarget && onclose()}>
+<div class="overlay" role="presentation" onpointerdown={(e) => e.target === e.currentTarget && close()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label={title} style:width style:height>
     <header>
       {#if icon}<Icon name={icon} size={18} />{/if}
       <h2>{title}</h2>
       <div class="spacer"></div>
       {@render actions?.()}
-      <button class="icon-btn" title={t("common.close")} onclick={onclose}><Icon name="x" /></button>
+      <button class="icon-btn" title={t("common.close")} onclick={close}><Icon name="x" /></button>
     </header>
     <div class="body">
       {@render children()}

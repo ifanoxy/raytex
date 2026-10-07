@@ -19,7 +19,7 @@ Pour les découvrir : le bouton **Macros** de la barre de mise en forme ouvre la
 
 ### Vos propres raccourcis @
 
-Dans la vue **Macros @ et extraits**, onglet *Raccourcis @*, le bloc **Nouveau raccourci @** en crée un en deux champs : la ou les touches (`v`, `vec`, `->`… douze caractères au plus, sans espace) et ce qu'il écrit (`\vec{}` : les accolades vides deviennent des champs où le curseur se place). Il apparaît aussitôt dans les suggestions quand vous tapez `@`, avant ceux de RayTeX, et à côté de sa commande (`\vec` → `@v`). Un raccourci qui reprend une touche de RayTeX le remplace. Décochez *Dans les formules seulement* pour un raccourci de texte.
+Dans la vue **Macros @ et extraits**, le `+` en haut de la vue ouvre **Nouveau raccourci @**, qui en crée un en deux champs : la ou les touches (`v`, `vec`, `->`… douze caractères au plus, sans espace) et ce qu'il écrit (`\vec{}` : les accolades vides deviennent des champs où le curseur se place). Il apparaît aussitôt dans les suggestions quand vous tapez `@`, avant ceux de RayTeX, et à côté de sa commande (`\vec` → `@v`). Un raccourci qui reprend une touche de RayTeX le remplace. Décochez *Dans les formules seulement* pour un raccourci de texte.
 
 Ce sont des macros dont le déclencheur commence par `@` : vous les retrouvez, avec un corps de plusieurs lignes si vous voulez, dans *Réglages › Macros*.
 
@@ -46,12 +46,14 @@ Une fois inséré, <kbd>Tab</kbd> passe au champ suivant, <kbd>⇧</kbd> + <kbd>
 
 ## Vos macros
 
-*Réglages › Macros* : chaque macro a un nom, un **déclencheur** (texte suivi de <kbd>Tab</kbd>), un **raccourci clavier** facultatif et un **corps** :
+*Réglages › Macros* : chaque macro a un nom, un **déclencheur** (texte suivi de <kbd>Tab</kbd>), un **raccourci clavier** facultatif et un **corps**. Ce que vous écrivez est enregistré à mesure, sans rien à valider :
 
 ```text
 Déclencheur : ff        (mode mathématique uniquement)
 Corps       : \frac{${1:a}}{${2:b}}${0}
 ```
+
+Tapez le déclencheur dans le document puis <kbd>Tab</kbd> : le corps le remplace. Une macro *en mode mathématique uniquement* ne s'écrit que dans une formule ; ailleurs, <kbd>Tab</kbd> indente comme d'habitude. Quand la liste des suggestions est ouverte, <kbd>Tab</kbd> choisit d'abord la suggestion.
 
 Pour le raccourci clavier, cliquez sur son bouton puis tapez les touches : <kbd>Échap</kbd> annule, <kbd>⌫</kbd> le retire. Un triangle signale un raccourci déjà pris par une commande de RayTeX, qui passerait avant la macro. Sur Mac, <kbd>⌥</kbd> + une lettre fonctionne aussi, même quand la touche écrit un accent.
 

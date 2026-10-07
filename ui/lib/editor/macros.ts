@@ -5,6 +5,7 @@ import { snippet } from "@codemirror/autocomplete";
 import type { EditorView } from "@codemirror/view";
 import type { Macro } from "../types";
 import { escapeSnippet } from "../utils";
+import { triggerAt } from "./trigger";
 
 /**
  * Inserts a snippet in place of the selection; `${SELECTION}` in the body
@@ -30,16 +31,8 @@ export function expandTrigger(view: EditorView, macros: Macro[], inMath: (pos: n
   const sel = view.state.selection.main;
   if (!sel.empty) return false;
   const line = view.state.doc.lineAt(sel.head);
-  const before = line.text.slice(0, sel.head - line.from);
-  for (const m of macros) {
-    if (!m.trigger || !before.endsWith(m.trigger)) continue;
-    const start = sel.head - m.trigger.length;
-    const prev = before[before.length - m.trigger.length - 1];
-    // The trigger must be a whole word (or start after a space / brace).
-    if (prev && /[A-Za-z0-9]/.test(prev) && /^[A-Za-z0-9]/.test(m.trigger)) continue;
-    if (m.math && !inMath(sel.head)) continue;
-    snippet(m.body.replaceAll("${SELECTION}", ""))(view, { label: m.trigger }, start, sel.head);
-    return true;
-  }
-  return false;
+  const m = triggerAt(line.text.slice(0, sel.head - line.from), macros, () => inMath(sel.head));
+  if (!m) return false;
+  snippet(m.body.replaceAll("${SELECTION}", ""))(view, { label: m.trigger }, sel.head - m.trigger.length, sel.head);
+  return true;
 }

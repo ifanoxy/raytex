@@ -443,6 +443,10 @@ class EditorStore {
         ...foldKeymap,
         ...lintKeymap,
         indentWithTab,
+        // The editor library lets Tab leave the editor for two seconds after
+        // an Escape nothing used. Here Tab always belongs to the text (the
+        // fields of a snippet, a macro, the indentation): Escape is used.
+        { key: "Escape", run: () => true },
       ]),
       EditorView.updateListener.of((u) => this.onViewUpdate(u)),
       EditorView.domEventHandlers({

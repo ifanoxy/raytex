@@ -34,7 +34,24 @@
   const mine = $derived(shownShortcuts.filter((s) => s.own));
   const builtin = $derived(shownShortcuts.filter((s) => !s.own));
 
-  // A new `@` shortcut: a key and what it writes.
+  // A new `@` shortcut: a key and what it writes. The form opens from the
+  // `+` of the panel, and closes once the shortcut is added.
+  let adding = $state(false);
+  let keyInput = $state<HTMLInputElement | null>(null);
+
+  function openNew() {
+    tab = "shortcuts";
+    adding = true;
+    // Once the form is drawn.
+    requestAnimationFrame(() => keyInput?.focus());
+  }
+
+  function closeNew() {
+    adding = false;
+    newKey = "";
+    newBody = "";
+  }
+
   let newKey = $state("");
   let newBody = $state("");
   let newMath = $state(true);
@@ -56,8 +73,7 @@
       else x.macros.push(macro);
     });
     ui.toast("success", t("snippets.atAdded", { key: trigger, body: atPreview(body) }));
-    newKey = "";
-    newBody = "";
+    closeNew();
   }
 
   function removeShortcut(trigger: string) {
@@ -79,6 +95,7 @@
 </script>
 
 <PanelHeader title={t("sidebar.snippets")}>
+  <button class="icon-btn" class:active={adding} title={t("snippets.atNew")} aria-label={t("snippets.atNew")} aria-expanded={adding} onclick={() => (adding ? closeNew() : openNew())}><Icon name="plus" /></button>
   <button class="icon-btn" title={t("snippets.editMacros")} onclick={() => ui.openSettings("macros")}><Icon name="edit" /></button>
 </PanelHeader>
 
@@ -119,17 +136,29 @@
       <strong>{t("snippets.shortcutsTitle")}</strong>
       <p>{t("snippets.shortcutsTip")}</p>
     </div>
+    {#if adding}
+    <!-- Escape in one of its fields closes the form; the cross does the same. -->
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <form
       class="at-new"
       onsubmit={(e) => {
         e.preventDefault();
         void addShortcut();
       }}
+      onkeydown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          closeNew();
+        }
+      }}
     >
-      <strong class="section">{t("snippets.atNew")}</strong>
+      <div class="at-new-head">
+        <strong class="section">{t("snippets.atNew")}</strong>
+        <button class="icon-btn" type="button" title={t("common.close")} aria-label={t("common.close")} onclick={closeNew}><Icon name="x" size={13} /></button>
+      </div>
       <div class="at-fields">
         <span class="at-sign mono">@</span>
-        <input class="input small mono at-key-input" class:invalid={keyProblem} bind:value={newKey} placeholder="v" aria-label={t("snippets.atKey")} spellcheck="false" autocomplete="off" />
+        <input class="input small mono at-key-input" class:invalid={keyProblem} bind:this={keyInput} bind:value={newKey} placeholder="v" aria-label={t("snippets.atKey")} spellcheck="false" autocomplete="off" />
         <span class="faint">→</span>
         <input class="input small mono at-body-input" bind:value={newBody} placeholder={"\\vec{}"} aria-label={t("snippets.atCommand")} spellcheck="false" autocomplete="off" />
         <button class="btn small primary" type="submit" disabled={!canAdd}>{t("snippets.atAdd")}</button>
@@ -141,6 +170,7 @@
         <p class="at-note">{t("snippets.atReplaces", { key: `@${key}`, body: replaced })}</p>
       {/if}
     </form>
+    {/if}
     {#if mine.length}
       <strong class="section">{t("snippets.atMine")}</strong>
       <div class="at-grid">
@@ -252,6 +282,15 @@
   }
   .at-new .section {
     margin: 4px 0 6px;
+  }
+  .at-new-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .at-new-head .icon-btn {
+    width: 22px;
+    height: 22px;
   }
   .at-fields {
     display: flex;

@@ -15,6 +15,23 @@ window.addEventListener("unhandledrejection", (e) => {
   void logFrontend("error", `unhandled promise rejection: ${reason}`).catch(() => {});
 });
 
+// What is typed in RayTeX is LaTeX, names and paths: the automatic
+// correction of the system (macOS changes words, quotes and dashes as they
+// are typed, also in plain fields) has no place in any field.
+document.addEventListener(
+  "focusin",
+  (e) => {
+    const el = e.target;
+    if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) || el.dataset.prose !== undefined) return;
+    if (el instanceof HTMLInputElement && !["text", "search", ""].includes(el.type)) return;
+    el.setAttribute("autocorrect", "off");
+    el.setAttribute("autocapitalize", "off");
+    el.setAttribute("autocomplete", "off");
+    el.spellcheck = false;
+  },
+  true,
+);
+
 async function start() {
   // In a plain browser (development only), a simulated engine lets the
   // interface be designed without the desktop shell.

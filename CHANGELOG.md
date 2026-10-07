@@ -4,12 +4,17 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
-- **Your own `@` shortcuts**: the *@ shortcuts* tab makes one from a key (`v`, `vec`, `->`…) and what it writes (`\vec{}`); it is offered in the suggestions as soon as `@` is typed, before those of RayTeX and next to its command, and replaces the one of RayTeX that has the same key. They are macros whose trigger starts with `@`, also editable in *Settings › Macros*.
+- **Your own `@` shortcuts**: the `+` of the *@ macros & snippets* view makes one from a key (`v`, `vec`, `->`…) and what it writes (`\vec{}`); it is offered in the suggestions as soon as `@` is typed, before those of RayTeX and next to its command, and replaces the one of RayTeX that has the same key. They are macros whose trigger starts with `@`, also editable in *Settings › Macros*.
 - **A launch screen**: the ray and a progress line are drawn with the window itself, in the colours of the theme, until the interface and the last project are ready. The window was empty and black meanwhile.
 - Fixed, seen on macOS:
   - "main.tex was changed by another program" came up while typing, though nothing but RayTeX wrote the file: the system reports the saves of RayTeX itself, late, when the text has already changed again. A save is now told from a change made by another program by what was written, not by the text of the editor at the time of the report.
   - The shortcut of a macro, and of any command in *Settings › Shortcuts*, could not be recorded: the keys went to the button that was clicked, and a click does not give a button the focus on macOS. They are read from the window; Escape cancels, a click elsewhere too.
   - The shortcut of a macro did not run when it used ⌥ with a key that writes an accent (⌥N, ⌥E…). Macros are matched like the commands of RayTeX, by the letter of the key on the keyboard in use (also on AZERTY, where ⌥A is not at the place of ⌥Q). A shortcut a command already has is marked in the settings.
+  - The trigger of a macro then Tab did not always write the macro:
+    - A macro written in *Settings › Macros* was saved when its field lost the focus, not before. Closing the window with Escape, or with its cross on macOS where a click does not take the focus, left the trigger or the body as they were. The fields are saved as they are typed, and closing the window keeps what was being written.
+    - macOS could correct what is typed in a field of RayTeX as if it were a word (a trigger, a key, a name of file). The fields of the application are no longer corrected, capitalised or completed by the system.
+    - Tab pressed within two seconds of an Escape left the editor instead of writing in it. Tab always belongs to the text: the field of a snippet, a macro, the indentation.
+  - A trigger typed right after a backslash is the name of a command: `\al` then Tab no longer writes the macro whose trigger is `al`.
 - For contributors: `E2E_SHOTS=0 node scripts/e2e.mjs` runs the scenes without screenshots, which are of the whole screen.
 
 ## [0.3.0] — 2026-10-05
