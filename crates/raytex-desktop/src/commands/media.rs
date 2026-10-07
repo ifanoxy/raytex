@@ -243,6 +243,35 @@ pub struct SnippetRequest {
     pub engine: Option<Engine>,
 }
 
+/// The root document of `file`, its text (as it is in the editor) and the
+/// engine that compiles it.
+fn preview_context(
+    state: &AppState,
+    file: &std::path::Path,
+    engine: Option<Engine>,
+    dist: &raytex_core::tex::Distribution,
+) -> (PathBuf, String, Engine) {
+    let lang = state.lang();
+    let prepared = super::build::prepare(state, file);
+    let project = state.project();
+    let ws = project.as_ref().map(|p| &p.ws);
+    let root = prepared
+        .as_ref()
+        .map(|p| p.root.clone())
+        .unwrap_or_else(|| file.to_path_buf());
+    let text = ws
+        .and_then(|ws| ws.document(&root).map(|d| d.text.clone()))
+        .or_else(|| std::fs::read_to_string(&root).ok())
+        .unwrap_or_default();
+    let engine = engine.or_else(|| {
+        let p = prepared.as_ref()?;
+        build::plan(&p.root, &p.settings, Some(dist), &p.facts, lang)
+            .ok()
+            .map(|plan| plan.engine)
+    });
+    (root, text, engine.unwrap_or(Engine::Pdflatex))
+}
+
 /// Compiles a small standalone document next to the project.
 #[tauri::command]
 pub async fn preview_snippet(app: AppHandle, request: SnippetRequest) -> CmdResult<PreviewOutcome> {
@@ -250,26 +279,7 @@ pub async fn preview_snippet(app: AppHandle, request: SnippetRequest) -> CmdResu
         let file = abs(&request.path);
         let dist = state.active_distribution().ok_or("no TeX distribution")?;
         let lang = state.lang();
-        let (root, root_text, engine) = {
-            let prepared = super::build::prepare(state, &file);
-            let project = state.project();
-            let ws = project.as_ref().map(|p| &p.ws);
-            let root = prepared
-                .as_ref()
-                .map(|p| p.root.clone())
-                .unwrap_or_else(|| file.clone());
-            let text = ws
-                .and_then(|ws| ws.document(&root).map(|d| d.text.clone()))
-                .or_else(|| std::fs::read_to_string(&root).ok())
-                .unwrap_or_default();
-            let engine = request.engine.or_else(|| {
-                let p = prepared.as_ref()?;
-                build::plan(&p.root, &p.settings, Some(&dist), &p.facts, lang)
-                    .ok()
-                    .map(|plan| plan.engine)
-            });
-            (root, text, engine.unwrap_or(Engine::Pdflatex))
-        };
+        let (root, root_text, engine) = preview_context(state, &file, request.engine, &dist);
         let project = if request.project_preamble {
             preview::project_preamble(&root_text)
         } else {
@@ -326,12 +336,76 @@ pub async fn preview_snippet(app: AppHandle, request: SnippetRequest) -> CmdResu
                 class_options: &request.class_options,
                 preamble: &preamble,
                 body: &request.body,
+                document: None,
                 engine,
                 workdir: &workdir,
                 out_dir: &out_dir,
                 job: &job,
                 timeout: Duration::from_secs(60),
                 lang,
+                install_missing: state.settings().build.miktex_auto_install,
+            },
+        );
+        previews.insert(request.job.clone(), (key, outcome.clone()));
+        Ok(outcome)
+    })
+    .await?
+}
+
+/// A whole document to compile for a picture of its pages (the margins
+/// and the page styles being set).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PageRequest {
+    /// A file of the project: its root document gives the folder and the engine.
+    pub path: String,
+    /// Kind of preview: one result is kept per kind.
+    pub job: String,
+    /// The document, from its class to `\end{document}`.
+    pub source: String,
+}
+
+/// Compiles a whole document next to the project, with the engine of the
+/// project, without touching its files.
+#[tauri::command]
+pub async fn preview_page(app: AppHandle, request: PageRequest) -> CmdResult<PreviewOutcome> {
+    blocking(&app, move |_, state| {
+        let file = abs(&request.path);
+        let dist = state.active_distribution().ok_or("no TeX distribution")?;
+        let (root, _, engine) = preview_context(state, &file, None, &dist);
+        let workdir = root
+            .parent()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| file.clone());
+        let mut hasher = DefaultHasher::new();
+        (&request.source, engine, &workdir).hash(&mut hasher);
+        let key = hasher.finish();
+        let mut previews = state.previews.lock().map_err(|e| e.to_string())?;
+        if let Some((k, outcome)) = previews.get(&request.job)
+            && *k == key
+            && outcome.pdf.as_ref().is_some_and(|p| p.exists())
+        {
+            return Ok(outcome.clone());
+        }
+        let job = format!(
+            "{}-preview",
+            request
+                .job
+                .replace(|c: char| !c.is_ascii_alphanumeric(), "")
+        );
+        let outcome = preview::compile(
+            &dist,
+            &PreviewRequest {
+                class_options: "",
+                preamble: "",
+                body: "",
+                document: Some(&request.source),
+                engine,
+                workdir: &workdir,
+                out_dir: &state.paths.cache.join("previews"),
+                job: &job,
+                timeout: Duration::from_secs(90),
+                lang: state.lang(),
                 install_missing: state.settings().build.miktex_auto_install,
             },
         );

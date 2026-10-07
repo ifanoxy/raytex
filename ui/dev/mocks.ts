@@ -765,6 +765,18 @@ export function installMocks() {
         case "preview_snippet":
           await new Promise((r) => setTimeout(r, 300));
           return { pdf: p("build/preview.pdf"), bbox: [0, 0, 113.8, 85.4], border: 6, diagnostics: [], durationMs: 420, engine: "pdflatex" };
+        case "preview_page":
+          await new Promise((r) => setTimeout(r, 300));
+          // A4 with margins of 2.5 cm, as TeX would measure it.
+          return {
+            pdf: p("build/preview.pdf"),
+            bbox: null,
+            border: 0,
+            measures: [597.50787, 845.04684, 455.24408, 702.78308, -1.1337, -1.1337, -30.51595, 12, 18.38225, 30, 65, 11, 0, 0],
+            diagnostics: [],
+            durationMs: 640,
+            engine: "pdflatex",
+          };
         case "system_fonts":
           return ["Georgia", "Helvetica Neue", "Menlo", "Palatino", "Avenir Next"].map((name) => ({
             name,

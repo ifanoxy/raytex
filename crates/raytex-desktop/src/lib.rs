@@ -131,6 +131,7 @@ pub fn run() {
             commands::media::tikz_templates,
             commands::media::tikz_libraries,
             commands::media::preview_snippet,
+            commands::media::preview_page,
             commands::app::selftest_target,
             commands::app::selftest_exit,
             commands::app::selftest_scenes,

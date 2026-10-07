@@ -111,6 +111,8 @@
     grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
     layout: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M9 14h12"/>',
     comment: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+    margins: '<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M8.5 6.5h7v11h-7z" stroke-dasharray="2 1.6"/>',
+    "page-style": '<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M8 7h8M8 17h3M14.5 17h1.5"/><path d="M9 14.5l6-5" opacity=".45"/>',
     "page-break": '<path d="M6 3v5h12V3M6 21v-5h12v5M3 12h2M8 12h2M14 12h2M19 12h2"/>',
     pointer: '<path d="M5 3l14 7.5-6.2 1.6L10 19z"/><path d="m12.8 12.1 5 5"/>',
     square: '<rect x="4" y="5" width="16" height="14" rx="1.5"/>',

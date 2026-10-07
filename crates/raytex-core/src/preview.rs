@@ -26,6 +26,10 @@ pub struct PreviewRequest<'a> {
     pub preamble: &'a str,
     /// Body of the document (a `tikzpicture`, sample text…).
     pub body: &'a str,
+    /// A whole document compiled as it is, with its own class (the layout
+    /// of a page): the class options, the preamble and the body above are
+    /// then left aside.
+    pub document: Option<&'a str>,
     /// Engine to use.
     pub engine: Engine,
     /// Working directory (the folder of the root document).
@@ -53,6 +57,9 @@ pub struct PreviewOutcome {
     pub bbox: Option<[f64; 4]>,
     /// White space added around the picture by `standalone` (`border`), in points.
     pub border: f64,
+    /// Lengths the document printed with `\typeout{RTXMEASURE:…}`
+    /// (`\the\textwidth:\the\textheight…`), in TeX points.
+    pub measures: Option<Vec<f64>>,
     /// Problems. `line` is relative to the body (1-based); problems of the
     /// preamble have no line.
     pub diagnostics: Vec<Diagnostic>,
@@ -74,6 +81,12 @@ const BBOX_HOOK: &str = r"\makeatletter
 
 /// Full source of the preview document, and the line where the body starts (1-based).
 pub fn document(req: &PreviewRequest<'_>) -> (String, usize) {
+    if let Some(whole) = req.document {
+        let body_line = whole
+            .find("\\begin{document}")
+            .map_or(1, |at| whole[..at].lines().count() + 2);
+        return (whole.to_string(), body_line);
+    }
     let mut src = format!("\\documentclass[{}]{{standalone}}\n", req.class_options);
     src.push_str(req.preamble.trim_end());
     src.push('\n');
@@ -83,6 +96,14 @@ pub fn document(req: &PreviewRequest<'_>) -> (String, usize) {
     src.push_str(req.body.trim_end());
     src.push_str("\n\\end{document}\n");
     (src, body_line)
+}
+
+/// `RTXMEASURE:597.5pt:845.0pt` → the lengths, in points.
+fn measures_from_log(log: &str) -> Option<Vec<f64>> {
+    let line = log.lines().find_map(|l| l.strip_prefix("RTXMEASURE:"))?;
+    line.split(':')
+        .map(|v| v.trim().trim_end_matches("pt").parse::<f64>().ok())
+        .collect()
 }
 
 /// `border=6pt` → 6.0 (points); 0 when absent.
@@ -131,6 +152,7 @@ pub fn compile(dist: &Distribution, req: &PreviewRequest<'_>) -> PreviewOutcome 
         pdf: None,
         bbox: None,
         border: border_of(req.class_options),
+        measures: None,
         diagnostics: Vec::new(),
         duration_ms: 0,
         engine: req.engine,
@@ -153,6 +175,11 @@ pub fn compile(dist: &Distribution, req: &PreviewRequest<'_>) -> PreviewOutcome 
     let pdf = out_dir.join(format!("{}.pdf", req.job));
     let log_path = out_dir.join(format!("{}.log", req.job));
     let _ = std::fs::remove_file(&pdf);
+    if req.document.is_some() {
+        // What the last document wrote there may not be read by this one
+        // (another class, a package that is gone).
+        let _ = std::fs::remove_file(out_dir.join(format!("{}.aux", req.job)));
+    }
     if let Err(e) = std::fs::write(&tex, &source) {
         return fail(outcome, e.to_string());
     }
@@ -185,13 +212,28 @@ pub fn compile(dist: &Distribution, req: &PreviewRequest<'_>) -> PreviewOutcome 
     .cwd(req.workdir)
     .stopping_with_app();
 
-    let run = match process::output(&cmd, req.timeout) {
+    let read_log = || {
+        std::fs::read(&log_path)
+            .map(|b| String::from_utf8_lossy(&b).into_owned())
+            .unwrap_or_default()
+    };
+    let mut run = match process::output(&cmd, req.timeout) {
         Ok(run) => run,
         Err(e) => return fail(outcome, format!("{}: {e}", req.engine.label())),
     };
-    let log_text = std::fs::read(&log_path)
-        .map(|b| String::from_utf8_lossy(&b).into_owned())
-        .unwrap_or_default();
+    let mut log_text = read_log();
+    // A whole document may refer to its own pages ("page 2 of 5"): once more.
+    if req.document.is_some()
+        && req.engine != Engine::Tectonic
+        && pdf.is_file()
+        && (log_text.contains("Rerun to get") || log_text.contains("Label(s) may have changed"))
+    {
+        match process::output(&cmd, req.timeout) {
+            Ok(again) => run = again,
+            Err(e) => return fail(outcome, format!("{}: {e}", req.engine.label())),
+        }
+        log_text = read_log();
+    }
     let report = log::parse_log(&log_text, req.workdir, &tex, req.lang);
     // Named like the log parser names it (the working directory's form).
     let real_workdir = dunce::canonicalize(req.workdir).ok();
@@ -225,6 +267,7 @@ pub fn compile(dist: &Distribution, req: &PreviewRequest<'_>) -> PreviewOutcome 
         outcome.diagnostics.push(d);
     }
     outcome.bbox = bbox_from_log(&log_text);
+    outcome.measures = measures_from_log(&log_text);
     if pdf.is_file() {
         outcome.pdf = Some(pdf);
     } else if !outcome
@@ -524,12 +567,111 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_whole_document_is_compiled_as_it_is() {
+        let dir = Path::new(".");
+        let whole = "\\documentclass{report}\n\\usepackage{geometry}\n\\begin{document}\nTexte\n\\end{document}\n";
+        let req = PreviewRequest {
+            class_options: "",
+            preamble: "",
+            body: "",
+            document: Some(whole),
+            engine: Engine::Pdflatex,
+            workdir: dir,
+            out_dir: dir,
+            job: "t",
+            timeout: Duration::from_secs(1),
+            lang: Lang::En,
+            install_missing: false,
+        };
+        let (src, line) = document(&req);
+        assert_eq!(src, whole);
+        assert_eq!(src.lines().nth(line - 1).unwrap(), "Texte");
+    }
+
+    #[test]
+    fn measures_are_read_from_the_log() {
+        let log = "(./t.aux)\nRTXMEASURE:597.50787pt:845.04684pt:-15.36449pt\n[1]";
+        assert_eq!(
+            measures_from_log(log),
+            Some(vec![597.50787, 845.04684, -15.36449])
+        );
+        assert_eq!(measures_from_log("nothing"), None);
+        assert_eq!(measures_from_log("RTXMEASURE:12pt:\\textwidth"), None);
+    }
+
+    /// A whole document, with the class and the layout it asks for: the
+    /// pages are made, the lengths TeX sets are given back, and a page
+    /// that refers to the last one is compiled once more.
+    #[test]
+    #[ignore = "needs a TeX distribution"]
+    fn a_page_is_compiled_and_measured() {
+        let dist = distribution();
+        let dir = tempfile::tempdir().unwrap();
+        let whole = "\\documentclass[a4paper]{article}\n\\usepackage{geometry}\n\\geometry{margin=2.5cm}\n\\begin{document}\n\\typeout{RTXMEASURE:\\the\\paperwidth:\\the\\textwidth}\nPage \\thepage\\ of \\pageref{end}.\\newpage Last\\label{end}\n\\end{document}\n";
+        let outcome = compile(
+            &dist,
+            &PreviewRequest {
+                class_options: "",
+                preamble: "",
+                body: "",
+                document: Some(whole),
+                engine: Engine::Pdflatex,
+                workdir: dir.path(),
+                out_dir: dir.path(),
+                job: "page",
+                timeout: Duration::from_secs(300),
+                lang: Lang::En,
+                install_missing: true,
+            },
+        );
+        assert!(outcome.pdf.is_some(), "{:?}", outcome.diagnostics);
+        let measures = outcome.measures.expect("measures");
+        // 21 cm of paper, 16 cm of text.
+        assert!((measures[0] - 597.5).abs() < 0.1, "{measures:?}");
+        assert!((measures[1] - 455.24).abs() < 0.1, "{measures:?}");
+        // Compiled twice: the reference to the last page is known.
+        assert!(
+            !outcome
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("undefined") || d.message.contains("Rerun")),
+            "{:?}",
+            outcome.diagnostics
+        );
+        // An error is placed in the body.
+        let broken = whole.replace("Last", "\\oops");
+        let outcome = compile(
+            &dist,
+            &PreviewRequest {
+                class_options: "",
+                preamble: "",
+                body: "",
+                document: Some(&broken),
+                engine: Engine::Pdflatex,
+                workdir: dir.path(),
+                out_dir: dir.path(),
+                job: "page",
+                timeout: Duration::from_secs(300),
+                lang: Lang::En,
+                install_missing: true,
+            },
+        );
+        let error = outcome
+            .diagnostics
+            .iter()
+            .find(|d| d.severity == Severity::Error)
+            .expect("an error");
+        assert_eq!(error.line, Some(2), "{error:?}");
+    }
+
+    #[test]
     fn document_places_body_after_preamble() {
         let dir = Path::new(".");
         let req = PreviewRequest {
             class_options: "tikz,border=6pt",
             preamble: "\\usepackage{tikz}\n",
             body: "\\begin{tikzpicture}\\draw (0,0)--(1,1);\\end{tikzpicture}",
+            document: None,
             engine: Engine::Pdflatex,
             workdir: dir,
             out_dir: dir,
@@ -566,6 +708,7 @@ mod tests {
                 class_options: options,
                 preamble,
                 body,
+                document: None,
                 engine,
                 workdir: out,
                 out_dir: out,

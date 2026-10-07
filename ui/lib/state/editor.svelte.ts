@@ -1139,6 +1139,22 @@ class EditorStore {
   }
 
   /** Inserts plain text at the cursor. */
+  /**
+   * Writes `code` at the cursor on a line of its own, without touching
+   * what is selected: a command that holds for the page (`\thispagestyle`,
+   * `\newgeometry`).
+   */
+  insertOwnLine(code: string, view = this.view): boolean {
+    if (!view || view.state.readOnly) return false;
+    const at = view.state.selection.main.head;
+    const line = view.state.doc.lineAt(at);
+    const before = line.text.slice(0, at - line.from).trim() ? "\n" : "";
+    const after = line.text.slice(at - line.from).trim() ? "\n" : "";
+    const insert = `${before}${code}${after}`;
+    view.dispatch({ changes: { from: at, insert }, selection: { anchor: at + before.length + code.length }, scrollIntoView: true, userEvent: "input" });
+    return true;
+  }
+
   insertText(text: string, view = this.view): boolean {
     if (!view || view.state.readOnly) return false;
     view.dispatch(view.state.replaceSelection(text), { scrollIntoView: true, userEvent: "input" });
@@ -1159,6 +1175,18 @@ class EditorStore {
   async rootOf(path: string | null = this.active): Promise<string | null> {
     if (!path) return project.info?.main ?? null;
     return (await ipc.rootOf(path).catch(() => null)) ?? project.info?.main ?? path;
+  }
+
+  /**
+   * The root document of `from` and its text as the editor has it (opened
+   * in a background tab if needed).
+   */
+  async rootSource(from: string | null = this.active): Promise<{ root: string; text: string } | null> {
+    const root = await this.rootOf(from);
+    if (!root) return null;
+    if (!this.model(root) && !(await this.open(root, { background: true, focus: false }))) return null;
+    const text = this.textOf(root);
+    return text === null ? null : { root, text };
   }
 
   /**

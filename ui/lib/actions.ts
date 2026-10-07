@@ -231,6 +231,8 @@ export const actions: Action[] = [
   },
   { id: "insert.tikz", title: "action.tikzStudio", category: "insert", keys: "Mod-Alt-t", icon: "sparkles", when: hasProject, run: () => openTikz() },
   { id: "format.fonts", title: "action.fonts", category: "edit", icon: "type", when: hasProject, run: () => media.openFonts() },
+  { id: "format.margins", title: "action.margins", category: "edit", icon: "margins", when: hasProject, run: () => ui.openLayout("margins") },
+  { id: "format.pageStyles", title: "action.pageStyles", category: "edit", icon: "page-style", when: hasProject, run: () => ui.openLayout("styles") },
 
   // -------------------------------------------------------------- TeX
   { id: "tex.setup", title: "action.texSetup", category: "tex", icon: "wand", run: () => ui.openOverlay("setup") },

@@ -13,6 +13,8 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "allowJs": false,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["svelte", "vite/client"],
     "paths": { "$lib/*": ["./ui/lib/*"] }
   },

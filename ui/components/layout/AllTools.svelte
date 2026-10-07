@@ -124,9 +124,16 @@
         action("insert.ref", "hash"),
         action("insert.cite", "quote"),
         snippet("format.label", "hash", "\\label{${1}}"),
+        action("insert.frame", "presentation"),
+      ],
+    },
+    {
+      title: "format.groupPage",
+      items: [
+        action("format.margins"),
+        action("format.pageStyles"),
         snippet("format.pageBreak", "page-break", "\\newpage\n"),
         snippet("format.toc", "outline", "\\tableofcontents\n"),
-        action("insert.frame", "presentation"),
       ],
     },
   ]);

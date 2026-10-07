@@ -2,7 +2,7 @@
 // text out. The editor applies the result as a single undoable change.
 
 /** Replaces comments by spaces, so offsets stay valid but commented code is ignored. */
-function mask(text: string): string {
+export function mask(text: string): string {
   let out = "";
   let i = 0;
   while (i < text.length) {
@@ -78,16 +78,27 @@ function lineStart(text: string, offset: number): number {
 export function insertionPoint(text: string): number | null {
   const packages = loadedPackages(text);
   const last = packages.findIndex((p) => p.names.some((n) => LOAD_LAST.includes(n)));
-  if (last > 0) return lineEnd(text, packages[last - 1].to);
+  if (last > 0) return afterSettings(text, lineEnd(text, packages[last - 1].to));
   if (last === 0) {
     const start = lineStart(text, packages[0].from);
     return start > 0 ? start - 1 : null;
   }
-  if (packages.length) return lineEnd(text, packages[packages.length - 1].to);
+  if (packages.length) return afterSettings(text, lineEnd(text, packages[packages.length - 1].to));
   const code = mask(text);
   const cls = code.indexOf("\\documentclass");
   if (cls >= 0 && cls < preambleEnd(text)) return lineEnd(text, cls);
   return null;
+}
+
+/**
+ * A package and what sets it on the next line stay together: after
+ * `\usepackage{geometry}`, the end of the `\geometry{…}` that follows it.
+ */
+function afterSettings(text: string, at: number): number {
+  const next = /^\n[ \t]*\\geometry(?![A-Za-z@])/.exec(mask(text).slice(at));
+  if (!next) return at;
+  const from = at + next[0].length - "\\geometry".length;
+  return lineEnd(text, statementEnd(text, from, "\\geometry"));
 }
 
 function insertAt(text: string, at: number, lines: string): string {
@@ -162,7 +173,7 @@ export function addTikzLibraries(text: string, libraries: string[]): string {
 }
 
 /** Extent of a command and its `{…}` / `[…]` arguments (possibly over several lines). */
-function statementEnd(text: string, from: number, command: string): number {
+export function statementEnd(text: string, from: number, command: string): number {
   let i = from + command.length;
   for (;;) {
     let j = i;

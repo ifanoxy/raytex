@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { addDefinition, addLines, addPackages, addTikzLibraries, commentOutPackages, graphicsPaths, hasPackage, loadedPackages, setStatement } from "./preamble.ts";
+import { addDefinition, addLines, addPackages, addTikzLibraries, commentOutPackages, graphicsPaths, hasPackage, insertionPoint, loadedPackages, setStatement } from "./preamble.ts";
 
 const doc = `\\documentclass{article}
 \\usepackage[T1]{fontenc}
@@ -85,4 +85,12 @@ test("addDefinition puts a definition after the others, else after the packages"
   // A commented definition is not one.
   const commented = `\\documentclass{article}\n\\usepackage{amsmath}\n% \\newcommand{\\vieux}{x}\n\\begin{document}\n`;
   assert.ok(addDefinition(commented, code).includes(`\\usepackage{amsmath}\n\n${code}\n% \\newcommand`));
+});
+
+test("a package goes after the settings of the one before it", () => {
+  const text = "\\documentclass{article}\n\\usepackage{geometry}\n\\geometry{\n  top=2cm,\n}\n\\begin{document}\n\\end{document}\n";
+  assert.equal(addPackages(text, [{ name: "fancyhdr" }]), text.replace("}\n\\begin", "}\n\\usepackage{fancyhdr}\n\\begin"));
+  const before = "\\documentclass{article}\n\\usepackage{geometry}\n\\geometry{margin=2cm}\n\\usepackage{hyperref}\n\\begin{document}\n\\end{document}\n";
+  assert.equal(addPackages(before, [{ name: "fancyhdr" }]), before.replace("\\usepackage{hyperref}", "\\usepackage{fancyhdr}\n\\usepackage{hyperref}"));
+  assert.equal(insertionPoint("\\documentclass{article}\n\\usepackage{amsmath}\n\\geometryx\n\\begin{document}"), "\\documentclass{article}\n\\usepackage{amsmath}".length);
 });

@@ -4,7 +4,7 @@ import type { CommandRequest } from "../commands";
 import { uid } from "../utils";
 
 export type SidebarView = "files" | "templates" | "outline" | "search" | "symbols" | "snippets" | "commands" | "packages";
-export type Overlay = null | "settings" | "help" | "newProject" | "setup" | "palette" | "shortcuts" | "image" | "fonts" | "tikz" | "projects" | "convert" | "grid" | "commands";
+export type Overlay = null | "settings" | "help" | "newProject" | "setup" | "palette" | "shortcuts" | "image" | "fonts" | "tikz" | "projects" | "convert" | "grid" | "commands" | "layout";
 export type BottomTab = "problems" | "output" | "jobs";
 
 export interface Toast {
@@ -99,6 +99,8 @@ class UiStore {
   commandRequest = $state<CommandRequest>({});
   /** Bumped when a definition is added: the lists of commands read the project again. */
   commandsRevision = $state(0);
+  /** What the page studio opens on. */
+  layoutTab = $state<"margins" | "styles">("margins");
   toasts = $state<Toast[]>([]);
   dialog = $state<DialogState | null>(null);
   /** Package or file to highlight in the packages panel. */
@@ -184,6 +186,12 @@ class UiStore {
   openCommands(request: CommandRequest = {}) {
     this.commandRequest = request;
     this.overlay = "commands";
+  }
+
+  /** Opens the page studio: the margins of the document, or its page styles. */
+  openLayout(tab: "margins" | "styles" = "margins") {
+    this.layoutTab = tab;
+    this.overlay = "layout";
   }
 
   openHelp(section = "guides", id?: string) {

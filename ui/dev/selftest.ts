@@ -480,6 +480,69 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     log(`macros failed: ${e}`);
     ok = false;
   }
+  // --------------------------------------------------------- page layout
+  try {
+    const main = project.info!.main!;
+    const code = () => document.querySelector(".studio pre.code")?.textContent ?? "";
+    const measure = () => document.querySelector(".studio .measure")?.textContent ?? "";
+    const idle = () => !document.querySelector(".studio .busy");
+    ui.openLayout("margins");
+    await until(() => !!document.querySelector(".studio .cross"), 10_000, "page studio");
+    // The margins of the document are read, and TeX measures the page it makes of them.
+    await until(() => measure().includes("16 × 24.7 cm"), 120_000, "page measured");
+    const read = [...document.querySelectorAll<HTMLInputElement>(".studio .cross input")].map((i) => i.value).join(" ");
+    // Other margins: seen on the pages, then written in one place.
+    document.querySelectorAll<HTMLButtonElement>(".studio .left > .chips .chip")[5].click();
+    await until(() => code().includes("left=3.5cm"), 5_000, "margins set");
+    await until(() => measure().includes("15.5 × 24.7 cm") && idle(), 120_000, "margins previewed");
+    await scene("margins");
+    document.querySelector<HTMLButtonElement>(".studio .actions .btn.primary")!.click();
+    await until(() => !!editor.textOf(main)?.includes("\\geometry{top=2.5cm, bottom=2.5cm, left=3.5cm, right=2cm}"), 5_000, "margins applied");
+    const gathered = editor.textOf(main)!.includes("\\usepackage{geometry}\n\\geometry{");
+    // A page style: a header, a watermark, on real pages before it is written.
+    document.querySelectorAll<HTMLButtonElement>(".studio .tab")[1].click();
+    await until(() => !!document.querySelector(".studio .empty .btn.primary"), 5_000, "no style yet");
+    document.querySelector<HTMLButtonElement>(".studio .empty .btn.primary")!.click();
+    await until(() => !!document.querySelector('.studio input[data-slot="head-left"]'), 5_000, "new style");
+    const fill = (slot: string, text: string) => {
+      const el = document.querySelector<HTMLInputElement>(`.studio input[data-slot="${slot}"]`)!;
+      el.value = text;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    fill("head-left", "\\nouppercase{\\leftmark}");
+    fill("head-right", "Rapport");
+    document.querySelectorAll<HTMLButtonElement>(".studio .left .segment button")[1].click();
+    await until(() => code().includes("\\fancyhead[R]{Rapport}") && code().includes("\\AddToShipoutPictureBG*"), 5_000, "style written");
+    await until(() => !idle(), 10_000, "style compiling");
+    await until(idle, 120_000, "style previewed");
+    // fancyhdr asks for a taller header than the class keeps (11pt): one click gives it.
+    const asked = !!document.querySelector(".studio .warn-box");
+    if (asked) {
+      document.querySelector<HTMLButtonElement>(".studio .warn-box .btn")!.click();
+      await until(() => !!editor.textOf(main)?.includes("headheight=13.6pt"), 5_000, "header made taller");
+      await until(() => !idle(), 10_000, "style compiling again");
+      await until(idle, 120_000, "style previewed again");
+    }
+    const previewed = !!document.querySelector(".studio .ok-line") && !!document.querySelector(".studio .preview-box canvas");
+    await scene("page-style");
+    const uses = () => [...document.querySelectorAll<HTMLButtonElement>(".studio .uses .btn")];
+    uses()[0].click();
+    await until(() => !!editor.textOf(main)?.includes("\\pagestyle{perso}"), 5_000, "style of the document");
+    uses()[1].click();
+    await until(() => !!editor.textOf(main)?.includes("\\let\\ps@plain\\ps@perso"), 5_000, "style of the opening pages");
+    const text = editor.textOf(main)!;
+    const defined = text.indexOf("\\fancypagestyle{perso}") > 0 && text.indexOf("\\pagestyle{perso}") > text.indexOf("\\fancypagestyle{perso}");
+    const packages = ["fancyhdr", "eso-pic", "xcolor"].every((p) => text.includes(`\\usepackage{${p}}`));
+    // One page only, at the cursor of the chapter.
+    uses()[3].click();
+    await until(() => ui.overlay === null, 5_000, "studio closed");
+    const here = !!editor.textOf(chapter)?.includes("\\thispagestyle{perso}");
+    log(`layout: read ${read}, gathered ${gathered}, header asked ${asked}, previewed ${previewed}, defined ${defined}, packages ${packages}, here ${here}`);
+    ok = read === "2.5 2.5 2.5 2.5" && gathered && asked && previewed && defined && packages && here && (await buildOk(log, "layout")) && ok;
+  } catch (e) {
+    log(`layout failed: ${e}`);
+    ok = false;
+  }
   await editor.saveAll();
   log(`media scenes ${ok ? "PASSED" : "FAILED"}`);
   return ok;

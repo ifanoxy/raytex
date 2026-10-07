@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type * as T from "./types";
 import type { CommandDraft, CommandSpec, CustomCommand } from "./commands";
+import type { PagePreview } from "./layout";
 
 const call = <R>(cmd: string, args?: Record<string, unknown>) => invoke<R>(cmd, args);
 
@@ -130,6 +131,8 @@ export const texFonts = () => call<T.TexFont[]>("tex_fonts");
 export const tikzTemplates = () => call<T.TikzTemplate[]>("tikz_templates");
 export const tikzLibraries = () => call<string[]>("tikz_libraries");
 export const previewSnippet = (request: T.SnippetRequest) => call<T.PreviewOutcome>("preview_snippet", { request });
+/** Compiles a whole document (the pages of a layout being set) next to the project of `path`. */
+export const previewPage = (request: { path: string; job: string; source: string }) => call<PagePreview>("preview_page", { request });
 
 // ---------------------------------------------------------------- help
 export const helpPages = () => call<T.PageInfo[]>("help_pages");
