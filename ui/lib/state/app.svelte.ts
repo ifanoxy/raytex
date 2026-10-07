@@ -3,6 +3,7 @@
 import * as ipc from "../ipc";
 import { i18n, resolveLang } from "../i18n.svelte";
 import type { AppInfo, Session, Settings } from "../types";
+import { rememberTheme } from "../splash";
 
 const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -28,6 +29,8 @@ class AppStore {
 
   applyTheme() {
     document.documentElement.dataset.theme = this.theme;
+    // The launch screen of the next start uses it before the settings are read.
+    if (this.settings) rememberTheme(this.theme);
   }
 
   async applyLanguage() {

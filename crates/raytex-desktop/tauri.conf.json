@@ -29,6 +29,7 @@
         "center": true,
         "dragDropEnabled": true,
         "titleBarStyle": "Visible",
+        "backgroundColor": "#100d1c",
         "backgroundThrottling": "disabled"
       }
     ],

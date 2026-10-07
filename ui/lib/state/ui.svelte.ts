@@ -93,6 +93,8 @@ class UiStore {
   paletteMode = $state<"commands" | "files">("commands");
   settingsSection = $state("general");
   helpTarget = $state<{ section: string; id?: string } | null>(null);
+  /** A shortcut is being recorded (settings): keys are not shortcuts meanwhile. */
+  capturingKeys = $state(false);
   /** What the command studio was opened for. */
   commandRequest = $state<CommandRequest>({});
   /** Bumped when a definition is added: the lists of commands read the project again. */

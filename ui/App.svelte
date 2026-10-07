@@ -18,6 +18,7 @@
   import { viewer } from "$lib/state/viewer.svelte";
   import { ACCEPTED, extensionOf } from "$lib/images";
   import { media } from "$lib/state/media.svelte";
+  import { hideSplash } from "$lib/splash";
   import { debounce, dirname, relative } from "$lib/utils";
   import ContextMenu from "./components/common/ContextMenu.svelte";
   import Resizer from "./components/common/Resizer.svelte";
@@ -85,6 +86,8 @@
       } catch (e) {
         failed = String(e);
       }
+      // The interface is ready (the last project is open): the launch screen goes.
+      hideSplash();
       unlisten.push(await getCurrentWebview().onDragDropEvent((e) => void onDrop(e.payload)));
       // Packages loaded but not installed: installed by MiKTeX during the
       // build, or offered by RayTeX (never MiKTeX's window per file).

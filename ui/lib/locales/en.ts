@@ -1204,6 +1204,20 @@ const en = {
   "commands.trialWaits": "The trial compiles as soon as the definition is complete.",
   "commands.trialEmpty": "Write something that tries the command.",
   "commands.trialOk": "Compiled with the preamble of the project ({engine})",
+  "snippets.atNew": "New @ shortcut",
+  "snippets.atKey": "Keys of the shortcut",
+  "snippets.atCommand": "What it writes",
+  "snippets.atAdd": "Add",
+  "snippets.atMath": "In formulas only",
+  "snippets.atMine": "Your shortcuts",
+  "snippets.atBuiltin": "Those of RayTeX",
+  "snippets.atInvalidKey": "One to twelve letters or signs, without spaces.",
+  "snippets.atReplaces": "Will replace {key} of RayTeX ({body}).",
+  "snippets.atAdded": "{key} now writes {body}",
+  "snippets.atRemove": "Remove this shortcut",
+  "settings.addAtMacro": "Add an @ shortcut",
+  "settings.newAtMacro": "New @ shortcut",
+  "settings.macrosAt": "A trigger that starts with @ (for instance @v) makes the macro an @ shortcut: it is offered in the suggestions as soon as you type @, like the shortcuts of RayTeX, and replaces the one with the same key.",
 };
 
 export default en;

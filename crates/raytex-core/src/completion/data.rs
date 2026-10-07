@@ -88,28 +88,31 @@ pub fn at_shortcut_of(command: &str) -> Option<&'static str> {
         LazyLock::new(|| {
             let mut map = std::collections::HashMap::new();
             for (key, value) in AT_SHORTCUTS {
-                let Some(rest) = value.strip_prefix('\\') else {
-                    continue;
-                };
-                let name_len = rest
-                    .find(|c: char| !c.is_ascii_alphabetic())
-                    .unwrap_or(rest.len());
-                let (name, args) = rest.split_at(name_len);
-                // `\frac{${1}}{${2}}` is `\frac`; `\mathbb{N}` is not `\mathbb`.
-                let only_fields = args
-                    .split("${")
-                    .skip(1)
-                    .all(|f| f.starts_with(|c: char| c.is_ascii_digit()))
-                    && args
-                        .replace(|c: char| "{}$0123456789".contains(c), "")
-                        .is_empty();
-                if !name.is_empty() && only_fields {
+                if let Some(name) = command_of(value) {
                     map.entry(name).or_insert(*key);
                 }
             }
             map
         });
     BY_COMMAND.get(command).copied()
+}
+
+/// The command a shortcut writes and nothing else (`\frac{${1}}{${2}}` is
+/// `frac`; `\mathbb{N}` is not `mathbb`, it is one of its uses).
+pub fn command_of(body: &str) -> Option<&str> {
+    let rest = body.trim().strip_prefix('\\')?;
+    let name_len = rest
+        .find(|c: char| !c.is_ascii_alphabetic())
+        .unwrap_or(rest.len());
+    let (name, args) = rest.split_at(name_len);
+    let only_fields = args
+        .split("${")
+        .skip(1)
+        .all(|f| f.starts_with(|c: char| c.is_ascii_digit()))
+        && args
+            .replace(|c: char| "{}$0123456789".contains(c), "")
+            .is_empty();
+    (!name.is_empty() && only_fields).then_some(name)
 }
 
 /// xcolor base colors with their RGB value.

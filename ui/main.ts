@@ -2,7 +2,11 @@
 
 import { mount } from "svelte";
 import { logFrontend } from "$lib/ipc";
+import { themeSplash } from "$lib/splash";
 import "./styles/app.css";
+
+// The launch screen of index.html takes the theme of the last session.
+themeSplash();
 
 // Uncaught errors are reported to the terminal running the application.
 window.addEventListener("error", (e) => void logFrontend("error", `${e.message} (${e.filename}:${e.lineno})`).catch(() => {}));

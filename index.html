@@ -6,8 +6,103 @@
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/assets/logo.svg" />
     <title>RayTeX</title>
+    <style>
+      /* The launch screen: drawn with the page itself, before the interface
+         is loaded, so that the window is never empty. The colours are those
+         of the theme of the system, then of the theme chosen in RayTeX as
+         soon as it is known (ui/main.ts). */
+      html {
+        --splash-bg: #100d1c;
+        --splash-track: #2a2540;
+        --splash-accent: #a68cff;
+        background: var(--splash-bg);
+      }
+      @media (prefers-color-scheme: light) {
+        html:not([data-theme="dark"]) {
+          --splash-bg: #f5f3fb;
+          --splash-track: #ddd8ee;
+          --splash-accent: #6a3ce0;
+        }
+      }
+      html[data-theme="light"] {
+        --splash-bg: #f5f3fb;
+        --splash-track: #ddd8ee;
+        --splash-accent: #6a3ce0;
+      }
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 34px;
+        background: var(--splash-bg);
+        transition: opacity 0.28s ease;
+      }
+      #splash.done {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #splash .ray {
+        width: 124px;
+        height: auto;
+        animation: splash-swim 2.6s ease-in-out infinite alternate;
+        filter: drop-shadow(0 14px 18px rgba(75, 42, 168, 0.28));
+      }
+      #splash .bar {
+        position: relative;
+        width: 132px;
+        height: 3px;
+        border-radius: 3px;
+        overflow: hidden;
+        background: var(--splash-track);
+      }
+      #splash .bar::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 42%;
+        border-radius: 3px;
+        background: var(--splash-accent);
+        animation: splash-slide 1.35s ease-in-out infinite;
+      }
+      @keyframes splash-swim {
+        from {
+          transform: translateY(7px) rotate(-1.6deg);
+        }
+        to {
+          transform: translateY(-7px) rotate(1.6deg);
+        }
+      }
+      @keyframes splash-slide {
+        from {
+          transform: translateX(-110%);
+        }
+        to {
+          transform: translateX(250%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash .ray,
+        #splash .bar::after {
+          animation: none;
+        }
+        #splash .bar::after {
+          width: 100%;
+          opacity: 0.5;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash" role="status" aria-label="RayTeX">
+      <img class="ray" src="/assets/logo/ray.svg" alt="" width="124" height="111" />
+      <div class="bar"></div>
+    </div>
     <div id="app"></div>
     <script type="module" src="/ui/main.ts"></script>
   </body>

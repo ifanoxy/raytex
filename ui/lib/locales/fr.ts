@@ -1206,6 +1206,20 @@ const fr: Record<keyof typeof en, string> = {
   "commands.trialWaits": "L'essai se compile dès que la définition est complète.",
   "commands.trialEmpty": "Écrivez de quoi essayer la commande.",
   "commands.trialOk": "Compilé avec le préambule du projet ({engine})",
+  "snippets.atNew": "Nouveau raccourci @",
+  "snippets.atKey": "Touches du raccourci",
+  "snippets.atCommand": "Ce qu'il écrit",
+  "snippets.atAdd": "Ajouter",
+  "snippets.atMath": "Dans les formules seulement",
+  "snippets.atMine": "Vos raccourcis",
+  "snippets.atBuiltin": "Ceux de RayTeX",
+  "snippets.atInvalidKey": "Une à douze lettres ou signes, sans espace.",
+  "snippets.atReplaces": "Remplacera {key} de RayTeX ({body}).",
+  "snippets.atAdded": "{key} écrit maintenant {body}",
+  "snippets.atRemove": "Supprimer ce raccourci",
+  "settings.addAtMacro": "Ajouter un raccourci @",
+  "settings.newAtMacro": "Nouveau raccourci @",
+  "settings.macrosAt": "Un déclencheur qui commence par @ (par exemple @v) fait de la macro un raccourci @ : elle est proposée dans les suggestions dès que vous tapez @, comme les raccourcis de RayTeX, et remplace celui qui a la même touche.",
 };
 
 export default fr;

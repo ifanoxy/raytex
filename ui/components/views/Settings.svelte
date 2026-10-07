@@ -1,6 +1,7 @@
 <script lang="ts">
   // Settings: application-wide ones, and the open project's raytex.toml.
   import { actions, keyFor } from "$lib/actions";
+  import { specFromEvent } from "$lib/keys";
   import { REPOSITORY_URL } from "$lib/constants";
   import { type MessageKey, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
@@ -10,7 +11,7 @@
   import { project } from "$lib/state/project.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import type { BibTool, BuildTool, EngineChoice, Macro, ProjectConfig, Settings, Severity } from "$lib/types";
-  import { basename, prettyKey, relative } from "$lib/utils";
+  import { basename, isMac, prettyKey, relative } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
   import Modal from "../common/Modal.svelte";
   import TexSetup from "./TexSetup.svelte";
@@ -87,6 +88,11 @@
     set((x) => x.macros.push({ name: t("settings.newMacro"), trigger: "", key: "", body: "", math: false }));
   }
 
+  /** A macro that is an `@` shortcut: its trigger starts with `@`. */
+  function addAtMacro() {
+    set((x) => x.macros.push({ name: t("settings.newAtMacro"), trigger: "@", key: "", body: "", math: true }));
+  }
+
   function updateMacro(i: number, patch: Partial<Macro>) {
     set((x) => Object.assign(x.macros[i], patch));
   }
@@ -96,38 +102,56 @@
   }
 
   // ------------------------------------------------------- keybindings
-  const KEY_NAMES: Record<string, string> = { " ": "Space", ArrowUp: "ArrowUp", ArrowDown: "ArrowDown", ArrowLeft: "ArrowLeft", ArrowRight: "ArrowRight" };
 
-  function keyFromEvent(e: KeyboardEvent): string | null {
-    if (["Control", "Meta", "Alt", "Shift"].includes(e.key)) return null;
-    const mac = navigator.platform.toLowerCase().includes("mac");
-    const parts: string[] = [];
-    if (mac ? e.metaKey : e.ctrlKey) parts.push("Mod");
-    if (mac && e.ctrlKey) parts.push("Ctrl");
-    if (e.altKey) parts.push("Alt");
-    if (e.shiftKey) parts.push("Shift");
-    let key = KEY_NAMES[e.key] ?? e.key;
-    if (e.altKey && e.code.startsWith("Key")) key = e.code.slice(3).toLowerCase();
-    else if (key.length === 1) key = key.toLowerCase();
-    parts.push(key);
-    return parts.join("-");
-  }
-
-  function record(e: KeyboardEvent, id: string) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.key === "Escape") {
+  // A shortcut is recorded from the window, not from the button that
+  // started it: on macOS, a click does not give a button the focus, and the
+  // keys never reached it.
+  $effect(() => {
+    const target = recording;
+    if (!target) return;
+    ui.capturingKeys = true;
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (e.key === "Escape") {
+        recording = null;
+        return;
+      }
+      const macro = target.startsWith("macro:") ? Number(target.slice(6)) : null;
+      // Backspace alone removes the shortcut of a macro.
+      if (macro !== null && e.key === "Backspace" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        recording = null;
+        updateMacro(macro, { key: "" });
+        return;
+      }
+      const key = specFromEvent(e, isMac());
+      if (!key) return;
       recording = null;
-      return;
-    }
-    const key = keyFromEvent(e);
-    if (!key) return;
-    recording = null;
-    set((x) => (x.keybindings[id] = key));
-  }
+      if (macro !== null) updateMacro(macro, { key });
+      else set((x) => (x.keybindings[target] = key));
+    };
+    // A click anywhere else gives up.
+    const onPointer = (e: PointerEvent) => {
+      if (!(e.target instanceof Element && e.target.closest(".key-btn.recording"))) recording = null;
+    };
+    window.addEventListener("keydown", onKey, true);
+    window.addEventListener("pointerdown", onPointer, true);
+    return () => {
+      ui.capturingKeys = false;
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("pointerdown", onPointer, true);
+    };
+  });
 
   function resetKey(id: string) {
     set((x) => delete x.keybindings[id]);
+  }
+
+  /** The command of the application that already has the shortcut of a macro: it would run instead. */
+  function macroConflict(key: string): string | null {
+    if (!key) return null;
+    const other = actions.find((a) => keyFor(a.id) === key);
+    return other ? t(other.title) : null;
   }
 
   function conflict(id: string): string | null {
@@ -383,24 +407,21 @@
             <div class="macro-row">
               <input class="input" value={m.name} placeholder={t("settings.macroName")} onchange={(e) => updateMacro(i, { name: value(e) })} />
               <input class="input mono trigger" value={m.trigger} placeholder={t("settings.macroTrigger")} onchange={(e) => updateMacro(i, { trigger: value(e).trim() })} />
-              <button class="btn small key-btn" class:recording={recording === `macro:${i}`} onclick={() => (recording = `macro:${i}`)} onkeydown={(e) => {
-                if (recording !== `macro:${i}`) return;
-                e.preventDefault();
-                e.stopPropagation();
-                if (e.key === "Escape") { recording = null; return; }
-                if (e.key === "Backspace") { recording = null; updateMacro(i, { key: "" }); return; }
-                const k = keyFromEvent(e);
-                if (k) { recording = null; updateMacro(i, { key: k }); }
-              }}>
+              <button class="btn small key-btn" class:recording={recording === `macro:${i}`} onclick={() => (recording = `macro:${i}`)}>
                 {recording === `macro:${i}` ? t("settings.pressKeys") : m.key ? prettyKey(m.key) : t("settings.noShortcut")}
               </button>
+              {#if macroConflict(m.key)}<span class="conflict" title={t("settings.conflict", { action: macroConflict(m.key) ?? "" })}><Icon name="alert-triangle" size={13} /></span>{/if}
               <label class="inline"><input type="checkbox" checked={m.math} onchange={(e) => updateMacro(i, { math: checked(e) })} />{t("settings.macroMath")}</label>
               <button class="icon-btn" onclick={() => removeMacro(i)} title={t("common.delete")}><Icon name="trash" /></button>
             </div>
             <textarea class="input" rows="3" value={m.body} placeholder={"\\frac{${1:a}}{${2:b}}${0}"} spellcheck="false" onchange={(e) => updateMacro(i, { body: (e.currentTarget as HTMLTextAreaElement).value })}></textarea>
           </div>
         {/each}
-        <button class="btn small" onclick={addMacro}><Icon name="plus" size={13} />{t("snippets.addMacro")}</button>
+        <div class="macro-add">
+          <button class="btn small" onclick={addMacro}><Icon name="plus" size={13} />{t("snippets.addMacro")}</button>
+          <button class="btn small" onclick={addAtMacro}><Icon name="at" size={13} />{t("settings.addAtMacro")}</button>
+        </div>
+        <p class="intro">{t("settings.macrosAt")}</p>
       {:else if ui.settingsSection === "keys"}
         <h3>{t("settings.keys")}</h3>
         <p class="intro">{t("settings.keysIntro")}</p>
@@ -416,8 +437,6 @@
                 class="btn small key-btn"
                 class:recording={recording === a.id}
                 onclick={() => (recording = a.id)}
-                onkeydown={(e) => recording === a.id && record(e, a.id)}
-                onblur={() => recording === a.id && (recording = null)}
               >
                 {recording === a.id ? t("settings.pressKeys") : k ? prettyKey(k) : t("settings.noShortcut")}
               </button>
@@ -700,6 +719,11 @@
   .macro-row .input {
     flex: 1;
     min-width: 0;
+  }
+  .macro-add {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
   }
   .macro-row .trigger {
     flex: 0 0 110px;

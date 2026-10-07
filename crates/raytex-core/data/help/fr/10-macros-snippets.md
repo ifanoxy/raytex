@@ -17,6 +17,12 @@ Dans une formule, tapez `@` puis une touche : la commande s'écrit toute seule.
 
 Pour les découvrir : le bouton **Macros** de la barre de mise en forme ouvre la liste complète, avec chaque symbole dessiné (un clic l'insère) ; **Tout voir** montre les plus utiles ; et quand vous tapez une commande qui a un raccourci, les suggestions l'affichent à côté (`\alpha` → `@a`). Ils se désactivent dans *Réglages › Autocomplétion*.
 
+### Vos propres raccourcis @
+
+Dans la vue **Macros @ et extraits**, onglet *Raccourcis @*, le bloc **Nouveau raccourci @** en crée un en deux champs : la ou les touches (`v`, `vec`, `->`… douze caractères au plus, sans espace) et ce qu'il écrit (`\vec{}` : les accolades vides deviennent des champs où le curseur se place). Il apparaît aussitôt dans les suggestions quand vous tapez `@`, avant ceux de RayTeX, et à côté de sa commande (`\vec` → `@v`). Un raccourci qui reprend une touche de RayTeX le remplace. Décochez *Dans les formules seulement* pour un raccourci de texte.
+
+Ce sont des macros dont le déclencheur commence par `@` : vous les retrouvez, avec un corps de plusieurs lignes si vous voulez, dans *Réglages › Macros*.
+
 ## Les extraits
 
 Tapez un déclencheur puis choisissez-le dans les suggestions :
@@ -46,6 +52,8 @@ Une fois inséré, <kbd>Tab</kbd> passe au champ suivant, <kbd>⇧</kbd> + <kbd>
 Déclencheur : ff        (mode mathématique uniquement)
 Corps       : \frac{${1:a}}{${2:b}}${0}
 ```
+
+Pour le raccourci clavier, cliquez sur son bouton puis tapez les touches : <kbd>Échap</kbd> annule, <kbd>⌫</kbd> le retire. Un triangle signale un raccourci déjà pris par une commande de RayTeX, qui passerait avant la macro. Sur Mac, <kbd>⌥</kbd> + une lettre fonctionne aussi, même quand la touche écrit un accent.
 
 Dans le corps :
 

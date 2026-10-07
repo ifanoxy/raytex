@@ -385,6 +385,64 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     log(`commands failed: ${e}`);
     ok = false;
   }
+  // -------------------------------------------- macros, @ shortcuts, saves
+  try {
+    // The launch screen is gone once the interface is there.
+    const splashGone = !document.getElementById("splash");
+    await app.update((x) => {
+      x.macros = [
+        { name: "Fraction", trigger: "ff", key: "", body: "\\frac{${1:a}}{${2:b}}", math: true },
+        { name: "Vecteur", trigger: "@vv", key: "", body: "\\vec{${1}}", math: true },
+      ];
+    });
+    // A shortcut is recorded from the window: nothing has the focus, as on
+    // macOS where a click does not give it to a button. ⌥N is a dead key.
+    ui.openSettings("macros");
+    await until(() => document.querySelectorAll(".macro .key-btn").length === 2, 10_000, "macros in the settings");
+    document.querySelector<HTMLButtonElement>(".macro .key-btn")!.click();
+    await until(() => !!document.querySelector(".key-btn.recording"), 5_000, "recording");
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    const deadKey = () => new KeyboardEvent("keydown", { key: "Dead", code: "KeyN", altKey: true, bubbles: true, cancelable: true });
+    window.dispatchEvent(deadKey());
+    await until(() => app.settings?.macros[0]?.key === "Alt-n", 5_000, "shortcut recorded");
+    await scene("macros-settings");
+    ui.closeOverlay();
+    // The shortcut runs the macro in a formula, and does nothing in text.
+    await editor.open(chapter);
+    await until(() => editor.active === chapter && !!editor.view, 5_000, "chapter shown");
+    await editor.reconfigure();
+    const view = editor.view!;
+    const end = view.state.doc.length;
+    view.dispatch({ changes: { from: end, insert: "\nEssai $y$ fin.\n" }, selection: { anchor: end + 9 } });
+    view.focus();
+    view.contentDOM.dispatchEvent(deadKey());
+    await pause(300);
+    const ran = view.state.doc.toString().includes("Essai $y\\frac{a}{b}$ fin.");
+    const length = view.state.doc.length;
+    view.dispatch({ selection: { anchor: end + 3 } });
+    view.contentDOM.dispatchEvent(deadKey());
+    await pause(200);
+    const quietInText = view.state.doc.length === length;
+    // The `@` shortcut of the user is offered by the engine, before those of RayTeX.
+    const offered = await ipc.complete(chapter, "$ @v", "", false);
+    const own = offered?.items.find((i) => i.label === "@vv");
+    const next = await ipc.complete(chapter, "$ \\ve", "", false);
+    const beside = next?.items.find((i) => i.label === "\\vec")?.shortcut;
+    // The echo of a save of RayTeX, reported while the text has changed
+    // since, is not a change made by another program.
+    await editor.save(chapter, { silent: true, auto: true });
+    const v = editor.view!;
+    v.dispatch({ changes: { from: v.state.doc.length, insert: "% encore\n" } });
+    const before = ui.toasts.length;
+    await editor.externalChanges([chapter]);
+    await pause(200);
+    const echo = ui.toasts.slice(before).map((t) => t.message);
+    log(`macros: splash gone ${splashGone}, recorded ${app.settings?.macros[0]?.key}, ran ${ran}, quiet in text ${quietInText}, @vv offered ${own?.apply}, beside \\vec ${beside}, toasts after own save ${JSON.stringify(echo)}`);
+    ok = splashGone && ran && quietInText && own?.apply === "\\vec{${1}}" && beside === "@vv" && echo.length === 0 && (await buildOk(log, "macros")) && ok;
+  } catch (e) {
+    log(`macros failed: ${e}`);
+    ok = false;
+  }
   await editor.saveAll();
   log(`media scenes ${ok ? "PASSED" : "FAILED"}`);
   return ok;

@@ -50,6 +50,8 @@ import { fixLabel, runFix, suggestionOf } from "../fixes";
 import { figureAt } from "../images";
 import { i18n, type MessageKey, t } from "../i18n.svelte";
 import * as ipc from "../ipc";
+import { diskChange, remember, type Written } from "../disk";
+import { matchesKey } from "../keys";
 import { addDefinition, addPackages, graphicsPaths, hasPackage, insertionPoint } from "../preamble";
 import type { Diagnostic, Location, Macro, Position, Range, Settings, TextEdit } from "../types";
 import { basename, debounce, dirname, escapeSnippet, fileKind, type FileKind, inlineMarkdown, isMac, join, prettyKey, relative, samePath } from "../utils";
@@ -86,6 +88,8 @@ interface DocModel {
   /** Text as it is on disk. */
   saved: Text;
   modified: number;
+  /** What RayTeX wrote to the file lately: the watcher reports those writes too. */
+  written: Written[];
   lossy: boolean;
   readOnly: boolean;
   scroll: StateEffect<unknown> | null;
@@ -459,9 +463,20 @@ class EditorStore {
 
   private userKeymap(): KeyBinding[] {
     const bindings = editorKeymap();
-    for (const m of this.settings()?.macros ?? []) {
-      if (!m.key) continue;
-      bindings.push({ key: m.key, run: (view) => this.insertMacro(view, m) });
+    // The shortcuts of macros are matched like those of the application
+    // (the letter of the key on this keyboard, also with ⌥ on macOS, where
+    // the key writes another character or a dead key).
+    const macros = (this.settings()?.macros ?? []).filter((m) => m.key);
+    if (macros.length) {
+      bindings.push({
+        any: (view, e) => {
+          if (e.isComposing && e.key !== "Dead") return false;
+          const m = macros.find((m) => matchesKey(e, m.key, isMac()));
+          if (!m || !this.insertMacro(view, m)) return false;
+          e.preventDefault();
+          return true;
+        },
+      });
     }
     return bindings;
   }
@@ -746,6 +761,7 @@ class EditorStore {
       synced: -1,
       saved: state.doc,
       modified: file.modified,
+      written: [],
       lossy: file.lossy,
       readOnly,
       scroll: null,
@@ -837,7 +853,10 @@ class EditorStore {
       return true;
     }
     try {
-      m.modified = await ipc.writeTextFile(m.path, doc.toString());
+      const text = doc.toString();
+      // Remembered before it is written: the watcher may report it first.
+      m.written = remember(m.written, text, Date.now());
+      m.modified = await ipc.writeTextFile(m.path, text);
     } catch (e) {
       ui.toast("error", t("editor.saveFailed", { file: basename(m.path) }), { detail: String(e) });
       return false;
@@ -1033,15 +1052,17 @@ class EditorStore {
         continue;
       }
       const state = this.stateOf(m.path)!;
-      const current = state.doc.toString();
-      if (current === file.text) {
+      const change = diskChange({ disk: file.text, buffer: state.doc.toString(), dirty: state.doc !== m.saved, written: m.written, now: Date.now() });
+      if (change === "same") {
         m.saved = state.doc;
         m.modified = file.modified;
         this.setTabFlag(m.path, "dirty", false);
         continue;
       }
-      const dirty = state.doc !== m.saved;
-      if (!dirty) {
+      // The echo of a save of RayTeX itself, reported late (macOS): the
+      // text typed since is not a change made by another program.
+      if (change === "own") continue;
+      if (change === "reload") {
         this.replaceText(m, file.text, file.modified);
       } else {
         ui.toast("warning", t("editor.changedOnDisk", { file: basename(m.path) }), {

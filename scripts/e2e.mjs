@@ -7,6 +7,7 @@
 //   node scripts/e2e.mjs                    # workflow, fixes, files, projects, media
 //   node scripts/e2e.mjs fixes files        # some groups
 //   E2E_OUT=out node scripts/e2e.mjs        # where logs and screenshots go
+//   E2E_SHOTS=0 node scripts/e2e.mjs        # no screenshots (they are of the whole screen)
 //
 // macOS and Windows (screenshots of the whole screen). Exit code 1 when a
 // group fails.
@@ -24,6 +25,9 @@ const windows = process.platform === "win32";
 // runner): the time of the scenes only counts once it runs.
 const BUILD_TIMEOUT_MS = Number(process.env.E2E_BUILD_TIMEOUT_MS ?? 60 * 60_000);
 const TIMEOUT_MS = Number(process.env.E2E_TIMEOUT_MS ?? 20 * 60_000);
+// The screenshots are of the whole screen: on a personal computer they
+// show whatever else is open, and can be turned off.
+const SHOTS = process.env.E2E_SHOTS !== "0";
 
 mkdirSync(out, { recursive: true });
 
@@ -95,7 +99,7 @@ async function run(group) {
     for (const m of text.matchAll(/scene: ([a-z0-9-]+)/g)) {
       if (seen.has(m[1])) continue;
       seen.add(m[1]);
-      screenshot(join(out, `${group}-${m[1]}.png`));
+      if (SHOTS) screenshot(join(out, `${group}-${m[1]}.png`));
     }
     const end = new RegExp(`${group} scenes (PASSED|FAILED)|selftest: FAILED`).exec(text);
     if (end && !verdict) verdict = end[1] ?? "FAILED";

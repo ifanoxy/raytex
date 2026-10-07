@@ -709,10 +709,12 @@ export function installMocks() {
             { trigger: "eq", name: "Équation numérotée", body: "\\begin{equation}\n\t${1}\n\\end{equation}", math: false, package: null },
           ];
         case "at_shortcuts":
+          // Keys without their `@`, like the engine gives them.
           return [
-            ["@a", "\\alpha"],
-            ["@b", "\\beta"],
-            ["@R", "\\mathbb{R}"],
+            ["a", "\\alpha"],
+            ["b", "\\beta"],
+            ["R", "\\mathbb{R}"],
+            ["/", "\\frac{${1}}{${2}}"],
           ];
         case "lint_rules":
           return [

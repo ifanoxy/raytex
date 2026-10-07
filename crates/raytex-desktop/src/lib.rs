@@ -78,6 +78,20 @@ pub fn run() {
         })
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
+                // Before the page is drawn, the window has the colour of the
+                // theme (the one of the launch screen), not black or white.
+                let chosen = app.state::<AppState>().settings().general.theme.clone();
+                let dark = match chosen.as_str() {
+                    "light" => false,
+                    "dark" => true,
+                    _ => window.theme().map_or(true, |t| t == tauri::Theme::Dark),
+                };
+                let colour = if dark {
+                    tauri::window::Color(16, 13, 28, 255)
+                } else {
+                    tauri::window::Color(245, 243, 251, 255)
+                };
+                let _ = window.set_background_color(Some(colour));
                 fit_to_screen(&window);
             }
             commands::tex::start_detection(app.handle().clone());

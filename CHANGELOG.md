@@ -4,6 +4,14 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- **Your own `@` shortcuts**: the *@ shortcuts* tab makes one from a key (`v`, `vec`, `->`…) and what it writes (`\vec{}`); it is offered in the suggestions as soon as `@` is typed, before those of RayTeX and next to its command, and replaces the one of RayTeX that has the same key. They are macros whose trigger starts with `@`, also editable in *Settings › Macros*.
+- **A launch screen**: the ray and a progress line are drawn with the window itself, in the colours of the theme, until the interface and the last project are ready. The window was empty and black meanwhile.
+- Fixed, seen on macOS:
+  - "main.tex was changed by another program" came up while typing, though nothing but RayTeX wrote the file: the system reports the saves of RayTeX itself, late, when the text has already changed again. A save is now told from a change made by another program by what was written, not by the text of the editor at the time of the report.
+  - The shortcut of a macro, and of any command in *Settings › Shortcuts*, could not be recorded: the keys went to the button that was clicked, and a click does not give a button the focus on macOS. They are read from the window; Escape cancels, a click elsewhere too.
+  - The shortcut of a macro did not run when it used ⌥ with a key that writes an accent (⌥N, ⌥E…). Macros are matched like the commands of RayTeX, by the letter of the key on the keyboard in use (also on AZERTY, where ⌥A is not at the place of ⌥Q). A shortcut a command already has is marked in the settings.
+- For contributors: `E2E_SHOTS=0 node scripts/e2e.mjs` runs the scenes without screenshots, which are of the whole screen.
+
 ## [0.3.0] — 2026-10-05
 
 - **Commands of the project**: a new view of the sidebar lists every command, formula operator, environment and theorem the project defines (`\newcommand`, `\DeclareMathOperator`, `\newenvironment`, `\newtheorem`…), for the whole project or for the open file, with what each one writes, where it is defined and how many times it is used. A click goes to the definition, **Insert** writes the command at the cursor, **Try** opens it in the studio.

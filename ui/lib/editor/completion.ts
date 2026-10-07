@@ -27,7 +27,7 @@ const TYPE: Record<ItemKind, string> = {
 };
 
 /** What must precede the cursor for completion to open while typing. */
-const TRIGGER = /(?:\\[a-zA-Z@]*\*?|@\S{0,2}|[{[,][^{}[\]\n,]*|%\s*!.*)$/;
+const TRIGGER = /(?:\\[a-zA-Z@]*\*?|@[^\s\\@{}$]{0,12}|[{[,][^{}[\]\n,]*|%\s*!.*)$/;
 
 interface Extra {
   glyph?: string;

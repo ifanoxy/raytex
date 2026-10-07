@@ -58,6 +58,9 @@ pub enum FileKind {
     Any,
 }
 
+/// How many characters an `@` shortcut has at most after its `@`.
+pub const AT_SHORTCUT_MAX: usize = 12;
+
 /// The syntactic context at the cursor.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CursorContext {
@@ -68,10 +71,13 @@ pub enum CursorContext {
         /// Whether the cursor is in math mode.
         in_math: bool,
     },
-    /// Typing an `@x` math shortcut.
+    /// Typing an `@x` shortcut (those of RayTeX, or a macro of the user
+    /// whose trigger starts with `@`).
     AtShortcut {
         /// Text after `@`.
         partial: String,
+        /// Whether the cursor is in math mode.
+        in_math: bool,
     },
     /// Inside a command argument.
     Argument {
@@ -125,16 +131,18 @@ pub fn cursor_context(before: &str, after: &str) -> CursorContext {
             in_math: in_math(before),
         };
     }
-    // `@x` shortcuts: `@` followed by up to two non-space characters.
+    // `@x` shortcuts: `@` followed by a few characters without a space
+    // (two for those of RayTeX, a short word for those of the user).
     if let Some(at) = line.rfind('@') {
         let partial = &line[at + 1..];
         let prev = line[..at].chars().last();
-        if partial.chars().count() <= 2
-            && !partial.contains(|c: char| c.is_whitespace() || c == '\\' || c == '@')
+        if partial.chars().count() <= AT_SHORTCUT_MAX
+            && !partial.contains(|c: char| c.is_whitespace() || "\\@{}$".contains(c))
             && prev.is_none_or(|c| !c.is_alphanumeric() && c != '\\')
         {
             return CursorContext::AtShortcut {
                 partial: partial.to_owned(),
+                in_math: in_math(before),
             };
         }
     }
@@ -613,9 +621,22 @@ mod tests {
         assert_eq!(
             cursor_context("$ @a", ""),
             CursorContext::AtShortcut {
-                partial: "a".into()
+                partial: "a".into(),
+                in_math: true
             }
         );
+        // A short word after `@`, for the shortcuts of the user; in text too.
+        assert_eq!(
+            cursor_context("Soit @vec", ""),
+            CursorContext::AtShortcut {
+                partial: "vec".into(),
+                in_math: false
+            }
+        );
+        assert!(!matches!(
+            cursor_context("$ @unmotbientroplongpourunraccourci", ""),
+            CursorContext::AtShortcut { .. }
+        ));
         assert_eq!(
             cursor_context("mail@ex", ""),
             CursorContext::Word {

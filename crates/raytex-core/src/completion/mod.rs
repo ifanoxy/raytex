@@ -203,8 +203,8 @@ pub fn complete(ws: &Workspace, req: &CompletionRequest<'_>) -> Option<Completio
     };
     let list = match ctx {
         CursorContext::Command { partial, in_math } => c.commands(&partial, in_math),
-        CursorContext::AtShortcut { partial } if req.settings.at_shortcuts => {
-            c.at_shortcuts(&partial)
+        CursorContext::AtShortcut { partial, in_math } if req.settings.at_shortcuts => {
+            c.at_shortcuts(&partial, in_math)
         }
         CursorContext::Argument {
             command,
@@ -227,14 +227,41 @@ pub fn complete(ws: &Workspace, req: &CompletionRequest<'_>) -> Option<Completio
             item.apply = empty_brace_fields(&item.apply);
         }
         if is_command && req.settings.at_shortcuts {
-            item.shortcut = item
-                .label
-                .strip_prefix('\\')
-                .and_then(|name| data::at_shortcut_of(name))
-                .map(|k| format!("@{k}"));
+            // The shortcut of the user for this command first, then the
+            // one RayTeX has.
+            item.shortcut = item.label.strip_prefix('\\').and_then(|name| {
+                req.macros
+                    .iter()
+                    .find(|m| at_key(m).is_some() && data::command_of(&m.body) == Some(name))
+                    .map(|m| m.trigger.clone())
+                    .or_else(|| data::at_shortcut_of(name).map(|k| format!("@{k}")))
+            });
         }
     }
     (!list.items.is_empty()).then_some(list)
+}
+
+/// The key of a macro that is an `@` shortcut: its trigger without the `@`,
+/// when it is a short word without spaces (`@v`, `@vec`).
+pub fn at_key(m: &Macro) -> Option<&str> {
+    let key = m.trigger.strip_prefix('@')?;
+    let short = (1..=crate::syntax::context::AT_SHORTCUT_MAX).contains(&key.chars().count());
+    (short && !key.contains(|c: char| c.is_whitespace() || "\\@{}$".contains(c))).then_some(key)
+}
+
+/// A snippet as it is shown next to its shortcut: fields become `…`.
+fn preview(body: &str) -> String {
+    static FIELD: std::sync::LazyLock<regex::Regex> =
+        std::sync::LazyLock::new(|| regex::Regex::new(r"\$\{\d+(?::([^}]*))?\}").unwrap());
+    FIELD
+        .replace_all(body, |c: &regex::Captures<'_>| {
+            c.get(1)
+                .map(|m| m.as_str())
+                .filter(|t| !t.is_empty())
+                .unwrap_or("…")
+                .to_owned()
+        })
+        .into_owned()
 }
 
 /// What the free argument at the cursor expects (none when it has a list of
@@ -1259,20 +1286,49 @@ impl Completer<'_> {
 
     // ---------------------------------------------------- other contexts
 
-    fn at_shortcuts(&self, partial: &str) -> CompletionList {
-        let items = data::AT_SHORTCUTS
+    fn at_shortcuts(&self, partial: &str, in_math: bool) -> CompletionList {
+        let glyph_of = |body: &str| {
+            data::command_of(body)
+                .or_else(|| body.strip_prefix('\\'))
+                .and_then(|name| kb().command(name, None))
+                .and_then(|c| c.glyph.clone())
+        };
+        // The shortcuts of the user (macros whose trigger starts with `@`)
+        // come first, and take the place of those of RayTeX with the same
+        // key. A macro of formulas is only offered in a formula.
+        let mut items: Vec<CompletionItem> = self
+            .req
+            .macros
             .iter()
-            .map(|(k, v)| {
-                let glyph = kb()
-                    .command(v.trim_start_matches('\\'), None)
-                    .and_then(|c| c.glyph.clone());
-                let mut item = CompletionItem::new(format!("@{k}"), ItemKind::Symbol, *v)
-                    .detail(v.replace("${1}", "…").replace("${2}", "…"));
-                item.glyph = glyph;
+            .filter(|m| at_key(m).is_some() && (in_math || !m.math))
+            .map(|m| {
+                let mut item =
+                    CompletionItem::new(m.trigger.clone(), ItemKind::Macro, m.body.clone())
+                        .detail(if m.name.is_empty() || m.name == m.body {
+                            preview(&m.body)
+                        } else {
+                            m.name.clone()
+                        })
+                        .boost(30);
+                item.glyph = glyph_of(&m.body);
                 item
             })
             .collect();
-        CompletionList::new(&format!("@{partial}"), items).valid_for(r"^@\S{0,2}$")
+        // A key of the user hides the one of RayTeX everywhere, also where
+        // its own macro is not offered (a macro of formulas, in text).
+        let own: Vec<&str> = self.req.macros.iter().filter_map(at_key).collect();
+        items.extend(
+            data::AT_SHORTCUTS
+                .iter()
+                .filter(|(k, _)| !own.contains(k))
+                .map(|(k, v)| {
+                    let mut item = CompletionItem::new(format!("@{k}"), ItemKind::Symbol, *v)
+                        .detail(preview(v));
+                    item.glyph = glyph_of(v);
+                    item
+                }),
+        );
+        CompletionList::new(&format!("@{partial}"), items).valid_for(r"^@[^\s\\@{}$]{0,12}$")
     }
 
     fn words(&self, partial: &str, in_math: bool) -> CompletionList {
@@ -1789,6 +1845,76 @@ mod tests {
             empty_brace_fields("{${1:${SELECTION}}}"),
             "{${1:${SELECTION}}}"
         );
+    }
+
+    #[test]
+    fn the_at_shortcuts_of_the_user_are_completed() {
+        let (_d, ws, main) = ws();
+        let s = CompletionSettings::default();
+        let macro_ = |trigger: &str, body: &str, math: bool| Macro {
+            name: String::new(),
+            trigger: trigger.into(),
+            key: String::new(),
+            body: body.into(),
+            math,
+        };
+        let macros = [
+            macro_("@v", "\\vec{${1}}", true),
+            macro_("@prod", "\\prod_{${1:i}=1}^{${2:n}}", true),
+            // The same key as a shortcut of RayTeX: it takes its place.
+            macro_("@a", "\\aleph", false),
+            // Not `@` shortcuts: a word, a key with a space.
+            macro_("ff", "\\frac{${1}}{${2}}", true),
+            macro_("@a b", "x", false),
+        ];
+        let ask = |before: &'static str| {
+            let mut r = req(&main, before, "", &s);
+            r.macros = &macros;
+            complete(&ws, &r)
+        };
+        // In a formula: those of the user first, then those of RayTeX.
+        let all = ask("$ @").unwrap();
+        let labels: Vec<&str> = all.items.iter().map(|i| i.label.as_str()).collect();
+        assert!(
+            labels.contains(&"@v") && labels.contains(&"@prod"),
+            "{labels:?}"
+        );
+        assert!(labels.contains(&"@b"), "those of RayTeX stay");
+        assert!(!labels.contains(&"ff") && !labels.contains(&"@a b"));
+        assert_eq!(labels.iter().filter(|l| **l == "@a").count(), 1);
+        let a = all.items.iter().find(|i| i.label == "@a").unwrap();
+        assert_eq!(a.apply, "\\aleph");
+        let v = all.items.iter().find(|i| i.label == "@v").unwrap();
+        assert_eq!(
+            (v.apply.as_str(), v.detail.as_deref()),
+            ("\\vec{${1}}", Some("\\vec{…}"))
+        );
+        let prod = all.items.iter().find(|i| i.label == "@prod").unwrap();
+        assert_eq!(prod.detail.as_deref(), Some("\\prod_{i=1}^{n}"));
+        // A word after `@` narrows the list to it.
+        let typed = ask("$ @pro").unwrap();
+        assert!(typed.items.iter().any(|i| i.label == "@prod"));
+        assert!(!typed.items.iter().any(|i| i.label == "@v"));
+        // In text, a macro of formulas is not offered; the others are.
+        let text = ask("Soit @").unwrap();
+        assert!(!text.items.iter().any(|i| i.label == "@v"));
+        assert!(
+            text.items
+                .iter()
+                .any(|i| i.label == "@a" && i.apply == "\\aleph")
+        );
+        // Next to the command it writes, in the list of commands.
+        let commands = ask("$ \\ve").unwrap();
+        let vec = commands.items.iter().find(|i| i.label == "\\vec").unwrap();
+        assert_eq!(vec.shortcut.as_deref(), Some("@v"));
+        // Turned off with the shortcuts of RayTeX.
+        let off = CompletionSettings {
+            at_shortcuts: false,
+            ..CompletionSettings::default()
+        };
+        let mut r = req(&main, "$ @", "", &off);
+        r.macros = &macros;
+        assert!(complete(&ws, &r).is_none());
     }
 
     #[test]

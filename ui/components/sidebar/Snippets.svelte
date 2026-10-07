@@ -2,6 +2,7 @@
   // @ shortcuts (first: the fastest way to type symbols), snippets (built
   // in) and personal macros.
   import { keyFor } from "$lib/actions";
+  import { atBody, atPreview, cleanAtKey, mergeShortcuts, validAtKey } from "$lib/at";
   import { t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { app } from "$lib/state/app.svelte";
@@ -26,7 +27,51 @@
   const q = $derived(filter.trim().toLowerCase());
   const shownSnippets = $derived(snippets.filter((s) => !q || `${s.trigger} ${s.name}`.toLowerCase().includes(q)));
   const macros = $derived((app.settings?.macros ?? []).filter((m) => !q || `${m.trigger} ${m.name}`.toLowerCase().includes(q)));
-  const shownShortcuts = $derived(shortcuts.filter(([k, v]) => !q || `${k} ${v}`.toLowerCase().includes(q)));
+  // The `@` shortcuts: those of the user (macros whose trigger starts with
+  // `@`) first, then those of RayTeX that none of them replaces.
+  const allShortcuts = $derived(mergeShortcuts(shortcuts, app.settings?.macros ?? []));
+  const shownShortcuts = $derived(allShortcuts.filter((s) => !q || `${s.key} ${s.body}`.toLowerCase().includes(q)));
+  const mine = $derived(shownShortcuts.filter((s) => s.own));
+  const builtin = $derived(shownShortcuts.filter((s) => !s.own));
+
+  // A new `@` shortcut: a key and what it writes.
+  let newKey = $state("");
+  let newBody = $state("");
+  let newMath = $state(true);
+  const key = $derived(cleanAtKey(newKey));
+  const body = $derived(atBody(newBody));
+  const keyProblem = $derived(key !== "" && !validAtKey(key));
+  /** The shortcut of RayTeX this key would replace. */
+  const replaced = $derived(validAtKey(key) ? (shortcuts.find(([k]) => k === key)?.[1] ?? null) : null);
+  const canAdd = $derived(validAtKey(key) && body !== "");
+
+  async function addShortcut() {
+    if (!canAdd) return;
+    const trigger = `@${key}`;
+    const macro = { name: atPreview(body), trigger, key: "", body, math: newMath };
+    await app.update((x) => {
+      // The same key again: its command changes.
+      const at = x.macros.findIndex((m) => m.trigger === trigger);
+      if (at >= 0) x.macros[at] = { ...x.macros[at], name: atPreview(body), body, math: newMath };
+      else x.macros.push(macro);
+    });
+    ui.toast("success", t("snippets.atAdded", { key: trigger, body: atPreview(body) }));
+    newKey = "";
+    newBody = "";
+  }
+
+  function removeShortcut(trigger: string) {
+    void app.update((x) => {
+      const at = x.macros.findIndex((m) => m.trigger === trigger);
+      if (at >= 0) x.macros.splice(at, 1);
+    });
+  }
+
+  function insertShortcut(s: { body: string; own: { math: boolean } | null }) {
+    // Those of RayTeX are formulas; one of the user may be text.
+    if (!s.own || s.own.math) editor.insertMath(s.body);
+    else editor.insertSnippet(s.body);
+  }
 
   async function insert(body: string, pkg?: string | null) {
     if (editor.insertSnippet(body) && pkg) await editor.addPackage(pkg);
@@ -74,11 +119,48 @@
       <strong>{t("snippets.shortcutsTitle")}</strong>
       <p>{t("snippets.shortcutsTip")}</p>
     </div>
+    <form
+      class="at-new"
+      onsubmit={(e) => {
+        e.preventDefault();
+        void addShortcut();
+      }}
+    >
+      <strong class="section">{t("snippets.atNew")}</strong>
+      <div class="at-fields">
+        <span class="at-sign mono">@</span>
+        <input class="input small mono at-key-input" class:invalid={keyProblem} bind:value={newKey} placeholder="v" aria-label={t("snippets.atKey")} spellcheck="false" autocomplete="off" />
+        <span class="faint">→</span>
+        <input class="input small mono at-body-input" bind:value={newBody} placeholder={"\\vec{}"} aria-label={t("snippets.atCommand")} spellcheck="false" autocomplete="off" />
+        <button class="btn small primary" type="submit" disabled={!canAdd}>{t("snippets.atAdd")}</button>
+      </div>
+      <label class="at-math"><input type="checkbox" bind:checked={newMath} />{t("snippets.atMath")}</label>
+      {#if keyProblem}
+        <p class="at-note problem">{t("snippets.atInvalidKey")}</p>
+      {:else if replaced}
+        <p class="at-note">{t("snippets.atReplaces", { key: `@${key}`, body: replaced })}</p>
+      {/if}
+    </form>
+    {#if mine.length}
+      <strong class="section">{t("snippets.atMine")}</strong>
+      <div class="at-grid">
+        {#each mine as s (s.key)}
+          <div class="at-own">
+            <button class="at-item" onclick={() => insertShortcut(s)} title={atPreview(s.body)}>
+              <span class="at-key mono">@{s.key}</span>
+              {#if s.own?.math}<MathGlyph latex={s.body} />{:else}<span class="mono ellipsis at-text">{atPreview(s.body)}</span>{/if}
+            </button>
+            <button class="icon-btn at-remove" title={t("snippets.atRemove")} aria-label={t("snippets.atRemove")} onclick={() => removeShortcut(`@${s.key}`)}><Icon name="x" size={11} /></button>
+          </div>
+        {/each}
+      </div>
+      <strong class="section">{t("snippets.atBuiltin")}</strong>
+    {/if}
     <div class="at-grid">
-      {#each shownShortcuts as [key, cmd] (key)}
-        <button class="at-item" onclick={() => editor.insertMath(cmd)} title={cmd}>
-          <span class="at-key mono">@{key}</span>
-          <MathGlyph latex={cmd} />
+      {#each builtin as s (s.key)}
+        <button class="at-item" onclick={() => insertShortcut(s)} title={atPreview(s.body)}>
+          <span class="at-key mono">@{s.key}</span>
+          <MathGlyph latex={s.body} />
         </button>
       {/each}
     </div>
@@ -154,6 +236,84 @@
     margin: 4px 0 0;
     font-size: 11.5px;
     line-height: 1.5;
+    color: var(--text-muted);
+  }
+  .section {
+    display: block;
+    margin: 10px 4px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .at-new {
+    margin: 0 4px 4px;
+    padding: 2px 0 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .at-new .section {
+    margin: 4px 0 6px;
+  }
+  .at-fields {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .at-sign {
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .at-key-input {
+    width: 52px;
+    flex-shrink: 0;
+  }
+  .at-body-input {
+    flex: 1;
+    min-width: 0;
+  }
+  .input.invalid {
+    border-color: var(--error);
+  }
+  .at-math {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 7px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .at-note {
+    margin: 6px 0 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text-muted);
+  }
+  .at-note.problem {
+    color: var(--error);
+  }
+  .at-own {
+    position: relative;
+  }
+  .at-own .at-item {
+    width: 100%;
+  }
+  .at-remove {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    opacity: 0;
+  }
+  .at-own:hover .at-remove,
+  .at-own:focus-within .at-remove {
+    opacity: 1;
+  }
+  .at-text {
+    font-size: 10.5px;
     color: var(--text-muted);
   }
   .at-grid {

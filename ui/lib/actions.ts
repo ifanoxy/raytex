@@ -12,7 +12,7 @@ import { specFromSelection } from "./commands";
 import { REPOSITORY_URL } from "./constants";
 import type { GridKind } from "./grid";
 import { allDiagnostics, fixable, fixAllAndReport, quickFix } from "./fixes";
-import { matchesKey } from "./keys";
+import { learnLayout, matchesKey } from "./keys";
 import { setAlignment, setList } from "./editor/format";
 import { wrapCommand, wrapEnvironment, wrapMath } from "./editor/structure";
 import { type MessageKey, t } from "./i18n.svelte";
@@ -327,7 +327,9 @@ export function matches(e: KeyboardEvent, spec: string): boolean {
 
 /** Window-level shortcuts. Returns true when an action ran. */
 export function handleGlobalKey(e: KeyboardEvent): boolean {
-  if (ui.dialog || e.isComposing) return false;
+  // What each key writes on this keyboard is learned as it is typed (⌥ on macOS).
+  learnLayout(e);
+  if (ui.dialog || ui.capturingKeys || e.isComposing) return false;
   // Windows with shortcuts of their own (the grid editor's Ctrl+Enter).
   if (e.target instanceof Element && e.target.closest("[data-own-keys]")) return false;
   for (const a of actions) {
