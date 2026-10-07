@@ -504,6 +504,8 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     await until(() => !!document.querySelector(".studio .empty .btn.primary"), 5_000, "no style yet");
     document.querySelector<HTMLButtonElement>(".studio .empty .btn.primary")!.click();
     await until(() => !!document.querySelector('.studio input[data-slot="head-left"]'), 5_000, "new style");
+    // Its name follows the language of the interface.
+    const name = document.querySelector<HTMLInputElement>(".studio input.name")!.value;
     const fill = (slot: string, text: string) => {
       const el = document.querySelector<HTMLInputElement>(`.studio input[data-slot="${slot}"]`)!;
       el.value = text;
@@ -527,17 +529,17 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     await scene("page-style");
     const uses = () => [...document.querySelectorAll<HTMLButtonElement>(".studio .uses .btn")];
     uses()[0].click();
-    await until(() => !!editor.textOf(main)?.includes("\\pagestyle{perso}"), 5_000, "style of the document");
+    await until(() => !!editor.textOf(main)?.includes(`\\pagestyle{${name}}`), 5_000, "style of the document");
     uses()[1].click();
-    await until(() => !!editor.textOf(main)?.includes("\\let\\ps@plain\\ps@perso"), 5_000, "style of the opening pages");
+    await until(() => !!editor.textOf(main)?.includes(`\\let\\ps@plain\\ps@${name}`), 5_000, "style of the opening pages");
     const text = editor.textOf(main)!;
-    const defined = text.indexOf("\\fancypagestyle{perso}") > 0 && text.indexOf("\\pagestyle{perso}") > text.indexOf("\\fancypagestyle{perso}");
+    const defined = text.indexOf(`\\fancypagestyle{${name}}`) > 0 && text.indexOf(`\\pagestyle{${name}}`) > text.indexOf(`\\fancypagestyle{${name}}`);
     const packages = ["fancyhdr", "eso-pic", "xcolor"].every((p) => text.includes(`\\usepackage{${p}}`));
     // One page only, at the cursor of the chapter.
     uses()[3].click();
     await until(() => ui.overlay === null, 5_000, "studio closed");
-    const here = !!editor.textOf(chapter)?.includes("\\thispagestyle{perso}");
-    log(`layout: read ${read}, gathered ${gathered}, header asked ${asked}, previewed ${previewed}, defined ${defined}, packages ${packages}, here ${here}`);
+    const here = !!editor.textOf(chapter)?.includes(`\\thispagestyle{${name}}`);
+    log(`layout: style ${name}, read ${read}, gathered ${gathered}, header asked ${asked}, previewed ${previewed}, defined ${defined}, packages ${packages}, here ${here}`);
     ok = read === "2.5 2.5 2.5 2.5" && gathered && asked && previewed && defined && packages && here && (await buildOk(log, "layout")) && ok;
   } catch (e) {
     log(`layout failed: ${e}`);
