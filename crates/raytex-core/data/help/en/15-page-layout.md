@@ -37,6 +37,8 @@ A **page style** is what repeats on the pages. The **Page styles** tab lists tho
 
 The **`+`** at the end of each field writes what a field can hold: page number, "page 2 / 9", title of the chapter or of the section, date, **image** (a logo, picked in your files), bold, italic, colour, new line, and further on the number of pages, the first or the last title of the page, something left out on pages of figures.
 
+When the text of a field is longer than its box, a double arrow shows next to the `+`: it opens the field in a larger area, under the three boxes (<kbd>Esc</kbd> closes it).
+
 In a two-sided document, **Even pages** chooses between *Same*, *Mirrored* (what is outside stays outside) and *Their own* (even pages have fields of their own).
 
 If the header is taller than the room the page keeps for it (an image, two lines), the preview says so and one click gives it the height LaTeX asks for.

@@ -542,6 +542,14 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     await until(() => !!ui.menu, 5_000, "menu of a field");
     await ui.menu!.items[1].run!();
     ui.closeMenu();
+    // A text longer than its field opens in a larger box, where it is changed the same.
+    const small = document.querySelector<HTMLInputElement>('.studio input[data-slot="foot-right"]')!;
+    small.parentElement!.querySelector<HTMLButtonElement>(".widen")!.click();
+    await until(() => !!document.querySelector('.studio textarea[data-wide="foot-right"]'), 5_000, "larger field");
+    const large = document.querySelector<HTMLTextAreaElement>('.studio textarea[data-wide="foot-right"]')!;
+    const widened = large.value === small.value && small.value.includes("LastPage");
+    document.querySelector<HTMLButtonElement>(".studio .slot.big .widen")!.click();
+    await until(() => !document.querySelector(".studio textarea[data-wide]"), 5_000, "larger field closed");
     advanced("head");
     await until(() => !!document.querySelector('.studio .fold[data-id="head"] .advanced select'), 5_000, "advanced settings of the header");
     const ruleColour = document.querySelector<HTMLSelectElement>('.studio .fold[data-id="head"] .advanced select')!;
@@ -573,8 +581,8 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     uses()[3].click();
     await until(() => ui.overlay === null, 5_000, "studio closed");
     const here = !!editor.textOf(chapter)?.includes(`\\thispagestyle{${name}}`);
-    log(`layout: style ${name}, read ${read}, gathered ${gathered}, header asked ${asked}, previewed ${previewed}, defined ${defined}, packages ${packages}, here ${here}`);
-    ok = read === "2.5 2.5 2.5 2.5" && gathered && asked && previewed && defined && packages && here && (await buildOk(log, "layout")) && ok;
+    log(`layout: style ${name}, larger field ${widened}, read ${read}, gathered ${gathered}, header asked ${asked}, previewed ${previewed}, defined ${defined}, packages ${packages}, here ${here}`);
+    ok = read === "2.5 2.5 2.5 2.5" && widened && gathered && asked && previewed && defined && packages && here && (await buildOk(log, "layout")) && ok;
   } catch (e) {
     log(`layout failed: ${e}`);
     ok = false;

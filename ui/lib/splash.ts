@@ -13,6 +13,19 @@ export function themeSplash() {
   }
 }
 
+/**
+ * Draws how the ray crosses the launch screen this time: which of its three
+ * routes comes first, and which way up. Only at the very start, while
+ * nothing is seen yet: later, the ray would jump.
+ */
+export function drawSplashRoute() {
+  const el = document.getElementById("splash");
+  if (!el || performance.now() > 300) return;
+  // One crossing lasts 5.5 s: the ray is somewhere in the first half of one of the three.
+  el.style.setProperty("--splash-start", `${-(5.5 * Math.floor(Math.random() * 3) + 0.9 + Math.random() * 1.6).toFixed(2)}s`);
+  el.style.setProperty("--splash-flip", Math.random() < 0.5 ? "1" : "-1");
+}
+
 /** Remembers the theme for the next launch. */
 export function rememberTheme(theme: "light" | "dark") {
   try {

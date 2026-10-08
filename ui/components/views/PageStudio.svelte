@@ -294,7 +294,46 @@
   }
 
   /** The field of a header or a footer the menu writes in, and where its cursor was. */
-  let slot: { part: "head" | "foot"; pages: "odd" | "even"; side: keyof Slots; input: HTMLInputElement; from: number; to: number } | null = null;
+  let slot: { part: "head" | "foot"; pages: "odd" | "even"; side: keyof Slots; input: HTMLInputElement | HTMLTextAreaElement; from: number; to: number } | null = null;
+
+  /** The fields whose text is longer than their box, by their place (`head-odd-left`). */
+  const long = $state<Record<string, boolean>>({});
+  /** The field open in a larger box, to read and change a long text. */
+  let wide = $state<{ part: "head" | "foot"; pages: "odd" | "even"; side: keyof Slots } | null>(null);
+  const isWide = (part: "head" | "foot", pages: "odd" | "even", side: keyof Slots) => !!wide && wide.part === part && wide.pages === pages && wide.side === side;
+
+  /** Tells when the text of a field no longer fits in it. */
+  function overflow(node: HTMLInputElement, field: { key: string; value: string }) {
+    let key = field.key;
+    const check = () => (long[key] = node.scrollWidth > node.clientWidth + 1);
+    const observer = new ResizeObserver(check);
+    observer.observe(node);
+    check();
+    return {
+      update(next: { key: string; value: string }) {
+        key = next.key;
+        // Once the field shows its new text.
+        void tick().then(check);
+      },
+      destroy() {
+        observer.disconnect();
+        delete long[key];
+      },
+    };
+  }
+
+  /** Opens the larger box of a field, or closes it and goes back to the field. */
+  function widen(part: "head" | "foot", pages: "odd" | "even", side: keyof Slots) {
+    const closing = isWide(part, pages, side);
+    wide = closing ? null : { part, pages, side };
+    if (closing) document.querySelector<HTMLInputElement>(`.studio input[data-slot="${part}-${pages === "even" ? "even-" : ""}${side}"]`)?.focus();
+  }
+
+  /** The larger box takes the cursor, at the end of its text. */
+  function focusEnd(node: HTMLTextAreaElement) {
+    node.focus();
+    node.setSelectionRange(node.value.length, node.value.length);
+  }
 
   async function write(code: string) {
     if (!style || !slot) return;
@@ -312,7 +351,7 @@
   /** What a field can hold besides text: the menu of its `+`. */
   function fieldMenu(e: MouseEvent, part: "head" | "foot", pages: "odd" | "even", side: keyof Slots) {
     const button = e.currentTarget as HTMLElement;
-    const input = button.parentElement?.querySelector("input");
+    const input = button.parentElement?.querySelector<HTMLInputElement | HTMLTextAreaElement>("input, textarea");
     if (!input) return;
     const focused = document.activeElement === input;
     const end = input.value.length;
@@ -435,13 +474,49 @@
       {#each SIDES as side (side)}
         <label class="field">
           <span>{t(`layout.slot.${side}`)}</span>
-          <span class="slot">
-            <input class="input small mono" bind:value={style[part][pages][side]} spellcheck="false" autocomplete="off" data-slot="{part}-{pages === 'even' ? 'even-' : ''}{side}" />
+          <span class="slot" class:long={long[`${part}-${pages}-${side}`] || isWide(part, pages, side)}>
+            <input
+              class="input small mono"
+              bind:value={style[part][pages][side]}
+              spellcheck="false"
+              autocomplete="off"
+              data-slot="{part}-{pages === 'even' ? 'even-' : ''}{side}"
+              use:overflow={{ key: `${part}-${pages}-${side}`, value: style[part][pages][side] }}
+            />
+            <button class="widen" class:active={isWide(part, pages, side)} type="button" title={t("layout.widen")} aria-label={t("layout.widen")} aria-expanded={isWide(part, pages, side)} onclick={() => widen(part, pages, side)}><Icon name="expand" size={11} /></button>
             <button class="plus" type="button" title={t("layout.fieldMenu")} aria-label={t("layout.fieldMenu")} onmousedown={(e) => e.preventDefault()} onclick={(e) => fieldMenu(e, part, pages, side)}><Icon name="plus" size={12} /></button>
           </span>
         </label>
       {/each}
     </div>
+    {#if wide && wide.part === part && wide.pages === pages}
+      {@const side = wide.side}
+      <label class="field">
+        <span>{t(`layout.slot.${side}`)}</span>
+        <span class="slot big">
+          <!-- One line of LaTeX, shown on several: a line break of the header is written `\\`. -->
+          <textarea
+            class="input small mono"
+            rows="3"
+            value={style[part][pages][side]}
+            spellcheck="false"
+            autocomplete="off"
+            data-wide="{part}-{pages === 'even' ? 'even-' : ''}{side}"
+            use:focusEnd
+            oninput={(e) => (style![part][pages][side] = e.currentTarget.value.replace(/\s*\n\s*/g, " "))}
+            onkeydown={(e) => {
+              if (e.key === "Enter") e.preventDefault();
+              else if (e.key === "Escape") {
+                e.preventDefault();
+                widen(part, pages, side);
+              }
+            }}
+          ></textarea>
+          <button class="widen active" type="button" title={t("layout.narrow")} aria-label={t("layout.narrow")} onclick={() => widen(part, pages, side)}><Icon name="x" size={11} /></button>
+          <button class="plus" type="button" title={t("layout.fieldMenu")} aria-label={t("layout.fieldMenu")} onmousedown={(e) => e.preventDefault()} onclick={(e) => fieldMenu(e, part, pages, side)}><Icon name="plus" size={12} /></button>
+        </span>
+      </label>
+    {/if}
   {/if}
 {/snippet}
 
@@ -1007,6 +1082,10 @@
     min-width: 0;
   }
   .field textarea {
+    height: auto;
+    min-height: 46px;
+    padding-top: 6px;
+    padding-bottom: 6px;
     resize: vertical;
     line-height: 1.5;
   }
@@ -1039,6 +1118,50 @@
     background: none;
     color: var(--text-muted);
     cursor: pointer;
+  }
+  /* The larger box of a field: offered when its text is longer than it shows. */
+  .widen {
+    position: absolute;
+    top: 50%;
+    right: 24px;
+    display: none;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    transform: translateY(-50%);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .slot.long .widen,
+  .slot.big .widen {
+    display: grid;
+  }
+  .slot.long .input,
+  .slot.big .input {
+    padding-right: 46px;
+  }
+  .widen:hover,
+  .widen.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .slot.big textarea {
+    width: 100%;
+    height: auto;
+    min-height: 68px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    resize: vertical;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .slot.big .widen,
+  .slot.big .plus {
+    top: 14px;
   }
   .plus:hover {
     background: var(--accent-soft);

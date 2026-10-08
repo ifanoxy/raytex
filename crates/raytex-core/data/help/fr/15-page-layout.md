@@ -37,6 +37,8 @@ Un **style de page** est ce qui se répète sur les pages. L'onglet **Styles de 
 
 Le **`+`** au bout de chaque champ y écrit ce qu'un champ peut contenir : numéro de page, « page 2 / 9 », titre du chapitre ou de la section, date, **image** (un logo, choisi dans vos fichiers), gras, italique, couleur, retour à la ligne, et pour aller plus loin le nombre de pages, le premier ou le dernier titre de la page, un contenu absent des pages de figures.
 
+Quand le texte d'un champ dépasse sa case, une double flèche apparaît à côté du `+` : elle ouvre le champ dans une zone plus grande, sous les trois cases (<kbd>Échap</kbd> la referme).
+
 Dans un document recto verso, **Pages paires** choisit entre *Identiques*, *En miroir* (ce qui est à l'extérieur reste à l'extérieur) et *Différentes* (les pages paires ont leurs propres champs).
 
 Si l'en-tête est plus haut que la place que la page lui garde (une image, deux lignes), l'aperçu le dit et un clic lui donne la hauteur que LaTeX demande.

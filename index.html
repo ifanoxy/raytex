@@ -45,30 +45,43 @@
         opacity: 0;
         pointer-events: none;
       }
+      /* The ray crosses the window from left to right as a ray does in the
+         sea: along a route that wanders, turns and loops, another one at
+         each crossing, with the bubbles of its wake behind it and others
+         rising from the bottom. Which route comes first, and which way up,
+         is drawn when RayTeX starts (ui/lib/splash.ts). */
+      #splash {
+        /* The ray is already on its way when the window opens. */
+        --splash-start: -1.3s;
+      }
+      #splash .sea {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 440px;
+        height: 200px;
+      }
+      #splash .route,
+      #splash .wake {
+        display: none;
+      }
       #splash .ray {
-        width: 124px;
+        width: 96px;
         height: auto;
         animation: splash-swim 2.6s ease-in-out infinite alternate;
-        filter: drop-shadow(0 14px 18px rgba(75, 42, 168, 0.28));
+        filter: drop-shadow(0 10px 14px rgba(75, 42, 168, 0.3));
       }
-      #splash .bar {
-        position: relative;
-        width: 132px;
-        height: 3px;
-        border-radius: 3px;
-        overflow: hidden;
-        background: var(--splash-track);
-      }
-      #splash .bar::after {
-        content: "";
+      #splash .bubble {
         position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        width: 42%;
-        border-radius: 3px;
-        background: var(--splash-accent);
-        animation: splash-slide 1.35s ease-in-out infinite;
+        bottom: 4px;
+        left: var(--x);
+        width: var(--s);
+        height: var(--s);
+        box-sizing: border-box;
+        border: 1.5px solid var(--splash-accent);
+        border-radius: 50%;
+        opacity: 0;
+        animation: splash-rise var(--t) ease-in var(--d) infinite;
       }
       @keyframes splash-swim {
         from {
@@ -78,30 +91,234 @@
           transform: translateY(-7px) rotate(1.6deg);
         }
       }
-      @keyframes splash-slide {
-        from {
-          transform: translateX(-110%);
+      @keyframes splash-rise {
+        0% {
+          transform: translate(0, 0) scale(0.5);
+          opacity: 0;
         }
-        to {
-          transform: translateX(250%);
+        12% {
+          opacity: 0.75;
+        }
+        70% {
+          opacity: 0.5;
+        }
+        100% {
+          transform: translate(var(--drift), -176px) scale(1.15);
+          opacity: 0;
+        }
+      }
+      /* Where an element can follow a path (every recent web view). */
+      @supports (offset-path: path("M0 0L1 1")) {
+        /* The routes are drawn at their own size and shown larger, all together. */
+        #splash .sea {
+          transform: scale(1.4);
+        }
+        #splash .swim {
+          position: absolute;
+          inset: 0;
+          transform: scaleY(var(--splash-flip, 1));
+        }
+        #splash .route {
+          position: absolute;
+          inset: 0;
+          display: block;
+          overflow: visible;
+          /* A route comes from nowhere and goes nowhere. */
+          -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+        }
+        #splash .route path {
+          fill: none;
+          stroke: color-mix(in srgb, var(--splash-accent) 34%, var(--splash-track));
+          stroke-width: 2.4;
+          stroke-linecap: round;
+          stroke-dasharray: 1 11;
+          opacity: 0;
+        }
+        #splash .route path:nth-child(1) {
+          animation:
+            splash-route-1 16.5s linear var(--splash-start, 0s) infinite,
+            splash-flow 1.5s linear infinite;
+        }
+        #splash .route path:nth-child(2) {
+          animation:
+            splash-route-2 16.5s linear var(--splash-start, 0s) infinite,
+            splash-flow 1.5s linear infinite;
+        }
+        #splash .route path:nth-child(3) {
+          animation:
+            splash-route-3 16.5s linear var(--splash-start, 0s) infinite,
+            splash-flow 1.5s linear infinite;
+        }
+        #splash .ray,
+        #splash .wake {
+          position: absolute;
+          top: 0;
+          left: 0;
+          display: block;
+          offset-path: path("M6 126C46 122 58 64 102 70S142 150 190 142S232 78 196 78S176 128 226 126S286 56 330 62S372 116 434 92");
+          offset-rotate: auto 90deg;
+          opacity: 0;
+        }
+        #splash .ray {
+          width: 62px;
+          filter: drop-shadow(0 3px 6px rgba(75, 42, 168, 0.22));
+          /* It beats its wings as it goes. */
+          animation:
+            splash-travel 16.5s linear var(--splash-start, 0s) infinite,
+            splash-beat 0.9s ease-in-out infinite alternate;
+        }
+        #splash .wake {
+          width: var(--s);
+          height: var(--s);
+          box-sizing: border-box;
+          border: 1.5px solid var(--splash-accent);
+          border-radius: 50%;
+          /* Behind the ray by `--lag`. */
+          animation: splash-travel 16.5s linear calc(var(--splash-start, 0s) + var(--lag)) infinite backwards;
+        }
+        /* Three crossings, each on its own route; what travels is only seen away from the ends. */
+        @keyframes splash-travel {
+          0% {
+            offset-path: path("M6 126C46 122 58 64 102 70S142 150 190 142S232 78 196 78S176 128 226 126S286 56 330 62S372 116 434 92");
+            offset-distance: 0%;
+            opacity: 0;
+          }
+          3% {
+            opacity: var(--o, 1);
+          }
+          30.3% {
+            opacity: var(--o, 1);
+          }
+          33.3% {
+            offset-path: path("M6 126C46 122 58 64 102 70S142 150 190 142S232 78 196 78S176 128 226 126S286 56 330 62S372 116 434 92");
+            offset-distance: 100%;
+            opacity: 0;
+          }
+          33.34% {
+            offset-path: path("M6 72C52 60 66 138 116 136S160 86 198 90S246 156 288 150S322 56 366 54S404 104 434 122");
+            offset-distance: 0%;
+            opacity: 0;
+          }
+          36.3% {
+            opacity: var(--o, 1);
+          }
+          63.6% {
+            opacity: var(--o, 1);
+          }
+          66.63% {
+            offset-path: path("M6 72C52 60 66 138 116 136S160 86 198 90S246 156 288 150S322 56 366 54S404 104 434 122");
+            offset-distance: 100%;
+            opacity: 0;
+          }
+          66.67% {
+            offset-path: path("M6 104C40 66 96 50 126 86S112 152 90 128S140 86 196 104S262 168 312 148S352 70 434 78");
+            offset-distance: 0%;
+            opacity: 0;
+          }
+          69.7% {
+            opacity: var(--o, 1);
+          }
+          97% {
+            opacity: var(--o, 1);
+          }
+          100% {
+            offset-path: path("M6 104C40 66 96 50 126 86S112 152 90 128S140 86 196 104S262 168 312 148S352 70 434 78");
+            offset-distance: 100%;
+            opacity: 0;
+          }
+        }
+        @keyframes splash-route-1 {
+          0%,
+          33.3%,
+          100% {
+            opacity: 0;
+          }
+          3%,
+          30.3% {
+            opacity: 1;
+          }
+        }
+        @keyframes splash-route-2 {
+          0%,
+          33.34%,
+          66.63%,
+          100% {
+            opacity: 0;
+          }
+          36.3%,
+          63.6% {
+            opacity: 1;
+          }
+        }
+        @keyframes splash-route-3 {
+          0%,
+          66.67%,
+          100% {
+            opacity: 0;
+          }
+          69.7%,
+          97% {
+            opacity: 1;
+          }
+        }
+        @keyframes splash-beat {
+          from {
+            transform: scaleX(1);
+          }
+          to {
+            transform: scaleX(0.86);
+          }
+        }
+        @keyframes splash-flow {
+          to {
+            stroke-dashoffset: -48;
+          }
         }
       }
       @media (prefers-reduced-motion: reduce) {
-        #splash .ray,
-        #splash .bar::after {
+        #splash .sea {
+          transform: none;
+        }
+        #splash .swim {
+          position: static;
+          transform: none;
+        }
+        #splash .ray {
+          position: static;
+          width: 96px;
+          opacity: 1;
+          offset-path: none;
           animation: none;
         }
-        #splash .bar::after {
-          width: 100%;
-          opacity: 0.5;
+        #splash .bubble,
+        #splash .wake,
+        #splash .route {
+          display: none;
         }
       }
     </style>
   </head>
   <body>
     <div id="splash" role="status" aria-label="RayTeX">
-      <img class="ray" src="/assets/logo/ray.svg" alt="" width="124" height="111" />
-      <div class="bar"></div>
+      <div class="sea">
+        <i class="bubble" style="--x: 52px; --s: 7px; --t: 3.6s; --d: -0.3s; --drift: 10px"></i>
+        <i class="bubble" style="--x: 128px; --s: 5px; --t: 4.4s; --d: -2.1s; --drift: -8px"></i>
+        <i class="bubble" style="--x: 214px; --s: 8px; --t: 3.9s; --d: -1.2s; --drift: 6px"></i>
+        <i class="bubble" style="--x: 296px; --s: 5px; --t: 4.8s; --d: -3.3s; --drift: 12px"></i>
+        <i class="bubble" style="--x: 378px; --s: 6px; --t: 3.3s; --d: -2.6s; --drift: -10px"></i>
+        <div class="swim">
+          <svg class="route" viewBox="0 0 440 200" width="440" height="200" aria-hidden="true">
+            <path d="M6 126C46 122 58 64 102 70S142 150 190 142S232 78 196 78S176 128 226 126S286 56 330 62S372 116 434 92" />
+            <path d="M6 72C52 60 66 138 116 136S160 86 198 90S246 156 288 150S322 56 366 54S404 104 434 122" />
+            <path d="M6 104C40 66 96 50 126 86S112 152 90 128S140 86 196 104S262 168 312 148S352 70 434 78" />
+          </svg>
+          <i class="wake" style="--lag: 0.34s; --s: 7px; --o: 0.6"></i>
+          <i class="wake" style="--lag: 0.52s; --s: 5px; --o: 0.42"></i>
+          <i class="wake" style="--lag: 0.68s; --s: 4px; --o: 0.26"></i>
+          <img class="ray" src="/assets/logo/ray.svg" alt="" width="96" height="86" />
+        </div>
+      </div>
     </div>
     <div id="app"></div>
     <script type="module" src="/ui/main.ts"></script>

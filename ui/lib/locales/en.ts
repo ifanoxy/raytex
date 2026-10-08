@@ -1379,6 +1379,8 @@ const en = {
   "layout.offsetRight": "Into the right margin",
   "layout.offsetTitle": "How far the band goes beyond the text, into the margin",
   "layout.fieldMenu": "Write in this field…",
+  "layout.widen": "Open in a larger field",
+  "layout.narrow": "Close the larger field",
   "layout.field.subsection": "Subsection title",
   "layout.field.italic": "Italic",
   "layout.field.smallcaps": "Small caps",

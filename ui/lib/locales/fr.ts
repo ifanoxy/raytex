@@ -1381,6 +1381,8 @@ const fr: Record<keyof typeof en, string> = {
   "layout.offsetRight": "Dans la marge droite",
   "layout.offsetTitle": "De combien la bande dépasse le texte, dans la marge",
   "layout.fieldMenu": "Écrire dans ce champ…",
+  "layout.widen": "Ouvrir dans un champ plus grand",
+  "layout.narrow": "Refermer le grand champ",
   "layout.field.subsection": "Titre de la sous-section",
   "layout.field.italic": "Italique",
   "layout.field.smallcaps": "Petites capitales",
