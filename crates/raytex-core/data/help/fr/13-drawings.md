@@ -10,7 +10,7 @@ TikZ dessine des schémas, graphes, figures géométriques et diagrammes directe
 
 ## Dessiner sur le tableau blanc
 
-Le studio s'ouvre sur l'onglet **Dessin** : un tableau blanc quadrillé, sur lequel on dessine à la souris. Le code TikZ s'écrit tout seul, et le rendu LaTeX exact s'affiche en bas à droite.
+Le studio s'ouvre sur l'onglet **Dessin** : un tableau blanc quadrillé, sur lequel on dessine à la souris. Le code TikZ s'écrit tout seul, et le rendu LaTeX exact s'affiche en bas à droite, toujours en entier ; son bord supérieur se fait glisser pour lui donner plus ou moins de place.
 
 | Outil | Touche | Geste |
 |---|---|---|
@@ -23,7 +23,7 @@ Le studio s'ouvre sur l'onglet **Dessin** : un tableau blanc quadrillé, sur leq
 
 Une fois une forme dessinée, l'outil de sélection revient : elle est sélectionnée, prête à être déplacée ou mise en forme. La **punaise**, sous les outils, garde l'outil choisi pour dessiner plusieurs formes de suite.
 
-- **Déplacer la vue** : <kbd>Espace</kbd> + glisser, le bouton du milieu, ou la molette ; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + molette pour zoomer.
+- **Déplacer la vue** : <kbd>Espace</kbd> + glisser, le bouton du milieu, ou la molette ; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + molette pour zoomer. À l'ouverture du studio et au retour depuis un autre onglet, la vue se cadre toute seule sur ce qui est dessiné ; le bouton *Voir tout le dessin* le refait à la demande.
 - **Redimensionner** : les poignées d'une forme ; avec plusieurs formes sélectionnées, les coins du cadre les agrandissent ensemble, en gardant leurs proportions.
 - **Dupliquer** : <kbd>Alt</kbd> + glisser une forme en laisse une copie ; le bouton *Dupliquer* de la barre de sélection ou <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>D</kbd> ; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>C</kbd> puis <kbd>V</kbd> copie et colle, aussi d'un schéma à l'autre.
 - **La barre de sélection**, en haut du tableau dès que quelque chose est sélectionné : dupliquer, mettre devant ou derrière, garder comme ensemble, supprimer. Le clic droit propose les mêmes actions.

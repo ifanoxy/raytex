@@ -30,6 +30,7 @@
   import Icon from "../common/Icon.svelte";
   import Modal from "../common/Modal.svelte";
   import PdfPreview from "../common/PdfPreview.svelte";
+  import Resizer from "../common/Resizer.svelte";
   import { codeShapes, type Drawing, drawingCode, emptyStyle, freeSetName, newId, parseDrawing, setCode as codeOfSet, setShapes as shapesOfSet, type ShapeSet, type Style } from "$lib/tikz/model";
   import SetsPanel from "./tikz/SetsPanel.svelte";
   import ShapeProps from "./tikz/ShapeProps.svelte";
@@ -98,7 +99,7 @@
   const EMPTY = "\\begin{tikzpicture}\n\\end{tikzpicture}";
   const GRID_KEY = "raytex.tikz.grid";
   const STEPS = [0.1, 0.25, 0.5, 1];
-  const savedGrid: { step?: number; show?: boolean; snap?: boolean; axes?: boolean; keep?: boolean; sets?: boolean } = (() => {
+  const savedGrid: { step?: number; show?: boolean; snap?: boolean; axes?: boolean; keep?: boolean; sets?: boolean; rendering?: number } = (() => {
     try {
       return JSON.parse(localStorage.getItem(GRID_KEY) ?? "{}");
     } catch {
@@ -123,6 +124,10 @@
   let sets = $state<ShapeSet[]>([]);
   let setsOpen = $state(savedGrid.sets ?? true);
   let renamingSet = $state<string | null>(null);
+  /** The height given to the LaTeX rendering by its upper edge (else its share of the panel). */
+  let renderingHeight = $state<number | null>(typeof savedGrid.rendering === "number" ? savedGrid.rendering : null);
+  let side = $state<HTMLElement | null>(null);
+  let rendering = $state<HTMLElement | null>(null);
   /** The code is one tikzpicture (the whiteboard can show it). */
   let drawable = $state(true);
   let board = $state<ReturnType<typeof Whiteboard> | null>(null);
@@ -135,7 +140,7 @@
 
   $effect(() => {
     try {
-      localStorage.setItem(GRID_KEY, JSON.stringify({ step, show: showGrid, snap: snapOn, axes: showAxes, keep: keepTool, sets: setsOpen }));
+      localStorage.setItem(GRID_KEY, JSON.stringify({ step, show: showGrid, snap: snapOn, axes: showAxes, keep: keepTool, sets: setsOpen, rendering: renderingHeight ?? undefined }));
     } catch {
       /* not remembered */
     }
@@ -376,6 +381,19 @@
   function insertSet(set: ShapeSet) {
     if (!board) return;
     board.insert(shapesOfSet(set, board.center(), snapOn ? step : 0));
+  }
+
+  // ----------------------------------------------------------- rendering
+
+  /** The rendering leaves room for the settings of the shape above it. */
+  const RENDERING_MIN = 140;
+  const SETTINGS_MIN = 150;
+
+  /** The upper edge of the rendering is dragged: `delta` pixels down make it smaller. */
+  function resizeRendering(delta: number) {
+    const most = Math.max(RENDERING_MIN, (side?.clientHeight ?? 600) - SETTINGS_MIN);
+    const now = renderingHeight ?? rendering?.offsetHeight ?? 300;
+    renderingHeight = Math.round(Math.max(RENDERING_MIN, Math.min(most, now - delta)));
   }
 
   function chooseTool(id: Tool) {
@@ -713,9 +731,11 @@
         {/if}
         </div>
 
-        <aside class="side">
+        <aside class="side" bind:this={side}>
           <ShapeProps bind:drawing bind:selected bind:style={drawStyle} {tool} oncommit={commitDrawing} oncode={() => setMode("code")} />
-          <div class="mini">
+          <!-- Dragged, the edge gives the rendering more or less room. -->
+          <Resizer direction="vertical" onresize={resizeRendering} />
+          <div class="mini" class:sized={renderingHeight !== null} bind:this={rendering} style:height={renderingHeight === null ? undefined : `${renderingHeight}px`}>
             <div class="mini-bar">
               <span class="section-title">{t("tikz.latexRendering")}</span>
               <div class="spacer"></div>
@@ -728,7 +748,7 @@
               {/if}
             </div>
             {#if hasContent}
-              <PdfPreview pdf={outcome?.pdf ?? null} {revision} maxScale={1.4} />
+              <PdfPreview pdf={outcome?.pdf ?? null} {revision} maxScale={3} whole />
             {:else}
               <p class="faint empty-mini">{t("tikz.emptyBoard")}</p>
             {/if}
@@ -955,7 +975,7 @@
     line-height: 1.5;
   }
   .side {
-    width: 300px;
+    width: 340px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -964,7 +984,7 @@
     background: var(--bg-elev);
   }
   .side > :global(.props) {
-    flex: 1;
+    flex: 1 1 0;
     min-height: 0;
   }
   /* The paper, and the shelf of the sets under it. */
@@ -1025,12 +1045,16 @@
     border-color: var(--accent);
     background: var(--accent-soft);
   }
+  /* The LaTeX rendering: nearly half of the panel, more or less when its upper edge is dragged. */
   .mini {
-    height: 210px;
-    flex-shrink: 0;
+    flex: 0.85 1 0;
+    min-height: 140px;
     display: flex;
     flex-direction: column;
     border-top: 1px solid var(--border);
+  }
+  .mini.sized {
+    flex: 0 1 auto;
   }
   .mini-bar {
     display: flex;

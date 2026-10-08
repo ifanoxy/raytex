@@ -2,8 +2,9 @@
   // Small PDF preview (TikZ pictures, font samples). The previous rendering
   // stays visible until the new one is ready: no flicker while typing.
   // With a TikZ bounding box, it shows a centimetre grid and turns clicks
-  // into TikZ coordinates.
-  import { onDestroy } from "svelte";
+  // into TikZ coordinates. Asked for the whole page, it fits it both ways:
+  // nothing of a picture is out of sight, whatever the shape of the box.
+  import { onDestroy, untrack } from "svelte";
   import { t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import Icon from "./Icon.svelte";
@@ -15,6 +16,7 @@
     border = 0,
     grid = false,
     maxScale = 2.5,
+    whole = false,
     onpoint,
   }: {
     pdf: string | null;
@@ -23,6 +25,8 @@
     border?: number;
     grid?: boolean;
     maxScale?: number;
+    /** The whole page is shown, fitted to the height of the box too (else to its width only). */
+    whole?: boolean;
     onpoint?: (x: number, y: number) => void;
   } = $props();
 
@@ -44,12 +48,32 @@
   let hover = $state<{ x: number; y: number } | null>(null);
   let failed = $state(false);
   let token = 0;
+  /** The size of the box, as it changes (a window or a panel being resized). */
+  let boxWidth = $state(0);
+  let boxHeight = $state(0);
+  /** The size the pages are drawn for: the one of the box once it stops moving. */
   let width = $state(0);
+  let height = $state(0);
+
+  $effect(() => {
+    const [w, h] = [boxWidth, boxHeight];
+    if (untrack(() => !width || !height)) {
+      width = w;
+      height = h;
+      return;
+    }
+    const timer = setTimeout(() => {
+      width = w;
+      height = h;
+    }, 80);
+    return () => clearTimeout(timer);
+  });
 
   $effect(() => {
     void revision;
     void zoom;
     void width;
+    if (whole) void height;
     if (pdf) void render(pdf);
     else pages = [];
   });
@@ -66,10 +90,13 @@
       if (my !== token) return closePdf(doc);
       const out: PageView[] = [];
       const avail = Math.max(120, (host?.clientWidth ?? 400) - 24);
+      // A little less than the box, so that no scroll bar comes from a rounding.
+      const availHeight = Math.max(80, (host?.clientHeight ?? 300) - 26);
       for (let n = 1; n <= Math.min(doc.numPages, 12); n++) {
         const page = await doc.getPage(n);
         const base = page.getViewport({ scale: 1 });
-        const scale = Math.min(maxScale, avail / base.width) * zoom;
+        const fitted = whole ? Math.min(avail / base.width, availHeight / base.height) : avail / base.width;
+        const scale = Math.min(maxScale, fitted) * zoom;
         const viewport = page.getViewport({ scale });
         const dpr = window.devicePixelRatio || 1;
         const canvas = document.createElement("canvas");
@@ -144,10 +171,10 @@
   const fmt = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 </script>
 
-<div class="preview" bind:this={host} bind:clientWidth={width}>
+<div class="preview" class:whole bind:this={host} bind:clientWidth={boxWidth} bind:clientHeight={boxHeight}>
   <div class="zoom">
     <button class="icon-btn" title={t("viewer.zoomOut")} onclick={() => (zoom = Math.max(0.25, zoom / 1.25))}><Icon name="zoom-out" size={14} /></button>
-    <button class="pct" onclick={() => (zoom = 1)} title={t("viewer.fitWidth")}>{Math.round(zoom * 100)} %</button>
+    <button class="pct" onclick={() => (zoom = 1)} title={t(whole ? "viewer.fitPage" : "viewer.fitWidth")}>{Math.round(zoom * 100)} %</button>
     <button class="icon-btn" title={t("viewer.zoomIn")} onclick={() => (zoom = Math.min(6, zoom * 1.25))}><Icon name="zoom-in" size={14} /></button>
   </div>
   <div class="pages">
@@ -206,6 +233,29 @@
   .zoom .icon-btn {
     width: 26px;
     height: 26px;
+  }
+  /* The whole page in the box: it sits in the middle, and the zoom, shown
+     when the pointer comes, floats over it without taking any room. */
+  .preview.whole {
+    display: flex;
+    flex-direction: column;
+  }
+  .preview.whole .zoom {
+    float: none;
+    align-self: flex-end;
+    right: 6px;
+    flex-shrink: 0;
+    margin: 6px 6px -34px 0;
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+  .preview.whole:hover .zoom,
+  .preview.whole .zoom:focus-within {
+    opacity: 1;
+  }
+  .preview.whole .pages {
+    flex: 1 0 auto;
+    justify-content: center;
   }
   .pct {
     min-width: 48px;

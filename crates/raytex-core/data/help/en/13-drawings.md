@@ -10,7 +10,7 @@ TikZ draws diagrams, graphs, geometric figures and charts directly in LaTeX: sam
 
 ## Drawing on the whiteboard
 
-The studio opens on the **Drawing** tab: a whiteboard with a grid, drawn on with the mouse. The TikZ code writes itself, and the exact LaTeX rendering shows at the bottom right.
+The studio opens on the **Drawing** tab: a whiteboard with a grid, drawn on with the mouse. The TikZ code writes itself, and the exact LaTeX rendering shows at the bottom right, always whole; its upper edge is dragged to give it more or less room.
 
 | Tool | Key | Gesture |
 |---|---|---|
@@ -23,7 +23,7 @@ The studio opens on the **Drawing** tab: a whiteboard with a grid, drawn on with
 
 Once a shape is drawn, the selection tool comes back: the shape is selected, ready to be moved or styled. The **pin**, under the tools, keeps the chosen tool to draw several shapes in a row.
 
-- **Moving the view**: <kbd>Space</kbd> + drag, the middle button, or the wheel; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + wheel to zoom.
+- **Moving the view**: <kbd>Space</kbd> + drag, the middle button, or the wheel; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + wheel to zoom. When the studio opens and when you come back from another tab, the view frames what is drawn by itself; the *Show the whole drawing* button does it again on demand.
 - **Resizing**: the handles of a shape; with several shapes selected, the corners of the box make them grow together, keeping their proportions.
 - **Duplicating**: <kbd>Alt</kbd> + drag on a shape leaves a copy of it; the *Duplicate* button of the selection bar or <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>D</kbd>; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>C</kbd> then <kbd>V</kbd> copies and pastes, also from one picture to another.
 - **The selection bar**, at the top of the board as soon as something is selected: duplicate, bring to front or send to back, keep as a set, delete. The right button offers the same actions.

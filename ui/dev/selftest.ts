@@ -971,6 +971,33 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     bar()[bar().length - 1].click();
     await pause(150);
     check("duplicate, then delete", duplicated === 8 && shapeCount() === 7, `${duplicated} then ${shapeCount()}`);
+    // The LaTeX rendering shows the whole picture, in a box of a fair size.
+    await drawn(".studio .mini canvas", log, "whiteboard rendering");
+    await pause(600);
+    const rendering = document.querySelector<HTMLElement>(".studio .mini .preview");
+    if (rendering?.querySelector("canvas"))
+      check(
+        "rendering shown whole",
+        rendering.clientHeight >= 170 && rendering.scrollHeight <= rendering.clientHeight + 1 && rendering.scrollWidth <= rendering.clientWidth + 1,
+        `${rendering.scrollWidth}×${rendering.scrollHeight} in ${rendering.clientWidth}×${rendering.clientHeight}`,
+      );
+    // Back from another page of the studio, the board frames what is drawn, in its middle.
+    const pages = [...document.querySelectorAll<HTMLButtonElement>(".mode-tabs button")];
+    pages[1].click();
+    await pause(400);
+    pages[0].click();
+    await until(() => shapeCount() === 7 && !!document.querySelector(".studio .board .node"), 5_000, "whiteboard back");
+    await pause(300);
+    const paper = boardEl.getBoundingClientRect();
+    const boxes = [...document.querySelectorAll(".studio .board g.shape, .studio .board .node")].map((el) => el.getBoundingClientRect());
+    const span = { left: Math.min(...boxes.map((b) => b.left)), right: Math.max(...boxes.map((b) => b.right)), top: Math.min(...boxes.map((b) => b.top)), bottom: Math.max(...boxes.map((b) => b.bottom)) };
+    const off = [(span.left + span.right - paper.left - paper.right) / 2, (span.top + span.bottom - paper.top - paper.bottom) / 2];
+    const filled = Math.max((span.right - span.left) / paper.width, (span.bottom - span.top) / paper.height);
+    check(
+      "board framed on the drawing",
+      span.left >= paper.left && span.right <= paper.right && span.top >= paper.top && span.bottom <= paper.bottom && Math.abs(off[0]) < paper.width * 0.1 && Math.abs(off[1]) < paper.height * 0.1 && filled > 0.4,
+      `off ${off.map(Math.round)}, filled ${filled.toFixed(2)}, paper ${Math.round(paper.width)}×${Math.round(paper.height)}`,
+    );
     await scene("whiteboard", 2500);
     document.querySelector<HTMLButtonElement>(".footer .btn.primary")!.click();
     await until(() => ui.overlay === null, 20_000, "drawing inserted");

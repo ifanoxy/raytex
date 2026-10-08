@@ -22,7 +22,7 @@
   import { mathHtml } from "$lib/editor/math-preview";
   import { plural, t } from "$lib/i18n.svelte";
   import { ui } from "$lib/state/ui.svelte";
-  import { bounds, copies, type Drawing, moved, newId, type Point, scaled, type Shape, shapesCode, snapPoint, type Style, tidy, touches, WIDTH_PT } from "$lib/tikz/model";
+  import { bounds, copies, type Drawing, fitView, moved, newId, type Point, scaled, type Shape, shapesCode, snapPoint, type Style, tidy, touches, WIDTH_PT } from "$lib/tikz/model";
   import Icon from "../../common/Icon.svelte";
 
   let {
@@ -68,7 +68,8 @@
   let scale = $state(48);
   let ox = $state(60);
   let oy = $state(400);
-  let placed = false;
+  /** The board is in sight (it has a size): not behind another page of the studio. */
+  let inSight = false;
   let hover = $state<Point | null>(null);
   /** The shape under the pointer, with the selection tool: what a click would take. */
   let hoverId = $state<string | null>(null);
@@ -91,10 +92,16 @@
   onMount(() => {
     const ro = new ResizeObserver(() => {
       if (!host) return;
+      // Hidden behind another page: the last size stays, and the board is
+      // framed again on what is drawn when it comes back.
+      if (!host.clientWidth || !host.clientHeight) {
+        inSight = false;
+        return;
+      }
       width = host.clientWidth;
       height = host.clientHeight;
-      if (!placed && width > 0) {
-        placed = true;
+      if (!inSight) {
+        inSight = true;
         fit();
       }
     });
@@ -112,33 +119,14 @@
   }
   const snapped = (p: Point) => (snapOn ? snapPoint(p, step) : { x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 });
 
-  /** Shows the drawing (or the first 10 × 7 cm) in the middle of the board. */
+  /** Shows what is drawn, whole and in the middle of the board (an empty one: its first centimetres). */
   export function fit() {
-    const pts = drawing.shapes.flatMap((s) => points(s));
-    const minX = Math.min(0, ...pts.map((p) => p.x));
-    const maxX = Math.max(8, ...pts.map((p) => p.x));
-    const minY = Math.min(0, ...pts.map((p) => p.y));
-    const maxY = Math.max(5, ...pts.map((p) => p.y));
-    scale = Math.max(12, Math.min(120, Math.min((width - 80) / (maxX - minX), (height - 80) / (maxY - minY))));
-    ox = (width - (maxX - minX) * scale) / 2 - minX * scale;
-    oy = (height + (maxY - minY) * scale) / 2 + minY * scale;
-  }
-
-  function points(s: Shape): Point[] {
-    switch (s.kind) {
-      case "path":
-        return s.points;
-      case "rect":
-        return [s.from, s.to];
-      case "circle":
-        return [{ x: s.center.x - s.r, y: s.center.y - s.r }, { x: s.center.x + s.r, y: s.center.y + s.r }];
-      case "ellipse":
-        return [{ x: s.center.x - s.rx, y: s.center.y - s.ry }, { x: s.center.x + s.rx, y: s.center.y + s.ry }];
-      case "node":
-        return [s.at];
-      default:
-        return [];
+    // Asked while the board is coming back in sight: its size is read now.
+    if (host?.clientWidth && host.clientHeight) {
+      width = host.clientWidth;
+      height = host.clientHeight;
     }
+    ({ scale, ox, oy } = fitView(drawing.shapes, width, height));
   }
 
   // --------------------------------------------------------------- grid

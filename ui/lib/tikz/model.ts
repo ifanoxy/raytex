@@ -396,6 +396,34 @@ export function bounds(shapes: Shape[]): { minX: number; minY: number; maxX: num
   };
 }
 
+/** The view of a whiteboard: pixels per centimetre, and where (0, 0) is on the screen. */
+export interface BoardView {
+  scale: number;
+  ox: number;
+  oy: number;
+}
+
+/** Room left around what a whiteboard frames, in pixels (its bar, the labels of the nodes). */
+const FIT_MARGIN = 48;
+
+/**
+ * The view that shows `shapes` whole in the middle of a board of `width` ×
+ * `height` pixels, as large as they fit (a small drawing is not blown up
+ * past 120 px a centimetre). An empty drawing shows its first 8 × 5 cm.
+ */
+export function fitView(shapes: Shape[], width: number, height: number): BoardView {
+  const box = bounds(shapes) ?? { minX: 0, minY: 0, maxX: 8, maxY: 5 };
+  const room = (px: number) => Math.max(px - 2 * FIT_MARGIN, px / 2);
+  const across = room(width) / Math.max(box.maxX - box.minX, 1e-6);
+  const down = room(height) / Math.max(box.maxY - box.minY, 1e-6);
+  const scale = Math.max(8, Math.min(120, across, down));
+  return {
+    scale,
+    ox: width / 2 - ((box.minX + box.maxX) / 2) * scale,
+    oy: height / 2 + ((box.minY + box.maxY) / 2) * scale,
+  };
+}
+
 /** The box of one shape (a node as its point); null for what is kept as code. */
 export function shapeBounds(shape: Shape): { minX: number; minY: number; maxX: number; maxY: number } | null {
   return bounds([shape]);

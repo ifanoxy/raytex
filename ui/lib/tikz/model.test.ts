@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { codeShapes, copies, drawingCode, emptyStyle, freeSetName, moved, num, parseDrawing, parseStatement, scaled, setCode, setShapes, type Shape, shapeCode, shapesFromCode, snapPoint, splitOptions, touches } from "./model.ts";
+import { codeShapes, copies, drawingCode, emptyStyle, fitView, freeSetName, moved, num, parseDrawing, parseStatement, scaled, setCode, setShapes, type Shape, shapeCode, shapesFromCode, snapPoint, splitOptions, touches } from "./model.ts";
 
 test("numbers and options", () => {
   assert.equal(num(2), "2");
@@ -112,4 +112,19 @@ test("a filling without a colour stays a filling", () => {
   assert.equal(dot.kind === "circle" && dot.style.fill, "black");
   assert.equal(shapeCode(dot), "\\fill[black] (1,2) circle (0.06);");
   assert.equal(shapeCode(parseStatement("\\fill[red!20] (0,0) rectangle (1,1);")!), "\\fill[red!20] (0,0) rectangle (1,1);");
+});
+
+test("the board frames what is drawn, in its middle", () => {
+  // Far from the origin: the view goes to the shapes, not to (0, 0).
+  const far = fitView([rect(20, 10, 26, 13)], 896, 596);
+  assert.equal(far.scale, 120);
+  assert.deepEqual([far.ox + 23 * far.scale, far.oy - 11.5 * far.scale], [448, 298]);
+  // A large drawing is made smaller until it fits, with room around.
+  const large = fitView([rect(0, 0, 40, 10), circle(50, 5, 5)], 896, 596);
+  assert.equal(large.scale, 800 / 55);
+  assert.ok(large.ox >= 48 && large.ox + 55 * large.scale <= 896 - 48 + 1e-9);
+  // One point (a text alone) and an empty board still give a usable view.
+  const node = parseDrawing("\\begin{tikzpicture}\n\\node at (3,2) {A};\n\\end{tikzpicture}")!.shapes;
+  assert.deepEqual(fitView(node, 800, 600), { scale: 120, ox: 400 - 360, oy: 300 + 240 });
+  assert.deepEqual(fitView([], 896, 596), { scale: 100, ox: 448 - 400, oy: 298 + 250 });
 });
