@@ -6,6 +6,7 @@
 // distribution, waits for the PDF to be drawn by pdf.js, exercises
 // completion and SyncTeX, prints a report on the terminal and quits.
 
+import { refused } from "$lib/policy";
 import { acceptCompletion, currentCompletions, setSelectedCompletion, startCompletion } from "@codemirror/autocomplete";
 import { EditorView } from "@codemirror/view";
 import { invoke } from "@tauri-apps/api/core";
@@ -43,7 +44,16 @@ export async function runSelfTest() {
   const target = await invoke<string | null>("selftest_target");
   if (!target) return;
   const report: Record<string, unknown> = {};
-  const log = (msg: string) => void ipc.logFrontend("info", `selftest: ${msg}`);
+  const say = (msg: string) => void ipc.logFrontend("info", `selftest: ${msg}`);
+  // A group of scenes has not passed when the security policy refused
+  // something on the way (a style, in the built application).
+  const log = (msg: string) => {
+    if (/ scenes PASSED$/.test(msg) && refused.length) {
+      say(`policy: ${refused.length} refused, ${[...new Set(refused)].slice(0, 4).join(" | ")}`);
+      return say(msg.replace(/PASSED$/, "FAILED"));
+    }
+    say(msg);
+  };
   // Every error or warning shown, when it is shown (a toast is gone by the
   // time a step times out).
   const toast = ui.toast.bind(ui);

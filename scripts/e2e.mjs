@@ -8,6 +8,12 @@
 //   node scripts/e2e.mjs fixes files        # some groups
 //   E2E_OUT=out node scripts/e2e.mjs        # where logs and screenshots go
 //   E2E_SHOTS=0 node scripts/e2e.mjs        # no screenshots (they are of the whole screen)
+//   E2E_BUILT=1 node scripts/e2e.mjs        # the built application, not the development one
+//
+// The built application reads its pages from the program itself, under
+// the security policy of tauri.conf.json: what that policy refuses (a
+// style, in 0.4.0) is only seen there. It is built once, in debug, with
+// the self-test in it (`vite build --mode selftest`).
 //
 // When the port of the development server is taken (the application is
 // open in development next to this run), the scenes use another one.
@@ -32,6 +38,7 @@ const TIMEOUT_MS = Number(process.env.E2E_TIMEOUT_MS ?? 20 * 60_000);
 // The screenshots are of the whole screen: on a personal computer they
 // show whatever else is open, and can be turned off.
 const SHOTS = process.env.E2E_SHOTS !== "0";
+const BUILT = process.env.E2E_BUILT === "1";
 
 mkdirSync(out, { recursive: true });
 
@@ -81,6 +88,28 @@ async function devPort() {
   return 1420;
 }
 
+let app = null;
+
+/** The application built once for the scenes: in debug, with the self-test, its pages inside. */
+function builtApp(env) {
+  if (app) return app;
+  const override = join(tmpdir(), `raytex-e2e-build-${Date.now()}.json`);
+  writeFileSync(override, JSON.stringify({ build: { beforeBuildCommand: { script: "npm run build -- --mode selftest", cwd: "../.." } } }));
+  console.log("Building the application…");
+  const done = spawnSync(windows ? "npx.cmd" : "npx", ["tauri", "build", "--debug", "--no-bundle", "--config", override], { cwd: root, env, shell: windows, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  rmSync(override, { force: true });
+  const output = `${done.stdout ?? ""}${done.stderr ?? ""}`;
+  appendFileSync(join(out, "build.log"), output);
+  // Tauri names the program after the product, and says where it is.
+  const at = /Built application at: (.+)/.exec(output.replace(/\x1b\[[0-9;]*m/g, ""));
+  if (done.status !== 0 || !at || !existsSync(at[1].trim())) {
+    console.log(`The application could not be built:\n${output.trim().split("\n").slice(-8).join("\n")}`);
+    process.exit(1);
+  }
+  app = at[1].trim();
+  return app;
+}
+
 async function run(group) {
   const work = join(tmpdir(), `raytex-e2e-${group}-${Date.now()}`);
   const project = join(work, "rapport");
@@ -107,14 +136,19 @@ async function run(group) {
     RAYTEX_SELFTEST_SCENES: group,
     RAYTEX_SELFTEST_ASSETS: assets,
   };
-  const port = await devPort();
-  const args = ["tauri", "dev"];
-  if (port !== 1420) {
-    const override = join(work, "tauri.dev.json");
-    writeFileSync(override, JSON.stringify({ build: { devUrl: `http://localhost:${port}`, beforeDevCommand: `npm run dev -- --port ${port}` } }));
-    args.push("--config", override);
+  let child;
+  if (BUILT) {
+    child = spawn(builtApp(env), [], { cwd: root, env, detached: !windows });
+  } else {
+    const port = await devPort();
+    const args = ["tauri", "dev"];
+    if (port !== 1420) {
+      const override = join(work, "tauri.dev.json");
+      writeFileSync(override, JSON.stringify({ build: { devUrl: `http://localhost:${port}`, beforeDevCommand: `npm run dev -- --port ${port}` } }));
+      args.push("--config", override);
+    }
+    child = spawn(windows ? "npx.cmd" : "npx", args, { cwd: root, env, detached: !windows, shell: windows });
   }
-  const child = spawn(windows ? "npx.cmd" : "npx", args, { cwd: root, env, detached: !windows, shell: windows });
   const seen = new Set();
   let verdict = null;
   const started = Date.now();
@@ -124,7 +158,7 @@ async function run(group) {
     const text = chunk.toString();
     appendFileSync(logFile, text);
     const plain = text.replace(/\x1b\[[0-9;]*m/g, "");
-    if (!running && (/Running `[^`]*raytex-app/.test(plain) || plain.includes("selftest:"))) running = Date.now();
+    if (!running && (BUILT || /Running `[^`]*raytex-app/.test(plain) || plain.includes("selftest:"))) running = Date.now();
     for (const m of text.matchAll(/scene: ([a-z0-9-]+)/g)) {
       if (seen.has(m[1])) continue;
       seen.add(m[1]);

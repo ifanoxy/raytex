@@ -102,6 +102,15 @@ jobs:
         env:
           WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: --disable-features=CalculateNativeWinOcclusion --disable-renderer-backgrounding --disable-background-timer-throttling --disable-backgrounding-occluded-windows
         run: node scripts/e2e.mjs workflow fixes files projects media
+      - name: Scenes of the built application
+        # The built application reads its pages under the security policy
+        # of tauri.conf.json, which the development one does not have: a
+        # style the policy refuses (0.4.0) is only seen here.
+        env:
+          WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: --disable-features=CalculateNativeWinOcclusion --disable-renderer-backgrounding --disable-background-timer-throttling --disable-backgrounding-occluded-windows
+          E2E_BUILT: 1
+          E2E_OUT: e2e-output/built
+        run: node scripts/e2e.mjs workflow
       - name: Logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4

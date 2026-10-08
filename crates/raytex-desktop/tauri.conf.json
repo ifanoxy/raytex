@@ -2,7 +2,7 @@
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "RayTeX",
   "mainBinaryName": "RayTeX",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "identifier": "org.raytex.app",
   "build": {
     "frontendDist": "../../dist",

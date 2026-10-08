@@ -2,12 +2,16 @@
 
 import { mount } from "svelte";
 import { logFrontend } from "$lib/ipc";
+import { watchPolicy } from "$lib/policy";
 import { drawSplashRoute, themeSplash } from "$lib/splash";
 import "./styles/app.css";
 
 // The launch screen of index.html takes the theme of the last session.
 themeSplash();
 drawSplashRoute();
+
+// What the security policy refuses is reported like an error.
+watchPolicy((message) => void logFrontend("error", message).catch(() => {}));
 
 // Uncaught errors are reported to the terminal running the application.
 window.addEventListener("error", (e) => void logFrontend("error", `${e.message} (${e.filename}:${e.lineno})`).catch(() => {}));
@@ -42,7 +46,9 @@ async function start() {
   }
   const { default: App } = await import("./App.svelte");
   mount(App, { target: document.getElementById("app")! });
-  if (import.meta.env.DEV && "__TAURI_INTERNALS__" in window) {
+  // The self-test, in development and in an application built to be
+  // tested (`vite build --mode selftest`, see scripts/e2e.mjs).
+  if ((import.meta.env.DEV || import.meta.env.MODE === "selftest") && "__TAURI_INTERNALS__" in window) {
     const { runSelfTest } = await import("./dev/selftest");
     void runSelfTest();
   }

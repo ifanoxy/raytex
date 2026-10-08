@@ -4,6 +4,11 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-10-08
+
+- **The display of the installed application was broken in 0.4.0**, on every system: panels at the wrong size, formula previews and menus out of place. The launch screen had its styles written in the page itself; that makes Tauri add a nonce to the style policy of the installed application, and a policy with a nonce refuses every inline style of the interface. In development the page is served without that policy, and nothing showed. The styles of the launch screen are in a file of their own, and the page holds none.
+- So that it cannot come back unseen: what the security policy refuses is written in the log of the application; a test refuses any style written in the page; and the scenes of the application can be run against the built application (`E2E_BUILT=1 node scripts/e2e.mjs`), where a refusal makes them fail. The integration workflow runs them that way on Windows.
+
 ## [0.4.0] — 2026-10-08
 
 - **Page layout** (*See all › Page*, or *Margins of the document…* and *Page styles…* in the command palette): the margins and the page styles of the document are set with fields, and seen on real pages compiled with the class and the preamble of the project before anything is written.
@@ -190,6 +195,7 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[0.4.1]: https://github.com/ifanoxy/raytex/releases/tag/v0.4.1
 [0.4.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.4.0
 [0.3.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.3.0
 [0.2.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.2.0
