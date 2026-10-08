@@ -1,7 +1,7 @@
 {
   "name": "raytex",
   "private": true,
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "RayTeX — a modern LaTeX IDE (user interface)",
   "license": "MIT OR Apache-2.0",
   "homepage": "https://github.com/ifanoxy/raytex",

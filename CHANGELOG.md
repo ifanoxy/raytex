@@ -4,6 +4,8 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-10-08
+
 - **A whiteboard that is easier to draw on** (TikZ studio):
   - With the selection tool, a drag on the paper draws a rectangle that selects what it touches (it moved the view); the view moves with Space, the middle button or the wheel. The shape a click would take is shown before the click.
   - Once a shape is drawn, the selection tool comes back and the shape is selected; a pin under the tools keeps the tool for several shapes in a row. A double-click on the paper writes a text there.
@@ -211,6 +213,7 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[0.4.2]: https://github.com/ifanoxy/raytex/releases/tag/v0.4.2
 [0.4.1]: https://github.com/ifanoxy/raytex/releases/tag/v0.4.1
 [0.4.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.4.0
 [0.3.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.3.0
