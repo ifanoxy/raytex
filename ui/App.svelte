@@ -79,6 +79,7 @@
         await Promise.all([tex.init(), build.init(), project.init()]);
         viewer.setDefaultZoom(app.settings?.viewer.defaultZoom);
         await editor.reconfigure();
+        void editor.loadSnippets();
         // Opened from the Finder or with a file: that file, else the last session.
         const requested = (await ipc.takeOpenRequests().catch(() => null)) ?? [];
         const last = app.session?.lastProject;

@@ -37,6 +37,7 @@ import { deleteDollarPair, handleDollar } from "../editor/dollar";
 import { flash, flashField } from "../editor/flash";
 import { codeChips, type ChipKind } from "../editor/chips";
 import { expandTrigger } from "../editor/macros";
+import type { Triggered } from "../editor/trigger";
 import { latexHover } from "../editor/hover";
 import { bibtex, latex } from "../editor/latex";
 import { findFormula, mathPreview, refreshMacros } from "../editor/math-preview";
@@ -51,7 +52,7 @@ import { figureAt } from "../images";
 import { i18n, type MessageKey, t } from "../i18n.svelte";
 import * as ipc from "../ipc";
 import { diskChange, remember, type Written } from "../disk";
-import { matchesKey } from "../keys";
+import { matchesKey, typingKey } from "../keys";
 import { addDefinition, addPackages, graphicsPaths, hasPackage, insertionPoint } from "../preamble";
 import type { Diagnostic, Location, Macro, Position, Range, Settings, TextEdit } from "../types";
 import { basename, debounce, dirname, escapeSnippet, fileKind, type FileKind, inlineMarkdown, isMac, join, prettyKey, relative, samePath } from "../utils";
@@ -470,7 +471,7 @@ class EditorStore {
     // The shortcuts of macros are matched like those of the application
     // (the letter of the key on this keyboard, also with ⌥ on macOS, where
     // the key writes another character or a dead key).
-    const macros = (this.settings()?.macros ?? []).filter((m) => m.key);
+    const macros = (this.settings()?.macros ?? []).filter((m) => m.key && !typingKey(m.key));
     if (macros.length) {
       bindings.push({
         any: (view, e) => {
@@ -1167,8 +1168,24 @@ class EditorStore {
     return this.insertSnippet(m.body, view);
   }
 
+  /** The snippets of RayTeX (`doc`, `fig`, `eq`…), read once: Tab writes them after their trigger. */
+  private builtins: (Triggered & { package: string | null })[] = [];
+
+  async loadSnippets() {
+    const list = await ipc.builtinSnippets().catch(() => []);
+    // As the suggestions write them: the names of the fields between braces are not inserted.
+    this.builtins = list.map((s) => ({ trigger: s.trigger, body: (s as { apply?: string }).apply ?? s.body, math: s.math, package: s.package }));
+  }
+
+  /** Tab after a trigger: a macro of the user first, then a snippet of RayTeX. */
   private expandMacroTrigger(view: EditorView): boolean {
-    return expandTrigger(view, this.settings()?.macros ?? [], (pos) => !!findFormula(view.state.doc, pos));
+    const settings = this.settings();
+    const macros: (Triggered & { package?: string | null })[] = settings?.macros ?? [];
+    const items = settings?.completion.snippets === false ? macros : [...macros, ...this.builtins];
+    const done = expandTrigger(view, items, (pos) => !!findFormula(view.state.doc, pos));
+    if (!done) return false;
+    if (done.package && hooks.settings().autoAddPackage) void hooks.addPackage(view, done.package);
+    return true;
   }
 
   /** Root document of `path` (or of the active file). */

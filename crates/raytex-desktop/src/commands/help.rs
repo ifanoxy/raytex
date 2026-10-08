@@ -52,6 +52,9 @@ pub struct SnippetView {
     pub name: String,
     /// Body.
     pub body: String,
+    /// The body as it is written in the document: the names of the fields
+    /// between braces are not inserted (`\section{${1}}`).
+    pub apply: String,
     /// Math only.
     pub math: bool,
     /// Package needed.
@@ -68,6 +71,7 @@ pub async fn builtin_snippets(state: State<'_, AppState>) -> CmdResult<Vec<Snipp
             trigger: s.trigger.clone(),
             name: s.name.get(lang).to_owned(),
             body: s.body.clone(),
+            apply: raytex_core::completion::empty_brace_fields(&s.body),
             math: s.math,
             package: s.package.clone(),
         })

@@ -449,6 +449,26 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     await pause(300);
     const byTab = view.state.doc.toString().includes("Racine \\emph{x}");
     view.contentDOM.dispatchEvent(key("Escape", 27));
+    // Tab also writes a snippet of RayTeX after its trigger, and a macro of
+    // formulas typed in text goes between dollars.
+    const typeThenTab = async (text: string) => {
+      const at = view.state.doc.length;
+      view.dispatch({ changes: { from: at, insert: text }, selection: { anchor: at + text.length }, userEvent: "input.type" });
+      view.contentDOM.dispatchEvent(key("Tab", 9));
+      await pause(250);
+      view.contentDOM.dispatchEvent(key("Escape", 27));
+    };
+    await typeThenTab("\nNote fn");
+    await typeThenTab("\nMoitié ff");
+    const written = view.state.doc.toString();
+    const snippetByTab = written.includes("Note \\footnote{}");
+    const mathInText = written.includes("Moitié $\\frac{a}{b}$");
+    // A key that writes text is refused as the shortcut of a macro.
+    await app.update((x) => (x.macros[1].key = "Tab"));
+    await editor.reconfigure();
+    await typeThenTab("\nAutre fn");
+    const tabKept = view.state.doc.toString().includes("Autre \\footnote{}");
+    await app.update((x) => (x.macros[1].key = ""));
     // The `+` of the panel opens the form of a new `@` shortcut.
     ui.setVisible("sidebar", true);
     ui.sidebar = "snippets";
@@ -473,9 +493,9 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     await editor.externalChanges([chapter]);
     await pause(200);
     const echo = ui.toasts.slice(before).map((t) => t.message);
-    log(`macros: typed and closed ${savedTyped}, by Tab ${byTab}, + opens the form ${formOpens}`);
+    log(`macros: typed and closed ${savedTyped}, by Tab ${byTab}, snippet by Tab ${snippetByTab}, formula in text ${mathInText}, Tab kept ${tabKept}, + opens the form ${formOpens}`);
     log(`macros: splash gone ${splashGone}, recorded ${app.settings?.macros[0]?.key}, ran ${ran}, quiet in text ${quietInText}, @vv offered ${own?.apply}, beside \\vec ${beside}, toasts after own save ${JSON.stringify(echo)}`);
-    ok = savedTyped && byTab && formOpens && splashGone && ran && quietInText && own?.apply === "\\vec{${1}}" && beside === "@vv" && echo.length === 0 && (await buildOk(log, "macros")) && ok;
+    ok = savedTyped && byTab && snippetByTab && mathInText && tabKept && formOpens && splashGone && ran && quietInText && own?.apply === "\\vec{${1}}" && beside === "@vv" && echo.length === 0 && (await buildOk(log, "macros")) && ok;
   } catch (e) {
     log(`macros failed: ${e}`);
     ok = false;

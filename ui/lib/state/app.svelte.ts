@@ -1,5 +1,6 @@
 // Settings, language, theme and session.
 
+import { typingKey } from "../keys";
 import * as ipc from "../ipc";
 import { i18n, resolveLang } from "../i18n.svelte";
 import type { AppInfo, Session, Settings } from "../types";
@@ -48,6 +49,11 @@ class AppStore {
     this.applyTheme();
     await this.applyLanguage();
     this.ready = true;
+    // A macro whose shortcut is a key that writes text (Tab, recorded when
+    // any key was taken) could never run, and kept Tab from its trigger.
+    if (settings.macros.some((m) => typingKey(m.key))) {
+      void this.update((s) => s.macros.forEach((m) => (m.key = typingKey(m.key) ? "" : m.key)));
+    }
   }
 
   /** Changes settings through `mutate`, saves them and applies them. */

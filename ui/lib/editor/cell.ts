@@ -41,7 +41,7 @@ export function cellExtensions(o: CellOptions): Extension[] {
     { key: "Enter", run: () => o.move("next") || true },
     { key: "Shift-Enter", run: () => o.move("previous") || true },
     { key: "Tab", run: acceptCompletion },
-    { key: "Tab", run: (v) => expandTrigger(v, o.macros(), inMath(v)) },
+    { key: "Tab", run: (v) => !!expandTrigger(v, o.macros(), inMath(v)) },
     { key: "Tab", run: () => o.move("newRow") },
     { key: "ArrowUp", run: () => o.move("up") },
     { key: "ArrowDown", run: () => o.move("down") },

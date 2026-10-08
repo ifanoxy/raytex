@@ -706,6 +706,7 @@ export function installMocks() {
         case "builtin_snippets":
           return [
             { trigger: "fig", name: "Figure avec image", body: "\\begin{figure}\n\t${1}\n\\end{figure}", math: false, package: "graphicx" },
+            { trigger: "doc", name: "Document minimal", body: "\\documentclass{${1:article}}\n\\begin{document}\n${2}\n\\end{document}", math: false, package: null },
             { trigger: "eq", name: "Équation numérotée", body: "\\begin{equation}\n\t${1}\n\\end{equation}", math: false, package: null },
           ];
         case "at_shortcuts":

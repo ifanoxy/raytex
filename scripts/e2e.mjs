@@ -9,10 +9,14 @@
 //   E2E_OUT=out node scripts/e2e.mjs        # where logs and screenshots go
 //   E2E_SHOTS=0 node scripts/e2e.mjs        # no screenshots (they are of the whole screen)
 //
+// When the port of the development server is taken (the application is
+// open in development next to this run), the scenes use another one.
+//
 // macOS and Windows (screenshots of the whole screen). Exit code 1 when a
 // group fails.
 
 import { spawn, spawnSync } from "node:child_process";
+import { createServer } from "node:net";
 import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
@@ -59,6 +63,24 @@ function killTree(child) {
   }
 }
 
+/** Whether nothing listens on `port` (on either loopback address, as vite checks). */
+function free(port) {
+  const on = (host) =>
+    new Promise((done) => {
+      const server = createServer();
+      server.once("error", () => done(false));
+      server.once("listening", () => server.close(() => done(true)));
+      server.listen(port, host);
+    });
+  return on("127.0.0.1").then((a) => a && on("::1").catch(() => true));
+}
+
+/** The port of the development server: the usual one, or the next free one. */
+async function devPort() {
+  for (let port = 1420; port < 1520; port += 10) if (await free(port)) return port;
+  return 1420;
+}
+
 async function run(group) {
   const work = join(tmpdir(), `raytex-e2e-${group}-${Date.now()}`);
   const project = join(work, "rapport");
@@ -85,7 +107,14 @@ async function run(group) {
     RAYTEX_SELFTEST_SCENES: group,
     RAYTEX_SELFTEST_ASSETS: assets,
   };
-  const child = spawn(windows ? "npx.cmd" : "npx", ["tauri", "dev"], { cwd: root, env, detached: !windows, shell: windows });
+  const port = await devPort();
+  const args = ["tauri", "dev"];
+  if (port !== 1420) {
+    const override = join(work, "tauri.dev.json");
+    writeFileSync(override, JSON.stringify({ build: { devUrl: `http://localhost:${port}`, beforeDevCommand: `npm run dev -- --port ${port}` } }));
+    args.push("--config", override);
+  }
+  const child = spawn(windows ? "npx.cmd" : "npx", args, { cwd: root, env, detached: !windows, shell: windows });
   const seen = new Set();
   let verdict = null;
   const started = Date.now();

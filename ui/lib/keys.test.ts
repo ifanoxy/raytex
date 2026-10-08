@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { forgetLayout, learnLayout, matchesKey, specFromEvent } from "./keys.ts";
+import { forgetLayout, learnLayout, matchesKey, specFromEvent, typingKey } from "./keys.ts";
 
 const ev = (key: string, code: string, mods: { meta?: boolean; ctrl?: boolean; shift?: boolean; alt?: boolean } = {}) => ({
   key,
@@ -102,4 +102,9 @@ test("AZERTY: with ⌥, the key keeps the letter printed on it once it was typed
   learnLayout(ev("z", "KeyQ", { alt: true }));
   assert.equal(specFromEvent(optionA, true), "Alt-a");
   forgetLayout();
+});
+
+test("a key that writes text is not a shortcut", () => {
+  for (const spec of ["Tab", "Shift-Tab", "Enter", "a", "Shift-a", "Space", "ArrowDown", "-"]) assert.equal(typingKey(spec), true, spec);
+  for (const spec of ["Mod-Tab", "Alt-n", "Mod-Shift-p", "Ctrl-Space", "F5", "Shift-F12", "Mod--", ""]) assert.equal(typingKey(spec), false, spec);
 });

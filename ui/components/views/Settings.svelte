@@ -2,7 +2,7 @@
   // Settings: application-wide ones, and the open project's raytex.toml.
   import { onDestroy } from "svelte";
   import { actions, keyFor } from "$lib/actions";
-  import { specFromEvent } from "$lib/keys";
+  import { specFromEvent, typingKey } from "$lib/keys";
   import { REPOSITORY_URL } from "$lib/constants";
   import { type MessageKey, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
@@ -156,6 +156,12 @@
       }
       const key = specFromEvent(e, isMac());
       if (!key) return;
+      // A key that writes text (Tab, a letter alone) is not a shortcut:
+      // the recording goes on.
+      if (typingKey(key)) {
+        ui.toast("info", t(macro !== null ? "settings.keyRefusedMacro" : "settings.keyRefused", { key: prettyKey(key) }));
+        return;
+      }
       recording = null;
       if (macro !== null) updateMacro(macro, { key });
       else set((x) => (x.keybindings[target] = key));

@@ -110,6 +110,18 @@ export function specFromEvent(e: KeyEventLike, mac: boolean): string | null {
 }
 
 /**
+ * Whether `spec` is a key that writes text or moves in it (`Tab`, `a`,
+ * `Shift-a`, `Enter`, an arrow): it cannot be a shortcut, which takes ⌘,
+ * Ctrl or ⌥, or a function key.
+ */
+export function typingKey(spec: string): boolean {
+  if (!spec) return false;
+  const mods = /^(?:(?:Mod|Ctrl|Alt|Meta|Shift)-)*/.exec(spec)![0];
+  if (/Mod-|Ctrl-|Alt-|Meta-/.test(mods)) return false;
+  return !/^F\d{1,2}$/.test(spec.slice(mods.length));
+}
+
+/**
  * On Windows and Linux, AltGr reaches the page as Ctrl + Alt: a character
  * typed that way (`{`, `[`, `@`, `€` on AZERTY, `ś` on Polish keyboards…)
  * is text, never a shortcut.

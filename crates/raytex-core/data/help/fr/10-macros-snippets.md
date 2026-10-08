@@ -25,7 +25,7 @@ Ce sont des macros dont le déclencheur commence par `@` : vous les retrouvez, a
 
 ## Les extraits
 
-Tapez un déclencheur puis choisissez-le dans les suggestions :
+Tapez un déclencheur puis <kbd>Tab</kbd> : `doc` puis <kbd>Tab</kbd> écrit un document minimal. Ils sont aussi dans les suggestions (<kbd>Ctrl</kbd> + <kbd>Espace</kbd>) et dans la vue **Macros @ et extraits**.
 
 | Déclencheur | Insère |
 |---|---|
@@ -53,9 +53,9 @@ Déclencheur : ff        (mode mathématique uniquement)
 Corps       : \frac{${1:a}}{${2:b}}${0}
 ```
 
-Tapez le déclencheur dans le document puis <kbd>Tab</kbd> : le corps le remplace. Une macro *en mode mathématique uniquement* ne s'écrit que dans une formule ; ailleurs, <kbd>Tab</kbd> indente comme d'habitude. Quand la liste des suggestions est ouverte, <kbd>Tab</kbd> choisit d'abord la suggestion.
+Tapez le déclencheur dans le document puis <kbd>Tab</kbd> : le corps le remplace. Une macro *maths uniquement* tapée dans du texte s'écrit entre `$…$`. Quand la liste des suggestions est ouverte, <kbd>Tab</kbd> choisit d'abord la suggestion. Vos macros passent avant les extraits de RayTeX qui ont le même déclencheur.
 
-Pour le raccourci clavier, cliquez sur son bouton puis tapez les touches : <kbd>Échap</kbd> annule, <kbd>⌫</kbd> le retire. Un triangle signale un raccourci déjà pris par une commande de RayTeX, qui passerait avant la macro. Sur Mac, <kbd>⌥</kbd> + une lettre fonctionne aussi, même quand la touche écrit un accent.
+Le raccourci clavier est facultatif. Cliquez sur son bouton puis tapez les touches, avec <kbd>Ctrl</kbd>, <kbd>⌘</kbd> ou <kbd>Alt</kbd> (ou une touche F) : une touche qui sert à écrire, comme <kbd>Tab</kbd> ou une lettre seule, n'est pas retenue. <kbd>Échap</kbd> annule, <kbd>⌫</kbd> le retire. Un triangle signale un raccourci déjà pris par une commande de RayTeX, qui passerait avant la macro. Sur Mac, <kbd>⌥</kbd> + une lettre fonctionne aussi, même quand la touche écrit un accent.
 
 Dans le corps :
 

@@ -3,9 +3,8 @@
 
 import { snippet } from "@codemirror/autocomplete";
 import type { EditorView } from "@codemirror/view";
-import type { Macro } from "../types";
 import { escapeSnippet } from "../utils";
-import { triggerAt } from "./trigger";
+import { expansion, type Triggered, triggerAt } from "./trigger";
 
 /**
  * Inserts a snippet in place of the selection; `${SELECTION}` in the body
@@ -23,16 +22,18 @@ export function insertBody(view: EditorView, template: string) {
 }
 
 /**
- * Expands the macro whose trigger was just typed (Tab). `inMath` tells
- * whether a position is in a formula (math macros only apply there).
+ * Writes what the trigger just typed stands for (Tab): a macro of the
+ * user, or a snippet of RayTeX. `inMath` tells whether a position is in a
+ * formula: the content of a formula typed in text goes between `$…$`.
+ * Returns what was written, or null.
  */
-export function expandTrigger(view: EditorView, macros: Macro[], inMath: (pos: number) => boolean): boolean {
-  if (!macros.length) return false;
+export function expandTrigger<T extends Triggered>(view: EditorView, items: T[], inMath: (pos: number) => boolean): T | null {
+  if (!items.length) return null;
   const sel = view.state.selection.main;
-  if (!sel.empty) return false;
+  if (!sel.empty) return null;
   const line = view.state.doc.lineAt(sel.head);
-  const m = triggerAt(line.text.slice(0, sel.head - line.from), macros, () => inMath(sel.head));
-  if (!m) return false;
-  snippet(m.body.replaceAll("${SELECTION}", ""))(view, { label: m.trigger }, sel.head - m.trigger.length, sel.head);
-  return true;
+  const item = triggerAt(line.text.slice(0, sel.head - line.from), items);
+  if (!item) return null;
+  snippet(expansion(item, inMath(sel.head)))(view, { label: item.trigger }, sel.head - item.trigger.length, sel.head);
+  return item;
 }

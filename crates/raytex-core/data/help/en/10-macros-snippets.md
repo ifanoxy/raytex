@@ -25,7 +25,7 @@ They are macros whose trigger starts with `@`: you find them, with a body of sev
 
 ## Snippets
 
-Type a trigger and pick it in the suggestions:
+Type a trigger then <kbd>Tab</kbd>: `doc` then <kbd>Tab</kbd> writes a minimal document. They are also in the suggestions (<kbd>Ctrl</kbd> + <kbd>Space</kbd>) and in the **@ macros & snippets** view.
 
 | Trigger | Inserts |
 |---|---|
@@ -53,9 +53,9 @@ Trigger: ff        (math mode only)
 Body   : \frac{${1:a}}{${2:b}}${0}
 ```
 
-Type the trigger in the document then <kbd>Tab</kbd>: the body replaces it. A macro for *math mode only* is written in a formula only; elsewhere, <kbd>Tab</kbd> indents as usual. When the list of suggestions is open, <kbd>Tab</kbd> picks the suggestion first.
+Type the trigger in the document then <kbd>Tab</kbd>: the body replaces it. A *math only* macro typed in text is written between `$…$`. When the list of suggestions is open, <kbd>Tab</kbd> picks the suggestion first. Your macros go before the snippets of RayTeX that have the same trigger.
 
-For the keyboard shortcut, click its button then press the keys: <kbd>Esc</kbd> cancels, <kbd>⌫</kbd> removes it. A triangle marks a shortcut a command of RayTeX already has, which would run before the macro. On a Mac, <kbd>⌥</kbd> + a letter works too, also when the key writes an accent.
+The keyboard shortcut is optional. Click its button then press the keys, with <kbd>Ctrl</kbd>, <kbd>⌘</kbd> or <kbd>Alt</kbd> (or a function key): a key to write with, such as <kbd>Tab</kbd> or a letter alone, is not taken. <kbd>Esc</kbd> cancels, <kbd>⌫</kbd> removes it. A triangle marks a shortcut a command of RayTeX already has, which would run before the macro. On a Mac, <kbd>⌥</kbd> + a letter works too, also when the key writes an accent.
 
 In the body:
 
