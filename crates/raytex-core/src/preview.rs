@@ -79,6 +79,17 @@ const BBOX_HOOK: &str = r"\makeatletter
 \makeatother
 ";
 
+/// What `standalone` sets to crop its page around the picture, set again
+/// once the preamble is read. A preamble that changes one of these lengths
+/// afterwards (`\setlength{\headheight}{…}` for a tall header, `\topmargin`,
+/// a package of margins) moves the picture in its page: a blank band on one
+/// side, the picture cut on the other.
+const CROPPED_PAGE: &str = r"\AtBeginDocument{\pagestyle{empty}\hoffset=-72.27pt \voffset=-72.27pt
+  \topmargin=0pt \headheight=0pt \headsep=0pt \marginparsep=0pt \marginparwidth=0pt
+  \footskip=0pt \marginparpush=0pt \oddsidemargin=0pt \evensidemargin=0pt
+  \topskip=0pt \textheight=\maxdimen}
+";
+
 /// Full source of the preview document, and the line where the body starts (1-based).
 pub fn document(req: &PreviewRequest<'_>) -> (String, usize) {
     if let Some(whole) = req.document {
@@ -91,6 +102,7 @@ pub fn document(req: &PreviewRequest<'_>) -> (String, usize) {
     src.push_str(req.preamble.trim_end());
     src.push('\n');
     src.push_str(BBOX_HOOK);
+    src.push_str(CROPPED_PAGE);
     src.push_str("\\begin{document}\n");
     let body_line = src.lines().count() + 1;
     src.push_str(req.body.trim_end());
@@ -761,6 +773,13 @@ mod tests {
         assert_eq!(src.lines().nth(line - 1).unwrap(), req.body);
         assert!(src.starts_with("\\documentclass[tikz,border=6pt]{standalone}"));
         assert_eq!(border_of(req.class_options), 6.0);
+        // The page of the class is set again after the preamble, whatever it changed.
+        let (preamble, crop, begin) = (
+            src.find("\\usepackage{tikz}").unwrap(),
+            src.find("\\headheight=0pt").unwrap(),
+            src.find("\\begin{document}").unwrap(),
+        );
+        assert!(preamble < crop && crop < begin, "{src}");
     }
 
     fn distribution() -> Distribution {
@@ -1018,18 +1037,24 @@ x
         assert!(!document_only("\\AddToHook{begindocument}{\\x}"));
     }
 
-    /// A picture is still compiled in a document that has a page layout.
+    /// A picture is still compiled in a document that has a page layout, and
+    /// stays in the middle of its page when the preamble changes the lengths
+    /// of the page (a taller header, as the page layout window writes it).
     #[test]
     #[ignore = "needs a TeX distribution"]
     fn a_picture_compiles_with_a_page_layout_in_the_preamble() {
         let dist = distribution();
         let dir = tempfile::tempdir().unwrap();
+        let preamble = format!(
+            "{}\n\\setlength{{\\headheight}}{{35pt}}\n\\addtolength{{\\topmargin}}{{-21pt}}\n\\voffset=5pt\n\\AtEndDocument{{\\typeout{{RTXMEASURE:\\the\\headheight:\\the\\topmargin:\\the\\voffset}}}}\n",
+            project_preamble(LAID_OUT)
+        );
         let outcome = compile_body(
             &dist,
             dir.path(),
             "layout",
             "tikz,border=6pt",
-            &project_preamble(LAID_OUT),
+            &preamble,
             "\\begin{tikzpicture}\\draw[brand] (0,0) -- (1,1) node {$\\R$};\\end{tikzpicture}",
             Engine::Pdflatex,
         );
@@ -1042,6 +1067,8 @@ x
             "{:?}",
             outcome.diagnostics
         );
+        // The lengths the page was shipped with are those of the class.
+        assert_eq!(outcome.measures, Some(vec![0.0, 0.0, -72.27]));
     }
 
     #[test]

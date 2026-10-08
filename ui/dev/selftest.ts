@@ -221,6 +221,41 @@ async function drawn(selector: string, log: (msg: string) => void, what: string)
   }
 }
 
+/**
+ * The blank left around what the first page of a PDF draws, in points: a
+ * cropped picture has the same on every side. Drawing needs a visible
+ * screen: null when it did not happen in time.
+ */
+async function inkMargins(pdf: string): Promise<{ top: number; bottom: number; left: number; right: number } | null> {
+  const { closePdf, loadPdf } = await import("../lib/pdf/pdfjs");
+  const doc = await loadPdf(await ipc.readBinaryFile(pdf));
+  try {
+    const page = await doc.getPage(1);
+    const scale = 2;
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const done = await Promise.race([page.render({ canvas, viewport }).promise.then(() => true), pause(15_000).then(() => false)]);
+    if (!done) return null;
+    const { data, width, height } = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height);
+    let [top, bottom, left, right] = [height, -1, width, -1];
+    for (let y = 0; y < height; y++)
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4;
+        if (data[i + 3] < 128 || data[i] + data[i + 1] + data[i + 2] > 384) continue;
+        if (y < top) top = y;
+        if (y > bottom) bottom = y;
+        if (x < left) left = x;
+        if (x > right) right = x;
+      }
+    if (bottom < 0) return null;
+    return { top: top / scale, bottom: (height - 1 - bottom) / scale, left: left / scale, right: (width - 1 - right) / scale };
+  } finally {
+    closePdf(doc);
+  }
+}
+
 /** Clicks the first element matching `selector` whose text contains `text`. */
 function clickText(selector: string, text: string): boolean {
   const el = [...document.querySelectorAll<HTMLElement>(selector)].find((e) => e.textContent?.includes(text));
@@ -593,12 +628,27 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     const picture = await ipc.previewSnippet({ path: main, job: "tikz", classOptions: "tikz,border=6pt", projectPreamble: true, packages: ["tikz"], libraries: [], extra: "", body: "\\begin{tikzpicture}\\draw (0,0) -- (1,1);\\end{tikzpicture}" });
     const pictured = !!picture.pdf && !picture.diagnostics.some((d) => d.severity === "error");
     if (!pictured) log(`layout: picture ${JSON.stringify(picture.diagnostics.map((d) => d.message)).slice(0, 300)}`);
+    // A preamble that changes the lengths of the page (a taller header) leaves
+    // the picture in the middle of its page, not cut at the bottom.
+    const framed = await ipc.previewSnippet({
+      path: main,
+      job: "tikz",
+      classOptions: "tikz,border=6pt",
+      projectPreamble: true,
+      packages: ["tikz"],
+      libraries: [],
+      extra: "\\setlength{\\headheight}{35pt}\n\\addtolength{\\topmargin}{-12pt}\n\\setlength{\\headsep}{30pt}",
+      body: "\\begin{tikzpicture}\\draw (0,0) rectangle (3,2);\\end{tikzpicture}",
+    });
+    const blank = framed.pdf ? await inkMargins(framed.pdf) : null;
+    const centred = !blank || (Math.abs(blank.top - blank.bottom) < 1.5 && Math.abs(blank.left - blank.right) < 1.5 && blank.top > 3 && blank.top < 9);
+    log(`layout: picture in its page ${blank ? `${centred} (${[blank.top, blank.bottom, blank.left, blank.right].map((v) => v.toFixed(1)).join(" ")})` : "not drawn (screen asleep or hidden?), continuing"}`);
     // One page only, at the cursor of the chapter.
     uses()[3].click();
     await until(() => ui.overlay === null, 5_000, "studio closed");
     const here = !!editor.textOf(chapter)?.includes(`\\thispagestyle{${name}}`);
     log(`layout: style ${name}, picture with a page style ${pictured}, larger field ${widened}, read ${read}, gathered ${gathered}, header asked ${asked}, previewed ${previewed}, defined ${defined}, packages ${packages}, here ${here}`);
-    ok = read === "2.5 2.5 2.5 2.5" && pictured && widened && gathered && asked && previewed && defined && packages && here && (await buildOk(log, "layout")) && ok;
+    ok = read === "2.5 2.5 2.5 2.5" && pictured && centred && widened && gathered && asked && previewed && defined && packages && here && (await buildOk(log, "layout")) && ok;
   } catch (e) {
     log(`layout failed: ${e}`);
     ok = false;

@@ -17,6 +17,7 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 - Fixed:
   - Back from the code, the whiteboard could show its drawing tiny in a corner: it was framed while the board had no size yet.
   - **Small previews failed in a document that has a page style** (0.4.0): the picture of the TikZ studio, the sample of a font, the trial of a command showed an error. These previews take the preamble of the project without what concerns whole pages; fancyhdr was left out, but not the page styles the page layout window writes, which then named commands nobody defined. Page styles, what is drawn on every page and the lengths of the header are left out too.
+  - **The picture of a small preview was cut at the bottom** in a document that gives its header more room (`\setlength{\headheight}{…}`, which the page layout window writes when a header is too tall, or any other length of the page changed in the preamble): the picture was moved down in its page, a blank band above it. These previews crop the page around the picture with lengths of their own, which the preamble changed afterwards; they are set again once the preamble is read.
   - A filling without a colour (`\fill (0,0) circle (2pt);`) came back from the whiteboard as an outline: it stays a filling, in black as TikZ fills.
 
 ## [0.4.1] — 2026-10-08
