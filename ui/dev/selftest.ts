@@ -508,6 +508,9 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     const idle = () => !document.querySelector(".studio .busy");
     ui.openLayout("margins");
     await until(() => !!document.querySelector(".studio .cross"), 10_000, "page studio");
+    // The code is with the advanced settings of each group.
+    const advanced = (id: string) => document.querySelector<HTMLButtonElement>(`.studio .fold[data-id="${id}"] .more`)!.click();
+    advanced("margins");
     // The margins of the document are read, and TeX measures the page it makes of them.
     await until(() => measure().includes("16 × 24.7 cm"), 120_000, "page measured");
     const read = [...document.querySelectorAll<HTMLInputElement>(".studio .cross input")].map((i) => i.value).join(" ");
@@ -533,8 +536,19 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     };
     fill("head-left", "\\nouppercase{\\leftmark}");
     fill("head-right", "Rapport");
-    document.querySelectorAll<HTMLButtonElement>(".studio .left .segment button")[1].click();
-    await until(() => code().includes("\\fancyhead[R]{Rapport}") && code().includes("\\AddToShipoutPictureBG*"), 5_000, "style written");
+    document.querySelectorAll<HTMLButtonElement>('.studio .fold[data-id="mark"] .segment button')[1].click();
+    // The `+` of a field writes what it can hold; the advanced settings of the header colour its rule.
+    document.querySelector<HTMLInputElement>('.studio input[data-slot="foot-right"]')!.parentElement!.querySelector<HTMLButtonElement>(".plus")!.click();
+    await until(() => !!ui.menu, 5_000, "menu of a field");
+    await ui.menu!.items[1].run!();
+    ui.closeMenu();
+    advanced("head");
+    await until(() => !!document.querySelector('.studio .fold[data-id="head"] .advanced select'), 5_000, "advanced settings of the header");
+    const ruleColour = document.querySelector<HTMLSelectElement>('.studio .fold[data-id="head"] .advanced select')!;
+    ruleColour.value = "red";
+    ruleColour.dispatchEvent(new Event("change", { bubbles: true }));
+    advanced("more");
+    await until(() => code().includes("\\fancyhead[R]{Rapport}") && code().includes("\\AddToShipoutPictureBG*") && code().includes("\\color{red}\\hrule") && code().includes("\\fancyfoot[R]{\\thepage\\ / \\pageref{LastPage}}"), 5_000, "style written");
     await until(() => !idle(), 10_000, "style compiling");
     await until(idle, 120_000, "style previewed");
     // fancyhdr asks for a taller header than the class keeps (11pt): one click gives it.
@@ -554,7 +568,7 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     await until(() => !!editor.textOf(main)?.includes(`\\let\\ps@plain\\ps@${name}`), 5_000, "style of the opening pages");
     const text = editor.textOf(main)!;
     const defined = text.indexOf(`\\fancypagestyle{${name}}`) > 0 && text.indexOf(`\\pagestyle{${name}}`) > text.indexOf(`\\fancypagestyle{${name}}`);
-    const packages = ["fancyhdr", "eso-pic", "xcolor"].every((p) => text.includes(`\\usepackage{${p}}`));
+    const packages = ["fancyhdr", "eso-pic", "xcolor", "lastpage"].every((p) => text.includes(`\\usepackage{${p}}`));
     // One page only, at the cursor of the chapter.
     uses()[3].click();
     await until(() => ui.overlay === null, 5_000, "studio closed");

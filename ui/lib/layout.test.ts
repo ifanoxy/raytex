@@ -5,15 +5,19 @@ import { test } from "node:test";
 import {
   addRange,
   emptyStyle,
+  fontCode,
   ensureGeometry,
   fromPt,
   geometryCode,
   headHeightAsked,
+  imageWatermark,
   metrics,
   newGeometryCode,
+  type PageStyle,
   parseStyle,
   previewSource,
   rangeCode,
+  readFont,
   readClass,
   readMargins,
   readStyles,
@@ -209,10 +213,15 @@ const STYLE = `\\fancypagestyle{rapport}{%
   \\renewcommand{\\footrulewidth}{0pt}%
 }`;
 
+const body = (s: PageStyle) => {
+  const code = styleCode(s);
+  return code.slice(code.indexOf("{%") + 1, -1);
+};
+
 test("a style is written as fancyhdr reads it", () => {
   const s = emptyStyle("rapport");
-  s.head.left = "\\nouppercase{\\leftmark}";
-  s.head.right = "Projet X";
+  s.head.odd.left = "\\nouppercase{\\leftmark}";
+  s.head.odd.right = "Projet X";
   assert.equal(styleCode(s), STYLE);
   assert.deepEqual(stylePackages(s), ["fancyhdr"]);
   assert.ok(validStyleName("rapport") && !validStyleName("mon style") && !validStyleName("style2") && !validStyleName(""));
@@ -220,29 +229,146 @@ test("a style is written as fancyhdr reads it", () => {
 
 test("a style is read back as it was written", () => {
   const s = emptyStyle("rapport");
-  s.head = { left: "\\nouppercase{\\leftmark}", center: "\\textbf{Titre}", right: "\\today" };
-  s.foot = { left: "A", center: "\\thepage\\ / \\pageref{LastPage}", right: "\\includegraphics[height=1cm]{logo}" };
-  s.mirror = true;
-  s.footRule = "0.2pt";
+  s.head.odd = { left: "\\nouppercase{\\leftmark}", center: "\\textbf{Titre}", right: "\\today" };
+  s.foot.odd = { left: "A", center: "\\thepage\\ / \\pageref{LastPage}", right: "\\includegraphics[height=1cm]{logo}" };
+  s.even = "mirror";
+  s.foot.rule = "0.2pt";
   s.watermark = textWatermark("BROUILLON");
-  assert.deepEqual(parseStyle("rapport", styleCode(s).slice("\\fancypagestyle{rapport}{".length, -1)), s);
+  assert.deepEqual(parseStyle("rapport", body(s)), s);
   assert.deepEqual(readStyles(doc(`\\usepackage{fancyhdr}\n${styleCode(s)}\n`)), [s]);
   assert.deepEqual(stylePackages(s), ["fancyhdr", "eso-pic", "graphicx", "xcolor", "lastpage"]);
 });
 
-test("a watermark is a text or an image, across the page", () => {
+test("every setting of a band is written and read back", () => {
+  const s = emptyStyle("complet");
+  s.base = "rapport";
+  s.even = "own";
+  s.head.odd = { left: "Impair", center: "", right: "\\firstrightmark" };
+  s.head.even = { left: "\\thepage", center: "Pair", right: "" };
+  s.head.init = "\\small\\itshape\\color{gray}";
+  s.foot.init = "\\footnotesize";
+  s.head.rule = "1pt";
+  s.head.ruleColor = "red";
+  s.head.ruleSkip = "3pt";
+  s.head.floatPagesBare = true;
+  s.head.offsetLeft = "1cm";
+  s.foot.offsetRight = "5mm";
+  s.foot.rule = "0.4pt";
+  s.foot.ruleColor = "blue!50";
+  s.foot.ruleSkip = "6pt";
+  s.marks = { first: "number", second: "title" };
+  s.extra = ["\\setlength{\\headsep}{1cm}"];
+  const code = styleCode(s);
+  assert.equal(
+    code,
+    `\\fancypagestyle{complet}[rapport]{%
+  \\fancyheadinit{\\small\\itshape\\color{gray}}%
+  \\fancyfootinit{\\footnotesize}%
+  \\fancyhead[LO]{Impair}%
+  \\fancyhead[LE]{\\thepage}%
+  \\fancyhead[CE]{Pair}%
+  \\fancyhead[RO]{\\firstrightmark}%
+  \\fancyfoot[CO]{\\thepage}%
+  \\fancyheadoffset[L]{1cm}%
+  \\fancyfootoffset[R]{5mm}%
+  \\renewcommand{\\headrulewidth}{\\iffloatpage{0pt}{1pt}}%
+  \\renewcommand{\\footrulewidth}{0.4pt}%
+  \\def\\headruleskip{3pt}%
+  \\renewcommand{\\headrule}{{\\color{red}\\hrule height\\headrulewidth width\\headwidth\\vskip-\\headrulewidth}}%
+  \\def\\footruleskip{6pt}%
+  \\renewcommand{\\footrule}{{\\color{blue!50}\\hrule height\\footrulewidth width\\headwidth}}%
+  \\renewcommand{\\chaptermark}[1]{\\markboth{\\thechapter.\\ ##1}{}}%
+  \\renewcommand{\\sectionmark}[1]{\\markright{##1}}%
+  \\setlength{\\headsep}{1cm}%
+}`,
+  );
+  assert.deepEqual(readStyles(doc(`\\usepackage{fancyhdr}\n${code}\n`)), [s]);
+  assert.deepEqual(stylePackages(s), ["fancyhdr", "xcolor", "extramarks"]);
+  // In a class without chapters, the titles are those of the sections.
+  const article = styleCode(s, false);
+  assert.ok(article.includes("\\renewcommand{\\sectionmark}[1]{\\markboth{\\thesection.\\ ##1}{}}%\n  \\renewcommand{\\subsectionmark}[1]{\\markright{##1}}%"));
+  assert.deepEqual(parseStyle("complet", article.slice(article.indexOf("{%") + 1, -1), "rapport"), s);
+});
+
+test("when a style colours a rule, the others say that theirs has none", () => {
+  const plain = emptyStyle("simple");
+  let text = saveStyle(doc("\\usepackage{amsmath}\n"), plain);
+  assert.ok(!text.includes("\\headrule}"));
+  const red = emptyStyle("rouge");
+  red.head.ruleColor = "red";
+  text = saveStyle(text, red);
+  assert.ok(text.includes("  \\renewcommand{\\footrulewidth}{0pt}%\n  \\renewcommand{\\headrule}{\\hrule height\\headrulewidth width\\headwidth\\vskip-\\headrulewidth}%\n}\n\n\\fancypagestyle{rouge}"));
+  assert.ok(text.includes("\\renewcommand{\\headrule}{{\\color{red}\\hrule height\\headrulewidth width\\headwidth\\vskip-\\headrulewidth}}%"));
+  assert.ok(!text.includes("\\footrule}"));
+  // Read back, both are what they were; saved again, nothing moves.
+  assert.deepEqual(readStyles(text), [plain, red]);
+  assert.equal(saveStyle(text, plain), text);
+  assert.equal(saveStyle(text, red), text);
+  // A new style of the document says it too.
+  const third = saveStyle(text, emptyStyle("autre"));
+  assert.ok(third.slice(third.indexOf("\\fancypagestyle{autre}")).includes("\\renewcommand{\\headrule}{\\hrule height"));
+  // A rule drawn another way is kept as it is written.
+  const dotted = parseStyle("points", "\\fancyhf{}\\renewcommand{\\headrule}{\\dotfill}");
+  assert.deepEqual(dotted.extra, ["\\renewcommand{\\headrule}{\\dotfill}"]);
+});
+
+test("a mirrored band goes into the margins on the same side", () => {
+  const s = emptyStyle("livre");
+  s.even = "mirror";
+  s.head.odd.left = "Titre";
+  s.head.offsetLeft = "1cm";
+  s.head.offsetRight = "2cm";
+  assert.ok(styleCode(s).includes("\\fancyheadoffset[LO,RE]{1cm}%\n  \\fancyheadoffset[RO,LE]{2cm}%"));
+  assert.deepEqual(parseStyle("livre", body(s)), s);
+});
+
+test("the font of a band is read from its code and written back", () => {
+  assert.deepEqual(readFont("\\small\\itshape\\color{gray}"), { size: "\\small", shape: "\\itshape", color: "gray", rest: "" });
+  assert.deepEqual(readFont("\\sffamily \\large\\thispagestyle{x}"), { size: "\\large", shape: "\\sffamily", color: "", rest: "\\thispagestyle{x}" });
+  assert.deepEqual(readFont("\\smallskip"), { size: "", shape: "", color: "", rest: "\\smallskip" });
+  assert.equal(fontCode({ size: "\\small", shape: "\\bfseries", color: "blue!60", rest: "" }), "\\small\\bfseries\\color{blue!60}");
+  assert.equal(fontCode(readFont("")), "");
+});
+
+test("a watermark is a text or an image, placed on the page", () => {
   const text = { ...textWatermark("CONFIDENTIEL"), angle: 30, size: 5.5, color: "red", strength: 20 };
   assert.equal(watermarkCode(text), "\\AddToShipoutPictureBG*{\\AtPageCenter{\\makebox(0,0){\\rotatebox{30}{\\scalebox{5.5}{\\textcolor{red!20}{CONFIDENTIEL}}}}}}");
-  assert.deepEqual(readWatermark(`${watermarkCode(text)}Suite`), [text, "Suite"]);
-  const image = { text: "", image: "img/logo.png", angle: 0, size: 0.6, color: "black", strength: 12 };
+  assert.deepEqual(readWatermark(`\\small${watermarkCode(text)}\\itshape`), [text, "\\small\\itshape"]);
+  const image = { ...imageWatermark("img/logo.png") };
   assert.equal(watermarkCode(image), "\\AddToShipoutPictureBG*{\\AtPageCenter{\\makebox(0,0){\\rotatebox{0}{\\includegraphics[width=0.6\\paperwidth]{img/logo.png}}}}}");
   assert.deepEqual(readWatermark(watermarkCode(image)), [image, ""]);
+  // Elsewhere on the page, over the text, half transparent.
+  const placed = { ...image, x: 0.8, y: 0.1, front: true, opacity: 50, angle: 15 };
+  assert.equal(
+    watermarkCode(placed),
+    "\\AddToShipoutPictureFG*{\\AtPageLowerLeft{\\put(\\LenToUnit{0.8\\paperwidth},\\LenToUnit{0.9\\paperheight}){\\makebox(0,0){\\rotatebox{15}{\\ifdefined\\transparent\\transparent{0.5}\\fi \\includegraphics[width=0.6\\paperwidth]{img/logo.png}}}}}}",
+  );
+  assert.deepEqual(readWatermark(watermarkCode(placed)), [placed, ""]);
+  // Over the whole page, as a background.
+  const whole = { ...image, fit: true, opacity: 30 };
+  assert.equal(watermarkCode(whole), "\\AddToShipoutPictureBG*{\\AtPageLowerLeft{\\ifdefined\\transparent\\transparent{0.3}\\fi \\includegraphics[width=\\paperwidth,height=\\paperheight]{img/logo.png}}}");
+  assert.deepEqual(readWatermark(watermarkCode(whole)), [whole, ""]);
   // A text with braces of its own.
   const bold = textWatermark("\\textbf{NE PAS} diffuser");
   assert.deepEqual(readWatermark(watermarkCode(bold)), [bold, ""]);
   // What is written another way is left where it is.
   assert.equal(readWatermark("\\AddToShipoutPictureBG*{\\put(0,0){x}}"), null);
   assert.equal(readWatermark("Titre"), null);
+  // A style with a watermark needs what draws it.
+  const s = emptyStyle("fond");
+  s.watermark = whole;
+  assert.deepEqual(stylePackages(s), ["fancyhdr", "eso-pic", "graphicx", "transparent"]);
+  assert.deepEqual(parseStyle("fond", body(s)), s);
+  // Nothing to draw, nothing written.
+  s.watermark = textWatermark("  ");
+  assert.ok(!styleCode(s).includes("ShipoutPicture"));
+});
+
+test("a watermark written in the centre of the header is still read", () => {
+  const s = parseStyle("ancien", `\\fancyhf{}\\fancyhead[C]{${watermarkCode(textWatermark("BROUILLON"))}Titre}`);
+  assert.deepEqual(s.watermark, textWatermark("BROUILLON"));
+  assert.equal(s.head.odd.center, "Titre");
+  assert.ok(styleCode(s).includes("\\fancyheadinit{\\AddToShipoutPictureBG*"));
 });
 
 test("a style written by hand is understood", () => {
@@ -255,38 +381,42 @@ test("a style written by hand is understood", () => {
   \\fancyhead[RE]{Pair}
   \\cfoot{\\small Pied}
   \\renewcommand\\headrulewidth{1pt}
+  \\fancyhfoffset[L]{2em}
   \\setlength{\\headsep}{1cm}
+  \\renewcommand{\\chaptermark}[1]{\\markboth{\\MakeUppercase{#1}}{}}
 }
 `);
   const [s] = readStyles(text);
   assert.equal(s.name, "main");
-  assert.deepEqual(s.head, { left: "Gauche", center: "", right: "\\thepage" });
-  assert.deepEqual(s.foot, { left: "", center: "\\small Pied", right: "" });
-  assert.equal(s.headRule, "1pt");
-  assert.equal(s.footRule, "0pt");
-  assert.equal(s.mirror, false);
-  // What it cannot hold is kept: the even pages that differ, the length.
-  assert.deepEqual(s.extra, ["\\setlength{\\headsep}{1cm}", "\\fancyhead[LE]{\\thepage}", "\\fancyhead[RE]{Pair}"]);
-  const again = parseStyle("main", styleCode(s).slice("\\fancypagestyle{main}{".length, -1));
-  assert.deepEqual(again, s);
+  assert.equal(s.even, "own");
+  assert.deepEqual(s.head.odd, { left: "Gauche", center: "", right: "\\thepage" });
+  assert.deepEqual(s.head.even, { left: "\\thepage", center: "", right: "Pair" });
+  assert.deepEqual(s.foot.odd, { left: "", center: "\\small Pied", right: "" });
+  assert.deepEqual(s.foot.even, s.foot.odd);
+  assert.equal(s.head.rule, "1pt");
+  assert.equal(s.foot.rule, "0pt");
+  assert.deepEqual([s.head.offsetLeft, s.foot.offsetLeft, s.head.offsetRight], ["2em", "2em", ""]);
+  // What it cannot hold is kept as it is written.
+  assert.deepEqual(s.extra, ["\\setlength{\\headsep}{1cm}", "\\renewcommand{\\chaptermark}[1]{\\markboth{\\MakeUppercase{#1}}{}}"]);
+  assert.deepEqual(parseStyle("main", body(s)), s);
 });
 
 test("left and right that swap on even pages are a mirror", () => {
-  const s = parseStyle("livre", "\\fancyhf{}\\fancyhead[LE,RO]{\\thepage}\\fancyhead[LO]{\\rightmark}\\fancyhead[RE]{\\leftmark}\\fancyfoot[C]{x}");
-  assert.equal(s.mirror, false);
+  const own = parseStyle("livre", "\\fancyhf{}\\fancyhead[LE,RO]{\\thepage}\\fancyhead[LO]{\\rightmark}\\fancyhead[RE]{\\leftmark}\\fancyfoot[C]{x}");
+  assert.equal(own.even, "own");
   const mirrored = parseStyle("livre", "\\fancyhf{}\\fancyhead[LE,RO]{\\thepage}\\fancyhead[LO,RE]{Titre}");
-  assert.equal(mirrored.mirror, true);
-  assert.deepEqual(mirrored.head, { left: "Titre", center: "", right: "\\thepage" });
+  assert.equal(mirrored.even, "mirror");
+  assert.deepEqual(mirrored.head.odd, { left: "Titre", center: "", right: "\\thepage" });
   assert.ok(styleCode(mirrored).includes("\\fancyhead[LO,RE]{Titre}%\n  \\fancyhead[RO,LE]{\\thepage}"));
 });
 
 test("a style is saved after the packages, then in its own place", () => {
   const s = emptyStyle("rapport");
-  s.head.left = "\\nouppercase{\\leftmark}";
-  s.head.right = "Projet X";
+  s.head.odd.left = "\\nouppercase{\\leftmark}";
+  s.head.odd.right = "Projet X";
   const saved = saveStyle(doc("\\usepackage{amsmath}\n\\usepackage{hyperref}\n"), s);
   assert.equal(saved, doc(`\\usepackage{amsmath}\n\\usepackage{fancyhdr}\n\\usepackage{hyperref}\n\n${STYLE}\n`));
-  s.head.right = "Projet Y";
+  s.head.odd.right = "Projet Y";
   assert.equal(saveStyle(saved, s), saved.replace("Projet X", "Projet Y"));
   const other = emptyStyle("annexe");
   const two = saveStyle(saved, other);

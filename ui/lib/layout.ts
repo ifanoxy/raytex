@@ -607,6 +607,36 @@ export interface Slots {
   right: string;
 }
 
+const SLOTS = ["left", "center", "right"] as const;
+const SIDE = { left: "L", center: "C", right: "R" } as const;
+
+/** How the even pages of a two-sided document are set: like the odd ones, mirrored, or with fields of their own. */
+export type EvenPages = "same" | "mirror" | "own";
+
+/** A header or a footer. */
+export interface Band {
+  /** Its three fields (those of the odd pages when the even ones have their own). */
+  odd: Slots;
+  /** The fields of the even pages, when they have their own. */
+  even: Slots;
+  /** Thickness of its rule (`0.4pt`; `0pt` or "" for none). */
+  rule: string;
+  /** A colour of xcolor for the rule, or "". */
+  ruleColor: string;
+  /** Space between the rule and the fields, or "" for the one of fancyhdr. */
+  ruleSkip: string;
+  /** No rule on a page that holds floats only. */
+  floatPagesBare: boolean;
+  /** What is run before the fields are set: their font, size, colour (`\fancyheadinit`). */
+  init: string;
+  /** How far the band goes into the left and into the right margin. */
+  offsetLeft: string;
+  offsetRight: string;
+}
+
+/** How a title is kept for the headers: as the class does (""), with its number, or its text alone. */
+export type MarkFormat = "" | "number" | "title";
+
 export interface Watermark {
   /** The text across the page; "" with an image. */
   text: string;
@@ -620,44 +650,63 @@ export interface Watermark {
   color: string;
   /** How much of the colour, 1 to 100. */
   strength: number;
+  /** Where its centre is on the page, from the left and from the top (0 to 1). */
+  x: number;
+  y: number;
+  /** Over the text of the page instead of under it. */
+  front: boolean;
+  /** An image: how opaque it is, 1 to 100. */
+  opacity: number;
+  /** An image: stretched over the whole page, as a background. */
+  fit: boolean;
 }
 
 export interface PageStyle {
   name: string;
-  head: Slots;
-  foot: Slots;
-  /** On a two-sided document, left and right swap on the even pages. */
-  mirror: boolean;
-  /** Thickness of the rule under the header, above the footer (`0.4pt`; `0pt` for none). */
-  headRule: string;
-  footRule: string;
+  /** The style it starts from (`\fancypagestyle{name}[base]`), or "". */
+  base: string;
+  head: Band;
+  foot: Band;
+  even: EvenPages;
+  /**
+   * The titles the headers repeat: the chapter (the section in a class
+   * without chapters), and the level under it.
+   */
+  marks: { first: MarkFormat; second: MarkFormat };
   watermark: Watermark | null;
-  /** What the style holds that is not understood here, kept as it is. */
+  /** What the style holds besides, written as LaTeX: kept as it is. */
   extra: string[];
 }
 
 /** Names LaTeX and fancyhdr define: used, not edited here. */
 export const BUILTIN_STYLES = ["plain", "empty", "headings", "fancy"];
 
-export function emptyStyle(name: string): PageStyle {
+function emptyBand(rule: string): Band {
   return {
-    name,
-    head: { left: "", center: "", right: "" },
-    foot: { left: "", center: "\\thepage", right: "" },
-    mirror: false,
-    headRule: "0.4pt",
-    footRule: "0pt",
-    watermark: null,
-    extra: [],
+    odd: { left: "", center: "", right: "" },
+    even: { left: "", center: "", right: "" },
+    rule,
+    ruleColor: "",
+    ruleSkip: "",
+    floatPagesBare: false,
+    init: "",
+    offsetLeft: "",
+    offsetRight: "",
   };
 }
 
+export function emptyStyle(name: string): PageStyle {
+  const foot = emptyBand("0pt");
+  foot.odd.center = "\\thepage";
+  return { name, base: "", head: emptyBand("0.4pt"), foot, even: "same", marks: { first: "", second: "" }, watermark: null, extra: [] };
+}
+
 export function textWatermark(text: string): Watermark {
-  return { text, image: "", angle: 45, size: 7, color: "black", strength: 12 };
+  return { text, image: "", angle: 45, size: 7, color: "black", strength: 12, x: 0.5, y: 0.5, front: false, opacity: 100, fit: false };
 }
 
 export function imageWatermark(image: string): Watermark {
-  return { text: "", image, angle: 0, size: 0.6, color: "black", strength: 12 };
+  return { ...textWatermark(""), image, angle: 0, size: 0.6 };
 }
 
 /** A name LaTeX accepts for a page style: letters only. */
@@ -669,12 +718,31 @@ function number(value: number, digits = 2): string {
   return round(Number.isFinite(value) ? value : 0, digits);
 }
 
-/** What draws the watermark on the page being made (it is written in the header, which every page of the style sets). */
+const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, Number.isFinite(value) ? value : low));
+
+/** Whether there is something to draw. */
+function drawn(w: Watermark | null): w is Watermark {
+  return !!w && !!(w.image.trim() || w.text.trim());
+}
+
+/**
+ * What draws the watermark on the page being made. It is run with the
+ * header, which every page of the style sets.
+ */
 export function watermarkCode(w: Watermark): string {
+  const layer = w.front ? "FG" : "BG";
+  // XeLaTeX has no `\transparent` (the package gives up there): the image is then drawn as it is.
+  const see = w.image && w.opacity < 100 ? `\\ifdefined\\transparent\\transparent{${number(clamp(w.opacity, 1, 100) / 100)}}\\fi ` : "";
+  if (w.image && w.fit) return `\\AddToShipoutPicture${layer}*{\\AtPageLowerLeft{${see}\\includegraphics[width=\\paperwidth,height=\\paperheight]{${w.image.trim()}}}}`;
   const inner = w.image
-    ? `\\includegraphics[width=${number(w.size)}\\paperwidth]{${w.image}}`
-    : `\\scalebox{${number(w.size)}}{\\textcolor{${w.color}!${number(Math.min(100, Math.max(1, w.strength)), 0)}}{${w.text}}}`;
-  return `\\AddToShipoutPictureBG*{\\AtPageCenter{\\makebox(0,0){\\rotatebox{${number(w.angle, 1)}}{${inner}}}}}`;
+    ? `${see}\\includegraphics[width=${number(w.size)}\\paperwidth]{${w.image.trim()}}`
+    : `\\scalebox{${number(w.size)}}{\\textcolor{${w.color}!${number(clamp(w.strength, 1, 100), 0)}}{${w.text}}}`;
+  const box = `\\makebox(0,0){\\rotatebox{${number(w.angle, 1)}}{${inner}}}`;
+  const centred = Math.abs(w.x - 0.5) < 0.005 && Math.abs(w.y - 0.5) < 0.005;
+  const placed = centred
+    ? `\\AtPageCenter{${box}}`
+    : `\\AtPageLowerLeft{\\put(\\LenToUnit{${number(clamp(w.x, 0, 1))}\\paperwidth},\\LenToUnit{${number(1 - clamp(w.y, 0, 1))}\\paperheight}){${box}}}`;
+  return `\\AddToShipoutPicture${layer}*{${placed}}`;
 }
 
 /** Reads a group after `prefix` at `at`: what is inside, and where it ends. */
@@ -686,49 +754,162 @@ function after(code: string, at: number, prefix: string): [string, number] | nul
   return end < 0 ? null : [code.slice(open + 1, end), end + 1];
 }
 
-/** The watermark `code` starts with (as `watermarkCode` writes it), and what follows it. */
+const PICTURE = /\\AddToShipoutPicture(BG|FG)\*/;
+const SEE = String.raw`(?:(?:\\ifdefined\\transparent)?\\transparent\{([\d.]+)\}(?:\\fi)?\s*)?`;
+const IMAGE = new RegExp(String.raw`^${SEE}\\includegraphics\[width=([\d.]+)\\paperwidth\]\{([^{}]*)\}$`);
+const WHOLE_PAGE = new RegExp(String.raw`^${SEE}\\includegraphics\[width=\\paperwidth,height=\\paperheight\]\{([^{}]*)\}$`);
+const PLACE = /^\\put\(\\LenToUnit\{([\d.]+)\\paperwidth\},\\LenToUnit\{([\d.]+)\\paperheight\}\)/;
+
+/** The watermark `code` holds (as `watermarkCode` writes it), and the code without it. */
 export function readWatermark(code: string): [Watermark, string] | null {
-  const whole = after(code, 0, "\\AddToShipoutPictureBG*");
-  const centre = whole && after(whole[0], 0, "\\AtPageCenter");
-  const box = centre && after(centre[0], 0, "\\makebox(0,0)");
+  const found = PICTURE.exec(code);
+  const whole = found && after(code, found.index, found[0]);
+  if (!found || !whole) return null;
+  const rest = code.slice(0, found.index) + code.slice(whole[1]);
+  const front = found[1] === "FG";
+  const opacity = (value: string | undefined) => (value ? Math.round(Number(value) * 100) : 100);
+  let x = 0.5;
+  let y = 0.5;
+  let placed = after(whole[0], 0, "\\AtPageCenter");
+  if (!placed) {
+    const corner = after(whole[0], 0, "\\AtPageLowerLeft");
+    if (!corner) return null;
+    const page = WHOLE_PAGE.exec(corner[0]);
+    if (page) return [{ ...imageWatermark(page[2]), front, opacity: opacity(page[1]), fit: true }, rest];
+    const at = PLACE.exec(corner[0]);
+    placed = at && after(corner[0], at[0].length, "");
+    if (!at || !placed) return null;
+    x = Number(at[1]);
+    y = Math.round((1 - Number(at[2])) * 100) / 100;
+  }
+  const box = after(placed[0], 0, "\\makebox(0,0)");
   const angle = box && after(box[0], 0, "\\rotatebox");
   const turned = angle && box && after(box[0], angle[1], "");
-  if (!whole || !angle || !turned) return null;
-  const rest = code.slice(whole[1]);
-  const image = /^\\includegraphics\[width=([\d.]+)\\paperwidth\]\{([^{}]*)\}$/.exec(turned[0]);
-  if (image) return [{ ...imageWatermark(image[2]), angle: Number(angle[0]), size: Number(image[1]) }, rest];
+  if (!angle || !turned) return null;
+  const image = IMAGE.exec(turned[0]);
+  if (image) return [{ ...imageWatermark(image[3]), angle: Number(angle[0]), size: Number(image[2]), x, y, front, opacity: opacity(image[1]) }, rest];
   const scale = after(turned[0], 0, "\\scalebox");
   const scaled = scale && after(turned[0], scale[1], "");
   const color = scaled && after(scaled[0], 0, "\\textcolor");
   const text = color && scaled && after(scaled[0], color[1], "");
   const spec = color && /^([A-Za-z]+)!(\d+)$/.exec(color[0]);
   if (!scale || !text || !spec) return null;
-  return [{ text: text[0], image: "", angle: Number(angle[0]), size: Number(scale[0]), color: spec[1], strength: Number(spec[2]) }, rest];
+  return [{ ...textWatermark(text[0]), angle: Number(angle[0]), size: Number(scale[0]), color: spec[1], strength: Number(spec[2]), x, y, front }, rest];
 }
 
-/** `\fancypagestyle{name}{…}` for `s`. */
-export function styleCode(s: PageStyle): string {
-  const where = s.mirror ? { left: "LO,RE", center: "C", right: "RO,LE" } : { left: "L", center: "C", right: "R" };
-  const lines = ["\\fancyhf{}"];
-  const centre = (s.watermark ? watermarkCode(s.watermark) : "") + s.head.center.trim();
-  for (const [slot, content] of [
-    ["left", s.head.left.trim()],
-    ["center", centre],
-    ["right", s.head.right.trim()],
-  ] as const) {
-    if (content) lines.push(`\\fancyhead[${where[slot]}]{${content}}`);
+// The font of a band: what `\fancyheadinit` usually holds.
+
+export const FONT_SIZES = ["\\footnotesize", "\\small", "\\normalsize", "\\large"];
+export const FONT_SHAPES = ["\\itshape", "\\bfseries", "\\scshape", "\\sffamily"];
+
+export interface BandFont {
+  size: string;
+  shape: string;
+  /** A colour of xcolor, or "". */
+  color: string;
+  /** What the code holds besides, kept as it is. */
+  rest: string;
+}
+
+export function readFont(init: string): BandFont {
+  let rest = init;
+  const take = (names: string[]) => {
+    for (const name of names) {
+      const m = new RegExp(`${name.replace("\\", "\\\\")}(?![A-Za-z@])\\s*`).exec(rest);
+      if (m) {
+        rest = rest.slice(0, m.index) + rest.slice(m.index + m[0].length);
+        return name;
+      }
+    }
+    return "";
+  };
+  const size = take(FONT_SIZES);
+  const shape = take(FONT_SHAPES);
+  const colour = /\\color\{([A-Za-z0-9!]+)\}\s*/.exec(rest);
+  if (colour) rest = rest.slice(0, colour.index) + rest.slice(colour.index + colour[0].length);
+  return { size, shape, color: colour ? colour[1] : "", rest: rest.trim() };
+}
+
+export function fontCode(f: BandFont): string {
+  return `${f.size}${f.shape}${f.color ? `\\color{${f.color}}` : ""}${f.rest}`;
+}
+
+/** Classes whose first level of titles is the chapter. */
+export function hasChapters(cls: DocumentClass): boolean {
+  return /book|report|memoir|scrreprt/.test(cls.name);
+}
+
+/** The titles the headers repeat, under the names the class gives them: `[chapter, section]`, or `[section, subsection]`. */
+function markLevels(chapters: boolean): [string, string] {
+  return chapters ? ["chapter", "section"] : ["section", "subsection"];
+}
+
+/** Which rules a style draws in black though it gives them no colour: those another style of the document colours. */
+export interface PlainRules {
+  head: boolean;
+  foot: boolean;
+}
+
+/** What draws the rule of a band, in a colour or in the one of the text. */
+function ruleCode(part: "head" | "foot", color: string): string {
+  // As fancyhdr draws them: the rule of the header takes no room.
+  const rule = `\\hrule height\\${part}rulewidth width\\headwidth${part === "head" ? "\\vskip-\\headrulewidth" : ""}`;
+  return `\\renewcommand{\\${part}rule}{${color ? `{\\color{${color}}${rule}}` : rule}}`;
+}
+
+/**
+ * `\fancypagestyle{name}{…}` for `s`, in a class with chapters or without.
+ * A style keeps the rule of the one used before it: with `plain`, it says
+ * that its own has no colour.
+ */
+export function styleCode(s: PageStyle, chapters = true, plain: PlainRules = { head: false, foot: false }): string {
+  const lines: string[] = [];
+  // A style of its own starts from nothing; one that has a base keeps what it does not say.
+  if (!s.base) lines.push("\\fancyhf{}");
+  const headInit = s.head.init.trim() + (drawn(s.watermark) ? watermarkCode(s.watermark) : "");
+  if (headInit) lines.push(`\\fancyheadinit{${headInit}}`);
+  if (s.foot.init.trim()) lines.push(`\\fancyfootinit{${s.foot.init.trim()}}`);
+  const bands = [
+    ["head", s.head],
+    ["foot", s.foot],
+  ] as const;
+  for (const [part, band] of bands) {
+    for (const slot of SLOTS) {
+      const odd = band.odd[slot].trim();
+      const even = band.even[slot].trim();
+      if (s.even === "own") {
+        if (odd) lines.push(`\\fancy${part}[${SIDE[slot]}O]{${odd}}`);
+        if (even) lines.push(`\\fancy${part}[${SIDE[slot]}E]{${even}}`);
+      } else if (odd) {
+        const where = s.even === "mirror" ? { left: "LO,RE", center: "C", right: "RO,LE" }[slot] : SIDE[slot];
+        lines.push(`\\fancy${part}[${where}]{${odd}}`);
+      }
+    }
   }
-  for (const slot of ["left", "center", "right"] as const) {
-    if (s.foot[slot].trim()) lines.push(`\\fancyfoot[${where[slot]}]{${s.foot[slot].trim()}}`);
+  for (const [part, band] of bands) {
+    const mirror = s.even === "mirror";
+    if (band.offsetLeft.trim()) lines.push(`\\fancy${part}offset[${mirror ? "LO,RE" : "L"}]{${band.offsetLeft.trim()}}`);
+    if (band.offsetRight.trim()) lines.push(`\\fancy${part}offset[${mirror ? "RO,LE" : "R"}]{${band.offsetRight.trim()}}`);
   }
-  lines.push(`\\renewcommand{\\headrulewidth}{${s.headRule.trim() || "0pt"}}`);
-  lines.push(`\\renewcommand{\\footrulewidth}{${s.footRule.trim() || "0pt"}}`);
-  lines.push(...s.extra);
-  return `\\fancypagestyle{${s.name}}{%\n${lines.map((l) => `  ${l}%\n`).join("")}}`;
+  for (const [part, band] of bands) {
+    const width = band.rule.trim() || "0pt";
+    lines.push(`\\renewcommand{\\${part}rulewidth}{${band.floatPagesBare ? `\\iffloatpage{0pt}{${width}}` : width}}`);
+  }
+  for (const [part, band] of bands) {
+    // `\headruleskip` is not known to every fancyhdr: `\def` never complains.
+    if (band.ruleSkip.trim()) lines.push(`\\def\\${part}ruleskip{${band.ruleSkip.trim()}}`);
+    if (band.ruleColor.trim()) lines.push(ruleCode(part, band.ruleColor.trim()));
+    else if (plain[part] && !s.base) lines.push(ruleCode(part, ""));
+  }
+  const [first, second] = markLevels(chapters);
+  if (s.marks.first) lines.push(`\\renewcommand{\\${first}mark}[1]{\\markboth{${s.marks.first === "number" ? `\\the${first}.\\ ` : ""}##1}{}}`);
+  if (s.marks.second) lines.push(`\\renewcommand{\\${second}mark}[1]{\\markright{${s.marks.second === "number" ? `\\the${second}\\ ` : ""}##1}}`);
+  lines.push(...s.extra.map((l) => l.trim()).filter(Boolean));
+  return `\\fancypagestyle{${s.name}}${s.base ? `[${s.base}]` : ""}{%\n${lines.map((l) => `  ${l}%\n`).join("")}}`;
 }
 
 /** The commands of a block of code, each with its arguments. */
-function commands(code: string): string[] {
+export function commands(code: string): string[] {
   const out: string[] = [];
   let i = 0;
   const space = () => {
@@ -824,87 +1005,125 @@ function places(spec: string | null, part: "H" | "F"): string[] {
   return out;
 }
 
-/** The style a `\fancypagestyle{name}{body}` defines. */
-export function parseStyle(name: string, body: string): PageStyle {
+/** What is between the braces of the last argument of a command. */
+function lastGroup(command: string): string {
+  return command.endsWith("}") ? group(command, matching(command, command.length - 1)) : "";
+}
+
+/** The style a `\fancypagestyle{name}[base]{body}` defines. */
+export function parseStyle(name: string, body: string, base = ""): PageStyle {
   // Rules that are not said are those of fancyhdr.
   const s = emptyStyle(name);
-  s.foot.center = "";
-  const head: Cells = {};
-  const foot: Cells = {};
+  s.base = base;
+  s.foot.odd.center = "";
+  const cells: Record<"head" | "foot", Cells> = { head: {}, foot: {} };
+  const parts = (kind: string): ("head" | "foot")[] => (kind === "head" ? ["head"] : kind === "foot" ? ["foot"] : ["head", "foot"]);
   for (const c of commands(mask(body))) {
     const fancy = /^\\fancy(head|foot|hf)\s*(?:\[([^\]]*)\])?\s*\{/.exec(c);
     if (fancy) {
-      const content = c.slice(fancy[0].length, c.lastIndexOf("}")).trim();
-      const spec = fancy[2] ?? null;
-      if (fancy[1] !== "foot") for (const p of places(spec, "H")) head[p] = content;
-      if (fancy[1] !== "head") for (const p of places(spec, "F")) foot[p] = content;
+      const content = lastGroup(c).trim();
+      for (const part of parts(fancy[1])) for (const p of places(fancy[2] ?? null, part === "head" ? "H" : "F")) cells[part][p] = content;
       continue;
     }
     const old = /^\\([lcr])(head|foot)\s*(?:\[[^\]]*\])?\s*\{/.exec(c);
     if (old) {
-      const content = c.slice(old[0].length, c.lastIndexOf("}")).trim();
-      const cells = old[2] === "head" ? head : foot;
-      cells[`${old[1].toUpperCase()}O`] = cells[`${old[1].toUpperCase()}E`] = content;
+      const side = old[1].toUpperCase();
+      cells[old[2] as "head" | "foot"][`${side}O`] = cells[old[2] as "head" | "foot"][`${side}E`] = lastGroup(c).trim();
       continue;
     }
-    const rule = /^\\(?:renewcommand|def)\s*\{?\\(head|foot)rulewidth\}?\s*\{([^{}]*)\}$/.exec(c);
+    const init = /^\\fancy(head|foot|hf)init\s*\{/.exec(c);
+    if (init) {
+      for (const part of parts(init[1])) s[part].init = lastGroup(c).trim();
+      continue;
+    }
+    const offset = /^\\fancy(head|foot|hf)offset\s*(?:\[([^\]]*)\])?\s*\{/.exec(c);
+    if (offset) {
+      const length = lastGroup(c).trim();
+      for (const part of parts(offset[1])) {
+        // The side on the odd pages: the even ones mirror it.
+        const odd = places(offset[2] ?? null, part === "head" ? "H" : "F").filter((p) => p.endsWith("O"));
+        if (odd.includes("LO")) s[part].offsetLeft = length;
+        if (odd.includes("RO")) s[part].offsetRight = length;
+      }
+      continue;
+    }
+    const rule = /^\\(?:renewcommand|def)\s*\{?\\(head|foot)rule(width|skip)\}?\s*\{/.exec(c);
     if (rule) {
-      if (rule[1] === "head") s.headRule = rule[2].trim();
-      else s.footRule = rule[2].trim();
+      const band = s[rule[1] as "head" | "foot"];
+      const value = lastGroup(c).trim();
+      const bare = /^\\iffloatpage\{0pt\}\{([^{}]*)\}$/.exec(value);
+      if (rule[2] === "skip") band.ruleSkip = value;
+      else {
+        band.rule = bare ? bare[1].trim() : value;
+        band.floatPagesBare = !!bare;
+      }
+      continue;
+    }
+    const drawn = /^\\renewcommand\s*\{\\(head|foot)rule\}\s*\{/.exec(c);
+    if (drawn) {
+      // The rule as it is written here, in a colour or not; any other way of drawing it is kept.
+      const part = drawn[1] as "head" | "foot";
+      const colour = /^\{\\color\{([^{}]*)\}(.*)\}$/.exec(lastGroup(c));
+      if ((colour ? colour[2] : lastGroup(c)) === lastGroup(ruleCode(part, ""))) {
+        s[part].ruleColor = colour ? colour[1] : "";
+        continue;
+      }
+    }
+    const mark = /^\\renewcommand\s*\{\\(chapter|section|subsection)mark\}\s*\[1\]\s*\{\\mark(both|right)\{(.*?)##1\}(?:\{\})?\}$/.exec(c);
+    if (mark && (mark[3] === "" || /^\\the(?:chapter|section|subsection)\.?\\ $/.test(mark[3]))) {
+      s.marks[mark[2] === "both" ? "first" : "second"] = mark[3] ? "number" : "title";
       continue;
     }
     if (c) s.extra.push(c);
   }
-  const get = (cells: Cells, place: string) => cells[place] ?? "";
-  const same = (cells: Cells) => ["L", "C", "R"].every((x) => get(cells, `${x}O`) === get(cells, `${x}E`));
-  const swapped = (cells: Cells) => get(cells, "LO") === get(cells, "RE") && get(cells, "RO") === get(cells, "LE") && get(cells, "CO") === get(cells, "CE");
-  s.mirror = !(same(head) && same(foot)) && swapped(head) && swapped(foot);
-  s.head = { left: get(head, "LO"), center: get(head, "CO"), right: get(head, "RO") };
-  s.foot = { left: get(foot, "LO"), center: get(foot, "CO"), right: get(foot, "RO") };
-  if (!s.mirror) {
-    // Even pages that are neither the same nor mirrored are kept as they are written.
-    for (const [part, cells] of [
-      ["head", head],
-      ["foot", foot],
-    ] as const) {
-      for (const x of ["L", "C", "R"]) {
-        if (get(cells, `${x}E`) !== get(cells, `${x}O`)) s.extra.push(`\\fancy${part}[${x}E]{${get(cells, `${x}E`)}}`);
-      }
-    }
+  const get = (part: "head" | "foot", place: string) => cells[part][place] ?? "";
+  const both = ["head", "foot"] as const;
+  const same = both.every((part) => ["L", "C", "R"].every((x) => get(part, `${x}O`) === get(part, `${x}E`)));
+  const swapped = both.every((part) => get(part, "LO") === get(part, "RE") && get(part, "RO") === get(part, "LE") && get(part, "CO") === get(part, "CE"));
+  s.even = same ? "same" : swapped ? "mirror" : "own";
+  for (const part of both) {
+    s[part].odd = { left: get(part, "LO"), center: get(part, "CO"), right: get(part, "RO") };
+    if (s.even === "own") s[part].even = { left: get(part, "LE"), center: get(part, "CE"), right: get(part, "RE") };
   }
-  const mark = readWatermark(s.head.center);
-  if (mark) {
-    s.watermark = mark[0];
-    s.head.center = mark[1].trim();
+  // The watermark is run with the header; it was written in its centre field before.
+  const fromInit = readWatermark(s.head.init);
+  const fromField = fromInit ? null : readWatermark(s.head.odd.center);
+  if (fromInit) [s.watermark, s.head.init] = [fromInit[0], fromInit[1].trim()];
+  else if (fromField) {
+    [s.watermark, s.head.odd.center] = [fromField[0], fromField[1].trim()];
+    if (s.even === "own") s.head.even.center = readWatermark(s.head.even.center)?.[1].trim() ?? s.head.even.center;
   }
   return s;
 }
 
 interface StyleBlock extends Statement {
   name: string;
+  base: string;
 }
 
 function styleBlocks(text: string): StyleBlock[] {
   const code = mask(text);
   return statements(text, "\\fancypagestyle", 2).flatMap((s) => {
-    const m = /^\\fancypagestyle\s*\{([^{}]*)\}/.exec(code.slice(s.from, s.to));
-    return m ? [{ ...s, name: m[1].trim() }] : [];
+    const m = /^\\fancypagestyle\s*\{([^{}]*)\}\s*(?:\[([^\]]*)\])?/.exec(code.slice(s.from, s.to));
+    return m ? [{ ...s, name: m[1].trim(), base: (m[2] ?? "").trim() }] : [];
   });
 }
 
 /** The page styles the preamble defines with `\fancypagestyle`. */
 export function readStyles(text: string): PageStyle[] {
-  return styleBlocks(text).map((b) => parseStyle(b.name, text.slice(matching(mask(text), b.to - 1) + 1, b.to - 1)));
+  return styleBlocks(text).map((b) => parseStyle(b.name, text.slice(matching(mask(text), b.to - 1) + 1, b.to - 1), b.base));
 }
 
 /** The packages the code of a style needs. */
 export function stylePackages(s: PageStyle): string[] {
   const code = styleCode(s);
   const out = ["fancyhdr"];
-  if (s.watermark) out.push("eso-pic");
-  if (/\\(?:includegraphics|rotatebox|scalebox)\b/.test(code)) out.push("graphicx");
-  if (/\\(?:textcolor|color)\b/.test(code)) out.push("xcolor");
+  if (drawn(s.watermark)) out.push("eso-pic");
+  if (/\\(?:includegraphics|rotatebox|scalebox)(?![A-Za-z])/.test(code)) out.push("graphicx");
+  if (/\\(?:textcolor|color)(?![A-Za-z])/.test(code)) out.push("xcolor");
+  if (/\\transparent(?![A-Za-z])/.test(code)) out.push("transparent");
   if (/\{LastPage\}/.test(code)) out.push("lastpage");
+  if (/\\(?:first|last)(?:left|right)mark(?![A-Za-z])/.test(code)) out.push("extramarks");
   return out;
 }
 
@@ -912,11 +1131,27 @@ function insertLine(text: string, at: number, line: string, blank = false): stri
   return `${text.slice(0, at)}\n${blank ? "\n" : ""}${line}${text.slice(at)}`;
 }
 
-/** Writes the definition of a style: in place of the one of the same name, else after the others. */
+/**
+ * Writes the definition of a style: in place of the one of the same name,
+ * else after the others. When a style of the document colours a rule, the
+ * others say that theirs has none: a style keeps the rule of the one used
+ * before it.
+ */
 export function saveStyle(text: string, s: PageStyle): string {
   if (preambleEnd(text) >= text.length) return text;
   text = addPackages(text, stylePackages(s).map((name) => ({ name })));
-  const code = styleCode(s);
+  const others = readStyles(text).filter((o) => o.name !== s.name);
+  const coloured = (part: "head" | "foot") => [s, ...others].some((o) => !!o[part].ruleColor.trim());
+  const plain = { head: coloured("head"), foot: coloured("foot") };
+  // The other styles, from the last one: the offsets before them stay right.
+  for (const b of styleBlocks(text).reverse()) {
+    const other = others.find((o) => o.name === b.name);
+    if (!other || other.base || b.name === s.name) continue;
+    const said = mask(text).slice(b.from, b.to);
+    const lines = (["head", "foot"] as const).filter((part) => plain[part] && !other[part].ruleColor.trim() && !said.includes(`\\${part}rule}`)).map((part) => `  ${ruleCode(part, "")}%\n`);
+    if (lines.length) text = `${text.slice(0, b.to - 1).replace(/[ \t]*$/, "")}${text[b.to - 2] === "\n" ? "" : "\n"}${lines.join("")}${text.slice(b.to - 1)}`;
+  }
+  const code = styleCode(s, hasChapters(readClass(text)), plain);
   const blocks = styleBlocks(text);
   const old = blocks.find((b) => b.name === s.name);
   if (old) return text.slice(0, old.from) + code + text.slice(old.to);
@@ -1024,17 +1259,29 @@ export function removeStyle(text: string, name: string): string {
   return /\n\n$/.test(head) ? head.slice(0, -1) + text.slice(at) : text;
 }
 
-/** What goes in a header or a footer besides text. */
-export const SLOT_FIELDS = [
-  { id: "page", code: "\\thepage" },
-  { id: "pageOf", code: "\\thepage\\ / \\pageref{LastPage}" },
-  { id: "chapter", code: "\\nouppercase{\\leftmark}" },
-  { id: "section", code: "\\nouppercase{\\rightmark}" },
-  { id: "date", code: "\\today" },
-  { id: "bold", code: "\\textbf{}" },
-  { id: "small", code: "\\small " },
-  { id: "image", code: "\\includegraphics[height=1cm]{}" },
-] as const;
+/** What a field of a header or of a footer can hold besides text. */
+export const FIELD_CODES = {
+  page: "\\thepage",
+  pageOf: "\\thepage\\ / \\pageref{LastPage}",
+  pageTotal: "\\pageref{LastPage}",
+  chapter: "\\nouppercase{\\leftmark}",
+  section: "\\nouppercase{\\rightmark}",
+  date: "\\today",
+  bold: "\\textbf{}",
+  italic: "\\textit{}",
+  smallcaps: "\\textsc{}",
+  small: "\\small ",
+  color: "\\textcolor{gray}{}",
+  newline: "\\\\",
+  exceptFloatPages: "\\iffloatpage{}{}",
+  firstMark: "\\firstrightmark",
+  lastMark: "\\lastrightmark",
+} as const;
+
+/** An image in a field: a logo as high as a line or two. */
+export function imageField(file: string, height = "0.8cm"): string {
+  return `\\includegraphics[height=${height}]{${file}}`;
+}
 
 // ---------------------------------------------------------------- previews
 
