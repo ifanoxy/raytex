@@ -4,9 +4,8 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
-- **Tab writes a snippet after its trigger**: `doc` then Tab writes the minimal document, `fig` a figure, `eq` an equation, as the help said, where Tab only indented the line: the snippets of RayTeX were written from the list of suggestions alone, which opens with Ctrl + Space (a shortcut macOS keeps for itself). The macros of the user go first, and the package a snippet needs is loaded with it.
-  - A macro marked *math only* whose trigger is typed in text is written between `$…$`, where nothing happened.
-  - A key that writes text (Tab, a letter alone, Enter) is no longer taken as the shortcut of a macro or of a command: with Tab as its shortcut, a macro could not be written by its trigger then Tab, since the shortcut took the key first. A shortcut needs Ctrl, ⌘ or Alt, or a function key; the settings say so when another key is pressed, and a shortcut saved that way is removed.
+## [0.4.0] — 2026-10-08
+
 - **Page layout** (*See all › Page*, or *Margins of the document…* and *Page styles…* in the command palette): the margins and the page styles of the document are set with fields, and seen on real pages compiled with the class and the preamble of the project before anything is written.
   - **Margins**: what the preamble already says (the options of `geometry`, every `\geometry{…}`, the options of the class) is read and shown plainly: ready-made margins (normal, narrow, moderate, wide, binding, those of LaTeX), the paper, the orientation, two-sided with its inner and outer margins, the four margins around a drawing of the page, the header and the footer, the binding, the margin notes, and any other option of `geometry` kept as it is written. A field left empty shows in grey the value LaTeX works out, and the text area is given with it: both are measured by TeX on the page of the preview, not estimated. *Apply to the document* gathers everything in one `\geometry{…}`; *From here on* writes `\newgeometry{…}` at the cursor for the pages that follow (geometry is then loaded with `pass` in a document that leaves its margins to the class, which keeps its pages as they are), and *Document margins from here* writes `\restoregeometry`.
   - **Page styles**: a header and a footer in three fields each, and a watermark across the page (a text or an image). The `+` of a field writes what it can hold: page number, "page 2 / 9", title of the chapter or of the section, date, an image picked in the files of the project (a logo), bold, italic, colour, new line. The styles the document already defines with `\fancypagestyle` are listed and edited the same way; what a hand-written one holds that the window cannot show is kept.
@@ -15,6 +14,9 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
   - **On the pages you want**: a style is given to the whole document, to the title and chapter pages (which LaTeX sets with `plain`), from the cursor on, to the page of the cursor alone, or to pages by their numbers in the PDF. The packages a style needs are loaded with it (`fancyhdr`, `eso-pic`, `graphicx`, `xcolor`, `lastpage`), and deleting a style removes what used it.
   - When the header is taller than the room the page keeps for it, the preview says so and one click gives it the height fancyhdr asks for.
   - Help: a new page, *Page layout*.
+- **Tab writes a snippet after its trigger**: `doc` then Tab writes the minimal document, `fig` a figure, `eq` an equation, as the help said, where Tab only indented the line: the snippets of RayTeX were written from the list of suggestions alone, which opens with Ctrl + Space (a shortcut macOS keeps for itself). The macros of the user go first, and the package a snippet needs is loaded with it.
+  - A macro marked *math only* whose trigger is typed in text is written between `$…$`, where nothing happened.
+  - A key that writes text (Tab, a letter alone, Enter) is no longer taken as the shortcut of a macro or of a command: with Tab as its shortcut, a macro could not be written by its trigger then Tab, since the shortcut took the key first. A shortcut needs Ctrl, ⌘ or Alt, or a function key; the settings say so when another key is pressed, and a shortcut saved that way is removed.
 - **Your own `@` shortcuts**: the `+` of the *@ macros & snippets* view makes one from a key (`v`, `vec`, `->`…) and what it writes (`\vec{}`); it is offered in the suggestions as soon as `@` is typed, before those of RayTeX and next to its command, and replaces the one of RayTeX that has the same key. They are macros whose trigger starts with `@`, also editable in *Settings › Macros*.
 - **A launch screen**: until the interface and the last project are ready, the ray crosses the window from left to right as a ray does in the sea: head first along a route drawn in dots that wanders, turns and loops, beating its wings, with the bubbles of its wake behind it and others rising from the bottom, in the colours of the theme. There are three routes, one per crossing; which one comes first, and which way up, changes from one launch to the next. It is drawn with the window itself, which was empty and black meanwhile. The ray stays still for those who asked their system for less motion.
 - Fixed, seen on macOS:
@@ -26,7 +28,7 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
     - macOS could correct what is typed in a field of RayTeX as if it were a word (a trigger, a key, a name of file). The fields of the application are no longer corrected, capitalised or completed by the system.
     - Tab pressed within two seconds of an Escape left the editor instead of writing in it. Tab always belongs to the text: the field of a snippet, a macro, the indentation.
   - A trigger typed right after a backslash is the name of a command: `\al` then Tab no longer writes the macro whose trigger is `al`.
-- For contributors: `E2E_SHOTS=0 node scripts/e2e.mjs` runs the scenes without screenshots, which are of the whole screen.
+- For contributors: `E2E_SHOTS=0 node scripts/e2e.mjs` runs the scenes without screenshots, which are of the whole screen. They use another port when the one of the development server is taken, so that they run next to an application open in development.
 
 ## [0.3.0] — 2026-10-05
 
@@ -188,6 +190,7 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[0.4.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.4.0
 [0.3.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.3.0
 [0.2.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.2.0
 [0.1.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.1.0
