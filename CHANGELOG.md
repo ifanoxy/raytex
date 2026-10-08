@@ -4,6 +4,15 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- **A whiteboard that is easier to draw on** (TikZ studio):
+  - With the selection tool, a drag on the paper draws a rectangle that selects what it touches (it moved the view); the view moves with Space, the middle button or the wheel. The shape a click would take is shown before the click.
+  - Once a shape is drawn, the selection tool comes back and the shape is selected; a pin under the tools keeps the tool for several shapes in a row. A double-click on the paper writes a text there.
+  - **Duplicating**: Alt and a drag leave a copy of what is dragged; a *Duplicate* button; Ctrl/⌘ + C, X and V copy, cut and paste, also from one picture to another.
+  - Several selected shapes have a box whose corners resize them together, keeping their proportions.
+  - **A bar for the selection** at the top of the board (duplicate, front, back, keep as a set, delete), and the same actions under the right button.
+- **Sets**: shapes kept under a name and drawn again with one click, in any picture of any project (a sensor, a block, axes your way). *Keep as a set* from the selection, then the new *Sets* tab, where each one has its picture, is renamed and removed. A few to start from come with RayTeX. They are kept in a file next to the settings.
+- **A side panel that shows less at once**: the look of what is selected in a few groups (line, filling, text), each with its usual choices as pictures to click and the rest behind *Advanced* (dashes, rounded corners, opacity, a colour written by hand, the position of a text, exact coordinates). The grid has its own button under the tools.
+
 ## [0.4.1] — 2026-10-08
 
 - **The display of the installed application was broken in 0.4.0**, on every system: panels at the wrong size, formula previews and menus out of place. The launch screen had its styles written in the page itself; that makes Tauri add a nonce to the style policy of the installed application, and a policy with a nonce refuses every inline style of the interface. In development the page is served without that policy, and nothing showed. The styles of the launch screen are in a file of their own, and the page holds none.

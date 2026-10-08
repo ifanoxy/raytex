@@ -10,23 +10,42 @@ TikZ draws diagrams, graphs, geometric figures and charts directly in LaTeX: sam
 
 ## Drawing on the whiteboard
 
-The studio opens on the **Drawing** tab: a whiteboard with a grid, to draw on with the mouse. The TikZ code writes itself, and the exact LaTeX rendering shows at the bottom right.
+The studio opens on the **Drawing** tab: a whiteboard with a grid, drawn on with the mouse. The TikZ code writes itself, and the exact LaTeX rendering shows at the bottom right.
 
 | Tool | Key | Gesture |
 |---|---|---|
-| Select | <kbd>V</kbd> | click a shape to select it (<kbd>⇧</kbd> to add more), drag it to move it, pull its handles to resize it; dragging the background moves the view |
+| Selection | <kbd>V</kbd> | click a shape to choose it (<kbd>⇧</kbd> to add one); **a drag on the paper** draws a rectangle that selects what it touches; a drag on a shape moves it |
 | Line, arrow | <kbd>L</kbd>, <kbd>A</kbd> | drag from one point to the other |
 | Rectangle | <kbd>R</kbd> | drag from one corner to the other |
 | Circle, ellipse | <kbd>C</kbd>, <kbd>E</kbd> | drag from the centre |
 | Polygon | <kbd>P</kbd> | click each vertex; double-click or <kbd>Enter</kbd> to finish, click the first point to close |
-| Text | <kbd>T</kbd> | click then type; `$…$` for maths; double-click to edit |
+| Text | <kbd>T</kbd> | click then write; `$…$` for maths; double-click to change it. With the selection tool, a double-click on the paper writes a text there |
 
-- **Grid**: fine by default (0.25 cm), adjustable (0.1 · 0.25 · 0.5 · 1 cm), with points snapping to it; it can be hidden, snapping turned off, and **axes** with graduations shown, in the right panel.
-- **Style**: line colour, filling, thickness, dashes or dots, arrows, rounded corners, opacity; for a text, its position, a frame (box or circle) and its size. Without a selection, the chosen style applies to the next shapes.
-- Exact **coordinates**, in centimetres, to adjust a shape to the millimetre.
-- <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Z</kbd> undoes, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>Z</kbd> redoes, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>D</kbd> duplicates, arrow keys move, <kbd>Delete</kbd> removes; the wheel moves the view, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + wheel zooms.
+Once a shape is drawn, the selection tool comes back: the shape is selected, ready to be moved or styled. The **pin**, under the tools, keeps the chosen tool to draw several shapes in a row.
 
-The drawing and the code stay linked: the **Code** tab shows the code of the drawing, which can be edited by hand; back in the drawing, the shapes follow. Statements the whiteboard cannot draw (`\foreach`, `plot`, connected nodes…) are kept as they are and listed in the panel.
+- **Moving the view**: <kbd>Space</kbd> + drag, the middle button, or the wheel; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + wheel to zoom.
+- **Resizing**: the handles of a shape; with several shapes selected, the corners of the box make them grow together, keeping their proportions.
+- **Duplicating**: <kbd>Alt</kbd> + drag on a shape leaves a copy of it; the *Duplicate* button of the selection bar or <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>D</kbd>; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>C</kbd> then <kbd>V</kbd> copies and pastes, also from one picture to another.
+- **The selection bar**, at the top of the board as soon as something is selected: duplicate, bring to front or send to back, keep as a set, delete. The right button offers the same actions.
+- <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Z</kbd> undoes, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>Z</kbd> redoes, the arrow keys move, <kbd>Del</kbd> removes.
+
+### The style, on the right
+
+The **Style** tab shows what matters most: the colour and the thickness of the **line**, the arrows of a line, the colour of the **filling**, and for a text what it says and its frame. **Advanced**, on the right of each group, unfolds the rest: dashes or dots, rounded corners, opacity, a colour written by hand (`red!50!black`), the position and the size of a text, the exact coordinates in centimetres. Without a selection, the chosen style goes to the next shapes.
+
+The **grid** is set from its button, under the tools: show it, snap to it, show axes, and its step (0.1 · 0.25 · 0.5 · 1 cm).
+
+### Sets
+
+A **set** is a group of shapes kept under a name, to draw it again with one click: a sensor, a block of a diagram, axes the way you like them.
+
+1. Select the shapes, then **Keep as a set** (selection bar, right button, or the *Sets* tab).
+2. Give it a name.
+3. In the **Sets** tab, a click on its picture draws it in the middle of the view, selected, ready to be placed.
+
+Your sets are kept with the settings of RayTeX: they serve in all your pictures and all your projects. A click on the name changes it, the cross removes it. A few sets to start from are offered below (axes, two boxes, right triangle, dimension, named point).
+
+The drawing and the code stay in step: the **Code** tab shows the code of the drawing, which can be changed by hand; back on the drawing, the shapes follow. The statements the whiteboard cannot draw (`\foreach`, `plot`, linked nodes…) are kept as they are.
 
 ## Starting from a model
 

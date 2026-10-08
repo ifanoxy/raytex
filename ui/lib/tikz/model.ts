@@ -392,6 +392,111 @@ export function bounds(shapes: Shape[]): { minX: number; minY: number; maxX: num
   };
 }
 
+/** The box of one shape (a node as its point); null for what is kept as code. */
+export function shapeBounds(shape: Shape): { minX: number; minY: number; maxX: number; maxY: number } | null {
+  return bounds([shape]);
+}
+
+/**
+ * Whether a shape is touched by the rectangle from `a` to `b` (a selection
+ * drawn with the mouse): their boxes cross.
+ */
+export function touches(shape: Shape, a: Point, b: Point): boolean {
+  const box = shapeBounds(shape);
+  if (!box) return false;
+  const [minX, maxX] = a.x < b.x ? [a.x, b.x] : [b.x, a.x];
+  const [minY, maxY] = a.y < b.y ? [a.y, b.y] : [b.y, a.y];
+  return box.minX <= maxX && box.maxX >= minX && box.minY <= maxY && box.maxY >= minY;
+}
+
+/** Copies of shapes, moved by (dx, dy), each with a new identifier. */
+export function copies(shapes: Shape[], dx = 0, dy = 0): Shape[] {
+  return shapes.map((s) => ({ ...moved(JSON.parse(JSON.stringify(s)) as Shape, dx, dy), id: newId() }));
+}
+
+/** A shape made `f` times larger around `origin` (a node keeps its text size). */
+export function scaled(shape: Shape, origin: Point, f: number): Shape {
+  const m = (p: Point) => ({ x: origin.x + (p.x - origin.x) * f, y: origin.y + (p.y - origin.y) * f });
+  const k = Math.abs(f);
+  switch (shape.kind) {
+    case "path":
+      return { ...shape, points: shape.points.map(m) };
+    case "rect":
+      return { ...shape, from: m(shape.from), to: m(shape.to) };
+    case "circle":
+      return { ...shape, center: m(shape.center), r: shape.r * k };
+    case "ellipse":
+      return { ...shape, center: m(shape.center), rx: shape.rx * k, ry: shape.ry * k };
+    case "node":
+      return { ...shape, at: m(shape.at) };
+    case "code":
+      return shape;
+  }
+}
+
+/** Coordinates rounded to what TikZ code is written with. */
+export function tidy(shape: Shape): Shape {
+  const r = (v: number) => Math.round(v * 1000) / 1000;
+  const p = (q: Point) => ({ x: r(q.x), y: r(q.y) });
+  switch (shape.kind) {
+    case "path":
+      return { ...shape, points: shape.points.map(p) };
+    case "rect":
+      return { ...shape, from: p(shape.from), to: p(shape.to) };
+    case "circle":
+      return { ...shape, center: p(shape.center), r: r(shape.r) };
+    case "ellipse":
+      return { ...shape, center: p(shape.center), rx: r(shape.rx), ry: r(shape.ry) };
+    case "node":
+      return { ...shape, at: p(shape.at) };
+    case "code":
+      return shape;
+  }
+}
+
+// ------------------------------------------------------------------- sets
+
+/** Shapes kept under a name, to be drawn again in any picture. */
+export interface ShapeSet {
+  id: string;
+  name: string;
+  /** The TikZ statements of its shapes, the lower left corner of their box at (0, 0). */
+  code: string;
+}
+
+/** The statements of shapes, one by line. */
+export function shapesCode(shapes: Shape[]): string {
+  return shapes.map(shapeCode).join("\n");
+}
+
+/** The shapes of statements; what the whiteboard cannot draw is kept as code. */
+export function shapesFromCode(code: string): Shape[] {
+  return statements(code).map((st) => parseStatement(st) ?? { id: newId(), kind: "code", code: st });
+}
+
+/** The code of a set made of `shapes`: moved so that the lower left corner of their box is at (0, 0). */
+export function setCode(shapes: Shape[]): string {
+  const box = bounds(shapes);
+  return shapesCode(box ? shapes.map((s) => tidy(moved(s, -box.minX, -box.minY))) : shapes);
+}
+
+/** The shapes of a set, new ones each time, the centre of their box at `at`. */
+export function setShapes(set: Pick<ShapeSet, "code">, at: Point, step = 0): Shape[] {
+  const shapes = shapesFromCode(set.code);
+  const box = bounds(shapes);
+  if (!box) return shapes;
+  const dx = snap(at.x - (box.minX + box.maxX) / 2, step);
+  const dy = snap(at.y - (box.minY + box.maxY) / 2, step);
+  return shapes.map((s) => tidy(moved(s, dx, dy)));
+}
+
+/** A name for a new set that no other one has: `base`, `base 2`, `base 3`… */
+export function freeSetName(base: string, sets: Pick<ShapeSet, "name">[]): string {
+  const taken = new Set(sets.map((s) => s.name));
+  if (!taken.has(base)) return base;
+  for (let n = 2; ; n++) if (!taken.has(`${base} ${n}`)) return `${base} ${n}`;
+}
+
 /** Line widths in points (TikZ values). */
 export const WIDTH_PT: Record<LineWidth, number> = {
   "ultra thin": 0.1,

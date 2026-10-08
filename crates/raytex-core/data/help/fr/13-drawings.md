@@ -14,19 +14,38 @@ Le studio s'ouvre sur l'onglet **Dessin** : un tableau blanc quadrillé, sur leq
 
 | Outil | Touche | Geste |
 |---|---|---|
-| Sélection | <kbd>V</kbd> | cliquer une forme pour la choisir (<kbd>⇧</kbd> pour en ajouter), la glisser pour la déplacer, tirer ses poignées pour la redimensionner ; glisser le fond déplace la vue |
+| Sélection | <kbd>V</kbd> | cliquer une forme pour la choisir (<kbd>⇧</kbd> pour en ajouter) ; **glisser sur le papier** trace un rectangle qui sélectionne ce qu'il touche ; glisser une forme la déplace |
 | Ligne, flèche | <kbd>L</kbd>, <kbd>A</kbd> | glisser d'un point à l'autre |
 | Rectangle | <kbd>R</kbd> | glisser d'un coin à l'autre |
 | Cercle, ellipse | <kbd>C</kbd>, <kbd>E</kbd> | glisser depuis le centre |
 | Polygone | <kbd>P</kbd> | cliquer chaque sommet ; double-clic ou <kbd>Entrée</kbd> pour finir, clic sur le premier point pour fermer |
-| Texte | <kbd>T</kbd> | cliquer puis écrire ; `$…$` pour les maths ; double-clic pour modifier |
+| Texte | <kbd>T</kbd> | cliquer puis écrire ; `$…$` pour les maths ; double-clic pour modifier. Avec l'outil de sélection, un double-clic sur le papier écrit un texte à cet endroit |
 
-- **Grille** : fine par défaut (0,25 cm), réglable (0,1 · 0,25 · 0,5 · 1 cm), et les points s'y aimantent ; elle se masque, l'aimantation se coupe, et un **repère** (axes gradués) peut s'afficher, dans le panneau de droite.
-- **Style** : couleur du trait, remplissage, épaisseur, tirets ou pointillés, flèches, coins arrondis, opacité ; pour un texte, sa position, un cadre (boîte ou cercle) et sa taille. Sans sélection, le style choisi s'applique aux prochaines formes.
-- **Coordonnées** exactes, en centimètres, pour ajuster une forme au millimètre.
-- <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Z</kbd> annule, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>Z</kbd> rétablit, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>D</kbd> duplique, les flèches du clavier déplacent, <kbd>Suppr</kbd> efface ; molette pour se déplacer, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + molette pour zoomer.
+Une fois une forme dessinée, l'outil de sélection revient : elle est sélectionnée, prête à être déplacée ou mise en forme. La **punaise**, sous les outils, garde l'outil choisi pour dessiner plusieurs formes de suite.
 
-Le dessin et le code restent liés : l'onglet **Code** montre le code du dessin, que l'on peut modifier à la main ; en revenant au dessin, les formes suivent. Les instructions que le tableau blanc ne sait pas dessiner (`\foreach`, `plot`, nœuds reliés…) sont gardées telles quelles et listées dans le panneau.
+- **Déplacer la vue** : <kbd>Espace</kbd> + glisser, le bouton du milieu, ou la molette ; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + molette pour zoomer.
+- **Redimensionner** : les poignées d'une forme ; avec plusieurs formes sélectionnées, les coins du cadre les agrandissent ensemble, en gardant leurs proportions.
+- **Dupliquer** : <kbd>Alt</kbd> + glisser une forme en laisse une copie ; le bouton *Dupliquer* de la barre de sélection ou <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>D</kbd> ; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>C</kbd> puis <kbd>V</kbd> copie et colle, aussi d'un schéma à l'autre.
+- **La barre de sélection**, en haut du tableau dès que quelque chose est sélectionné : dupliquer, mettre devant ou derrière, garder comme ensemble, supprimer. Le clic droit propose les mêmes actions.
+- <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Z</kbd> annule, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>Z</kbd> rétablit, les flèches du clavier déplacent, <kbd>Suppr</kbd> efface.
+
+### Le style, à droite
+
+L'onglet **Style** montre l'essentiel : la couleur et l'épaisseur du **trait**, les flèches d'une ligne, la couleur du **remplissage**, et pour un texte son contenu et son cadre. **Avancé**, à droite de chaque groupe, déplie le reste : tirets ou pointillés, coins arrondis, opacité, une couleur écrite à la main (`red!50!black`), la position et la taille d'un texte, les coordonnées exactes en centimètres. Sans sélection, le style choisi s'applique aux prochaines formes.
+
+La **grille** se règle depuis son bouton, sous les outils : l'afficher, s'y aimanter, montrer un repère, et son pas (0,1 · 0,25 · 0,5 · 1 cm).
+
+### Les ensembles
+
+Un **ensemble** est un groupe de formes gardé sous un nom, pour le redessiner d'un clic : un capteur, un bloc de schéma, un repère à votre façon.
+
+1. Sélectionnez les formes, puis **Garder comme ensemble** (barre de sélection, clic droit, ou onglet *Ensembles*).
+2. Donnez-lui un nom.
+3. Dans l'onglet **Ensembles**, un clic sur sa vignette le dessine au milieu de la vue, sélectionné, prêt à être placé.
+
+Vos ensembles sont gardés avec les réglages de RayTeX : ils servent dans tous vos schémas et tous vos projets. Un clic sur le nom le change, la croix le supprime. Quelques ensembles de départ sont proposés dessous (repère, deux boîtes, triangle rectangle, cote, point nommé).
+
+Le dessin et le code restent liés : l'onglet **Code** montre le code du dessin, que l'on peut modifier à la main ; en revenant au dessin, les formes suivent. Les instructions que le tableau blanc ne sait pas dessiner (`\foreach`, `plot`, nœuds reliés…) sont gardées telles quelles.
 
 ## Partir d'un modèle
 

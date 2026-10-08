@@ -558,6 +558,9 @@ async function simulateBuild() {
   await emit("build:finished", { outcome, error: null, manual: true });
 }
 
+/** The sets of the TikZ whiteboard kept during this session of the simulated engine. */
+let mockSets: { id: string; name: string; code: string }[] = [{ id: "m1", name: "Capteur", code: "\\draw[thick] (0,0) rectangle (2,1);\n\\draw[->] (2,0.5) -- (3,0.5);\n\\node at (1,0.5) {$S$};" }];
+
 export function installMocks() {
   mockWindows("main");
   mockIPC(
@@ -761,6 +764,11 @@ export function installMocks() {
             { id: "axes", category: "basics", name: "Axes et grille", description: "Une grille et deux axes.", packages: ["tikz"], libraries: ["arrows.meta"], preamble: "", code: "\\begin{tikzpicture}\n  \\draw[help lines] (0,0) grid (3,2);\n  \\draw[-Stealth] (0,0) -- (3.2,0);\n\\end{tikzpicture}" },
             { id: "flowchart", category: "diagrams", name: "Organigramme", description: "Début, étapes, décision.", packages: ["tikz"], libraries: ["positioning"], preamble: "", code: "\\begin{tikzpicture}\n  \\node[draw] (a) {Début};\n  \\node[draw, below=of a] (b) {Fin};\n  \\draw[->] (a) -- (b);\n\\end{tikzpicture}" },
           ];
+        case "tikz_sets":
+          return mockSets;
+        case "save_tikz_sets":
+          mockSets = a.sets as typeof mockSets;
+          return null;
         case "tikz_libraries":
           return ["arrows.meta", "positioning", "calc", "shapes.geometric", "angles", "quotes", "babel"];
         case "preview_snippet":

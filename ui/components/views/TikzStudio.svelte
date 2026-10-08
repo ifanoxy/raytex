@@ -30,7 +30,8 @@
   import Icon from "../common/Icon.svelte";
   import Modal from "../common/Modal.svelte";
   import PdfPreview from "../common/PdfPreview.svelte";
-  import { codeShapes, type Drawing, drawingCode, emptyStyle, parseDrawing, type Style } from "$lib/tikz/model";
+  import { codeShapes, type Drawing, drawingCode, emptyStyle, freeSetName, newId, parseDrawing, setCode as codeOfSet, setShapes as shapesOfSet, type ShapeSet, type Style } from "$lib/tikz/model";
+  import SetsPanel from "./tikz/SetsPanel.svelte";
   import ShapeProps from "./tikz/ShapeProps.svelte";
   import Whiteboard, { type Tool } from "./tikz/Whiteboard.svelte";
 
@@ -96,7 +97,8 @@
   ];
   const EMPTY = "\\begin{tikzpicture}\n\\end{tikzpicture}";
   const GRID_KEY = "raytex.tikz.grid";
-  const savedGrid: { step?: number; show?: boolean; snap?: boolean; axes?: boolean } = (() => {
+  const STEPS = [0.1, 0.25, 0.5, 1];
+  const savedGrid: { step?: number; show?: boolean; snap?: boolean; axes?: boolean; keep?: boolean } = (() => {
     try {
       return JSON.parse(localStorage.getItem(GRID_KEY) ?? "{}");
     } catch {
@@ -114,6 +116,13 @@
   let showGrid = $state(savedGrid.show ?? true);
   let showAxes = $state(savedGrid.axes ?? false);
   let snapOn = $state(savedGrid.snap ?? true);
+  /** A drawing tool stays chosen after a shape (else the selection tool comes back). */
+  let keepTool = $state(savedGrid.keep ?? false);
+  let gridOpen = $state(false);
+  /** The side of the whiteboard: the look of the shapes, or the sets to draw again. */
+  let sideTab = $state<"style" | "sets">("style");
+  let sets = $state<ShapeSet[]>([]);
+  let renamingSet = $state<string | null>(null);
   /** The code is one tikzpicture (the whiteboard can show it). */
   let drawable = $state(true);
   let board = $state<ReturnType<typeof Whiteboard> | null>(null);
@@ -126,7 +135,7 @@
 
   $effect(() => {
     try {
-      localStorage.setItem(GRID_KEY, JSON.stringify({ step, show: showGrid, snap: snapOn, axes: showAxes }));
+      localStorage.setItem(GRID_KEY, JSON.stringify({ step, show: showGrid, snap: snapOn, axes: showAxes, keep: keepTool }));
     } catch {
       /* not remembered */
     }
@@ -187,6 +196,10 @@
       templates = tpl;
       allLibraries = libs;
     });
+    void ipc
+      .tikzSets()
+      .then((list) => (sets = list))
+      .catch(() => {});
     rootReady = editor.rootOf().then((root) => {
       rootDir = root ? dirname(root) : "";
     });
@@ -340,6 +353,38 @@
         view?.requestMeasure();
         view?.focus();
       });
+  }
+
+  // ---------------------------------------------------------------- sets
+
+  /** A few sets to start from, drawn like those of the user. */
+  const BUILTIN_SETS = $derived<ShapeSet[]>([
+    { id: "b-axes", name: t("tikz.set.axes"), code: "\\draw[-Stealth] (0,0.5) -- (4,0.5);\n\\draw[-Stealth] (0.5,0) -- (0.5,3);\n\\node[below] at (4,0.5) {$x$};\n\\node[left] at (0.5,3) {$y$};" },
+    { id: "b-boxes", name: t("tikz.set.boxes"), code: "\\draw[rounded corners] (0,0) rectangle (2,1);\n\\draw[rounded corners] (3.5,0) rectangle (5.5,1);\n\\draw[->] (2,0.5) -- (3.5,0.5);\n\\node at (1,0.5) {A};\n\\node at (4.5,0.5) {B};" },
+    { id: "b-triangle", name: t("tikz.set.triangle"), code: "\\draw (0,0) -- (3,0) -- (3,2) -- cycle;\n\\draw (2.7,0) -- (2.7,0.3) -- (3,0.3);" },
+    { id: "b-dimension", name: t("tikz.set.dimension"), code: "\\draw[<->] (0,0) -- (3,0);\n\\node[above] at (1.5,0) {$L$};" },
+    { id: "b-point", name: t("tikz.set.point"), code: "\\fill (0,0) circle (0.06);\n\\node[above right] at (0,0) {$A$};" },
+  ]);
+
+  function writeSets(next: ShapeSet[]) {
+    sets = next;
+    void ipc.saveTikzSets(next).catch((e) => ui.toast("error", String(e)));
+  }
+
+  /** Keeps the selection as a set, under a name to type at once. */
+  function saveSet() {
+    const shapes = drawing.shapes.filter((s) => selected.includes(s.id));
+    if (!shapes.length) return;
+    const set: ShapeSet = { id: newId(), name: freeSetName(t("tikz.sets.newName"), sets), code: codeOfSet(shapes) };
+    writeSets([set, ...sets]);
+    sideTab = "sets";
+    renamingSet = set.id;
+  }
+
+  /** Draws a set in the middle of what is shown, selected, ready to be moved. */
+  function insertSet(set: ShapeSet) {
+    if (!board) return;
+    board.insert(shapesOfSet(set, board.center(), snapOn ? step : 0));
   }
 
   function chooseTool(id: Tool) {
@@ -612,6 +657,7 @@
               <Icon name={tl.icon} size={18} />
             </button>
           {/each}
+          <button class="tool lock" class:active={keepTool} title={t("tikz.keepTool")} aria-label={t("tikz.keepTool")} aria-pressed={keepTool} onclick={() => (keepTool = !keepTool)}><Icon name="pin" size={15} /></button>
           <span class="tool-sep"></span>
           <button class="tool" disabled={!canUndo} title="{t('action.undo')} ({prettyKey('Mod-z')})" aria-label={t("action.undo")} onclick={undoDrawing}><Icon name="undo" size={17} /></button>
           <button class="tool" disabled={!canRedo} title="{t('action.redo')} ({prettyKey('Mod-Shift-z')})" aria-label={t("action.redo")} onclick={redoDrawing}><Icon name="redo" size={17} /></button>
@@ -619,6 +665,22 @@
           <button class="tool" title={t("viewer.zoomIn")} aria-label={t("viewer.zoomIn")} onclick={() => board?.zoom(1.25)}><Icon name="zoom-in" size={17} /></button>
           <button class="tool" title={t("viewer.zoomOut")} aria-label={t("viewer.zoomOut")} onclick={() => board?.zoom(0.8)}><Icon name="zoom-out" size={17} /></button>
           <button class="tool" title={t("tikz.fit")} aria-label={t("tikz.fit")} onclick={() => board?.fit()}><Icon name="fit-page" size={17} /></button>
+          <span class="tool-sep"></span>
+          <button class="tool" class:active={gridOpen} title={t("tikz.gridTitle")} aria-label={t("tikz.gridTitle")} aria-expanded={gridOpen} onclick={() => (gridOpen = !gridOpen)}><Icon name="grid" size={17} /></button>
+          {#if gridOpen}
+            <!-- The grid: out of the way, one click from the tools. -->
+            <div class="grid-menu" role="dialog" aria-label={t("tikz.gridTitle")}>
+              <label class="check"><input type="checkbox" bind:checked={showGrid} />{t("tikz.showGrid")}</label>
+              <label class="check"><input type="checkbox" bind:checked={snapOn} />{t("tikz.snap")}</label>
+              <label class="check"><input type="checkbox" bind:checked={showAxes} />{t("tikz.axes")}</label>
+              <div class="steps" role="radiogroup" aria-label={t("tikz.step")}>
+                {#each STEPS as st (st)}
+                  <button class:active={step === st} role="radio" aria-checked={step === st} onclick={() => (step = st)}>{String(st).replace(".", ",")}</button>
+                {/each}
+                <span class="faint">cm</span>
+              </div>
+            </div>
+          {/if}
         </div>
 
         {#if drawable}
@@ -632,9 +694,11 @@
             {showGrid}
             {showAxes}
             {snapOn}
+            {keepTool}
             oncommit={commitDrawing}
             onundo={undoDrawing}
             onredo={redoDrawing}
+            onsaveset={saveSet}
           />
         {:else}
           <div class="not-drawable">
@@ -645,7 +709,24 @@
         {/if}
 
         <aside class="side">
-          <ShapeProps bind:drawing bind:selected bind:style={drawStyle} bind:step bind:showGrid bind:showAxes bind:snapOn oncommit={commitDrawing} oncode={() => setMode("code")} />
+          <div class="side-tabs" role="tablist">
+            <button role="tab" aria-selected={sideTab === "style"} class:active={sideTab === "style"} onclick={() => (sideTab = "style")}><Icon name="palette" size={14} />{t("tikz.tab.style")}</button>
+            <button role="tab" aria-selected={sideTab === "sets"} class:active={sideTab === "sets"} onclick={() => (sideTab = "sets")}><Icon name="star" size={14} />{t("tikz.tab.sets")}</button>
+          </div>
+          {#if sideTab === "style"}
+            <ShapeProps bind:drawing bind:selected bind:style={drawStyle} {tool} oncommit={commitDrawing} oncode={() => setMode("code")} />
+          {:else}
+            <SetsPanel
+              {sets}
+              builtin={BUILTIN_SETS}
+              canSave={selected.length > 0}
+              bind:renaming={renamingSet}
+              oninsert={insertSet}
+              onsave={saveSet}
+              onrename={(id, name) => writeSets(sets.map((x) => (x.id === id ? { ...x, name } : x)))}
+              ondelete={(id) => writeSets(sets.filter((x) => x.id !== id))}
+            />
+          {/if}
           <div class="mini">
             <div class="mini-bar">
               <span class="section-title">{t("tikz.latexRendering")}</span>
@@ -894,9 +975,89 @@
     border-left: 1px solid var(--border);
     background: var(--bg-elev);
   }
-  .side > :global(.props) {
+  .side > :global(.props),
+  .side > :global(.sets) {
     flex: 1;
     min-height: 0;
+  }
+  .side-tabs {
+    display: flex;
+    gap: 3px;
+    padding: 8px 10px 0;
+    flex-shrink: 0;
+  }
+  .side-tabs button {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 30px;
+    border: none;
+    border-radius: var(--radius);
+    background: none;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .side-tabs button:hover {
+    color: var(--text);
+    background: var(--bg-hover);
+  }
+  .side-tabs button.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .tools {
+    position: relative;
+  }
+  .tool.lock {
+    height: 26px;
+  }
+  /* The settings of the grid, next to the button that shows them. */
+  .grid-menu {
+    position: absolute;
+    left: 52px;
+    bottom: 8px;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 190px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-elev);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.22);
+  }
+  .grid-menu .check {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11.5px;
+  }
+  .steps button {
+    flex: 1;
+    height: 26px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    font-size: 11.5px;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .steps button.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
   }
   .mini {
     height: 210px;

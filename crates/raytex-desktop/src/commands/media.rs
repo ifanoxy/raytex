@@ -12,7 +12,7 @@ use raytex_core::preview::{self, PreviewOutcome, PreviewRequest};
 use raytex_core::tex::Engine;
 use raytex_core::tikz::{self, TikzTemplate};
 use raytex_core::{build, images};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
 use super::{CmdResult, abs, blocking, writable_path};
@@ -213,6 +213,48 @@ pub async fn tikz_libraries() -> CmdResult<Vec<&'static str>> {
 #[tauri::command]
 pub async fn tikz_templates(app: AppHandle) -> CmdResult<Vec<TikzTemplate>> {
     Ok(tikz::templates(app.state::<AppState>().lang()))
+}
+
+/// Shapes of the TikZ whiteboard kept under a name, to be drawn again in
+/// any picture of any project.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TikzSet {
+    /// Identifier (never shown).
+    pub id: String,
+    /// Name given by the user.
+    pub name: String,
+    /// The TikZ statements of its shapes.
+    pub code: String,
+}
+
+/// The sets are kept next to the settings, in a file of their own.
+fn sets_file(state: &AppState) -> PathBuf {
+    state.paths.settings.with_file_name("tikz-sets.json")
+}
+
+/// The sets of the user; none when the file is not there or cannot be read.
+#[tauri::command]
+pub async fn tikz_sets(app: AppHandle) -> CmdResult<Vec<TikzSet>> {
+    let file = sets_file(&app.state::<AppState>());
+    Ok(std::fs::read_to_string(file)
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default())
+}
+
+/// Writes the sets of the user (all of them, in their order).
+#[tauri::command]
+pub async fn save_tikz_sets(app: AppHandle, sets: Vec<TikzSet>) -> CmdResult<()> {
+    // A file written by hand could not grow without end either.
+    if sets.len() > 500 || sets.iter().any(|s| s.code.len() > 200_000) {
+        return Err("too many sets, or a set too large".into());
+    }
+    let file = sets_file(&app.state::<AppState>());
+    if let Some(dir) = file.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    let json = serde_json::to_string_pretty(&sets).map_err(|e| e.to_string())?;
+    raytex_core::settings::write_atomic(&file, json.as_bytes()).map_err(|e| e.to_string())
 }
 
 /// A preview to compile (TikZ picture, font sample…).

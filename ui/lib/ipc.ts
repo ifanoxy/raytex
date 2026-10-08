@@ -6,6 +6,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type * as T from "./types";
 import type { CommandDraft, CommandSpec, CustomCommand } from "./commands";
 import type { PagePreview } from "./layout";
+import type { ShapeSet } from "./tikz/model";
 
 const call = <R>(cmd: string, args?: Record<string, unknown>) => invoke<R>(cmd, args);
 
@@ -130,6 +131,9 @@ export const fontspecCode = (family: T.FontFamily, role: T.FontRole, dir: string
 export const texFonts = () => call<T.TexFont[]>("tex_fonts");
 export const tikzTemplates = () => call<T.TikzTemplate[]>("tikz_templates");
 export const tikzLibraries = () => call<string[]>("tikz_libraries");
+/** The sets of the TikZ whiteboard the user kept (shapes to draw again), and their writing. */
+export const tikzSets = () => call<ShapeSet[]>("tikz_sets");
+export const saveTikzSets = (sets: ShapeSet[]) => call<void>("save_tikz_sets", { sets });
 export const previewSnippet = (request: T.SnippetRequest) => call<T.PreviewOutcome>("preview_snippet", { request });
 /** Compiles a whole document (the pages of a layout being set) next to the project of `path`. */
 export const previewPage = (request: { path: string; job: string; source: string }) => call<PagePreview>("preview_page", { request });

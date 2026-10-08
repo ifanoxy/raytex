@@ -927,6 +927,45 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     await pause(2500);
     check("whiteboard shapes", document.querySelectorAll(".studio .board g.shape").length === 3 && !!document.querySelector(".studio .board .node .katex"));
+    // After a shape, the selection tool is back: a rectangle drawn on the
+    // paper selects what it touches, and the shapes are resized together.
+    const shapeCount = () => document.querySelectorAll(".studio .board g.shape").length;
+    drag(60, 120, 540, 340);
+    await pause(200);
+    const touched = document.querySelectorAll(".studio .board .sel").length;
+    check("selection by rectangle", touched === 4 && !!document.querySelector(".studio .board .group") && document.querySelectorAll(".studio .board .handle").length === 4, touched);
+    // The selection is kept as a set, under a name typed at once, in a file of the user.
+    const bar = () => [...document.querySelectorAll<HTMLButtonElement>(".studio .board .bar button")];
+    bar()[3].click();
+    await until(() => !!document.querySelector(".studio .sets .name"), 5_000, "set to name");
+    const setName = document.querySelector<HTMLInputElement>(".studio .sets .name")!;
+    setName.value = "Montage";
+    setName.dispatchEvent(new Event("blur"));
+    let kept: { name: string; code: string } | undefined;
+    for (let i = 0; i < 50 && !kept; i++) {
+      kept = (await ipc.tikzSets()).find((x) => x.name === "Montage");
+      if (!kept) await pause(100);
+    }
+    check("set kept", !!kept && kept.code.includes("rectangle") && kept.code.includes("{Entrée $x_1$}"), kept?.code);
+    // One click draws it again, selected; Alt and a drag leave a copy of a shape.
+    document.querySelector<HTMLButtonElement>(".studio .sets .set .thumb")!.click();
+    await pause(300);
+    check("set drawn again", shapeCount() === 6 && document.querySelectorAll(".studio .board .sel").length === 4, shapeCount());
+    const hit = document.querySelector<SVGElement>(".studio .board g.shape .hit")!;
+    const box = hit.getBoundingClientRect();
+    hit.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: box.left + 1, clientY: box.top + box.height / 2, pointerId: 1, button: 0, altKey: true }));
+    pe("pointermove", box.left - r.left + 80, box.top - r.top + 150);
+    pe("pointerup", box.left - r.left + 80, box.top - r.top + 150);
+    await pause(200);
+    check("copy by Alt and a drag", shapeCount() === 7, shapeCount());
+    // The bar of the selection duplicates and deletes.
+    bar()[0].click();
+    await pause(150);
+    const duplicated = shapeCount();
+    bar()[bar().length - 1].click();
+    await pause(150);
+    check("duplicate, then delete", duplicated === 8 && shapeCount() === 7, `${duplicated} then ${shapeCount()}`);
+    document.querySelectorAll<HTMLButtonElement>(".studio .side-tabs button")[0].click();
     await scene("whiteboard", 2500);
     document.querySelector<HTMLButtonElement>(".footer .btn.primary")!.click();
     await until(() => ui.overlay === null, 20_000, "drawing inserted");

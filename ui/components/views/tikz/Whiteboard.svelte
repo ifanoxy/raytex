@@ -1,18 +1,29 @@
 <script lang="ts" module>
+  import type { Shape as Copied } from "$lib/tikz/model";
+
   export type Tool = "select" | "line" | "arrow" | "rect" | "circle" | "ellipse" | "polygon" | "text";
+
+  /** What was copied on the whiteboard: kept from one picture to the next. */
+  let clipboard: Copied[] = [];
 </script>
 
 <script lang="ts">
   // TikZ whiteboard: shapes drawn with the mouse on a centimetre grid (y
   // pointing up, like TikZ). Tools: select/move, line, arrow, rectangle,
-  // circle, ellipse, polygon, text. Handles resize the selected shape;
-  // points snap to the grid when snapping is on. Nodes are HTML over the
-  // canvas (their text may contain $maths$, rendered by KaTeX).
+  // circle, ellipse, polygon, text. With the selection tool, a drag on a
+  // shape moves it (with Alt, a copy of it), a drag on the paper selects
+  // what it touches, and Space or the middle button moves the view.
+  // Handles resize the selected shape, or several shapes together; points
+  // snap to the grid when snapping is on. What is selected has its actions
+  // in a bar at the top and under the right button. Nodes are HTML over
+  // the canvas (their text may contain $maths$, rendered by KaTeX).
   import { onMount } from "svelte";
   import { expressionCss, BASE_COLORS, DVIPS_COLORS } from "$lib/colors";
   import { mathHtml } from "$lib/editor/math-preview";
-  import { t } from "$lib/i18n.svelte";
-  import { type Drawing, moved, newId, type Point, type Shape, snapPoint, type Style, WIDTH_PT } from "$lib/tikz/model";
+  import { plural, t } from "$lib/i18n.svelte";
+  import { ui } from "$lib/state/ui.svelte";
+  import { bounds, copies, type Drawing, moved, newId, type Point, scaled, type Shape, shapesCode, snapPoint, type Style, tidy, touches, WIDTH_PT } from "$lib/tikz/model";
+  import Icon from "../../common/Icon.svelte";
 
   let {
     drawing = $bindable(),
@@ -23,9 +34,11 @@
     showGrid,
     showAxes = false,
     snapOn,
+    keepTool = false,
     oncommit,
     onundo,
     onredo,
+    onsaveset,
   }: {
     drawing: Drawing;
     selected: string[];
@@ -38,10 +51,14 @@
     /** Axes and graduations through (0, 0). */
     showAxes?: boolean;
     snapOn: boolean;
+    /** A drawing tool stays chosen after a shape is drawn (else the selection tool comes back). */
+    keepTool?: boolean;
     /** A change is finished (for the history and the code). */
     oncommit: () => void;
     onundo: () => void;
     onredo: () => void;
+    /** The selection is to be kept as a set. */
+    onsaveset?: () => void;
   } = $props();
 
   let host = $state<HTMLDivElement | null>(null);
@@ -53,6 +70,11 @@
   let oy = $state(400);
   let placed = false;
   let hover = $state<Point | null>(null);
+  /** The shape under the pointer, with the selection tool: what a click would take. */
+  let hoverId = $state<string | null>(null);
+  /** The rectangle being drawn to select, in centimetres. */
+  let marquee = $state<{ a: Point; b: Point } | null>(null);
+  let panning = $state(false);
   let draft = $state<Shape | null>(null);
   let editingNode = $state<string | null>(null);
   let nodeText = $state("");
@@ -60,8 +82,10 @@
   type Drag =
     | { kind: "pan"; sx: number; sy: number; ox: number; oy: number }
     | { kind: "draw"; start: Point }
-    | { kind: "move"; start: Point; origin: Shape[]; moved: boolean }
-    | { kind: "handle"; id: string; handle: string; origin: Shape };
+    | { kind: "move"; start: Point; origin: Shape[]; moved: boolean; copied: boolean; before: string[] }
+    | { kind: "handle"; id: string; handle: string; origin: Shape }
+    | { kind: "scale"; pivot: Point; corner: Point; origin: Shape[] }
+    | { kind: "marquee"; start: Point; base: string[]; moved: boolean };
   let drag: Drag | null = null;
 
   onMount(() => {
@@ -222,12 +246,20 @@
     host?.focus();
     const target = e.target as Element;
     const p = toCm(e);
-    // Pan: middle button, Space, or the select tool on empty space.
+    // The view moves with the middle button or with Space held.
     const id = target.closest<Element>("[data-id]")?.getAttribute("data-id") ?? null;
     const handle = target.closest<Element>("[data-handle]")?.getAttribute("data-handle") ?? null;
-    if (e.button === 1 || spaceDown || (tool === "select" && !id && !handle)) {
-      if (tool === "select" && !e.shiftKey) selected = [];
+    if (e.button === 1 || spaceDown) {
       drag = { kind: "pan", sx: e.clientX, sy: e.clientY, ox, oy };
+      panning = true;
+      capture(e);
+      return;
+    }
+    // A corner of the box around several shapes: they grow together.
+    if (handle?.startsWith("g") && group) {
+      const corner = { x: handle.includes("e") ? group.maxX : group.minX, y: handle.includes("n") ? group.maxY : group.minY };
+      const pivot = { x: handle.includes("e") ? group.minX : group.maxX, y: handle.includes("n") ? group.minY : group.maxY };
+      drag = { kind: "scale", pivot, corner, origin: drawing.shapes.filter((s) => selected.includes(s.id)) };
       capture(e);
       return;
     }
@@ -240,29 +272,29 @@
       }
     }
     if (tool === "select" && id) {
+      const before = selected;
       if (e.shiftKey) selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
       else if (!selected.includes(id)) selected = [id];
-      drag = { kind: "move", start: snapped(p), origin: drawing.shapes.filter((s) => selected.includes(s.id)), moved: false };
+      let origin = drawing.shapes.filter((s) => selected.includes(s.id));
+      // With Alt, copies are dragged and the shapes stay where they are.
+      const copied = e.altKey && origin.length > 0;
+      if (copied) {
+        origin = copies(origin);
+        setShapes([...drawing.shapes, ...origin]);
+        selected = origin.map((s) => s.id);
+      }
+      drag = { kind: "move", start: snapped(p), origin, moved: false, copied, before };
+      capture(e);
+      return;
+    }
+    // On the paper: a rectangle selects what it touches (added to the selection with Shift).
+    if (tool === "select") {
+      drag = { kind: "marquee", start: p, base: e.shiftKey ? selected : [], moved: false };
       capture(e);
       return;
     }
     if (tool === "text") {
-      const node: Shape = {
-        id: newId(),
-        kind: "node",
-        at: snapped(p),
-        text: "",
-        style: { ...JSON.parse(JSON.stringify(style)), arrow: null },
-        boxed: false,
-        shape: "",
-        position: "",
-        textColor: null,
-        font: null,
-        name: null,
-      };
-      setShapes([...drawing.shapes, node]);
-      selected = [node.id];
-      editNode(node.id);
+      newNode(snapped(p));
       return;
     }
     if (tool === "polygon") {
@@ -286,13 +318,38 @@
     capture(e);
   }
 
+  /** A text at `at`, ready to be typed. */
+  function newNode(at: Point) {
+    const node: Shape = {
+      id: newId(),
+      kind: "node",
+      at,
+      text: "",
+      style: { ...JSON.parse(JSON.stringify(style)), arrow: null },
+      boxed: false,
+      shape: "",
+      position: "",
+      textColor: null,
+      font: null,
+      name: null,
+    };
+    setShapes([...drawing.shapes, node]);
+    selected = [node.id];
+    editNode(node.id);
+  }
+
   function capture(e: PointerEvent) {
-    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    try {
+      (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    } catch {
+      /* a pointer that is gone already: the drag goes on without it */
+    }
   }
 
   function pointerMove(e: PointerEvent) {
     const p = toCm(e);
     hover = snapped(p);
+    if (!drag) hoverId = tool === "select" ? ((e.target as Element).closest<Element>("[data-id]")?.getAttribute("data-id") ?? null) : null;
     if (draft?.kind === "path" && tool === "polygon" && !drag) {
       draft = { ...draft, points: [...draft.points.slice(0, -1), snapped(p)] };
       return;
@@ -315,6 +372,22 @@
       const { id, origin, handle } = drag;
       const updated = resize(origin, handle, q);
       setShapes(drawing.shapes.map((s) => (s.id === id ? updated : s)));
+    } else if (drag.kind === "scale") {
+      // The same factor both ways: the shapes keep their proportions.
+      const q = snapped(p);
+      const { pivot, corner } = drag;
+      const fx = corner.x !== pivot.x ? (q.x - pivot.x) / (corner.x - pivot.x) : 0;
+      const fy = corner.y !== pivot.y ? (q.y - pivot.y) / (corner.y - pivot.y) : 0;
+      const f = Math.max(0.05, fx, fy);
+      const origin = new Map(drag.origin.map((s) => [s.id, s]));
+      setShapes(drawing.shapes.map((s) => (origin.has(s.id) ? tidy(scaled(origin.get(s.id)!, pivot, f)) : s)));
+    } else if (drag.kind === "marquee") {
+      const { start, base } = drag;
+      if (Math.hypot(p.x - start.x, p.y - start.y) * scale > 3) drag.moved = true;
+      if (!drag.moved) return;
+      marquee = { a: start, b: p };
+      const touched = drawing.shapes.filter((s) => touches(s, start, p)).map((s) => s.id);
+      selected = [...base, ...touched.filter((id) => !base.includes(id))];
     }
   }
 
@@ -343,6 +416,8 @@
   function pointerUp() {
     const d = drag;
     drag = null;
+    panning = false;
+    marquee = null;
     if (!d) return;
     if (d.kind === "draw" && draft) {
       const shape = draft;
@@ -351,10 +426,24 @@
         setShapes([...drawing.shapes, shape]);
         selected = [shape.id];
         oncommit();
+        drawn();
       }
-    } else if ((d.kind === "move" && d.moved) || d.kind === "handle") {
+    } else if (d.kind === "move" && d.copied && !d.moved) {
+      // Alt and a click without a move: no copy is left on top of the shape.
+      const made = new Set(d.origin.map((s) => s.id));
+      setShapes(drawing.shapes.filter((s) => !made.has(s.id)));
+      selected = d.before;
+    } else if ((d.kind === "move" && d.moved) || d.kind === "handle" || d.kind === "scale") {
       oncommit();
+    } else if (d.kind === "marquee" && !d.moved) {
+      // A click on the paper: nothing is selected any more.
+      selected = d.base;
     }
+  }
+
+  /** A shape was drawn: the selection tool comes back, unless the tool is kept. */
+  function drawn() {
+    if (!keepTool) tool = "select";
   }
 
   function finishPolygon(closed: boolean) {
@@ -366,6 +455,7 @@
       setShapes([...drawing.shapes, shape]);
       selected = [shape.id];
       oncommit();
+      drawn();
     }
   }
 
@@ -377,6 +467,8 @@
     const id = (e.target as Element).closest<Element>("[data-id]")?.getAttribute("data-id");
     const shape = id ? byId(id) : null;
     if (shape?.kind === "node") editNode(shape.id);
+    // On the paper, with the selection tool: a text is written there.
+    else if (!shape && tool === "select" && !(e.target as Element).closest("[data-handle], .bar")) newNode(snapped(toCm(e)));
   }
 
   function editNode(id: string) {
@@ -445,6 +537,16 @@
     } else if (mod && k === "d") {
       e.preventDefault();
       duplicate();
+    } else if (mod && k === "c") {
+      e.preventDefault();
+      copy();
+    } else if (mod && k === "x") {
+      e.preventDefault();
+      copy();
+      remove();
+    } else if (mod && k === "v") {
+      e.preventDefault();
+      paste();
     } else if (e.key === "Delete" || e.key === "Backspace") {
       e.preventDefault();
       remove();
@@ -478,12 +580,83 @@
     oncommit();
   }
 
+  /** Copies of the selection, next to it, selected in its place. */
   export function duplicate() {
-    const copies = drawing.shapes.filter((s) => selected.includes(s.id)).map((s) => ({ ...moved(JSON.parse(JSON.stringify(s)) as Shape, step || 0.5, -(step || 0.5)), id: newId() }));
-    if (!copies.length) return;
-    setShapes([...drawing.shapes, ...copies]);
-    selected = copies.map((c) => c.id);
+    insert(copies(chosen(), step || 0.5, -(step || 0.5)));
+  }
+
+  const chosen = () => drawing.shapes.filter((s) => selected.includes(s.id));
+
+  /** Adds shapes to the drawing and selects them. */
+  export function insert(shapes: Shape[]) {
+    if (!shapes.length) return;
+    setShapes([...drawing.shapes, ...shapes]);
+    selected = shapes.map((s) => s.id);
+    tool = "select";
     oncommit();
+    host?.focus();
+  }
+
+  /** Keeps the selection for a later paste; its code goes to the clipboard of the system too. */
+  export function copy() {
+    const shapes = chosen();
+    if (!shapes.length) return;
+    clipboard = copies(shapes);
+    void navigator.clipboard?.writeText(shapesCode(shapes)).catch(() => {});
+  }
+
+  /** What was copied, next to where it was (each paste a little further). */
+  export function paste() {
+    if (!clipboard.length) return;
+    clipboard = copies(clipboard, step || 0.5, -(step || 0.5));
+    insert(copies(clipboard));
+  }
+
+  export const canPaste = () => clipboard.length > 0;
+
+  /** Puts the selection over the other shapes, or under them. */
+  export function reorder(front: boolean) {
+    const moving = chosen();
+    if (!moving.length) return;
+    const rest = drawing.shapes.filter((s) => !selected.includes(s.id));
+    setShapes(front ? [...rest, ...moving] : [...moving, ...rest]);
+    oncommit();
+  }
+
+  /** The middle of what is shown, in centimetres: where a set is drawn. */
+  export function center(): Point {
+    return { x: (width / 2 - ox) / scale, y: (oy - height / 2) / scale };
+  }
+
+  /** The actions of the selection (or of the paper), under the right button. */
+  function menu(e: MouseEvent) {
+    e.preventDefault();
+    if (editingNode) return;
+    const id = (e.target as Element).closest<Element>("[data-id]")?.getAttribute("data-id") ?? null;
+    if (id && !selected.includes(id)) selected = [id];
+    else if (!id) selected = [];
+    const some = selected.length > 0;
+    ui.openMenu(
+      e,
+      some
+        ? [
+            { label: t("tikz.duplicate"), icon: "copy", keys: "Mod-d", run: duplicate },
+            { label: t("tikz.copy"), keys: "Mod-c", run: copy },
+            { label: t("tikz.paste"), keys: "Mod-v", disabled: !clipboard.length, run: paste },
+            { separator: true },
+            { label: t("tikz.toFront"), icon: "chevron-up", run: () => reorder(true) },
+            { label: t("tikz.toBack"), icon: "chevron-down", run: () => reorder(false) },
+            { separator: true },
+            { label: t("tikz.saveSet"), icon: "star", disabled: !onsaveset, run: () => onsaveset?.() },
+            { separator: true },
+            { label: t("common.delete"), icon: "trash", danger: true, run: remove },
+          ]
+        : [
+            { label: t("tikz.paste"), keys: "Mod-v", disabled: !clipboard.length, run: paste },
+            { label: t("tikz.selectAll"), keys: "Mod-a", run: () => (selected = drawing.shapes.filter((s) => s.kind !== "code").map((s) => s.id)) },
+            { label: t("tikz.fit"), icon: "fit-page", run: fit },
+          ],
+    );
   }
 
   // ---------------------------------------------------------- rendering
@@ -491,7 +664,17 @@
   const shown = $derived(draft ? [...drawing.shapes, draft] : drawing.shapes);
   const selectedShape = $derived(selected.length === 1 ? byId(selected[0]) : undefined);
 
+  /** The box around several selected shapes: they are resized together from its corners. */
+  const group = $derived(selected.length > 1 ? bounds(drawing.shapes.filter((s) => selected.includes(s.id))) : null);
+
   const handles = $derived.by((): { id: string; p: Point }[] => {
+    if (group && group.maxX > group.minX && group.maxY > group.minY)
+      return [
+        { id: "g-sw", p: { x: group.minX, y: group.minY } },
+        { id: "g-se", p: { x: group.maxX, y: group.minY } },
+        { id: "g-nw", p: { x: group.minX, y: group.maxY } },
+        { id: "g-ne", p: { x: group.maxX, y: group.maxY } },
+      ];
     const s = selectedShape;
     if (!s) return [];
     if (s.kind === "path") return s.points.map((p, i) => ({ id: String(i), p }));
@@ -548,14 +731,16 @@
 <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 <div
   class="board tool-{tool}"
+  class:panning
   bind:this={host}
   tabindex="0"
   role="application"
   aria-label={t("tikz.board")}
   onkeydown={key}
   onkeyup={(e) => e.key === " " && (spaceDown = false)}
-  onpointerleave={() => (hover = null)}
+  onpointerleave={() => ((hover = null), (hoverId = null))}
   onwheel={wheel}
+  oncontextmenu={menu}
 >
   <svg {width} {height} onpointerdown={pointerDown} onpointermove={pointerMove} onpointerup={pointerUp} ondblclick={doubleClick} role="presentation">
     {#if showGrid}
@@ -573,7 +758,7 @@
         {@const stroke = s.style.noStroke ? "none" : css(s.style.stroke, "#111")}
         {@const fill = s.style.fill ? css(s.style.fill, "none") : "none"}
         {@const op = s.style.opacity ?? 1}
-        <g data-id={s.id} class="shape" class:sel={selected.includes(s.id)} opacity={op}>
+        <g data-id={s.id} class="shape" class:sel={selected.includes(s.id)} class:hover={hoverId === s.id && !selected.includes(s.id)} opacity={op}>
           {#if s.kind === "path"}
             {@const pts = s.points.map(screen)}
             {#if s.closed}
@@ -614,9 +799,16 @@
       {/each}
     {/if}
 
+    {#if group}
+      <rect class="group" x={toX(group.minX) - 6} y={toY(group.maxY) - 6} width={(group.maxX - group.minX) * scale + 12} height={(group.maxY - group.minY) * scale + 12} rx="3" />
+    {/if}
     {#each handles as h (h.id)}
-      <rect class="handle" data-handle={h.id} x={toX(h.p.x) - 5} y={toY(h.p.y) - 5} width="10" height="10" rx="2" />
+      {@const out = h.id.startsWith("g") ? 6 : 0}
+      <rect class="handle" class:corner={out > 0} data-handle={h.id} x={toX(h.p.x) - 5 + (h.id.includes("e") ? out : h.id.includes("w") ? -out : 0)} y={toY(h.p.y) - 5 + (h.id.includes("n") ? -out : h.id.includes("s") ? out : 0)} width="10" height="10" rx="2" />
     {/each}
+    {#if marquee}
+      <rect class="marquee" x={Math.min(toX(marquee.a.x), toX(marquee.b.x))} y={Math.min(toY(marquee.a.y), toY(marquee.b.y))} width={Math.abs(marquee.b.x - marquee.a.x) * scale} height={Math.abs(marquee.b.y - marquee.a.y) * scale} />
+    {/if}
 
     {#if hover && tool !== "select"}
       <circle class="cursor" cx={toX(hover.x)} cy={toY(hover.y)} r="3" />
@@ -633,6 +825,7 @@
         <div
           class="node"
           class:sel={selected.includes(s.id)}
+          class:hover={hoverId === s.id && !selected.includes(s.id)}
           class:boxed={s.boxed}
           class:round={s.shape === "circle" || s.shape === "ellipse"}
           data-id={s.id}
@@ -676,6 +869,18 @@
     {/if}
   </div>
 
+  <!-- What is selected: its actions, always at the same place. -->
+  {#if selected.length && !editingNode}
+    <div class="bar" role="toolbar" aria-label={plural(selected.length, "tikz.selectedOne", "tikz.selectedMany")}>
+      <span class="count">{plural(selected.length, "tikz.selectedOne", "tikz.selectedMany")}</span>
+      <button onclick={duplicate} title="{t('tikz.duplicate')} ({t('tikz.duplicateHint')})"><Icon name="copy" size={14} />{t("tikz.duplicate")}</button>
+      <button class="icon" onclick={() => reorder(true)} title={t("tikz.toFront")} aria-label={t("tikz.toFront")}><Icon name="chevron-up" size={15} /></button>
+      <button class="icon" onclick={() => reorder(false)} title={t("tikz.toBack")} aria-label={t("tikz.toBack")}><Icon name="chevron-down" size={15} /></button>
+      {#if onsaveset}<button onclick={() => onsaveset?.()} title={t("tikz.saveSetTitle")}><Icon name="star" size={14} />{t("tikz.saveSet")}</button>{/if}
+      <button class="icon danger" onclick={remove} title={t("common.delete")} aria-label={t("common.delete")}><Icon name="trash" size={14} /></button>
+    </div>
+  {/if}
+
   {#if hover}
     <div class="coords mono">({hover.x}, {hover.y})</div>
   {/if}
@@ -706,6 +911,10 @@
   }
   .tool-select svg {
     cursor: default;
+  }
+  .board.panning svg,
+  .board.panning .node {
+    cursor: grabbing;
   }
   .minor {
     stroke: #eceef1;
@@ -743,8 +952,28 @@
   .shape.sel :not(.hit):not(.head) {
     filter: drop-shadow(0 0 2px color-mix(in srgb, var(--accent) 90%, transparent));
   }
+  /* What a click would take, before it is taken. */
+  .tool-select .shape.hover :not(.hit):not(.head) {
+    filter: drop-shadow(0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent));
+  }
   .head {
     pointer-events: none;
+  }
+  .group {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1;
+    stroke-dasharray: 4 3;
+    pointer-events: none;
+  }
+  .marquee {
+    fill: color-mix(in srgb, var(--accent) 10%, transparent);
+    stroke: var(--accent);
+    stroke-width: 1;
+    pointer-events: none;
+  }
+  .handle.corner {
+    cursor: nwse-resize;
   }
   .handle {
     fill: #fff;
@@ -790,6 +1019,53 @@
   .node.sel {
     outline: 2px solid color-mix(in srgb, var(--accent) 90%, transparent);
     outline-offset: 2px;
+  }
+  .tool-select .node.hover {
+    outline: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    outline-offset: 2px;
+  }
+  .bar {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    transform: translateX(-50%);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-elev);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.18);
+    white-space: nowrap;
+  }
+  .bar .count {
+    padding: 0 8px 0 6px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+  .bar button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 28px;
+    padding: 0 9px;
+    border: none;
+    border-radius: 7px;
+    background: none;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .bar button.icon {
+    padding: 0 7px;
+  }
+  .bar button:hover {
+    background: var(--bg-hover);
+  }
+  .bar button.danger:hover {
+    color: var(--error);
   }
   .node :global(.katex) {
     font-size: 1.05em;

@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { codeShapes, drawingCode, emptyStyle, moved, num, parseDrawing, parseStatement, shapeCode, snapPoint, splitOptions } from "./model.ts";
+import { codeShapes, copies, drawingCode, emptyStyle, freeSetName, moved, num, parseDrawing, parseStatement, scaled, setCode, setShapes, type Shape, shapeCode, shapesFromCode, snapPoint, splitOptions, touches } from "./model.ts";
 
 test("numbers and options", () => {
   assert.equal(num(2), "2");
@@ -61,4 +61,48 @@ test("unknown statements and options are kept", () => {
 test("moving shapes", () => {
   const r = parseStatement("\\draw (0,0) rectangle (1,1)")!;
   assert.equal(shapeCode(moved(r, 1, -0.5)), "\\draw (1,-0.5) rectangle (2,0.5);");
+});
+
+const rect = (x1: number, y1: number, x2: number, y2: number): Shape => ({ id: "r", kind: "rect", from: { x: x1, y: y1 }, to: { x: x2, y: y2 }, style: emptyStyle() });
+const circle = (x: number, y: number, r: number): Shape => ({ id: "c", kind: "circle", center: { x, y }, r, style: emptyStyle() });
+
+test("a selection drawn with the mouse takes what it touches", () => {
+  assert.equal(touches(rect(0, 0, 2, 1), { x: 1, y: 0.5 }, { x: 3, y: 3 }), true);
+  assert.equal(touches(rect(0, 0, 2, 1), { x: 3, y: 3 }, { x: 2.5, y: 0 }), false);
+  // Drawn from any corner.
+  assert.equal(touches(circle(5, 5, 1), { x: 7, y: 7 }, { x: 5.5, y: 5.5 }), true);
+  assert.equal(touches({ id: "k", kind: "code", code: "\\foreach …;" }, { x: -9, y: -9 }, { x: 9, y: 9 }), false);
+});
+
+test("copies are new shapes, moved", () => {
+  const [a, b] = copies([rect(0, 0, 2, 1), circle(1, 1, 0.5)], 0.5, -0.5);
+  assert.notEqual(a.id, "r");
+  assert.notEqual(a.id, b.id);
+  assert.deepEqual(a.kind === "rect" && [a.from, a.to], [{ x: 0.5, y: -0.5 }, { x: 2.5, y: 0.5 }]);
+  assert.deepEqual(b.kind === "circle" && b.center, { x: 1.5, y: 0.5 });
+});
+
+test("shapes grow around a point", () => {
+  const big = scaled(rect(1, 1, 2, 3), { x: 1, y: 1 }, 2);
+  assert.deepEqual(big.kind === "rect" && [big.from, big.to], [{ x: 1, y: 1 }, { x: 3, y: 5 }]);
+  const round = scaled(circle(2, 0, 1), { x: 0, y: 0 }, 0.5);
+  assert.deepEqual(round.kind === "circle" && [round.center, round.r], [{ x: 1, y: 0 }, 0.5]);
+});
+
+test("a set keeps shapes as code, from the corner of their box", () => {
+  const shapes = parseDrawing("\\begin{tikzpicture}\n\\draw[red, thick] (2,3) rectangle (4,4);\n\\node[above] at (3,4) {$L$};\n\\foreach \\i in {1,2} {\\fill (\\i,0) circle (2pt);}\n\\end{tikzpicture}")!.shapes;
+  const code = setCode(shapes);
+  assert.equal(code, "\\draw[red, thick] (0,0) rectangle (2,1);\n\\node[above] at (1,1) {$L$};\n\\foreach \\i in {1,2} {\\fill (\\i,0) circle (2pt);}");
+  // Drawn again around a point, on the grid, as new shapes each time.
+  const first = setShapes({ code }, { x: 5.1, y: 5.1 }, 0.5);
+  const again = setShapes({ code }, { x: 5.1, y: 5.1 }, 0.5);
+  assert.deepEqual(first.map(shapeCode), ["\\draw[red, thick] (4,4.5) rectangle (6,5.5);", "\\node[above] at (5,5.5) {$L$};", "\\foreach \\i in {1,2} {\\fill (\\i,0) circle (2pt);}"]);
+  assert.notEqual(first[0].id, again[0].id);
+  assert.equal(shapesFromCode(code).length, 3);
+  assert.equal(codeShapes({ shapes: first, options: "" }), 1);
+});
+
+test("a new set gets a name of its own", () => {
+  assert.equal(freeSetName("Ensemble", []), "Ensemble");
+  assert.equal(freeSetName("Ensemble", [{ name: "Ensemble" }, { name: "Ensemble 2" }]), "Ensemble 3");
 });

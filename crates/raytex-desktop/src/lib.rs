@@ -130,6 +130,8 @@ pub fn run() {
             commands::media::tex_fonts,
             commands::media::tikz_templates,
             commands::media::tikz_libraries,
+            commands::media::tikz_sets,
+            commands::media::save_tikz_sets,
             commands::media::preview_snippet,
             commands::media::preview_page,
             commands::app::selftest_target,
