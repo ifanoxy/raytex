@@ -587,12 +587,18 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     const text = editor.textOf(main)!;
     const defined = text.indexOf(`\\fancypagestyle{${name}}`) > 0 && text.indexOf(`\\pagestyle{${name}}`) > text.indexOf(`\\fancypagestyle{${name}}`);
     const packages = ["fancyhdr", "eso-pic", "xcolor", "lastpage"].every((p) => text.includes(`\\usepackage{${p}}`));
+    // A small preview (a picture, a font, a command) leaves the page layout
+    // aside: it still compiles in a document that has a page style.
+    await pause(800);
+    const picture = await ipc.previewSnippet({ path: main, job: "tikz", classOptions: "tikz,border=6pt", projectPreamble: true, packages: ["tikz"], libraries: [], extra: "", body: "\\begin{tikzpicture}\\draw (0,0) -- (1,1);\\end{tikzpicture}" });
+    const pictured = !!picture.pdf && !picture.diagnostics.some((d) => d.severity === "error");
+    if (!pictured) log(`layout: picture ${JSON.stringify(picture.diagnostics.map((d) => d.message)).slice(0, 300)}`);
     // One page only, at the cursor of the chapter.
     uses()[3].click();
     await until(() => ui.overlay === null, 5_000, "studio closed");
     const here = !!editor.textOf(chapter)?.includes(`\\thispagestyle{${name}}`);
-    log(`layout: style ${name}, larger field ${widened}, read ${read}, gathered ${gathered}, header asked ${asked}, previewed ${previewed}, defined ${defined}, packages ${packages}, here ${here}`);
-    ok = read === "2.5 2.5 2.5 2.5" && widened && gathered && asked && previewed && defined && packages && here && (await buildOk(log, "layout")) && ok;
+    log(`layout: style ${name}, picture with a page style ${pictured}, larger field ${widened}, read ${read}, gathered ${gathered}, header asked ${asked}, previewed ${previewed}, defined ${defined}, packages ${packages}, here ${here}`);
+    ok = read === "2.5 2.5 2.5 2.5" && pictured && widened && gathered && asked && previewed && defined && packages && here && (await buildOk(log, "layout")) && ok;
   } catch (e) {
     log(`layout failed: ${e}`);
     ok = false;
@@ -965,7 +971,6 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     bar()[bar().length - 1].click();
     await pause(150);
     check("duplicate, then delete", duplicated === 8 && shapeCount() === 7, `${duplicated} then ${shapeCount()}`);
-    document.querySelectorAll<HTMLButtonElement>(".studio .side-tabs button")[0].click();
     await scene("whiteboard", 2500);
     document.querySelector<HTMLButtonElement>(".footer .btn.primary")!.click();
     await until(() => ui.overlay === null, 20_000, "drawing inserted");

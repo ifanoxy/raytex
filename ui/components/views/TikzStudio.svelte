@@ -98,7 +98,7 @@
   const EMPTY = "\\begin{tikzpicture}\n\\end{tikzpicture}";
   const GRID_KEY = "raytex.tikz.grid";
   const STEPS = [0.1, 0.25, 0.5, 1];
-  const savedGrid: { step?: number; show?: boolean; snap?: boolean; axes?: boolean; keep?: boolean } = (() => {
+  const savedGrid: { step?: number; show?: boolean; snap?: boolean; axes?: boolean; keep?: boolean; sets?: boolean } = (() => {
     try {
       return JSON.parse(localStorage.getItem(GRID_KEY) ?? "{}");
     } catch {
@@ -119,9 +119,9 @@
   /** A drawing tool stays chosen after a shape (else the selection tool comes back). */
   let keepTool = $state(savedGrid.keep ?? false);
   let gridOpen = $state(false);
-  /** The side of the whiteboard: the look of the shapes, or the sets to draw again. */
-  let sideTab = $state<"style" | "sets">("style");
+  /** The shapes kept to be drawn again, on their shelf under the paper. */
   let sets = $state<ShapeSet[]>([]);
+  let setsOpen = $state(savedGrid.sets ?? true);
   let renamingSet = $state<string | null>(null);
   /** The code is one tikzpicture (the whiteboard can show it). */
   let drawable = $state(true);
@@ -135,7 +135,7 @@
 
   $effect(() => {
     try {
-      localStorage.setItem(GRID_KEY, JSON.stringify({ step, show: showGrid, snap: snapOn, axes: showAxes, keep: keepTool }));
+      localStorage.setItem(GRID_KEY, JSON.stringify({ step, show: showGrid, snap: snapOn, axes: showAxes, keep: keepTool, sets: setsOpen }));
     } catch {
       /* not remembered */
     }
@@ -357,15 +357,6 @@
 
   // ---------------------------------------------------------------- sets
 
-  /** A few sets to start from, drawn like those of the user. */
-  const BUILTIN_SETS = $derived<ShapeSet[]>([
-    { id: "b-axes", name: t("tikz.set.axes"), code: "\\draw[-Stealth] (0,0.5) -- (4,0.5);\n\\draw[-Stealth] (0.5,0) -- (0.5,3);\n\\node[below] at (4,0.5) {$x$};\n\\node[left] at (0.5,3) {$y$};" },
-    { id: "b-boxes", name: t("tikz.set.boxes"), code: "\\draw[rounded corners] (0,0) rectangle (2,1);\n\\draw[rounded corners] (3.5,0) rectangle (5.5,1);\n\\draw[->] (2,0.5) -- (3.5,0.5);\n\\node at (1,0.5) {A};\n\\node at (4.5,0.5) {B};" },
-    { id: "b-triangle", name: t("tikz.set.triangle"), code: "\\draw (0,0) -- (3,0) -- (3,2) -- cycle;\n\\draw (2.7,0) -- (2.7,0.3) -- (3,0.3);" },
-    { id: "b-dimension", name: t("tikz.set.dimension"), code: "\\draw[<->] (0,0) -- (3,0);\n\\node[above] at (1.5,0) {$L$};" },
-    { id: "b-point", name: t("tikz.set.point"), code: "\\fill (0,0) circle (0.06);\n\\node[above right] at (0,0) {$A$};" },
-  ]);
-
   function writeSets(next: ShapeSet[]) {
     sets = next;
     void ipc.saveTikzSets(next).catch((e) => ui.toast("error", String(e)));
@@ -377,7 +368,7 @@
     if (!shapes.length) return;
     const set: ShapeSet = { id: newId(), name: freeSetName(t("tikz.sets.newName"), sets), code: codeOfSet(shapes) };
     writeSets([set, ...sets]);
-    sideTab = "sets";
+    setsOpen = true;
     renamingSet = set.id;
   }
 
@@ -683,6 +674,7 @@
           {/if}
         </div>
 
+        <div class="stage">
         {#if drawable}
           <Whiteboard
             bind:this={board}
@@ -707,26 +699,22 @@
             <button class="btn" onclick={() => setMode("code")}>{t("tikz.editCode")}</button>
           </div>
         {/if}
+        {#if drawable}
+          <SetsPanel
+            {sets}
+            canSave={selected.length > 0}
+            bind:open={setsOpen}
+            bind:renaming={renamingSet}
+            oninsert={insertSet}
+            onsave={saveSet}
+            onrename={(id, name) => writeSets(sets.map((x) => (x.id === id ? { ...x, name } : x)))}
+            ondelete={(id) => writeSets(sets.filter((x) => x.id !== id))}
+          />
+        {/if}
+        </div>
 
         <aside class="side">
-          <div class="side-tabs" role="tablist">
-            <button role="tab" aria-selected={sideTab === "style"} class:active={sideTab === "style"} onclick={() => (sideTab = "style")}><Icon name="palette" size={14} />{t("tikz.tab.style")}</button>
-            <button role="tab" aria-selected={sideTab === "sets"} class:active={sideTab === "sets"} onclick={() => (sideTab = "sets")}><Icon name="star" size={14} />{t("tikz.tab.sets")}</button>
-          </div>
-          {#if sideTab === "style"}
-            <ShapeProps bind:drawing bind:selected bind:style={drawStyle} {tool} oncommit={commitDrawing} oncode={() => setMode("code")} />
-          {:else}
-            <SetsPanel
-              {sets}
-              builtin={BUILTIN_SETS}
-              canSave={selected.length > 0}
-              bind:renaming={renamingSet}
-              oninsert={insertSet}
-              onsave={saveSet}
-              onrename={(id, name) => writeSets(sets.map((x) => (x.id === id ? { ...x, name } : x)))}
-              ondelete={(id) => writeSets(sets.filter((x) => x.id !== id))}
-            />
-          {/if}
+          <ShapeProps bind:drawing bind:selected bind:style={drawStyle} {tool} oncommit={commitDrawing} oncode={() => setMode("code")} />
           <div class="mini">
             <div class="mini-bar">
               <span class="section-title">{t("tikz.latexRendering")}</span>
@@ -975,39 +963,17 @@
     border-left: 1px solid var(--border);
     background: var(--bg-elev);
   }
-  .side > :global(.props),
-  .side > :global(.sets) {
+  .side > :global(.props) {
     flex: 1;
     min-height: 0;
   }
-  .side-tabs {
-    display: flex;
-    gap: 3px;
-    padding: 8px 10px 0;
-    flex-shrink: 0;
-  }
-  .side-tabs button {
+  /* The paper, and the shelf of the sets under it. */
+  .stage {
     flex: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    height: 30px;
-    border: none;
-    border-radius: var(--radius);
-    background: none;
-    font-size: 12px;
-    color: var(--text-muted);
-    cursor: pointer;
-  }
-  .side-tabs button:hover {
-    color: var(--text);
-    background: var(--bg-hover);
-  }
-  .side-tabs button.active {
-    background: var(--accent-soft);
-    color: var(--accent);
-    font-weight: 600;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
   .tools {
     position: relative;

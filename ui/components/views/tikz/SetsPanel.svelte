@@ -1,7 +1,7 @@
 <script lang="ts">
-  // The sets of the whiteboard: shapes kept under a name, drawn again with
-  // a click, in any picture of any project. Those of the user first (kept
-  // from the selection, renamed and removed here), then a few of RayTeX.
+  // The sets of the whiteboard, on a shelf of their own under the paper:
+  // shapes kept under a name, drawn again with a click, in any picture of
+  // any project. A set is kept from the selection, renamed and removed here.
   import { t } from "$lib/i18n.svelte";
   import type { ShapeSet } from "$lib/tikz/model";
   import Icon from "../../common/Icon.svelte";
@@ -9,8 +9,8 @@
 
   let {
     sets,
-    builtin,
     canSave,
+    open = $bindable(true),
     renaming = $bindable(null),
     oninsert,
     onsave,
@@ -19,10 +19,10 @@
   }: {
     /** The sets of the user. */
     sets: ShapeSet[];
-    /** Those RayTeX comes with. */
-    builtin: ShapeSet[];
     /** Something is selected on the whiteboard. */
     canSave: boolean;
+    /** The shelf shows its sets (else only its title). */
+    open?: boolean;
     /** The set whose name is being typed (a new one starts that way). */
     renaming?: string | null;
     oninsert: (set: ShapeSet) => void;
@@ -44,94 +44,129 @@
   }
 </script>
 
-<div class="sets">
-  <button class="save" disabled={!canSave} onclick={onsave} title={t("tikz.saveSetTitle")}>
-    <Icon name="star" size={14} />{t("tikz.saveSet")}
-  </button>
+<section class="sets" class:closed={!open} aria-label={t("tikz.sets.title")}>
+  <header>
+    <button class="title" aria-expanded={open} onclick={() => (open = !open)}>
+      <Icon name="star" size={14} />
+      <strong>{t("tikz.sets.title")}</strong>
+      {#if sets.length}<span class="n">{sets.length}</span>{/if}
+      <Icon name={open ? "chevron-down" : "chevron-up"} size={13} />
+    </button>
+    <button class="save" disabled={!canSave} onclick={onsave} title={t("tikz.saveSetTitle")}>
+      <Icon name="plus" size={13} />{t("tikz.sets.keep")}
+    </button>
+  </header>
 
-  {#if sets.length}
-    <div class="grid">
-      {#each sets as set (set.id)}
-        <div class="set">
-          <button class="thumb" onclick={() => oninsert(set)} title={t("tikz.sets.insert", { name: set.name })} aria-label={t("tikz.sets.insert", { name: set.name })}>
-            <ShapeThumb code={set.code} />
-          </button>
-          {#if renaming === set.id}
-            <input class="input small name" value={set.name} use:focusAll onblur={(e) => named(e, set)} onkeydown={(e) => {
-              e.stopPropagation();
-              if (e.key === "Enter") e.currentTarget.blur();
-              if (e.key === "Escape") renaming = null;
-            }} aria-label={t("tikz.sets.rename")} />
-          {:else}
-            <div class="caption">
-              <button class="label ellipsis" onclick={() => (renaming = set.id)} title={t("tikz.sets.rename")}>{set.name}</button>
-              <button class="x" onclick={() => ondelete(set.id)} title={t("common.delete")} aria-label={t("common.delete")}><Icon name="x" size={11} /></button>
-            </div>
-          {/if}
-        </div>
-      {/each}
-    </div>
-  {:else}
-    <p class="empty faint">{t("tikz.sets.empty")}</p>
-  {/if}
-
-  <span class="group faint">{t("tikz.sets.builtin")}</span>
-  <div class="grid">
-    {#each builtin as set (set.id)}
-      <div class="set">
-        <button class="thumb" onclick={() => oninsert(set)} title={t("tikz.sets.insert", { name: set.name })} aria-label={t("tikz.sets.insert", { name: set.name })}>
-          <ShapeThumb code={set.code} />
-        </button>
-        <div class="caption"><span class="label ellipsis">{set.name}</span></div>
+  {#if open}
+    {#if sets.length}
+      <div class="row">
+        {#each sets as set (set.id)}
+          <div class="set">
+            <button class="thumb" onclick={() => oninsert(set)} title={t("tikz.sets.insert", { name: set.name })} aria-label={t("tikz.sets.insert", { name: set.name })}>
+              <ShapeThumb code={set.code} />
+            </button>
+            {#if renaming === set.id}
+              <input class="input small name" value={set.name} use:focusAll onblur={(e) => named(e, set)} onkeydown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Enter") e.currentTarget.blur();
+                if (e.key === "Escape") renaming = null;
+              }} aria-label={t("tikz.sets.rename")} />
+            {:else}
+              <div class="caption">
+                <button class="label ellipsis" onclick={() => (renaming = set.id)} title={t("tikz.sets.rename")}>{set.name}</button>
+                <button class="x" onclick={() => ondelete(set.id)} title={t("common.delete")} aria-label={t("common.delete")}><Icon name="x" size={11} /></button>
+              </div>
+            {/if}
+          </div>
+        {/each}
       </div>
-    {/each}
-  </div>
-</div>
+    {:else}
+      <p class="empty faint">{t("tikz.sets.empty")}</p>
+    {/if}
+  {/if}
+</section>
 
 <style>
   .sets {
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 10px 12px 12px;
-    overflow: auto;
+    gap: 6px;
+    padding: 7px 12px 9px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-elev);
   }
-  .save {
+  .sets.closed {
+    padding-bottom: 7px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .title {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 7px;
-    height: 32px;
-    border: 1px dashed var(--border-strong);
-    border-radius: var(--radius);
+    gap: 6px;
+    padding: 2px 4px;
+    border: none;
+    border-radius: var(--radius-sm);
     background: none;
     font-size: 12px;
     color: var(--text);
     cursor: pointer;
   }
-  .save:hover:not(:disabled) {
-    border-color: var(--accent);
-    color: var(--accent);
+  .title:hover {
+    background: var(--bg-hover);
+  }
+  .n {
+    padding: 0 6px;
+    border-radius: 8px;
+    background: var(--bg-hover);
+    font-size: 10.5px;
+    line-height: 16px;
+    color: var(--text-muted);
+  }
+  .save {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 26px;
+    padding: 0 10px;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
     background: var(--accent-soft);
+    font-size: 11.5px;
+    color: var(--accent);
+    cursor: pointer;
+  }
+  .save:hover:not(:disabled) {
+    background: var(--accent);
+    color: #fff;
   }
   .save:disabled {
+    border-color: var(--border);
+    background: none;
     color: var(--text-faint);
     cursor: default;
   }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
-    gap: 8px;
+  /* The sets side by side: the shelf scrolls when there are many. */
+  .row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 2px;
   }
   .set {
     display: flex;
     flex-direction: column;
     gap: 3px;
-    min-width: 0;
+    width: 96px;
+    flex-shrink: 0;
   }
   .thumb {
-    aspect-ratio: 4 / 3;
-    padding: 6px;
+    height: 62px;
+    padding: 5px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: #fdfdfc;
@@ -156,11 +191,9 @@
     font-size: 11.5px;
     color: var(--text-muted);
     text-align: left;
-  }
-  button.label {
     cursor: text;
   }
-  button.label:hover {
+  .label:hover {
     color: var(--text);
   }
   .x {
@@ -189,13 +222,8 @@
     height: 22px;
     font-size: 11.5px;
   }
-  .group {
-    margin-top: 4px;
-    font-size: 11px;
-    letter-spacing: 0.02em;
-  }
   .empty {
-    margin: 0;
+    margin: 0 4px 2px;
     font-size: 11.5px;
     line-height: 1.5;
   }

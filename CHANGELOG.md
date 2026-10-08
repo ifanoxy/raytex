@@ -10,8 +10,11 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
   - **Duplicating**: Alt and a drag leave a copy of what is dragged; a *Duplicate* button; Ctrl/⌘ + C, X and V copy, cut and paste, also from one picture to another.
   - Several selected shapes have a box whose corners resize them together, keeping their proportions.
   - **A bar for the selection** at the top of the board (duplicate, front, back, keep as a set, delete), and the same actions under the right button.
-- **Sets**: shapes kept under a name and drawn again with one click, in any picture of any project (a sensor, a block, axes your way). *Keep as a set* from the selection, then the new *Sets* tab, where each one has its picture, is renamed and removed. A few to start from come with RayTeX. They are kept in a file next to the settings.
+- **Sets**: shapes kept under a name and drawn again with one click, in any picture of any project (a sensor, a block, axes your way). They have a shelf of their own under the paper: *Keep the selection*, give it a name, and its picture is there; a click on the name renames it, the cross removes it. They are kept in a file next to the settings.
 - **A side panel that shows less at once**: the look of what is selected in a few groups (line, filling, text), each with its usual choices as pictures to click and the rest behind *Advanced* (dashes, rounded corners, opacity, a colour written by hand, the position of a text, exact coordinates). The grid has its own button under the tools.
+- Fixed:
+  - **Small previews failed in a document that has a page style** (0.4.0): the picture of the TikZ studio, the sample of a font, the trial of a command showed an error. These previews take the preamble of the project without what concerns whole pages; fancyhdr was left out, but not the page styles the page layout window writes, which then named commands nobody defined. Page styles, what is drawn on every page and the lengths of the header are left out too.
+  - A filling without a colour (`\fill (0,0) circle (2pt);`) came back from the whiteboard as an outline: it stays a filling, in black as TikZ fills.
 
 ## [0.4.1] — 2026-10-08
 

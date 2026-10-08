@@ -339,6 +339,11 @@ const PREVIEW_UNFRIENDLY: &[&str] = &[
     "scrlayer-scrpage",
     "pdfpages",
     "standalone",
+    // What draws on every page (watermarks, backgrounds): no page here.
+    "eso-pic",
+    "extramarks",
+    "everypage",
+    "xwatermark",
 ];
 
 /// Commands of the preamble that only concern the whole document.
@@ -350,9 +355,34 @@ const DOCUMENT_ONLY: &[&str] = &[
     "\\geometry",
     "\\hypersetup",
     "\\pagestyle",
+    "\\thispagestyle",
     "\\fancyhf",
     "\\fancyhead",
     "\\fancyfoot",
+    // A page style and what it is made of (the page layout window writes
+    // them): fancyhdr is not loaded in a preview, so they would not be known.
+    "\\fancypagestyle",
+    "\\fancypagestyleassign",
+    "\\fancyheadinit",
+    "\\fancyfootinit",
+    "\\fancyhfinit",
+    "\\fancyheadoffset",
+    "\\fancyfootoffset",
+    "\\fancyhfoffset",
+    "\\fancyheadwidth",
+    "\\fancyfootwidth",
+    "\\fancyhfwidth",
+    "\\lhead",
+    "\\chead",
+    "\\rhead",
+    "\\lfoot",
+    "\\cfoot",
+    "\\rfoot",
+    "\\AddToShipoutPicture",
+    "\\AddToShipoutPictureBG",
+    "\\AddToShipoutPictureFG",
+    "\\newgeometry",
+    "\\restoregeometry",
     "\\title",
     "\\author",
     "\\date",
@@ -360,6 +390,57 @@ const DOCUMENT_ONLY: &[&str] = &[
     "\\loadglsentries",
     "\\newglossaryentry",
 ];
+
+/// Lengths and commands of the page that fancyhdr or a book class define:
+/// setting one where it does not exist is an error.
+const PAGE_FURNITURE: &[&str] = &[
+    "\\headrulewidth",
+    "\\footrulewidth",
+    "\\plainheadrulewidth",
+    "\\plainfootrulewidth",
+    "\\headruleskip",
+    "\\footruleskip",
+    "\\headrule",
+    "\\footrule",
+    "\\headwidth",
+    "\\chaptermark",
+    "\\sectionmark",
+    "\\subsectionmark",
+];
+
+/// Whether a line of the preamble only concerns the pages of the whole
+/// document (their margins, headers, footers, what is drawn on each of
+/// them): nothing of it exists in a small preview.
+fn document_only(line: &str) -> bool {
+    let named = |rest: &str, name: &str| {
+        rest.starts_with(name)
+            && !rest[name.len()..].starts_with(|ch: char| ch.is_ascii_alphabetic())
+    };
+    if DOCUMENT_ONLY.iter().any(|c| named(line, c)) {
+        return true;
+    }
+    // `\renewcommand{\headrulewidth}{0pt}`, `\def\headruleskip{3pt}`.
+    for set in [
+        "\\renewcommand",
+        "\\def",
+        "\\let",
+        "\\setlength",
+        "\\addtolength",
+    ] {
+        if let Some(rest) = line.strip_prefix(set) {
+            let rest = rest.trim_start_matches('*').trim_start();
+            let rest = rest.strip_prefix('{').unwrap_or(rest).trim_start();
+            if PAGE_FURNITURE.iter().any(|name| named(rest, name)) {
+                return true;
+            }
+        }
+    }
+    // The style of the pages that open, and what is run when a page is shipped.
+    (line.starts_with("\\makeatletter") && line.contains("\\ps@"))
+        || line.starts_with("\\AddToHook{shipout/")
+        || named(line, "\\AtBeginShipout")
+        || named(line, "\\AddEverypageHook")
+}
 
 /// Compiles a whole document once (twice when the table of contents or
 /// references need it), for a picture of its first pages: template
@@ -441,11 +522,7 @@ pub fn project_preamble(root_source: &str) -> String {
             .map(strip_comment)
             .collect::<Vec<_>>()
             .join("\n");
-        let trimmed = code.trim_start();
-        if DOCUMENT_ONLY.iter().any(|c| {
-            trimmed.starts_with(c)
-                && !trimmed[c.len()..].starts_with(|ch: char| ch.is_ascii_alphabetic())
-        }) {
+        if document_only(code.trim_start()) {
             continue;
         }
         if let Some(kept) = filter_packages(&code) {
@@ -859,6 +936,111 @@ mod tests {
         assert_eq!(
             filter_packages("\\usepackage[style={a,b}]{hyperref,tikz}").as_deref(),
             Some("\\usepackage[style={a,b}]{tikz}")
+        );
+    }
+
+    /// A preamble as the page layout window writes it: margins in one
+    /// place, a page style with its watermark, where it is used.
+    const LAID_OUT: &str = r"\documentclass[11pt,a4paper,twoside]{report}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{
+  top=2.5cm,
+  bottom=2.5cm,
+  inner=3.5cm,
+  outer=2cm,
+  headheight=13.6pt,
+}
+\usepackage{fancyhdr}
+\usepackage{eso-pic}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{lastpage}
+\usepackage{extramarks}
+\usepackage{amssymb}
+\usepackage{tikz}
+\definecolor{brand}{HTML}{E3A857}
+
+\fancypagestyle{perso}{%
+  \fancyhf{}%
+  \fancyheadinit{\small\itshape\AddToShipoutPictureBG*{\AtPageCenter{\makebox(0,0){\rotatebox{45}{\scalebox{7}{\textcolor{black!12}{BROUILLON}}}}}}}%
+  \fancyhead[LO,RE]{\nouppercase{\leftmark}}%
+  \fancyfoot[C]{\thepage\ / \pageref{LastPage}}%
+  \fancyheadoffset[LO,RE]{1cm}%
+  \renewcommand{\headrulewidth}{\iffloatpage{0pt}{0.4pt}}%
+  \renewcommand{\footrulewidth}{0pt}%
+  \def\headruleskip{3pt}%
+  \renewcommand{\headrule}{{\color{red}\hrule height\headrulewidth width\headwidth\vskip-\headrulewidth}}%
+  \renewcommand{\chaptermark}[1]{\markboth{\thechapter.\ ##1}{}}%
+}
+\AddToHook{shipout/after}{\ifnum\ReadonlyShipoutCounter>0 \ifnum\ReadonlyShipoutCounter<4 \thispagestyle{perso}\fi\fi} % pages 2-4: perso
+\makeatletter\let\ps@plain\ps@perso\makeatother
+\pagestyle{perso}
+\renewcommand{\headrulewidth}{0pt}
+\setlength{\headheight}{15pt}
+\newcommand{\R}{\mathbb{R}}
+\makeatletter\newcommand{\mine}{\@firstofone}\makeatother
+\begin{document}
+x
+\end{document}
+";
+
+    #[test]
+    fn a_page_layout_is_left_out_of_small_previews() {
+        let p = project_preamble(LAID_OUT);
+        for gone in [
+            "fancy",
+            "eso-pic",
+            "extramarks",
+            "geometry",
+            "lastpage",
+            "pagestyle",
+            "ps@",
+            "shipout",
+            "ShipoutPicture",
+            "headrule",
+            "chaptermark",
+            "BROUILLON",
+        ] {
+            assert!(!p.contains(gone), "{gone} is still there:\n{p}");
+        }
+        // What a picture may use stays, in its order.
+        assert_eq!(
+            p.trim(),
+            "\\usepackage[T1]{fontenc}\n\\usepackage{graphicx}\n\\usepackage{xcolor}\n\\usepackage{amssymb}\n\\usepackage{tikz}\n\\definecolor{brand}{HTML}{E3A857}\n\n\\setlength{\\headheight}{15pt}\n\\newcommand{\\R}{\\mathbb{R}}\n\\makeatletter\\newcommand{\\mine}{\\@firstofone}\\makeatother"
+        );
+        // A command of the user that only mentions a page style is kept.
+        assert!(!document_only(
+            "\\newcommand{\\chapitre}[1]{\\chapter{#1}\\thispagestyle{empty}}"
+        ));
+        assert!(document_only("\\renewcommand\\headrulewidth{1pt}"));
+        assert!(document_only("\\AtBeginShipout{\\x}"));
+        assert!(!document_only("\\AddToHook{begindocument}{\\x}"));
+    }
+
+    /// A picture is still compiled in a document that has a page layout.
+    #[test]
+    #[ignore = "needs a TeX distribution"]
+    fn a_picture_compiles_with_a_page_layout_in_the_preamble() {
+        let dist = distribution();
+        let dir = tempfile::tempdir().unwrap();
+        let outcome = compile_body(
+            &dist,
+            dir.path(),
+            "layout",
+            "tikz,border=6pt",
+            &project_preamble(LAID_OUT),
+            "\\begin{tikzpicture}\\draw[brand] (0,0) -- (1,1) node {$\\R$};\\end{tikzpicture}",
+            Engine::Pdflatex,
+        );
+        assert!(outcome.pdf.is_some(), "{:?}", outcome.diagnostics);
+        assert!(
+            !outcome
+                .diagnostics
+                .iter()
+                .any(|d| d.severity == Severity::Error),
+            "{:?}",
+            outcome.diagnostics
         );
     }
 

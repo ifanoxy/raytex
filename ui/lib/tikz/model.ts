@@ -202,7 +202,11 @@ export function parseStyle(options: string[], fillCommand = false): Style {
     else if (isColor(o) && !s.stroke) s.stroke = o;
     else s.extra.push(o);
   }
-  if (fillCommand) s.noStroke = true;
+  if (fillCommand) {
+    s.noStroke = true;
+    // `\\fill` without a colour fills in black.
+    s.fill ??= "black";
+  }
   return s;
 }
 

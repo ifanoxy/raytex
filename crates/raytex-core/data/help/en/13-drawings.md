@@ -31,7 +31,7 @@ Once a shape is drawn, the selection tool comes back: the shape is selected, rea
 
 ### The style, on the right
 
-The **Style** tab shows what matters most: the colour and the thickness of the **line**, the arrows of a line, the colour of the **filling**, and for a text what it says and its frame. **Advanced**, on the right of each group, unfolds the rest: dashes or dots, rounded corners, opacity, a colour written by hand (`red!50!black`), the position and the size of a text, the exact coordinates in centimetres. Without a selection, the chosen style goes to the next shapes.
+The panel on the right shows what matters most: the colour and the thickness of the **line**, the arrows of a line, the colour of the **filling**, and for a text what it says and its frame. **Advanced**, on the right of each group, unfolds the rest: dashes or dots, rounded corners, opacity, a colour written by hand (`red!50!black`), the position and the size of a text, the exact coordinates in centimetres. Without a selection, the chosen style goes to the next shapes.
 
 The **grid** is set from its button, under the tools: show it, snap to it, show axes, and its step (0.1 · 0.25 · 0.5 · 1 cm).
 
@@ -39,11 +39,13 @@ The **grid** is set from its button, under the tools: show it, snap to it, show 
 
 A **set** is a group of shapes kept under a name, to draw it again with one click: a sensor, a block of a diagram, axes the way you like them.
 
-1. Select the shapes, then **Keep as a set** (selection bar, right button, or the *Sets* tab).
-2. Give it a name.
-3. In the **Sets** tab, a click on its picture draws it in the middle of the view, selected, ready to be placed.
+They have a **shelf of their own, under the paper**:
 
-Your sets are kept with the settings of RayTeX: they serve in all your pictures and all your projects. A click on the name changes it, the cross removes it. A few sets to start from are offered below (axes, two boxes, right triangle, dimension, named point).
+1. Select the shapes, then **Keep the selection** on the shelf (or *Keep as a set* in the selection bar or under the right button).
+2. Give it a name.
+3. A click on its picture draws it in the middle of the view, selected, ready to be placed.
+
+Your sets are kept with the settings of RayTeX: they serve in all your pictures and all your projects. A click on the name changes it, the cross removes it. The title of the shelf folds it.
 
 The drawing and the code stay in step: the **Code** tab shows the code of the drawing, which can be changed by hand; back on the drawing, the shapes follow. The statements the whiteboard cannot draw (`\foreach`, `plot`, linked nodes…) are kept as they are.
 

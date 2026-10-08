@@ -31,7 +31,7 @@ Une fois une forme dessinée, l'outil de sélection revient : elle est sélectio
 
 ### Le style, à droite
 
-L'onglet **Style** montre l'essentiel : la couleur et l'épaisseur du **trait**, les flèches d'une ligne, la couleur du **remplissage**, et pour un texte son contenu et son cadre. **Avancé**, à droite de chaque groupe, déplie le reste : tirets ou pointillés, coins arrondis, opacité, une couleur écrite à la main (`red!50!black`), la position et la taille d'un texte, les coordonnées exactes en centimètres. Sans sélection, le style choisi s'applique aux prochaines formes.
+Le panneau de droite montre l'essentiel : la couleur et l'épaisseur du **trait**, les flèches d'une ligne, la couleur du **remplissage**, et pour un texte son contenu et son cadre. **Avancé**, à droite de chaque groupe, déplie le reste : tirets ou pointillés, coins arrondis, opacité, une couleur écrite à la main (`red!50!black`), la position et la taille d'un texte, les coordonnées exactes en centimètres. Sans sélection, le style choisi s'applique aux prochaines formes.
 
 La **grille** se règle depuis son bouton, sous les outils : l'afficher, s'y aimanter, montrer un repère, et son pas (0,1 · 0,25 · 0,5 · 1 cm).
 
@@ -39,11 +39,13 @@ La **grille** se règle depuis son bouton, sous les outils : l'afficher, s'y aim
 
 Un **ensemble** est un groupe de formes gardé sous un nom, pour le redessiner d'un clic : un capteur, un bloc de schéma, un repère à votre façon.
 
-1. Sélectionnez les formes, puis **Garder comme ensemble** (barre de sélection, clic droit, ou onglet *Ensembles*).
-2. Donnez-lui un nom.
-3. Dans l'onglet **Ensembles**, un clic sur sa vignette le dessine au milieu de la vue, sélectionné, prêt à être placé.
+Ils ont leur propre **étagère, sous le papier** :
 
-Vos ensembles sont gardés avec les réglages de RayTeX : ils servent dans tous vos schémas et tous vos projets. Un clic sur le nom le change, la croix le supprime. Quelques ensembles de départ sont proposés dessous (repère, deux boîtes, triangle rectangle, cote, point nommé).
+1. Sélectionnez les formes, puis **Garder la sélection** sur l'étagère (ou *Garder comme ensemble* dans la barre de sélection ou au clic droit).
+2. Donnez-lui un nom.
+3. Un clic sur sa vignette le dessine au milieu de la vue, sélectionné, prêt à être placé.
+
+Vos ensembles sont gardés avec les réglages de RayTeX : ils servent dans tous vos schémas et tous vos projets. Un clic sur le nom le change, la croix le supprime. Le titre de l'étagère la replie.
 
 Le dessin et le code restent liés : l'onglet **Code** montre le code du dessin, que l'on peut modifier à la main ; en revenant au dessin, les formes suivent. Les instructions que le tableau blanc ne sait pas dessiner (`\foreach`, `plot`, nœuds reliés…) sont gardées telles quelles.
 

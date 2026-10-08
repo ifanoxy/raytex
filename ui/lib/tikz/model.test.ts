@@ -106,3 +106,10 @@ test("a new set gets a name of its own", () => {
   assert.equal(freeSetName("Ensemble", []), "Ensemble");
   assert.equal(freeSetName("Ensemble", [{ name: "Ensemble" }, { name: "Ensemble 2" }]), "Ensemble 3");
 });
+
+test("a filling without a colour stays a filling", () => {
+  const dot = parseStatement("\\fill (1,2) circle (0.06);")!;
+  assert.equal(dot.kind === "circle" && dot.style.fill, "black");
+  assert.equal(shapeCode(dot), "\\fill[black] (1,2) circle (0.06);");
+  assert.equal(shapeCode(parseStatement("\\fill[red!20] (0,0) rectangle (1,1);")!), "\\fill[red!20] (0,0) rectangle (1,1);");
+});
