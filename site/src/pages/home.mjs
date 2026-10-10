@@ -1,4 +1,4 @@
-import { bezier, construction, heatPlot, introDrawing, ray } from "../figures.mjs";
+import { bezier, construction, heatPlot, introDrawing, pageLayout, ray } from "../figures.mjs";
 import { ctaEnd, latex } from "../util.mjs";
 
 export default {
@@ -68,6 +68,9 @@ hard\footnote{A well-deserved reputation.}.
 \end{tikzpicture}
 \[ \frac{\partial u}{\partial t} = \alpha\,\Delta u \]
 
+\section{The page, without its preamble}\label{sec:page}
+Margins, headers, footers and a watermark, set with fields.
+
 \section{Everywhere, with your LaTeX}\label{sec:everywhere}
 \begin{description}
   \item[Windows, macOS, Linux] a light native application;
@@ -134,6 +137,9 @@ difficile\footnote{Réputation méritée.}.
   \draw[violet] (2.03,0.55) circle (2.04);
 \end{tikzpicture}
 \[ \frac{\partial u}{\partial t} = \alpha\,\Delta u \]
+
+\section{La page, sans son préambule}\label{sec:page}
+Marges, en-têtes, pieds de page et filigrane, réglés par des champs.
 
 \section{Partout, avec votre LaTeX}\label{sec:partout}
 \begin{description}
@@ -208,8 +214,9 @@ ${tex.toc([
   ["2", T("Errors that finally make sense", "Des erreurs enfin compréhensibles"), "#erreurs", "1"],
   ["3", T("Write, and see the PDF", "Écrire, et voir le PDF"), "#direct", "1"],
   ["4", T("Drawings, tables and matrices", "Dessins, tableaux et matrices"), "#dessins", "1"],
-  ["5", T("Everywhere, with your LaTeX", "Partout, avec votre LaTeX"), "#partout", "1"],
-  ["6", T("Free and open", "Libre et ouvert"), "#libre", "1"],
+  ["5", T("The page, without its preamble", "La page, sans son préambule"), "#page", "1"],
+  ["6", T("Everywhere, with your LaTeX", "Partout, avec votre LaTeX"), "#partout", "1"],
+  ["7", T("Free and open", "Libre et ouvert"), "#libre", "1"],
   ["A", T("Every feature", "Toutes les fonctionnalités"), url("features/"), "2"],
   ["B", T("Installation", "Installation"), url("download/"), "3"],
   ["C", T("Every version", "Toutes les versions"), url("releases/"), "4"],
@@ -239,8 +246,8 @@ ${tex.theorem(
   T("explained errors", "erreurs expliquées"),
   T(`Every LaTeX error has an explanation in plain words, and the common ones ${tex.hl("a fix in one click", "green")}.`, `Toute erreur de LaTeX admet une explication en mots simples, et les plus courantes ${tex.hl("une correction en un clic", "green")}.`),
   T(
-    `Take the message LaTeX gives for a typing slip. ${tex.listing("! Undefined control sequence.\nl.7 Du texte en \\textbff{gras}")} RayTeX reads the log, finds the misspelt command and offers ${tex.fix("\\textbff", "\\textbf")}: one click, or <kbd>Alt</kbd>+<kbd>Enter</kbd>. The same reasoning holds for about 110 messages of LaTeX, packages, BibTeX and Biber.`,
-    `Prenons le message que LaTeX donne pour une faute de frappe. ${tex.listing("! Undefined control sequence.\nl.7 Du texte en \\textbff{gras}")} RayTeX lit le journal, trouve la commande mal orthographiée et propose ${tex.fix("\\textbff", "\\textbf")} : un clic, ou <kbd>Alt</kbd>+<kbd>Entrée</kbd>. Le même raisonnement vaut pour environ 110 messages de LaTeX, des packages, de BibTeX et de Biber.`,
+    `Take the message LaTeX gives for a typing slip. ${tex.listing("! Undefined control sequence.\nl.7 Du texte en \\textbff{gras}")} RayTeX reads the log, finds the misspelt command and offers ${tex.fix("\\textbff", "\\textbf")}: one click, or <kbd>Alt</kbd>+<kbd>Enter</kbd>. It does not stop at a list of messages: whatever TeX says, the cause is looked for in your document, from what each command of each package you load expects, and the problem is put on the word to change.`,
+    `Prenons le message que LaTeX donne pour une faute de frappe. ${tex.listing("! Undefined control sequence.\nl.7 Du texte en \\textbff{gras}")} RayTeX lit le journal, trouve la commande mal orthographiée et propose ${tex.fix("\\textbff", "\\textbf")} : un clic, ou <kbd>Alt</kbd>+<kbd>Entrée</kbd>. Il ne s'arrête pas à une liste de messages : quoi que dise TeX, la cause est cherchée dans votre document, d'après ce qu'attend chaque commande de chaque package chargé, et le problème est posé sur le mot à changer.`,
   ),
 )}
 ${tex.note(T("click the little square ;)", "cliquez sur le petit carré ;)"), { arrow: "corner", tilt: -3 })}
@@ -267,14 +274,19 @@ ${tex.subsection(T("Completion that knows your packages", "Une complétion qui c
   `RayTeX reads the source of every package your document loads: their commands, their environments and ${tex.circled("about 520", "green")} documented option keys come up as you type. In a formula, <code>@a</code> gives ${tex.math("\\alpha")} and <code>@/</code> a fraction.`,
   `RayTeX lit la source de chaque package que charge votre document : leurs commandes, leurs environnements et ${tex.circled("environ 520", "green")} clés d'options documentées apparaissent pendant la frappe. Dans une formule, <code>@a</code> donne ${tex.math("\\alpha")} et <code>@/</code> une fraction.`,
 )}</p>
+${tex.subsection(T("Shortcuts and commands of your own", "Vos raccourcis, vos commandes"))}
+<p data-reveal>${T(
+  `A few letters then <kbd>Tab</kbd> write a whole block: <code>fig</code> a figure, <code>eq</code> an equation, <code>doc</code> the minimal document. The <code>@</code> shortcuts can be yours: a key (<code>@v</code>) and what it writes (<code>\\vec{}</code>). And the commands your project defines have their own panel, with ${tex.underline("what each one writes and where it is used", "violet")}; a studio makes a new one from its name, its arguments and its definition, says what would keep it from working, and tries it before it is added to the preamble.`,
+  `Quelques lettres puis <kbd>Tab</kbd> écrivent un bloc entier : <code>fig</code> une figure, <code>eq</code> une équation, <code>doc</code> le document minimal. Les raccourcis <code>@</code> peuvent être les vôtres : une touche (<code>@v</code>) et ce qu'elle écrit (<code>\\vec{}</code>). Et les commandes que définit votre projet ont leur panneau, avec ${tex.underline("ce que chacune écrit et où elle sert", "violet")} ; un studio en crée une à partir de son nom, de ses arguments et de sa définition, dit ce qui l'empêcherait de marcher, et l'essaie avant de l'ajouter au préambule.`,
+)}</p>
 </section>
 
 <section class="doc-section">
 ${tex.section(T("Drawings, tables and matrices", "Dessins, tableaux et matrices"), "dessins")}
 ${tex.subsection(T("Geometry with the mouse", "La géométrie à la souris"))}
 <p data-reveal>${T(
-  `In the TikZ studio, you draw on a grid and ${tex.hl("the code writes itself", "pink")}; edit the code, and the drawing follows. Twenty-two drawings are ready to start from: plots, trees, circuits, automata, graphs.`,
-  `Dans le studio TikZ, vous dessinez sur une grille et ${tex.hl("le code s'écrit tout seul", "pink")} ; modifiez le code, le dessin suit. Vingt-deux dessins sont prêts pour démarrer : courbes, arbres, circuits, automates, graphes.`,
+  `In the TikZ studio, you draw on a grid and ${tex.hl("the code writes itself", "pink")}; edit the code, and the drawing follows. Shapes are selected with a rectangle, resized together, copied with <kbd>Alt</kbd> and a drag; the ones you draw often are kept as <b>sets</b>, drawn again with one click in any picture of any project. Twenty-two drawings are ready to start from: plots, trees, circuits, automata, graphs.`,
+  `Dans le studio TikZ, vous dessinez sur une grille et ${tex.hl("le code s'écrit tout seul", "pink")} ; modifiez le code, le dessin suit. Les formes se sélectionnent au rectangle, se redimensionnent ensemble, se copient avec <kbd>Alt</kbd> et un glisser ; celles que vous dessinez souvent se gardent en <b>ensembles</b>, redessinés d'un clic dans n'importe quel schéma de n'importe quel projet. Vingt-deux dessins sont prêts pour démarrer : courbes, arbres, circuits, automates, graphes.`,
 )}</p>
 ${tex.figure(construction(lang), T("The circumscribed circle of a triangle: the perpendicular bisectors meet at its centre <i>O</i>.", "Le cercle circonscrit à un triangle : les médiatrices se coupent en son centre <i>O</i>."), "figure-tikz")}
 ${tex.listing("\\begin{tikzpicture}\n  \\draw (0,0) -- (4,-0.3) -- (2,2.4) -- cycle;\n  \\draw[violet] (2.03,0.55) circle (2.04);\n\\end{tikzpicture}", T("What the studio writes", "Ce que le studio écrit"))}
@@ -289,6 +301,24 @@ ${tex.subsection(T("Plots, as in pgfplots", "Des courbes, comme avec pgfplots"))
 <p data-reveal>${T("The heat equation, which the example project of RayTeX studies,", "L'équation de la chaleur, qu'étudie le projet d'exemple de RayTeX,")}</p>
 ${tex.eq(String.raw`\frac{\partial u}{\partial t} = \alpha\,\Delta u, \qquad u(x,t) = \frac{1}{\sqrt{4\pi\alpha t}}\, e^{-x^2/(4\alpha t)}`)}
 ${tex.figure(heatPlot(lang), T("The temperature spreads with time: the solution at three instants.", "La température s'étale avec le temps : la solution à trois instants."), "figure-tikz")}
+</section>
+
+<section class="doc-section">
+${tex.section(T("The page, without its preamble", "La page, sans son préambule"), "page")}
+${tex.note(T("geometry and fancyhdr, without their manuals", "geometry et fancyhdr, sans leurs manuels"), { arrow: "left", tilt: -3 })}
+<p data-reveal>${T(
+  `Margins, headers and footers are where a preamble grows long. In RayTeX they are ${tex.hl("set with fields", "violet")} and seen on real pages, compiled with the class and the preamble of your project, before anything is written in the document.`,
+  `Les marges, les en-têtes et les pieds de page sont l'endroit où un préambule s'allonge. Dans RayTeX ils se ${tex.hl("règlent par des champs", "violet")} et se voient sur de vraies pages, compilées avec la classe et le préambule de votre projet, avant que rien ne soit écrit dans le document.`,
+)}</p>
+${tex.figure(pageLayout(lang), T("A page as the window sets it: its margins, a header, a footer and a watermark.", "Une page telle que la fenêtre la règle : ses marges, un en-tête, un pied de page et un filigrane."), "figure-tikz")}
+<dl class="description" data-reveal>
+  <dt>${T("Margins", "Les marges")}</dt>
+  <dd>${T("Ready-made margins or your own, the paper, the orientation, two-sided pages, the binding; what your preamble already says is read and shown. For the whole document, or from the cursor on.", "Des marges toutes faites ou les vôtres, le papier, l'orientation, le recto verso, la reliure ; ce que dit déjà votre préambule est lu et affiché. Pour tout le document, ou à partir du curseur.")}</dd>
+  <dt>${T("Page styles", "Les styles de page")}</dt>
+  <dd>${T("A header and a footer in three fields each: page number, “page 2 / 9”, title of the chapter, date, a logo. A watermark across the page, a text or an image.", "Un en-tête et un pied de page en trois champs chacun : numéro de page, « page 2 / 9 », titre du chapitre, date, un logo. Un filigrane en travers de la page, un texte ou une image.")}</dd>
+  <dt>${T("On the pages you want", "Sur les pages que vous voulez")}</dt>
+  <dd>${T("The whole document, the title and chapter pages, from the cursor on, one page, or pages by their numbers; the packages a style needs are loaded with it.", "Tout le document, les pages de titre et de chapitre, à partir du curseur, une seule page, ou des pages par leurs numéros ; les packages dont un style a besoin sont chargés avec lui.")}</dd>
+</dl>
 </section>
 
 <section class="doc-section">

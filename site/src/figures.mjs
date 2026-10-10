@@ -96,6 +96,32 @@ export function bezier(lang) {
 </svg>`;
 }
 
+/** A page as the page layout window sets it: its margins around the text,
+ *  a header and a footer, a watermark. Words stand next to what they name,
+ *  never over it; the lines of text are strokes. */
+export function pageLayout(lang) {
+  const fr = lang === "fr";
+  const lines = [58, 68, 78, 88, 98].map((y) => `M152 ${y} H248`).join(" ") + " M152 108 H214";
+  const arrowH = (x0, x1, y) => `M${x0} ${y} H${x1} M${x0} ${y} l5 -3 M${x0} ${y} l5 3 M${x1} ${y} l-5 -3 M${x1} ${y} l-5 3`;
+  const arrowV = (x, y0, y1) => `M${x} ${y0} V${y1} M${x} ${y0} l-3 5 M${x} ${y0} l3 5 M${x} ${y1} l-3 -5 M${x} ${y1} l3 -5`;
+  return `<svg class="tikz" viewBox="52 6 340 224" role="img" aria-label="${fr ? "Une page : ses marges, son en-tête, son pied de page et un filigrane" : "A page: its margins, its header, its footer and a watermark"}">
+  <path class="draw ink" data-step="0" d="M130 18 H270 V216 H130 Z"/>
+  <path class="draw ink-thin dashed" data-step="1" d="M152 46 H248 V190 H152 Z"/>
+  <path class="draw ink-violet" data-step="2" d="${arrowH(132, 150, 150)}"/>
+  <path class="draw ink-violet" data-step="2" d="${arrowV(141, 20, 44)}"/>
+  <path class="draw ink-thin" data-step="3" d="M152 38 H248"/>
+  <path class="draw ink" data-step="3" d="M152 32 H190 M234 32 H248"/>
+  <path class="draw ink" data-step="3" d="M193 203 H207"/>
+  <path class="draw ink-thin" data-step="4" d="${lines}"/>
+  <path class="draw ink-thin" data-step="5" d="M280 32 H254 M280 154 H252 M280 203 H213"/>
+  <text class="tikz-hand violet" text-anchor="middle" letter-spacing="1" style="font-size: 16px" transform="rotate(-22 200 152)" x="200" y="157">${fr ? "BROUILLON" : "DRAFT"}</text>
+  <text class="tikz-hand violet" text-anchor="end" x="122" y="156">${fr ? "marges" : "margins"}</text>
+  <text class="tikz-hand" x="286" y="38">${fr ? "en-tête" : "header"}</text>
+  <text class="tikz-hand" x="286" y="160">${fr ? "filigrane" : "watermark"}</text>
+  <text class="tikz-hand" x="286" y="209">${fr ? "pied de page" : "footer"}</text>
+</svg>`;
+}
+
 /** The ray of the logo, sketched (its outline) then inked. */
 export function ray(cls = "") {
   return `<svg class="ray-sketch ${cls}" viewBox="0 0 1000 1000" aria-hidden="true">
