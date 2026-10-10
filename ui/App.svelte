@@ -24,6 +24,7 @@
   import Resizer from "./components/common/Resizer.svelte";
   import CommandPalette from "./components/dialogs/CommandPalette.svelte";
   import DialogHost from "./components/dialogs/DialogHost.svelte";
+  import BibEntryDialog from "./components/dialogs/BibEntryDialog.svelte";
   import UpdateDialog from "./components/dialogs/UpdateDialog.svelte";
   import WhatsNew from "./components/dialogs/WhatsNew.svelte";
   import { updates } from "$lib/state/updates.svelte";
@@ -270,6 +271,7 @@
 
 <ContextMenu />
 <DialogHost />
+<BibEntryDialog />
 <WhatsNew />
 <UpdateDialog />
 <Toasts />

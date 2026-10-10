@@ -141,6 +141,7 @@ export const actions: Action[] = [
   { id: "view.symbols", title: "action.showSymbols", category: "view", icon: "sigma", run: () => ui.showSidebar("symbols") },
   { id: "view.snippets", title: "action.showSnippets", category: "view", icon: "snippets", run: () => ui.showSidebar("snippets") },
   { id: "view.commands", title: "action.showCommands", category: "view", icon: "macro", run: () => ui.showSidebar("commands") },
+  { id: "view.bibliography", title: "action.showBibliography", category: "view", icon: "book", run: () => ui.showSidebar("bibliography") },
   { id: "view.packages", title: "action.showPackages", category: "view", icon: "packages", run: () => ui.showSidebar("packages") },
   { id: "view.templates", title: "action.showTemplates", category: "view", icon: "template", when: () => hasProject() && !project.info?.light, run: () => ui.showSidebar("templates") },
   { id: "view.formatBar", title: "action.toggleFormatBar", category: "view", icon: "type", run: () => ui.toggleFormatBar() },

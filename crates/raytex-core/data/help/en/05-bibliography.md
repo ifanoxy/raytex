@@ -55,6 +55,18 @@ Use `natbib` for `\citet` / `\citep`. Journals often require their own `.bst` fi
 - Hover a key to see the complete reference.
 - The **Structure › References** view lists every entry; a click inserts `\cite{…}`.
 
+## The Bibliography panel
+
+The book icon, in the bar on the left, opens the bibliography of the project: every entry of your `.bib` files with its key, its title, its authors and the number of times it is cited.
+
+- **Cite**: the quote of an entry writes `\cite{key}` at the cursor.
+- **Edit**: a click opens the entry in a form. The usual fields of its kind are in sight, the others behind *Advanced*; what is written in the file is kept as it is (braces, macros such as `jan`).
+- **Add**: the `+` opens an empty form. Paste a DOI, an arXiv identifier or a BibTeX entry copied from a site, then *Fill in*: the fields are filled and a key is suggested (`knuth1984`). For a DOI or an arXiv identifier, RayTeX asks doi.org or arxiv.org for the reference, only when you click *Fill in*.
+- **Not cited**: the entries the document cites nowhere (none with `\nocite{*}`).
+- **To check**: duplicate keys, and works entered twice (same DOI, or same title and year).
+
+In a project without a `.bib` file, the first entry makes `references.bib` next to the main file; the document still has to name it (`\addbibresource{references.bib}` or `\bibliography{references}`, see above).
+
 ## Building
 
 RayTeX detects `biber` or `bibtex` by itself and only reruns them when citations or the `.bib` changed. Biber and BibTeX errors (missing field, duplicate key…) appear in the **Problems** panel with the offending `.bib` line.

@@ -5,6 +5,7 @@
   import FileTree from "../sidebar/FileTree.svelte";
   import Outline from "../sidebar/Outline.svelte";
   import Packages from "../sidebar/Packages.svelte";
+  import Bibliography from "../sidebar/Bibliography.svelte";
   import Commands from "../sidebar/Commands.svelte";
   import Search from "../sidebar/Search.svelte";
   import Snippets from "../sidebar/Snippets.svelte";
@@ -29,6 +30,8 @@
   <Snippets />
 {:else if ui.sidebar === "commands"}
   <Commands />
+{:else if ui.sidebar === "bibliography"}
+  <Bibliography />
 {:else if ui.sidebar === "packages"}
   <Packages />
 {/if}

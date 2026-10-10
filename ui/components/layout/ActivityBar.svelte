@@ -17,6 +17,7 @@
     { id: "symbols", icon: "sigma", title: "sidebar.symbols", action: "view.symbols" },
     { id: "snippets", icon: "at", title: "sidebar.snippets", action: "view.snippets" },
     { id: "commands", icon: "macro", title: "sidebar.commands", action: "view.commands" },
+    { id: "bibliography", icon: "book", title: "sidebar.bibliography", action: "view.bibliography" },
     { id: "packages", icon: "packages", title: "sidebar.packages", action: "view.packages" },
   ];
 

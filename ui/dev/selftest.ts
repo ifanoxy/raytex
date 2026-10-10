@@ -1392,6 +1392,72 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     await until(() => project.findNode(`${root}/annexes/chap1.tex`) === null, 5_000, "deleted");
     check("deleted together", !(await ipc.pathExists(`${root}/annexes/chap1.tex`)) && !(await ipc.pathExists(`${root}/annexes/chap2.tex`)));
 
+    // ------------------------------------------------- bibliography
+    // An entry written in the form makes the .bib file of a project that has
+    // none; it is listed with its fields as written, changed, then removed.
+    {
+      const mainFile = project.info!.main!;
+      ui.showSidebar("bibliography");
+      await until(() => !!document.querySelector(".bib-list"), 5_000, "bibliography view");
+      document.querySelector<HTMLButtonElement>(".panel-header .icon-btn")!.click();
+      await until(() => !!document.querySelector(".bib-entry"), 3_000, "entry form");
+      const form = () => document.querySelector<HTMLElement>(".bib-entry")!;
+      const typeIn = (el: HTMLInputElement, text: string) => {
+        el.value = text;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+      };
+      const fields = () => [...form().querySelectorAll<HTMLInputElement>(".body > .field input")];
+      typeIn(fields()[0], "Knuth, Donald E.");
+      typeIn(fields()[1], "The {\\TeX}book");
+      typeIn(fields()[2], "TUGboat");
+      typeIn(fields()[3], "1984");
+      // No key typed: it is made from the author and the year.
+      form().querySelector<HTMLButtonElement>(".buttons .btn.primary")!.click();
+      await until(() => !document.querySelector(".bib-entry"), 8_000, "entry saved");
+      const entries = async () => (await ipc.bibliography(mainFile)).entries;
+      let listed = await entries();
+      for (let i = 0; i < 50 && !listed.length; i++) {
+        await pause(100);
+        listed = await entries();
+      }
+      const bibFile = listed[0]?.file ?? "";
+      check(
+        "entry written in a new .bib file",
+        listed.length === 1 && listed[0].key === "knuth1984" && listed[0].kind === "article" && listed[0].title === "The TeXbook" && listed[0].cited === 0 && basename(bibFile) === "references.bib",
+        JSON.stringify(listed).slice(0, 300),
+      );
+      check("fields kept as written", (editor.textOf(bibFile) ?? "").includes("title = {The {\\TeX}book},"), editor.textOf(bibFile));
+      await until(() => !!document.querySelector(".bib-list .item .main"), 5_000, "entry in the list");
+      await scene("bibliography");
+      // A click on the entry opens it in the form; its year is changed.
+      document.querySelector<HTMLButtonElement>(".bib-list .item .main")!.click();
+      await until(() => !!document.querySelector(".bib-entry"), 3_000, "entry form again");
+      check("form filled from the file", form().querySelector<HTMLInputElement>(".key")!.value === "knuth1984" && fields()[1].value === "The {\\TeX}book", fields().map((f) => f.value).join(" | "));
+      typeIn(fields()[3], "1986");
+      form().querySelector<HTMLButtonElement>(".buttons .btn.primary")!.click();
+      await until(() => !document.querySelector(".bib-entry"), 8_000, "entry changed");
+      listed = await entries();
+      for (let i = 0; i < 50 && listed[0]?.year !== "1986"; i++) {
+        await pause(100);
+        listed = await entries();
+      }
+      check("entry changed in place", listed.length === 1 && listed[0].year === "1986" && listed[0].key === "knuth1984", JSON.stringify(listed).slice(0, 200));
+      // Removed from its form, after a confirmation.
+      await until(() => !!document.querySelector(".bib-list .item .main"), 5_000, "entry in the list");
+      document.querySelector<HTMLButtonElement>(".bib-list .item .main")!.click();
+      await until(() => !!document.querySelector(".bib-entry .btn.link.danger"), 3_000, "delete button");
+      document.querySelector<HTMLButtonElement>(".bib-entry .btn.link.danger")!.click();
+      await until(() => !!document.querySelector('[role="alertdialog"] .btn.primary'), 3_000, "confirmation of the deletion");
+      document.querySelector<HTMLButtonElement>('[role="alertdialog"] .btn.primary')!.click();
+      listed = await entries();
+      for (let i = 0; i < 50 && listed.length; i++) {
+        await pause(100);
+        listed = await entries();
+      }
+      check("entry removed", listed.length === 0 && !document.querySelector(".bib-entry"), JSON.stringify(listed).slice(0, 200));
+      ui.showSidebar("files");
+    }
+
     // The formatting bar at the size of the window.
     await editor.open(project.info!.main!);
     await pause(500);

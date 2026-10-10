@@ -31,6 +31,7 @@
 
 pub mod auxfile;
 pub mod bib;
+pub mod bibliography;
 pub mod build;
 pub mod completion;
 pub mod custom;

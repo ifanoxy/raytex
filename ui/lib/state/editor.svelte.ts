@@ -1222,6 +1222,21 @@ class EditorStore {
     return root;
   }
 
+  /**
+   * Changes a text file of the project through its document (opened in the
+   * background when it is not): the change can be undone and is saved like
+   * any other. `compute` gives the new text, or null to leave the file.
+   */
+  async rewrite(path: string, compute: (text: string) => Promise<string | null> | string | null): Promise<boolean> {
+    if (!this.model(path) && !(await this.open(path, { background: true, focus: false }))) return false;
+    const before = this.stateOf(path)!.doc.toString();
+    const after = await compute(before);
+    const m = this.model(path);
+    if (after === null || !m) return false;
+    if (after !== before) this.applyTo(m, { changes: minimalChange(before, after), userEvent: "input.rewrite" });
+    return true;
+  }
+
   /** Adds `\usepackage[options]{pkg}` to the preamble of the root document. */
   async addPackage(pkg: string, view: EditorView | null = this.view, quiet = false, options?: string): Promise<boolean> {
     const current = view?.state.facet(docPath) ?? this.active;

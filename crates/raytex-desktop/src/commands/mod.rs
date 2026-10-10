@@ -5,6 +5,7 @@
 //! [`blocking`]. Errors are returned as human-readable strings.
 
 pub mod app;
+pub mod bibliography;
 pub mod build;
 pub mod files;
 pub mod help;

@@ -4,6 +4,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type * as T from "./types";
+import type { BibDraft, BibField, Bibliography } from "./bibliography";
 import type { CommandDraft, CommandSpec, CustomCommand } from "./commands";
 import type { PagePreview } from "./layout";
 import type { ShapeSet } from "./tikz/model";
@@ -83,6 +84,18 @@ export const mathAt = (path: string, line: number, character: number) => call<T.
 export const mathMacros = (path: string) => call<Record<string, string>>("math_macros", { path });
 /** The commands and environments the project of `path` defines. */
 export const customCommands = (path: string) => call<CustomCommand[]>("custom_commands", { path });
+/** The entries of the `.bib` files of the project of a file, with how much each is cited. */
+export const bibliography = (path: string) => call<Bibliography>("bibliography", { path });
+/** The text of a `.bib` file with an entry written in place of `replaces`, or at the end. */
+export const bibWrite = (text: string, replaces: string | null, entry: BibDraft) => call<string>("bib_write", { text, replaces, kind: entry.kind, key: entry.key, fields: entry.fields });
+/** The text of a `.bib` file without an entry (null when it is not there). */
+export const bibRemove = (text: string, key: string) => call<string | null>("bib_remove", { text, key });
+/** The entries of a piece of BibTeX. */
+export const bibDrafts = (text: string) => call<BibDraft[]>("bib_drafts", { text });
+/** A key made from the author and the year, not one of `taken`. */
+export const bibKey = (fields: BibField[], taken: string[]) => call<string>("bib_key", { fields, taken });
+/** The entry of a DOI or of an arXiv preprint (the only call here that uses the network). */
+export const bibFetch = (source: "doi" | "arxiv", id: string) => call<BibDraft[]>("bib_fetch", { source, id });
 /** A new definition, written and checked against the project of `path`. */
 export const draftCommand = (path: string, spec: CommandSpec) => call<CommandDraft>("draft_command", { path, spec });
 export const structure = (path: string) => call<T.Structure | null>("structure", { path });

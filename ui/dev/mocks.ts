@@ -14,6 +14,39 @@ const ROOT = "/Users/demo/Documents/memoire";
 const p = (rel: string) => `${ROOT}/${rel}`;
 
 /** The definitions of the demonstration project, read like the engine does (roughly). */
+/** The bibliography of the demo project, as the engine gives it. */
+function mockBibliography() {
+  const entry = (line: number, key: string, kind: string, authors: string, year: string, title: string, venue: string, cited: number, sameAs: string | null = null) => ({
+    file: p("refs.bib"),
+    line,
+    key,
+    kind,
+    authors,
+    year,
+    title,
+    venue,
+    fields: [
+      { name: "author", value: authors, raw: false },
+      { name: "title", value: title, raw: false },
+      { name: kind === "article" ? "journal" : "publisher", value: venue, raw: false },
+      { name: "year", value: year, raw: true },
+    ],
+    cited,
+    sameKey: false,
+    sameAs,
+  });
+  return {
+    files: [p("refs.bib")],
+    entries: [
+      entry(1, "fourier1822", "book", "Fourier", "1822", "Théorie analytique de la chaleur", "Firmin Didot", 3),
+      entry(8, "crank1947", "article", "Crank & Nicolson", "1947", "A practical method for numerical evaluation of solutions of partial differential equations of the heat-conduction type", "Proc. Cambridge Philos. Soc.", 1),
+      entry(17, "evans2010", "book", "Evans", "2010", "Partial Differential Equations", "American Mathematical Society", 0),
+      entry(24, "fourier1822b", "book", "Fourier", "1822", "Théorie analytique de la chaleur", "Didot", 0, "fourier1822"),
+    ],
+    allCited: false,
+  };
+}
+
 function customCommands(): CustomCommand[] {
   const out: CustomCommand[] = [];
   for (const [file, text] of Object.entries(files)) {
@@ -638,6 +671,31 @@ export function installMocks() {
           return { "\\R": "\\mathbb{R}" };
         case "custom_commands":
           return customCommands();
+        case "bibliography":
+          return mockBibliography();
+        case "bib_key":
+          return "lagrange1788";
+        case "bib_drafts":
+        case "bib_fetch":
+          await new Promise((r) => setTimeout(r, 400));
+          return [
+            {
+              kind: "book",
+              key: "Lagrange_1788",
+              fields: [
+                { name: "author", value: "Lagrange, Joseph-Louis", raw: false },
+                { name: "title", value: "Mécanique analytique", raw: false },
+                { name: "publisher", value: "Veuve Desaint", raw: false },
+                { name: "year", value: "1788", raw: true },
+              ],
+            },
+          ];
+        case "bib_write": {
+          const fields = (a.fields as { name: string; value: string; raw: boolean }[]).map((f) => `  ${f.name} = ${f.raw ? f.value : `{${f.value}}`},`).join("\n");
+          return `${String(a.text).trimEnd()}\n\n@${a.kind}{${a.key},\n${fields}\n}\n`;
+        }
+        case "bib_remove":
+          return String(a.text);
         case "draft_command":
           return draftCommand(a.spec as CommandSpec);
         case "structure":
