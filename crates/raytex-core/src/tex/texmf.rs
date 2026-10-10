@@ -94,6 +94,17 @@ impl TexmfIndex {
         index
     }
 
+    /// An index that holds `names`, for tests of what is installed.
+    #[cfg(test)]
+    pub(crate) fn of(names: &[&str]) -> Self {
+        let mut index = Self::default();
+        index.dirs.push(PathBuf::from("/texmf/tex"));
+        for name in names {
+            index.files.insert((*name).into(), 0);
+        }
+        index
+    }
+
     /// Number of indexed files.
     pub fn len(&self) -> usize {
         self.files.len()

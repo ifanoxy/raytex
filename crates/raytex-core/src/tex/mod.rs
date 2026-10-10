@@ -5,6 +5,7 @@
 pub mod ctan;
 pub mod discovery;
 pub mod manager;
+pub mod miktex;
 pub mod packages;
 pub mod texmf;
 

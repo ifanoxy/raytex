@@ -1180,6 +1180,7 @@ const fr: Record<keyof typeof en, string> = {
   "files.noOtherFolder": "Aucun autre dossier dans le projet",
   "install.missingPackages": "Packages utilisés mais non installés : {names}",
   "install.installThem": "Installer",
+  "install.babelLanguage": "la langue {name} de babel",
   "setup.miktexAutoHint": "Activé : MiKTeX télécharge les packages manquants pendant la compilation, sans rien demander. Désactivé : RayTeX les liste et propose de les installer. La fenêtre de MiKTeX n'apparaît jamais.",
   "sidebar.commands": "Commandes du projet",
   "action.showCommands": "Afficher les commandes du projet",

@@ -1178,6 +1178,7 @@ const en = {
   "files.noOtherFolder": "No other folder in the project",
   "install.missingPackages": "Packages used but not installed: {names}",
   "install.installThem": "Install",
+  "install.babelLanguage": "the {name} language of babel",
   "setup.miktexAutoHint": "On: MiKTeX downloads the missing packages during the build, without asking. Off: RayTeX lists them and offers to install them. MiKTeX's own window never appears.",
   "sidebar.commands": "Commands of the project",
   "action.showCommands": "Show the commands of the project",

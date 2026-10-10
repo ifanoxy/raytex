@@ -10,6 +10,17 @@
 
 The package is not installed. Click **Install** in the Problems panel, or look it up in *Packages › CTAN*. With MiKTeX, missing packages can be installed automatically while building.
 
+## MiKTeX: a file you never asked for is not found
+
+MiKTeX comes with few packages and downloads the others while it compiles. When it cannot (no connection, automatic installation turned off, a repository it cannot read), the build stops on a file that is "not found", often one you never wrote:
+
+- with `\usepackage[french]{babel}`, it is `french.ldf` (babel then says *Unknown option 'french'*) or `scalefnt.sty`, which French for babel loads by itself;
+- with another language, it is its `.ldf` file.
+
+RayTeX says so before the build when it is a language of babel, and in every case the problem carries the **Install** button. A file seldom has the name of its package (`scalefnt.sty` is in `carlisle`, `french.ldf` in `babel-french`, `tikz.sty` in `pgf`): RayTeX reads the real name in the database of MiKTeX and shows you the command before running it. Build again; if another file is missing, the same button comes back for it.
+
+If the installation fails too: check the connection, then run *TeX › Update all packages* (MiKTeX itself reports as a major issue that it has never looked for updates), and try again. Automatic installation is set in *Settings › TeX distribution*.
+
 ## "Undefined control sequence"
 
 The reported command does not exist: a typo (`\textbff`), or a package that is not loaded. RayTeX suggests the closest command or the package to add.

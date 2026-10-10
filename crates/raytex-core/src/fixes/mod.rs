@@ -7,6 +7,14 @@
 
 mod cause;
 mod data;
+
+/// The file babel reads for a language it knows (`french` → `french.ldf`):
+/// the file of the option, when the option is the name of a language.
+pub(crate) fn babel_language_file(option: &str) -> Option<String> {
+    data::BABEL_LANGUAGES
+        .contains(&option)
+        .then(|| format!("{option}.ldf"))
+}
 pub(crate) mod known;
 pub(crate) mod latex;
 mod numeric;

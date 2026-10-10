@@ -192,17 +192,22 @@ fn system_install(tool: &str, files: &[String]) -> Option<Plan> {
 
 /// Maps missing files to package names of the distribution.
 ///
-/// TeX Live: `tlmgr search --global --file` (needs the network). MiKTeX
-/// and fallback: the file name without extension, which is the package
-/// name for the vast majority of packages.
+/// TeX Live: `tlmgr search --global --file` (needs the network). MiKTeX:
+/// the manifests of its repository, read on disk (see [`super::miktex`]).
+/// When neither names the file, the file name without its extension: it is
+/// the name of the package for most packages.
 pub fn resolve_packages(dist: &Distribution, files: &[String]) -> Vec<String> {
+    let known = match dist.package_manager {
+        PackageManager::Miktex { .. } => super::miktex::packages_of_files(dist, files),
+        _ => vec![None; files.len()],
+    };
     let mut out = Vec::new();
-    for file in files {
+    for (file, known) in files.iter().zip(known) {
         let stem = file
             .rsplit_once('.')
             .map_or(file.as_str(), |(s, _)| s)
             .to_owned();
-        let mut found = None;
+        let mut found = known;
         if matches!(dist.package_manager, PackageManager::Tlmgr { .. }) {
             let cmd = dist
                 .cmd("tlmgr")

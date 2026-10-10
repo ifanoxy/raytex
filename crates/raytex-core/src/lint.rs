@@ -1042,6 +1042,31 @@ impl Linter<'_> {
                     });
                 }
             }
+            // A language of babel whose file is not installed: MiKTeX has
+            // few at first. babel would call the option unknown, and what
+            // follows in its log says nothing of an installation.
+            for p in doc.index.packages.iter().filter(|p| p.name == "babel") {
+                for option in &p.options {
+                    let Some(file) = crate::fixes::babel_language_file(option) else {
+                        continue;
+                    };
+                    if index.contains(&file) || self.ws.root_dir.join(&file).exists() {
+                        continue;
+                    }
+                    let at = doc.text[p.command_span.clone()]
+                        .find(option.as_str())
+                        .map_or(p.span.clone(), |i| {
+                            p.command_span.start + i..p.command_span.start + i + option.len()
+                        });
+                    let msg = format!(
+                        "{} « {option} » {}",
+                        self.t("La langue", "The language"),
+                        self.t("de babel n'est pas installée", "of babel is not installed")
+                    );
+                    let d = self.push(Severity::Warning, Source::Lint, "missing-package", &at, msg);
+                    d.fixes.push(Fix::InstallPackage { file });
+                }
+            }
             if let Some(c) = &doc.index.document_class {
                 let local = self.ws.root_dir.join(format!("{}.cls", c.name));
                 if !index.contains(&format!("{}.cls", c.name)) && !local.exists() {
@@ -2092,6 +2117,35 @@ mod tests {
             .into_iter()
             .map(|d| (d.code.unwrap_or_default(), d.message))
             .collect()
+    }
+
+    /// A language of babel that the distribution does not have (MiKTeX
+    /// installs few at first) is said before the build, with its file to
+    /// install; a language that is there, an option that is not a language
+    /// and a name babel does not know are left alone.
+    #[test]
+    fn a_language_of_babel_that_is_not_installed() {
+        let index = TexmfIndex::of(&["article.cls", "babel.sty", "english.ldf"]);
+        let found = lint_text(
+            &[(
+                "main.tex",
+                "\\documentclass{article}\n\\usepackage[english, shorthands=off, frensh, main=french, french]{babel}\n\\begin{document}\nTexte.\n\\end{document}\n",
+            )],
+            "main.tex",
+            LintOptions {
+                installed: Some(&index),
+                ..LintOptions::default()
+            },
+        );
+        let missing: Vec<&str> = found
+            .iter()
+            .filter(|(code, _)| code == "missing-package")
+            .map(|(_, message)| message.as_str())
+            .collect();
+        assert_eq!(
+            missing,
+            ["The language « french » of babel is not installed"]
+        );
     }
 
     #[test]

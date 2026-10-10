@@ -10,6 +10,17 @@
 
 Le package n'est pas installé. Cliquez sur **Installer** dans le panneau Problèmes, ou cherchez-le dans *Packages › CTAN*. Avec MiKTeX, les packages manquants peuvent s'installer automatiquement pendant la compilation.
 
+## MiKTeX : un fichier que vous n'avez pas demandé est introuvable
+
+MiKTeX s'installe avec peu de packages et télécharge les autres pendant la compilation. Quand il ne le peut pas (pas de connexion, installation automatique coupée, dépôt qu'il n'arrive pas à lire), la compilation s'arrête sur un fichier « introuvable », souvent un fichier que vous n'avez jamais écrit :
+
+- avec `\usepackage[french]{babel}`, c'est `french.ldf` (babel dit alors *Unknown option 'french'*) ou `scalefnt.sty`, que le français de babel charge de son côté ;
+- avec une autre langue, c'est son fichier `.ldf`.
+
+RayTeX le signale avant la compilation quand il s'agit d'une langue de babel, et dans tous les cas le problème porte le bouton **Installer**. Le fichier porte rarement le nom de son package (`scalefnt.sty` est dans `carlisle`, `french.ldf` dans `babel-french`, `tikz.sty` dans `pgf`) : RayTeX lit le vrai nom dans la base de MiKTeX et vous montre la commande avant de la lancer. Recompilez ensuite ; s'il manque encore un fichier, le même bouton revient pour lui.
+
+Si l'installation échoue aussi : vérifiez la connexion, puis lancez *TeX › Mettre à jour tous les packages* (MiKTeX signale lui-même comme un problème majeur de n'avoir encore jamais cherché de mises à jour), et réessayez. L'installation automatique se règle dans *Réglages › Distribution TeX*.
+
 ## « Undefined control sequence »
 
 La commande signalée n'existe pas : faute de frappe (`\textbff`), ou package non chargé. RayTeX propose la commande la plus proche ou le package à ajouter.

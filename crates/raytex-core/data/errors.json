@@ -199,8 +199,8 @@
       "fr": "LaTeX ne trouve pas ce fichier, ni dans le dossier du projet ni dans la distribution TeX."
     },
     "more": {
-      "en": "For a package (`.sty`, `.cls`): it is not installed, or its name is misspelled. For a file of your own: check the path, relative to the main file, and the extension.",
-      "fr": "Pour un package (`.sty`, `.cls`) : il n'est pas installé, ou son nom est mal écrit. Pour un de vos fichiers : vérifiez le chemin, relatif au fichier principal, et l'extension."
+      "en": "For a package (`.sty`, `.cls`): it is not installed, or its name is misspelled. It may be a file you never wrote, loaded by another package (`scalefnt.sty` for French with babel): MiKTeX, which downloads packages as it compiles, could not get it. For a file of your own: check the path, relative to the main file, and the extension.",
+      "fr": "Pour un package (`.sty`, `.cls`) : il n'est pas installé, ou son nom est mal écrit. Ce peut être un fichier que vous n'avez jamais écrit, chargé par un autre package (`scalefnt.sty` pour le français de babel) : MiKTeX, qui télécharge les packages en compilant, n'a pas pu l'obtenir. Pour un de vos fichiers : vérifiez le chemin, relatif au fichier principal, et l'extension."
     }
   },
   {
@@ -671,8 +671,8 @@
       "fr": "Langue inconnue pour babel"
     },
     "explanation": {
-      "en": "babel does not know this language name, or the files of this language are not installed.",
-      "fr": "babel ne connaît pas ce nom de langue, ou les fichiers de cette langue ne sont pas installés."
+      "en": "babel does not know this language name, or the files of this language are not installed: MiKTeX has few languages at first.",
+      "fr": "babel ne connaît pas ce nom de langue, ou les fichiers de cette langue ne sont pas installés : MiKTeX en a peu au départ."
     }
   },
   {

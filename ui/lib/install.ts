@@ -75,7 +75,8 @@ export function offerMissingPackages() {
   const fresh = missingPackageFiles().filter((f) => !offered.has(f));
   if (!fresh.length) return;
   fresh.forEach((f) => offered.add(f));
-  const names = fresh.map((f) => f.replace(/\.(sty|cls)$/, "")).join(", ");
+  // A package by its name, a language of babel as one (its file is `french.ldf`).
+  const names = fresh.map((f) => (f.endsWith(".ldf") ? t("install.babelLanguage", { name: f.slice(0, -4) }) : f.replace(/\.(sty|cls)$/, ""))).join(", ");
   ui.toast("warning", t("install.missingPackages", { names }), {
     timeout: 0,
     action: {

@@ -4180,6 +4180,12 @@ fn babel_language(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
         (m[1].to_owned(), m[2].to_owned())
     } else if let Some(m) = BABEL_UNKNOWN.captures(&d.message) {
         let old = m.get(1).or(m.get(2)).unwrap().as_str().to_owned();
+        // A language babel knows, rightly written: its file is not installed
+        // (MiKTeX has few languages at first, and installs the others while
+        // it compiles only when it is allowed to and can).
+        if let Some(file) = super::babel_language_file(&old) {
+            return babel_not_installed(d, s, lang, &old, file);
+        }
         // Old names first (recent babel no longer knows `francais`), then
         // the closest known language.
         let renamed = BABEL_OLD_NAMES
@@ -4245,6 +4251,57 @@ fn babel_language(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fi
         ),
         list,
     )
+}
+
+/// babel was asked for a language it knows, and did not find its file: the
+/// problem goes on the name of the language, with the installation of the
+/// file. It is said not to be installed when the files of the distribution
+/// are known and do not hold it.
+fn babel_not_installed(
+    d: &mut Diagnostic,
+    s: &mut Sources<'_>,
+    lang: Lang,
+    language: &str,
+    file: String,
+) -> Vec<Fix> {
+    if let Some(root) = s.root() {
+        let span = root
+            .index
+            .packages
+            .iter()
+            .filter(|p| p.name == "babel" && p.options.iter().any(|o| o == language))
+            .map(|p| p.command_span.clone())
+            .chain(
+                root.index
+                    .document_class
+                    .iter()
+                    .filter(|c| c.options.iter().any(|o| o == language))
+                    .map(|c| root.line(root.line_of(c.span.start)).0),
+            )
+            .find_map(|span| {
+                let i = root.text[span.clone()].find(language)?;
+                Some(span.start + i..span.start + i + language.len())
+            });
+        if let Some(span) = span {
+            place(d, &root, span);
+        }
+    }
+    let missing = s
+        .analyzer()
+        .is_some_and(|a| !a.index().is_empty() && !a.index().contains(&file));
+    if missing {
+        advise(
+            d,
+            lang,
+            &format!(
+                "babel connaît la langue `{language}`, mais son fichier `{file}` n'est pas installé dans votre distribution TeX."
+            ),
+            &format!(
+                "babel knows the `{language}` language, but its file `{file}` is not installed in your TeX distribution."
+            ),
+        );
+    }
+    vec![Fix::InstallPackage { file }]
 }
 
 fn font_size(s: &mut Sources<'_>) -> Vec<Fix> {
