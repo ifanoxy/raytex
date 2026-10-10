@@ -184,8 +184,7 @@ difficile\footnote{Réputation méritée.}.
     return `
 <header class="titlepage">
   <button type="button" class="ray-hero" data-ray aria-label="${T("The ray of RayTeX", "La raie de RayTeX")}">${ray()}</button>
-  <h1 class="doc-title" data-reveal>Ray<span class="texlogo">T<span>e</span>X</span></h1>
-  ${tex.stamp(T("Open source", "Open source"), { tilt: -11, cls: "stamp-title" })}
+  <div class="title-line"><h1 class="doc-title" data-reveal>Ray<span class="texlogo">T<span>e</span>X</span></h1>${tex.stamp(T("Open source", "Open source"), { tilt: -11, cls: "stamp-title" })}</div>
   <p class="doc-subtitle" data-reveal>${T(`The ${tex.hl("next-generation", "violet")} LaTeX IDE`, `L'IDE LaTeX ${tex.hl("nouvelle génération", "violet")}`)}${tex.star()}</p>
   <p class="doc-author" data-reveal>${T("Open source, free, for Windows, macOS and Linux", "Open source, gratuit, pour Windows, macOS et Linux")}</p>
   <p class="doc-date" data-reveal><span data-today title="\\today">${T("October 2026", "octobre 2026")}</span></p>
@@ -199,9 +198,8 @@ difficile\footnote{Réputation méritée.}.
   </div>
 
   <div class="cta" data-reveal>
-    <a class="fbox-link big solid" href="${url("download/")}" data-download-primary>${icon("download", 18)}<span data-download-label>${T("Download RayTeX", "Télécharger RayTeX")}</span></a>
+    <span class="cta-button"><a class="fbox-link big solid" href="${url("download/")}" data-download-primary>${icon("download", 18)}<span data-download-label>${T("Download RayTeX", "Télécharger RayTeX")}</span></a>${tex.note(T("free, forever", "gratuit, pour toujours"), { arrow: "left", tilt: -4, color: "green" })}</span>
     <p class="cta-meta"><span data-download-meta>${T("MIT or Apache 2.0 · no account · no telemetry", "MIT ou Apache 2.0 · sans compte · sans télémétrie")}</span> · <a href="${url("download/")}">${T("other systems", "autres systèmes")}</a> · <a href="${GITHUB}">GitHub</a></p>
-    ${tex.note(T("free, forever", "gratuit, pour toujours"), { arrow: "left", tilt: -4, color: "green" })}
   </div>
 </header>
 
@@ -245,7 +243,7 @@ ${tex.theorem(
     `Prenons le message que LaTeX donne pour une faute de frappe. ${tex.listing("! Undefined control sequence.\nl.7 Du texte en \\textbff{gras}")} RayTeX lit le journal, trouve la commande mal orthographiée et propose ${tex.fix("\\textbff", "\\textbf")} : un clic, ou <kbd>Alt</kbd>+<kbd>Entrée</kbd>. Le même raisonnement vaut pour environ 110 messages de LaTeX, des packages, de BibTeX et de Biber.`,
   ),
 )}
-${tex.note(T("click the little square ;)", "cliquez sur le petit carré ;)"), { arrow: "up", tilt: -3 })}
+${tex.note(T("click the little square ;)", "cliquez sur le petit carré ;)"), { arrow: "corner", tilt: -3 })}
 ${tex.checklist([
   T("misspelt commands, environments, labels and citation keys;", "commandes, environnements, labels et clés de citation mal orthographiés ;"),
   T("missing packages added, or installed with the right tool;", "packages manquants ajoutés, ou installés avec le bon outil ;"),

@@ -108,6 +108,8 @@ export function texContext(lang) {
         left: '<path d="M70 8 C 48 4, 24 10, 6 26 M6 26 l 3 -12 M6 26 l 12 -2"/>',
         down: '<path d="M30 4 C 36 18, 34 30, 24 44 M24 44 l 0 -12 M24 44 l 10 -6"/>',
         up: '<path d="M24 44 C 34 30, 34 16, 26 4 M26 4 l -8 9 M26 4 l 10 6"/>',
+        // Up and to the left: to what ends the block above, at the edge of the text.
+        corner: '<path d="M70 44 C 62 20, 38 8, 8 12 M8 12 l 13 -7 M8 12 l 11 8"/>',
         none: "",
       };
       const svg = arrows[arrow] ? `<svg class="note-arrow arrow-${arrow}" viewBox="0 0 76 48" aria-hidden="true"><g class="draw">${arrows[arrow]}</g></svg>` : "";

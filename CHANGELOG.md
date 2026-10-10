@@ -4,6 +4,12 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- **Website**, fixed:
+  - A phone or a computer in French that opened the English address (and the reverse) saw the opening start in the wrong language, be cut by the page in its own language, and never played again: the page being left counted the visit. A page left for its other language now shows nothing, starts nothing and plays no page turn; the opening plays on the page the reader arrives on.
+  - In Safari (every browser of an iPhone), the logo and the screenshots could be missing after going from one language to the other, or from the title page to another page: their addresses were read while the document still had the address of the page it left. The address changes first, and the pictures of a page carry their whole address.
+  - Words written by hand that did not sit on what they point at: the word next to a download button (*free, forever*, *your turn!*) was placed from the middle of the sheet, so its arrow ran over the button when the label was long (*Télécharger pour macOS*); it holds to the button now. The arrow of *click the little square* pointed beside the square. The *Open source* stamp of the title page was placed by a share of the height of the page, and lay over the title on a phone; it holds to the title.
+  - French spaces before colons in three lines of the English guide.
+
 ## [0.4.2] — 2026-10-08
 
 - **A whiteboard that is easier to draw on** (TikZ studio):

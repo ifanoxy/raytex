@@ -748,10 +748,17 @@ main:focus {
   color: var(--ink-soft);
   text-align: center !important;
 }
-.cta > .marginnote {
+/* A download button and the word written next to it by hand: the word
+   holds to the button, whose width changes with its label (the language,
+   the system of the reader). */
+.cta-button {
+  position: relative;
+  display: inline-flex;
+}
+.cta-button > .marginnote {
   position: absolute;
-  left: calc(50% + 150px);
-  top: -14px;
+  left: calc(100% + 50px);
+  top: -9px;
   width: 170px;
   margin: 0;
   float: none;
@@ -777,8 +784,9 @@ main:focus {
 }
 .cta-hand {
   position: absolute;
-  right: calc(50% + 150px);
-  top: 4px;
+  right: calc(100% - 2px);
+  top: -30px;
+  width: max-content;
   display: flex;
   align-items: flex-end;
   gap: 2px;
@@ -1072,6 +1080,12 @@ main:focus {
   bottom: 100%;
   width: 42px;
 }
+.arrow-corner {
+  left: -44px;
+  top: -38px;
+  width: 54px;
+  height: 34px;
+}
 .js .marginnote[data-reveal] .hand {
   clip-path: inset(-20% 100% -20% -6%);
   transition: clip-path 1.4s var(--ease) 0.25s;
@@ -1254,10 +1268,17 @@ main:focus {
 .katex .hbox-green::before {
   background: var(--green);
 }
+/* The stamp of the title page holds to the title: next to it on a wide
+   sheet, above its end on a narrow one (never over its letters, wherever the
+   lines of the page break). */
+.title-line {
+  position: relative;
+  display: inline-block;
+}
 .stamp-title {
   position: absolute;
-  right: 11%;
-  top: 34%;
+  left: calc(100% + 34px);
+  top: 26%;
   --stamp-delay: 2.4s;
 }
 
@@ -3152,14 +3173,24 @@ html.arriving-book .paper {
     margin-top: 10px !important;
     transform: rotate(-1.5deg);
   }
-  .cta > .marginnote {
+  .stamp-title {
+    left: 60%;
+    top: auto;
+    bottom: calc(100% + 0.9em);
+  }
+  /* The word goes under the button and its line of details. */
+  .cta > .cta-button {
+    display: contents;
+  }
+  .cta-button > .marginnote {
     position: static;
+    order: 1;
     width: auto;
     border: 0;
     margin: 0;
     padding: 0;
   }
-  .cta > .marginnote .hand {
+  .cta-button > .marginnote .hand {
     text-align: center;
   }
 }
@@ -3280,6 +3311,9 @@ html.arriving-book .paper {
   .dl-main .fbox-link.big {
     width: calc(100% - 8px);
   }
+  .cta-end > .cta-button {
+    display: contents;
+  }
   .cta-hand {
     position: static;
   }
@@ -3306,8 +3340,6 @@ html.arriving-book .paper {
     font-size: 1.6rem;
   }
   .stamp-title {
-    right: 0;
-    top: 30%;
     font-size: 0.72rem;
   }
   .terminal {

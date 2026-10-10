@@ -120,7 +120,7 @@ const THEME_SCRIPT = `(function(){var t,d=document.documentElement;try{t=localSt
 // from the page number of the old one (kept by site.js when it goes).
 // Elsewhere site.js turns the old page, and this script makes the new one
 // arrive ("raytex-turn").
-const TURN_SCRIPT = `(function(){var d=document.documentElement,n=+d.dataset.pageno||0;try{if(n===1&&!sessionStorage.getItem("raytex-visited")&&!matchMedia("(prefers-reduced-motion: reduce)").matches)d.classList.add("opening")}catch(x){}addEventListener("pagereveal",function(e){if(!e.viewTransition)return;var f=0;try{f=+sessionStorage.getItem("raytex-from")||0}catch(x){}var c=n===1?"vt-book":f&&n&&n<f?"vt-back":"";if(!c)return;var p=document.getElementById("sheet");if(c==="vt-book"&&p)p.style.viewTransitionName="book";d.classList.add(c);var off=function(){d.classList.remove(c);if(p)p.style.viewTransitionName=""};e.viewTransition.finished.then(off,off)});try{var t=sessionStorage.getItem("raytex-turn");if(t){sessionStorage.removeItem("raytex-turn");d.classList.add(t==="back"?"arriving-back":t==="book"?"arriving-book":"arriving")}}catch(x){}})();`;
+const TURN_SCRIPT = `(function(){var d=document.documentElement,n=+d.dataset.pageno||0;if(d.classList.contains("redirecting"))return;try{if(n===1&&!sessionStorage.getItem("raytex-visited")&&!matchMedia("(prefers-reduced-motion: reduce)").matches)d.classList.add("opening")}catch(x){}addEventListener("pagereveal",function(e){if(!e.viewTransition)return;var f=0;try{f=+sessionStorage.getItem("raytex-from")||0}catch(x){}var c=n===1?"vt-book":f&&n&&n<f?"vt-back":"";if(!c)return;var p=document.getElementById("sheet");if(c==="vt-book"&&p)p.style.viewTransitionName="book";d.classList.add(c);var off=function(){d.classList.remove(c);if(p)p.style.viewTransitionName=""};e.viewTransition.finished.then(off,off)});try{var t=sessionStorage.getItem("raytex-turn");if(t){sessionStorage.removeItem("raytex-turn");d.classList.add(t==="back"?"arriving-back":t==="book"?"arriving-book":"arriving")}}catch(x){}})();`;
 
 // What is on screen when a page first shows is there at once, so that a page
 // never appears as a blank sheet; site.js still writes its handwriting.
@@ -134,10 +134,10 @@ export const FOLIO = { home: 1, features: 2, download: 3, releases: 4, guide: 5,
 /** The same, by the path of the page (site.js: which way the page turns). */
 const FOLIOS = Object.fromEntries(Object.entries(FOLIO).map(([id, n]) => [id === "home" ? "" : `${id}/`, n]));
 
-function head({ title, description, lang, canonical, alternates, rel, siteUrl, extra = "" }) {
+function head({ title, description, lang, canonical, alternates, rel, siteUrl, redirect = "" }) {
   return `<meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<script>${THEME_SCRIPT}${TURN_SCRIPT}</script>
+<script>${THEME_SCRIPT}${redirect}${TURN_SCRIPT}</script>
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}" />
 <meta name="theme-color" content="#fbfaf6" />
@@ -159,7 +159,6 @@ ${["lm-roman-regular", "lm-roman-bold", "lm-roman-italic", "lm-roman-caps", "lm-
 <link rel="stylesheet" href="${rel}assets/katex/katex.min.css" />
 <link rel="stylesheet" href="${rel}assets/site.css?v=${CSS_V}" />
 <link rel="expect" href="#sheet" blocking="render" />
-${extra}
 <script src="${rel}assets/site.js?v=${JS_V}" defer></script>`;
 }
 
@@ -178,8 +177,13 @@ export function page(p, { lang, path, siteUrl, version, prefix }) {
   const alternates = ["en", "fr"].map((l) => `<link rel="alternate" hreflang="${l}" href="${siteUrl}/${prefix(l)}${p.path}" />`).join("\n") + `\n<link rel="alternate" hreflang="x-default" href="${siteUrl}/${p.path}" />`;
   // Every page in the reader's language: the one chosen with the switch, or
   // else the first of the browser's languages that the site speaks (English
-  // otherwise). Robots stay on the page they asked for.
-  const redirect = `<script>(function(){try{if(/bot|crawl|spider|slurp|lighthouse|preview/i.test(navigator.userAgent))return;var w=localStorage.getItem("raytex-lang");if(!w){var l=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||"en"];w="en";for(var i=0;i<l.length;i++){var c=String(l[i]).slice(0,2).toLowerCase();if(c==="fr"||c==="en"){w=c;break}}}if(w!=="${lang}"&&(w==="fr"||w==="en"))location.replace("${url(p.path, other)}"+location.search+location.hash)}catch(e){}})();</script>`;
+  // otherwise). Robots stay on the page they asked for. A page left that way
+  // shows nothing and starts nothing ("redirecting": it stays hidden, the
+  // turn script and site.js leave the opening alone, and the browser plays no
+  // page turn from it): on a phone, where the other page takes a moment to
+  // come, the opening began in the wrong language, was cut, and was then
+  // counted as seen.
+  const redirect = `(function(){try{if(/bot|crawl|spider|slurp|lighthouse|preview/i.test(navigator.userAgent))return;var w=localStorage.getItem("raytex-lang");if(!w){var l=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||"en"];w="en";for(var i=0;i<l.length;i++){var c=String(l[i]).slice(0,2).toLowerCase();if(c==="fr"||c==="en"){w=c;break}}}if(w==="${lang}"||(w!=="fr"&&w!=="en"))return;var d=document.documentElement;d.classList.add("redirecting");d.style.visibility="hidden";setTimeout(function(){d.style.visibility=""},4000);addEventListener("pageswap",function(e){if(e.viewTransition)e.viewTransition.skipTransition()});location.replace("${url(p.path, other)}"+location.search+location.hash)}catch(e){}})();`;
   const body = p.body(ctx);
 
   const nav = NAV.map(([id, to, en, fr]) => `<a href="${url(to)}"${id === p.id ? ' aria-current="page"' : ""}>${T(en, fr)}</a>`).join("");
@@ -187,7 +191,7 @@ export function page(p, { lang, path, siteUrl, version, prefix }) {
   return `<!doctype html>
 <html lang="${lang}" data-pageno="${FOLIO[p.id] ?? ""}">
 <head>
-${head({ title, description, lang, canonical: `${siteUrl}/${path}`, alternates, rel, siteUrl, extra: redirect })}
+${head({ title, description, lang, canonical: `${siteUrl}/${path}`, alternates, rel, siteUrl, redirect })}
 </head>
 <body data-page="${p.id}">
 <a class="skip" href="#main">${T("Skip to content", "Aller au contenu")}</a>

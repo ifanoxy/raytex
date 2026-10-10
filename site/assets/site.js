@@ -138,6 +138,12 @@
     try {
       doc = new DOMParser().parseFromString(await pageText(to.href), "text/html");
       if (!doc.getElementById("sheet")) throw new Error("not a page of the site");
+      // The pictures of a page are written from its own folder. A browser may
+      // read them while this document still has the address of the page it
+      // leaves (Safari does): between two pages that are not at the same depth,
+      // as the two languages of a page are, the logo and the screenshots then
+      // pointed to files that do not exist. They get their whole address here.
+      for (const img of doc.querySelectorAll("img[src]")) img.setAttribute("src", new URL(img.getAttribute("src"), to.href).href);
     } catch {
       location.href = to.href;
       return;
@@ -163,9 +169,10 @@
         C = window.RAYTEX = JSON.parse(config[1]);
         T = C.texts;
       }
-      document.body.replaceWith(document.adoptNode(doc.body));
+      // The address first: what the new page holds is read from it.
       if (push) history.pushState({ raytex: true, y: 0 }, "", to.href);
       shown = to.pathname + to.search;
+      document.body.replaceWith(document.adoptNode(doc.body));
       const target = to.hash && document.getElementById(decodeURIComponent(to.hash.slice(1)));
       if (target) target.scrollIntoView({ behavior: "instant" });
       else scrollTo({ top: push ? 0 : history.state?.y || 0, behavior: "instant" });
@@ -210,8 +217,9 @@
   // (about 9 s; Skip or Escape ends it at once). Not in a tab opened in the
   // background.
   const introBox = $("[data-intro]");
+  // Not on a page being left for its other language: the visit starts there.
   try {
-    sessionStorage.setItem("raytex-visited", "1");
+    if (!root.classList.contains("redirecting")) sessionStorage.setItem("raytex-visited", "1");
   } catch {
     /* private mode */
   }
@@ -830,7 +838,7 @@
     const best = latest && env.os !== "mobile" && env.os !== "unknown" ? filesFor(latest, env.os, env.arch)[0] : null;
     for (const btn of $$("[data-download-primary]")) {
       const label = $("[data-download-label]", btn);
-      const meta = $("[data-download-meta]", btn.parentElement);
+      const meta = $("[data-download-meta]", btn.closest(".cta, .cta-end") || btn.parentElement);
       if (best) {
         btn.href = best.url;
         if (label) label.textContent = fill(T.downloadFor, { os: T.os[env.os] });

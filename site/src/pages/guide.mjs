@@ -91,9 +91,9 @@ ${tex.table(
 
 ${tex.sectionStar(T("See also", "Voir aussi"), "more")}
 ${tex.itemize([
-  `<a href="${url("features/")}">${T("Every feature", "Toutes les fonctionnalités")}</a> : ${T("images, TikZ studio, fonts, macros, projects (appendix A).", "images, studio TikZ, polices, macros, projets (annexe A).")}`,
-  `<a href="${url("faq/")}">${T("Frequently asked questions", "Questions fréquentes")}</a> : ${T("distributions, offline use, privacy, updates (appendix E).", "distributions, hors ligne, confidentialité, mises à jour (annexe E).")}`,
-  `<a href="${GITHUB}#command-line">${T("The command line", "La ligne de commande")}</a> : <code>raytex build</code>, <code>lint</code>, <code>doctor</code>, <code>new</code>…`,
+  `<a href="${url("features/")}">${T("Every feature", "Toutes les fonctionnalités")}</a>${T(":", " :")} ${T("images, TikZ studio, fonts, macros, projects (appendix A).", "images, studio TikZ, polices, macros, projets (annexe A).")}`,
+  `<a href="${url("faq/")}">${T("Frequently asked questions", "Questions fréquentes")}</a>${T(":", " :")} ${T("distributions, offline use, privacy, updates (appendix E).", "distributions, hors ligne, confidentialité, mises à jour (annexe E).")}`,
+  `<a href="${GITHUB}#command-line">${T("The command line", "La ligne de commande")}</a>${T(":", " :")} <code>raytex build</code>, <code>lint</code>, <code>doctor</code>, <code>new</code>…`,
 ])}
 ${ctaEnd({ T, url, icon }, T("let's go!", "c'est parti !"))}`;
   },
