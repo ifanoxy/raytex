@@ -79,6 +79,16 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # What this version brings (ui/lib/whatsnew.ts): the text of the draft
+      # release, and the notes installed copies show when they offer it.
+      - name: Notes of the version
+        shell: bash
+        run: |
+          {
+            echo "RELEASE_BODY<<RAYTEX_EOF"
+            node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/release-notes.mjs "$GITHUB_REF_NAME" || echo "See CHANGELOG.md for the changes of this version."
+            echo "RAYTEX_EOF"
+          } >> "$GITHUB_ENV"
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -89,7 +99,7 @@ jobs:
           projectPath: crates/raytex-desktop
           tagName: ${{ github.ref_name }}
           releaseName: RayTeX ${{ github.ref_name }}
-          releaseBody: See CHANGELOG.md for the changes of this version.
+          releaseBody: ${{ env.RELEASE_BODY }}
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }} ${{ env.HAS_UPDATER_KEY == 'true' && format('--config {0}/crates/raytex-desktop/tauri.updater.conf.json', github.workspace) || '' }}

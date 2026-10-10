@@ -47,6 +47,9 @@ pub struct UpdateSettings {
     pub check_at_startup: bool,
     /// A version the user chose to skip: not offered again at start.
     pub skipped_version: Option<String>,
+    /// The last version that started here: what a later one brings is told
+    /// once, at its first start.
+    pub seen_version: Option<String>,
 }
 
 impl Default for UpdateSettings {
@@ -54,6 +57,7 @@ impl Default for UpdateSettings {
         Self {
             check_at_startup: true,
             skipped_version: None,
+            seen_version: None,
         }
     }
 }

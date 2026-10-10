@@ -8,6 +8,7 @@ import { check, type Update } from "@tauri-apps/plugin-updater";
 import { t } from "../i18n.svelte";
 import * as ipc from "../ipc";
 import { DOWNLOAD_PAGE } from "../updates";
+import { NOTES, releaseBody } from "../whatsnew";
 import { app } from "./app.svelte";
 import { editor } from "./editor.svelte";
 import { ui } from "./ui.svelte";
@@ -76,7 +77,7 @@ class UpdateStore {
   async skip() {
     const version = this.offer?.version ?? null;
     await app.update((s) => {
-      s.updates = { checkAtStartup: s.updates?.checkAtStartup ?? true, skippedVersion: version };
+      s.updates = { ...s.updates, checkAtStartup: s.updates?.checkAtStartup ?? true, skippedVersion: version };
     });
     this.later();
   }
@@ -112,10 +113,10 @@ class UpdateStore {
   /** In the browser (npm run dev, `?update`): the dialog with a fake version. */
   private simulate() {
     this.offer = {
-      version: "0.2.0",
+      version: NOTES[0].version,
       current: app.info?.version ?? "0.1.0",
       date: new Date().toISOString(),
-      notes: "## Nouveautés\n\n- **Mise à jour** proposée au lancement\n- Nouvelle identité : la raie violette\n- Site entièrement repensé",
+      notes: releaseBody(NOTES[0]),
     };
     this.phase = "offer";
     this.install = async () => {

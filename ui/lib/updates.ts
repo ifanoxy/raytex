@@ -6,6 +6,8 @@ export interface UpdateSettings {
   checkAtStartup: boolean;
   /** A version the user chose to skip: not offered again at start. */
   skippedVersion: string | null;
+  /** The last version that started here (what a later one brings is told once). */
+  seenVersion?: string | null;
 }
 
 declare module "./types" {
@@ -16,6 +18,8 @@ declare module "./types" {
 
 /** Download page of the website, for a system that cannot update by itself. */
 export const DOWNLOAD_PAGE = "https://ifanoxy.github.io/raytex/download/";
+/** The page of the website that lists every version with its notes. */
+export const VERSIONS_PAGE = { en: "https://ifanoxy.github.io/raytex/releases/", fr: "https://ifanoxy.github.io/raytex/fr/releases/" };
 
 /** Release notes (GitHub markdown) as short plain lines: headings, items, paragraphs. */
 export function noteLines(body: string | null | undefined, max = 12): string[] {

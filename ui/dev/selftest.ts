@@ -25,6 +25,7 @@ import { fonts } from "../lib/state/fonts.svelte";
 import { templates } from "../lib/state/templates.svelte";
 import { ui } from "../lib/state/ui.svelte";
 import { viewer } from "../lib/state/viewer.svelte";
+import { whatsNew } from "../lib/state/whatsnew.svelte";
 import { basename, samePath } from "../lib/utils";
 
 async function until(check: () => boolean, timeoutMs: number, what: string) {
@@ -766,7 +767,9 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     const beforeRev = viewer.revision;
     const startLive = Date.now();
     v.dispatch({ changes: { from: end, insert: "\\section{Essai en direct}\nCe paragraphe apparaît sans cliquer sur Compiler.\n\n" }, userEvent: "input.type" });
-    await until(() => build.running, 10_000, "live build start");
+    // Started, or already over: in a window behind another one, timers wake
+    // once a second, and a short build is finished before it is seen running.
+    await until(() => build.running || viewer.revision !== beforeRev, 10_000, "live build start");
     await until(() => !build.running, 120_000, "live build end");
     await until(() => viewer.revision !== beforeRev, 10_000, "PDF reloaded");
     results.liveMs = Date.now() - startLive;
@@ -948,6 +951,26 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     await fonts.refresh();
     check("extra font listed", !!fonts.current?.extra.some((e) => e.command === "fontGeorgia"));
     check("font build (LuaLaTeX)", await buildOk(log, "fonts"));
+
+    // ------------------------------------------------- what is new
+    // The version that runs is remembered (a first start tells nothing), and
+    // its news are a summary with everything behind "See more".
+    const remembered = (await ipc.getSettings()).updates?.seenVersion;
+    check("version remembered", remembered === app.info!.version && whatsNew.shown === null, remembered);
+    whatsNew.show();
+    await until(() => !!document.querySelector(".whats-new .points li"), 5_000, "what's new");
+    const news = document.querySelector<HTMLElement>(".whats-new")!;
+    const newsPoints = news.querySelectorAll(".points li").length;
+    news.querySelector<HTMLButtonElement>(".more")!.click();
+    await until(() => !!news.querySelector(".details h4"), 3_000, "details of what's new");
+    check(
+      "what's new: a summary, then everything",
+      news.querySelector("h3")!.textContent!.includes(app.info!.version) && newsPoints >= 1 && newsPoints <= 6 && news.querySelectorAll(".details li").length > newsPoints,
+      `${newsPoints} points, ${news.querySelectorAll(".details li").length} lines`,
+    );
+    await scene("whats-new");
+    whatsNew.close();
+    await until(() => !document.querySelector(".whats-new"), 3_000, "what's new closed");
 
     // ------------------------------------------------- TikZ whiteboard
     const z = editor.view!;

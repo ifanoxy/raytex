@@ -25,7 +25,9 @@
   import CommandPalette from "./components/dialogs/CommandPalette.svelte";
   import DialogHost from "./components/dialogs/DialogHost.svelte";
   import UpdateDialog from "./components/dialogs/UpdateDialog.svelte";
+  import WhatsNew from "./components/dialogs/WhatsNew.svelte";
   import { updates } from "$lib/state/updates.svelte";
+  import { whatsNew } from "$lib/state/whatsnew.svelte";
   import Toasts from "./components/dialogs/Toasts.svelte";
   import EditorArea from "./components/editor/EditorArea.svelte";
   import ActivityBar from "./components/layout/ActivityBar.svelte";
@@ -97,8 +99,10 @@
       unlisten.push(await ipc.on("build:finished", () => afterBuild()));
       // Files opened from the Finder while the application runs.
       unlisten.push(await ipc.on("app:open-files", () => void ipc.takeOpenRequests().then((paths) => project.openFiles(paths ?? []))));
-      // A new version, once the project is open (unless turned off).
-      setTimeout(() => void updates.checkAtStart(), 2500);
+      // What this version brings, at its first start; then a newer version,
+      // once the project is open (unless turned off).
+      void whatsNew.atStart();
+      setTimeout(() => void whatsNew.closed().then(() => updates.checkAtStart()), 2500);
       // Prepare the other windows while nothing happens.
       const idle = window.requestIdleCallback ?? ((fn: () => void) => setTimeout(fn, 1500));
       idle(() => Object.values(VIEWS).forEach((load) => void load().catch(() => {})));
@@ -266,6 +270,7 @@
 
 <ContextMenu />
 <DialogHost />
+<WhatsNew />
 <UpdateDialog />
 <Toasts />
 

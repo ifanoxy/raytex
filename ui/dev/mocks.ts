@@ -227,7 +227,7 @@ let settings: T.Settings = {
   lint: { enabled: true, styleHints: true, disabledRules: [] },
   macros: [{ name: "Fraction", trigger: "ff", key: "", body: "\\frac{${1:a}}{${2:b}}${0}", math: true }],
   keybindings: {},
-  updates: { checkAtStartup: true, skippedVersion: null },
+  updates: { checkAtStartup: true, skippedVersion: null, seenVersion: null },
 };
 
 const session: T.Session = {

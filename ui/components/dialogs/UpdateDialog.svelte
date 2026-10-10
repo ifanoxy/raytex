@@ -3,12 +3,18 @@
   import { i18n, t } from "$lib/i18n.svelte";
   import { updates } from "$lib/state/updates.svelte";
   import { noteLines } from "$lib/updates";
+  import { parseReleaseBody } from "$lib/whatsnew";
   import Icon from "../common/Icon.svelte";
+  import ReleaseNotes from "../common/ReleaseNotes.svelte";
 
   const offer = $derived(updates.offer);
   const busy = $derived(updates.phase === "downloading" || updates.phase === "installing");
   const percent = $derived(updates.total > 0 ? Math.min(100, Math.round((updates.received / updates.total) * 100)) : null);
-  const notes = $derived(noteLines(offer?.notes));
+  // The notes of the release: a summary and its details when the release
+  // wrote them that way (ui/lib/whatsnew.ts), else its first lines.
+  const whatsNew = $derived(parseReleaseBody(offer?.notes, i18n.lang));
+  const notes = $derived(whatsNew ? [] : noteLines(offer?.notes));
+  let expanded = $state(false);
   const megabytes = (n: number) => (n / 1_048_576).toFixed(1);
 
   function key(e: KeyboardEvent) {
@@ -34,7 +40,11 @@
         </div>
       </div>
 
-      {#if notes.length && updates.phase === "offer"}
+      {#if whatsNew && updates.phase === "offer"}
+        <div class="notes">
+          <ReleaseNotes notes={whatsNew} bind:expanded />
+        </div>
+      {:else if notes.length && updates.phase === "offer"}
         <div class="notes selectable">
           {#each notes as line, i (i)}
             <p class:item={line.startsWith("•")}>{line}</p>
@@ -129,7 +139,7 @@
     margin: 0;
   }
   .notes {
-    max-height: 220px;
+    max-height: min(46vh, 380px);
     overflow: auto;
     padding: 12px 14px;
     border-radius: var(--radius);

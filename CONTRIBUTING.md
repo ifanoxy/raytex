@@ -89,9 +89,9 @@ The *Website* workflow publishes it on GitHub Pages (Settings → Pages → Sour
 
 ## Releasing
 
-1. Update the version in `Cargo.toml` (`[workspace.package]`), `package.json` and `crates/raytex-desktop/tauri.conf.json`, and give the *Unreleased* section of `CHANGELOG.md` its version and date.
+1. Update the version in `Cargo.toml` (`[workspace.package]`), `package.json` and `crates/raytex-desktop/tauri.conf.json`, and give the *Unreleased* section of `CHANGELOG.md` its version and date. Write what the version brings in `ui/lib/whatsnew.ts`, as a summary in a few points and its details, in English and French: the application shows it when it offers the version and at its first start, the text of the draft release is written from it, and the tests fail while it is missing.
 2. Commit, then tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
-3. The *Release* workflow builds macOS (Apple silicon and Intel), Windows and Linux and prepares a draft release with the installers; check it, write the notes from the changelog, and publish it.
+3. The *Release* workflow builds macOS (Apple silicon and Intel), Windows and Linux and prepares a draft release with the installers and the notes of the version; check it, complete the notes from the changelog if needed, and publish it.
 4. Publishing the release rebuilds the website: its download page offers the new version (the notes written in the release are shown on its *Versions* page).
 
 The installers are signed (Windows by SignPath, macOS by Apple) once the secrets described in [docs/SIGNING.md](docs/SIGNING.md) are set; every release also gets `SHA256SUMS.txt` and a build provenance attestation.
