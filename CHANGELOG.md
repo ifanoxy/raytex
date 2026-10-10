@@ -4,6 +4,7 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- **Website**: the opening draws the ray of the logo itself. Its construction (the circle that holds it, the axis of its body, the line of its wings, the kite through its head, its wing tips and the end of its tail, its dimensions) is measured on the logo, where it was a drawing of its own that did not lie on it; the pencil then sketches its outline in straight strokes, and the sketch becomes the logo: the ink takes the place of the pencil stroke for stroke, each stroke bends into its curve, the colours come. On a phone the opening lasts half as long. `?intro` at the end of the address plays it again.
 - **Website**, fixed:
   - A phone or a computer in French that opened the English address (and the reverse) saw the opening start in the wrong language, be cut by the page in its own language, and never played again: the page being left counted the visit. A page left for its other language now shows nothing, starts nothing and plays no page turn; the opening plays on the page the reader arrives on.
   - In Safari (every browser of an iPhone), the logo and the screenshots could be missing after going from one language to the other, or from the title page to another page: their addresses were read while the document still had the address of the page it left. The address changes first, and the pictures of a page carry their whole address.

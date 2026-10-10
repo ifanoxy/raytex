@@ -104,75 +104,83 @@ export function ray(cls = "") {
 </svg>`;
 }
 
-/** The drawing of the opening of the site (site.js plays it): first the
- *  construction (grid, axis of symmetry, compass circles, the kite that
- *  holds the ray, the guides to the wing tips and their angle, a Bézier
- *  curve on each wing, the tail, the dimensions), then two pencil passes
- *  over the outline (the sketch), then the ray in ink. */
+/** The points a closed curve of the logo goes through, curve by curve. */
+const anchors = (d) =>
+  d
+    .split(/(?=M)/)
+    .filter(Boolean)
+    .map((sub) => {
+      const n = sub.match(/-?\d+(?:\.\d+)?/g).map(Number);
+      const pts = [[n[0], n[1]]];
+      for (let i = 2; i + 5 < n.length; i += 6) pts.push([n[i + 4], n[i + 5]]);
+      return pts;
+    });
+
+/** The drawing of the opening of the site (site.js plays it). Everything in
+ *  it is measured on the ray of the logo, so that the construction, the
+ *  sketch and the ray lie on one another: first the construction (grid, the
+ *  circle that holds the ray, the axis of its body from the head to the end
+ *  of the tail, the line of its wings and its angle, the kite through its
+ *  four ends, its dimensions), then the sketch in pencil, which site.js
+ *  makes from the outline (straight strokes) and bends into the ray in ink. */
 export function introDrawing(lang) {
   const fr = lang === "fr";
   const grid = Array.from({ length: 11 }, (_, i) => `<line x1="${i * 100}" y1="0" x2="${i * 100}" y2="1000"/><line x1="0" y1="${i * 100}" x2="1000" y2="${i * 100}"/>`).join("");
   // A stroke that traces itself: its delay and duration after the page is up.
   const line = (d, delay, dur = 0.6, cls = "thin") => `<path class="intro-stroke ${cls}" style="--delay: ${delay}s; --dur: ${dur}s" d="${d}"/>`;
   const circle = (cx, cy, r, delay, dur = 0.7, cls = "thin") => `<circle class="intro-stroke ${cls}" style="--delay: ${delay}s; --dur: ${dur}s" cx="${cx}" cy="${cy}" r="${r}"/>`;
-  const dashed = (d, delay) => `<path class="intro-stroke thin dashed" style="--delay: ${delay}s" d="${d}"/>`;
   let k = 0;
-  const dot = ([x, y], hollow = false) => `<circle class="intro-dot${hollow ? " hollow" : ""}" style="--k: ${k++}" cx="${x}" cy="${y}" r="${hollow ? 9 : 7}"/>`;
+  const dot = ([x, y]) => `<circle class="intro-dot" style="--k: ${k++}" cx="${f(x)}" cy="${f(y)}" r="7"/>`;
   let j = 0;
-  const label = (x, y, text, cls = "intro-label") => `<text class="${cls}" style="--k: ${j++}" x="${x}" y="${y}">${text}</text>`;
-  const sub = (name, i) => `${name}<tspan baseline-shift="sub" font-size="65%">${i}</tspan>`;
+  const label = (x, y, text, cls = "intro-label") => `<text class="${cls}" style="--k: ${j++}" x="${f(x)}" y="${f(y)}">${text}</text>`;
 
-  // The right wing as a Bézier curve, and its mirror.
-  const P = [
-    [520, 330],
-    [690, 170],
-    [905, 250],
-    [975, 560],
-  ];
-  const Q = P.map(([x, y]) => [1000 - x, y]);
-  const poly = (pts) => `M${pts.map((p) => p.join(" ")).join(" L")}`;
-  const bez = (pts) => `M${pts[0].join(" ")} C${pts[1].join(" ")} ${pts[2].join(" ")} ${pts[3].join(" ")}`;
-  const head = [500, 60];
-  const tail = [505, 948];
-  const tipR = [990, 590];
-  const tipL = [10, 590];
-  // The angle of the wing guide with the horizontal axis.
-  const theta = Math.atan2(tipR[1] - 500, tipR[0] - 500);
-  const arc = (r) => `M${500 + r} 500 A${r} ${r} 0 0 1 ${(500 + r * Math.cos(theta)).toFixed(1)} ${(500 + r * Math.sin(theta)).toFixed(1)}`;
+  // The four ends of the ray: its head, the end of its tail, the tips of its wings.
+  const all = [...anchors(RAY.light), ...anchors(RAY.dark)].flat();
+  const most = (of) => all.reduce((m, q) => (of(q) > of(m) ? q : m));
+  const head = most((q) => -q[1]);
+  const tail = most((q) => q[1]);
+  const tipR = most((q) => q[0]);
+  const tipL = most((q) => -q[0]);
+  // The circle that holds it.
+  const centre = [(tipL[0] + tipR[0]) / 2, (head[1] + tail[1]) / 2];
+  const radius = Math.ceil(Math.max(...all.map((q) => Math.hypot(q[0] - centre[0], q[1] - centre[1]))));
+  // Where the axis of the body crosses the line of the wings.
+  const [ax, ay] = [tail[0] - head[0], tail[1] - head[1]];
+  const [wx, wy] = [tipR[0] - tipL[0], tipR[1] - tipL[1]];
+  const u = ((tipL[0] - head[0]) * wy - (tipL[1] - head[1]) * wx) / (ax * wy - ay * wx);
+  const O = [head[0] + u * ax, head[1] + u * ay];
+  const along = (from, [dx, dy], t) => [from[0] + dx * t, from[1] + dy * t];
+  const axis = `M${pt(along(head, [ax, ay], -0.07))} L${pt(along(head, [ax, ay], 1.07))}`;
+  // The angle of the wings with the horizontal.
+  const theta = Math.atan2(wy, wx);
+  const arc = (r) => `M${f(O[0] + r)} ${f(O[1])} A${r} ${r} 0 0 1 ${f(O[0] + r * Math.cos(theta))} ${f(O[1] + r * Math.sin(theta))}`;
   const deg = Math.round((theta * 180) / Math.PI);
+  const span = Math.round(tipR[0] - tipL[0]);
+  const top = f(centre[1] - radius - 36);
+  const right = f(centre[0] + radius + 44);
+  const [x0, x1, y0, y1] = [f(tipL[0]), f(tipR[0]), f(head[1]), f(tail[1])];
 
-  return `<svg class="intro-geo" viewBox="-40 -60 1100 1100" aria-hidden="true">
+  return `<svg class="intro-geo" viewBox="-70 -110 1200 1200" aria-hidden="true">
   <g class="intro-grid">${grid}</g>
-  ${circle(500, 500, 480, 0, 1.1)}
-  ${line("M-20 500 H1020", 0.15, 0.5)}
-  ${line("M500 -30 V1030", 0.2, 0.5, "thin axis")}
-  ${line(`M${head.join(" ")} L${tipR.join(" ")} L${tail.join(" ")} L${tipL.join(" ")} Z`, 0.35, 0.9)}
-  ${line(`M500 500 L${tipR.join(" ")} M500 500 L${tipL.join(" ")}`, 0.55, 0.45)}
-  ${circle(500, 500, 165, 0.6, 0.6)}
-  ${circle(438, 150, 46, 0.8, 0.4)}
-  ${circle(562, 150, 46, 0.85, 0.4)}
-  ${line(arc(120), 1.15, 0.35, "thin violet")}
-  ${line("M10 -22 H990 M10 -34 V-10 M990 -34 V-10 M10 -22 l16 -7 M10 -22 l16 7 M990 -22 l-16 -7 M990 -22 l-16 7", 0.7, 0.6)}
-  ${line("M1035 54 V946 M1023 54 H1047 M1023 946 H1047 M1035 54 l-7 16 M1035 54 l7 16 M1035 946 l-7 -16 M1035 946 l7 -16", 0.8, 0.6)}
-  ${dashed(poly(P), 0.9)}
-  ${dashed(poly(Q), 0.95)}
-  ${line(bez(P), 1.0, 0.7, "red")}
-  ${line(bez(Q), 1.05, 0.7, "red")}
-  ${line("M500 640 C 545 720, 455 830, 505 945", 1.1, 0.6, "red")}
-  ${[...P, ...Q].map((p) => dot(p, true)).join("")}
-  ${[head, tipR, tail, tipL, [500, 500]].map((p) => dot(p)).join("")}
+  ${circle(f(centre[0]), f(centre[1]), radius, 0, 1.1)}
+  ${line(axis, 0.2, 0.5, "thin axis")}
+  ${line(`M${pt(O)} H${f(O[0] + 300)}`, 0.3, 0.3)}
+  ${line(`M${pt(tipL)} L${pt(tipR)}`, 0.35, 0.5)}
+  ${line(`M${pt(head)} L${pt(tipR)} L${pt(tail)} L${pt(tipL)} Z`, 0.5, 0.9)}
+  ${line(arc(200), 0.95, 0.35, "thin violet")}
+  ${line(`M${x0} ${top} H${x1} M${x0} ${top - 12} V${top + 12} M${x1} ${top - 12} V${top + 12} M${x0} ${top} l16 -7 M${x0} ${top} l16 7 M${x1} ${top} l-16 -7 M${x1} ${top} l-16 7`, 0.7, 0.6)}
+  ${line(`M${right} ${y0} V${y1} M${right - 12} ${y0} H${right + 12} M${right - 12} ${y1} H${right + 12} M${right} ${y0} l-7 16 M${right} ${y0} l7 16 M${right} ${y1} l-7 -16 M${right} ${y1} l7 -16`, 0.8, 0.6)}
+  ${[head, tipR, tail, tipL, O].map((q) => dot(q)).join("")}
   <g class="intro-labels">
-    ${label(P[0][0] - 58, P[0][1] + 10, sub("P", 0))}${label(P[1][0] - 20, P[1][1] - 26, sub("P", 1))}${label(P[2][0] + 10, P[2][1] - 24, sub("P", 2))}${label(P[3][0] + 22, P[3][1] + 10, sub("P", 3))}
-    ${label(512, 545, "O")}${label(tipR[0] - 10, tipR[1] + 50, "A")}${label(tipL[0] - 10, tipL[1] + 50, "A′")}${label(head[0] + 14, head[1] - 10, "S")}${label(tail[0] + 16, tail[1] + 6, "T")}
-    ${label(30, 70, "r = 480", "intro-hand")}
-    ${label(420, -40, fr ? "envergure 980" : "span 980", "intro-hand")}
-    ${label(1058, 520, "h", "intro-hand")}
-    ${label(515, 1028, fr ? "axe de symétrie" : "axis of symmetry", "intro-hand")}
-    ${label(700, 690, fr ? "C¹ partout" : "C¹ everywhere", "intro-hand red")}
-    ${label(645, 556, `θ ≈ ${deg}°`, "intro-hand violet")}
+    ${label(O[0] - 52, O[1] + 46, "O")}${label(tipR[0] - 2, tipR[1] + 54, "A")}${label(tipL[0] - 44, tipL[1] - 22, "A′")}${label(head[0] + 22, head[1] - 4, "S")}${label(tail[0] + 20, tail[1] + 30, "T")}
+    ${label(centre[0] - radius * 0.72, centre[1] - radius * 0.78, `r = ${radius}`, "intro-hand")}
+    ${label(centre[0] - 110, top - 20, fr ? `envergure ${span}` : `span ${span}`, "intro-hand")}
+    ${label(right + 16, centre[1] + 14, "h", "intro-hand")}
+    ${label(tail[0] + 60, tail[1] + 74, fr ? "axe du corps" : "axis of the body", "intro-hand")}
+    ${label(O[0] + 222, O[1] + 84, `θ ≈ ${deg}°`, "intro-hand violet")}
   </g>
-  <g class="intro-pencil"><path d="${RAY.light}" fill-rule="evenodd"/><path d="${RAY.dark}" fill-rule="evenodd"/></g>
-  <g class="intro-pencil second" transform="translate(4 -3) rotate(0.5 500 500)"><path d="${RAY.light}" fill-rule="evenodd"/></g>
+  <g class="intro-pencil"><path data-sketch="0"/><path data-sketch="1"/></g>
+  <g class="intro-pencil second" transform="translate(4 -3) rotate(0.5 500 500)"><path data-sketch="0"/></g>
   <g class="intro-ray">
     <path class="ray-light" d="${RAY.light}" fill-rule="evenodd"/>
     <path class="ray-dark" d="${RAY.dark}" fill-rule="evenodd"/>

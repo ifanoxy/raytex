@@ -211,11 +211,12 @@
 
   // -------------------------------------------------------------- opening
   // Once per visit, when the visit starts on the title page (the script in
-  // the head sets "opening"): the source of the title page is written at
-  // full speed and scrolls, the ray is constructed, sketched in pencil and
-  // inked, the title typeset, then the title page arrives like a book
-  // (about 9 s; Skip or Escape ends it at once). Not in a tab opened in the
-  // background.
+  // the head sets "opening"; ?intro in the address plays it again): the
+  // source of the title page is written at full speed and scrolls, the ray
+  // is constructed, sketched in pencil, and the sketch becomes the ray in
+  // ink; the title is typeset, then the title page arrives like a book
+  // (about 8 s, half of that on a phone; Skip or Escape ends it at once).
+  // Not in a tab opened in the background.
   const introBox = $("[data-intro]");
   // Not on a page being left for its other language: the visit starts there.
   try {
@@ -223,7 +224,8 @@
   } catch {
     /* private mode */
   }
-  if (introBox && root.classList.contains("opening") && !document.hidden) playIntro(introBox);
+  const replay = /[?&]intro(=|&|$)/.test(location.search);
+  if (introBox && root.classList.contains("opening") && (replay || !document.hidden)) playIntro(introBox);
   else {
     introBox?.remove();
     root.classList.remove("opening");
@@ -250,10 +252,33 @@
     }
     $("[data-intro-skip]", box)?.addEventListener("click", finish);
     addEventListener("keydown", onKey);
+    // A phone gets the short version: the source flashes by, the stages follow closely.
+    const fast = matchMedia("(max-width: 680px)").matches;
+    box.classList.toggle("fast", fast);
+    const pace = fast ? { start: 200, write: 650, compiled: 150, draw: 1050, sketch: 800, ink: 950, title: 800 } : { start: 350, write: 1600, compiled: 350, draw: 1900, sketch: 1250, ink: 1300, title: 1000 };
+    // The pencil draws the sketch of each shape of the ray, and the ink starts from it.
+    const shapes = $$(".intro-ray path", box).map((el) => ({ el, ...sketchOf(el.getAttribute("d")) }));
+    for (const el of $$(".intro-pencil [data-sketch]", box)) el.setAttribute("d", shapes[Number(el.dataset.sketch)]?.at(0) || "");
+    for (const s of shapes) s.el.setAttribute("d", s.at(0));
     // The strokes of the drawing know their length (they trace themselves).
     requestAnimationFrame(() => {
-      for (const el of $$(".intro-stroke:not(.dashed), .intro-pencil path, .intro-ray path", box)) el.style.setProperty("--len", strokeLength(el));
+      for (const el of $$(".intro-stroke:not(.dashed), .intro-pencil path", box)) el.style.setProperty("--len", strokeLength(el));
     });
+    // The sketch becomes the ray: every straight stroke bends into the curve it stood for.
+    function ink(duration) {
+      const t0 = performance.now();
+      const end = () => shapes.forEach((s) => s.el.setAttribute("d", s.at(1)));
+      const frame = (now) => {
+        const k = Math.min(1, (now - t0) / duration);
+        if (done || k >= 1) return end();
+        const e = k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2;
+        shapes.forEach((s) => s.el.setAttribute("d", s.at(e)));
+        requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+      // Even where frames are not drawn (a window behind another), the ray ends whole.
+      setTimeout(end, duration + 120);
+    }
 
     // 1. The source, written at full speed (2 s for the whole file); the
     // sheet scrolls to follow the caret.
@@ -297,22 +322,103 @@
     }
 
     (async () => {
-      await wait(350);
-      await write(1600);
+      await wait(pace.start);
+      await write(pace.write);
       if (done) return;
       $("[data-intro-status]", box)?.classList.add("on");
-      await wait(350);
-      // 2. The construction; 3. the sketch in pencil; 4. the ink; 5. the title.
+      await wait(pace.compiled);
+      // 2. The construction; 3. the sketch in pencil; 4. it becomes the ray, in ink; 5. the title.
       stage("s-draw");
-      await wait(2100);
+      await wait(pace.draw);
       stage("s-sketch");
-      await wait(1250);
+      await wait(pace.sketch);
       stage("s-ink");
-      await wait(1000);
+      if (!done) ink(pace.ink - 250);
+      await wait(pace.ink);
       stage("s-title");
-      await wait(1000);
+      await wait(pace.title);
       finish();
     })();
+  }
+
+  // The sketch of a shape of the logo (closed curves, "M… C… Z"): each curve
+  // keeps only the points a pencil would join with straight strokes (those
+  // further than `slack` from the stroke that skips them), and every other
+  // point is put on these strokes, at its share of the way. The shape and its
+  // sketch then have the same points, one for one: `at(t)` is the shape
+  // between its sketch (0) and itself (1).
+  function sketchOf(d, slack = 13) {
+    const from = [];
+    const to = [];
+    const sizes = [];
+    for (const sub of d.split(/(?=M)/)) {
+      const n = (sub.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+      if (n.length < 8) continue;
+      const count = (n.length - 2) / 6;
+      const P = [[n[0], n[1]]];
+      for (let i = 0; i < count; i++) P.push([n[6 * i + 6], n[6 * i + 7]]);
+      // The points kept (Douglas-Peucker, from the first point to the last, which closes the curve).
+      const keep = new Uint8Array(P.length);
+      keep[0] = keep[P.length - 1] = 1;
+      // A closed curve starts and ends at the same point: the furthest point from it is kept first.
+      let far = 0;
+      for (let i = 1; i < P.length - 1; i++) if (Math.hypot(P[i][0] - P[0][0], P[i][1] - P[0][1]) > Math.hypot(P[far][0] - P[0][0], P[far][1] - P[0][1])) far = i;
+      const spans = far ? [[0, far], [far, P.length - 1]] : [[0, P.length - 1]];
+      if (far) keep[far] = 1;
+      while (spans.length) {
+        const [a, b] = spans.pop();
+        const [dx, dy] = [P[b][0] - P[a][0], P[b][1] - P[a][1]];
+        const len = Math.hypot(dx, dy);
+        let worst = 0;
+        let at = -1;
+        for (let i = a + 1; i < b; i++) {
+          const off = len ? Math.abs(dx * (P[a][1] - P[i][1]) - (P[a][0] - P[i][0]) * dy) / len : Math.hypot(P[i][0] - P[a][0], P[i][1] - P[a][1]);
+          if (off > worst) {
+            worst = off;
+            at = i;
+          }
+        }
+        if (worst > slack) {
+          keep[at] = 1;
+          spans.push([a, at], [at, b]);
+        }
+      }
+      // Every point on the stroke between the two kept points around it.
+      const S = P.map((q) => q.slice());
+      let a = 0;
+      for (let b = 1; b < P.length; b++) {
+        if (!keep[b]) continue;
+        let total = 0;
+        const run = [0];
+        for (let i = a + 1; i <= b; i++) run.push((total += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1])));
+        for (let i = a + 1; i < b; i++) {
+          const share = total ? run[i - a] / total : 0;
+          S[i] = [P[a][0] + (P[b][0] - P[a][0]) * share, P[a][1] + (P[b][1] - P[a][1]) * share];
+        }
+        a = b;
+      }
+      sizes.push(count);
+      to.push(n[0], n[1]);
+      from.push(S[0][0], S[0][1]);
+      for (let i = 0; i < count; i++) {
+        to.push(n[6 * i + 2], n[6 * i + 3], n[6 * i + 4], n[6 * i + 5], n[6 * i + 6], n[6 * i + 7]);
+        const [p, q] = [S[i], S[i + 1]];
+        from.push(p[0] + (q[0] - p[0]) / 3, p[1] + (q[1] - p[1]) / 3, p[0] + ((q[0] - p[0]) * 2) / 3, p[1] + ((q[1] - p[1]) * 2) / 3, q[0], q[1]);
+      }
+    }
+    const at = (t) => {
+      const v = (i) => Math.round((from[i] + (to[i] - from[i]) * t) * 10) / 10;
+      let out = "";
+      let i = 0;
+      for (const count of sizes) {
+        out += `M${v(i)},${v(i + 1)}`;
+        i += 2;
+        for (let c = 0; c < count; c++, i += 6) out += `C${v(i)},${v(i + 1)} ${v(i + 2)},${v(i + 3)} ${v(i + 4)},${v(i + 5)}`;
+        out += "Z";
+      }
+      return out;
+    };
+    return { at };
   }
 
   // \today, in the reader's language.
