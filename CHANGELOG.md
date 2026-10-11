@@ -4,6 +4,11 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- **Whiteboard (TikZ studio), four additions**:
+  - **Links that follow the texts**: with the link tool (K), a drag from one text to another joins them with an arrow, drawn from border to border, which follows them when they are moved. It is written the way TikZ wants it: each linked text gets a name (`n1`, `n2`…) and the link is `\draw[->] (n1) -- (n2);`. A selected link is straight or bent to one side, and can carry a text; deleting a text deletes its links; copies and sets get names of their own. Such lines written by hand are read back as links.
+  - **Alignment guides**: what is moved snaps to the sides and the middle of the other shapes when it comes close, and a line shows what it is aligned with (not with Ctrl or ⌘ held).
+  - **A curve tool** (B): a smooth curve through the points clicked, open or closed, written as `plot[smooth] coordinates {…}`. The board draws it with the construction of TikZ itself, checked against the curve LaTeX draws; *Advanced* turns a broken line into a curve and back.
+  - **Sets as a file**: *Export* writes the sets in a file to give to someone else or to take to another computer, *Import* adds those of such a file (no set twice, a taken name gets a number).
 - **Exporting the project** (*Export the project…* in the project menu and the command palette): a `.zip` archive, whose content is listed before anything is written.
   - **The whole project**: all its files without the folder of the build, auxiliary files and hidden files; the PDF on request.
   - **For arXiv or a journal**: only what the document uses, with its compiled bibliography (`.bbl`) under the name of the main file. Comments are removed unless told otherwise (verbatim text and the `%` of addresses are left alone), the `.bib` files are added, and *Advanced* writes everything in one `.tex` file or adds the PDF.

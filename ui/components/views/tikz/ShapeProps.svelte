@@ -4,7 +4,7 @@
   // pictures to click; the others are behind "Advanced".
   import { expressionCss, BASE_COLORS, DVIPS_COLORS } from "$lib/colors";
   import { plural, t, type MessageKey } from "$lib/i18n.svelte";
-  import { type Arrow, type Dash, type Drawing, type LineWidth, type NodePosition, type NodeShape, num, type Shape, type Style } from "$lib/tikz/model";
+  import { type Arrow, type Bend, type Dash, type Drawing, type LineWidth, type NodePosition, type NodeShape, num, type Shape, type Style } from "$lib/tikz/model";
   import FoldSection from "../../common/FoldSection.svelte";
   import Icon from "../../common/Icon.svelte";
   import type { Tool } from "./Whiteboard.svelte";
@@ -63,12 +63,21 @@
   /** Style shown: the selection's, or the one of the next shapes. */
   const current = $derived(first && first.kind !== "code" ? first.style : style);
   /** Arrows are for lines: one that is selected, or the one about to be drawn. */
-  const hasPath = $derived(shapes.length ? shapes.some((s) => s.kind === "path" && !s.closed) : tool === "line" || tool === "arrow");
+  const hasPath = $derived(shapes.length ? shapes.some((s) => (s.kind === "path" && !s.closed) || s.kind === "link") : tool === "line" || tool === "arrow" || tool === "curve" || tool === "link");
   const node = $derived(shapes.length === 1 && first?.kind === "node" ? first : null);
+  /** A link between two texts, alone in the selection: its way and its text. */
+  const link = $derived(shapes.length === 1 && first?.kind === "link" ? first : null);
+  /** A line through points, alone in the selection: straight, or a curve. */
+  const path = $derived(shapes.length === 1 && first?.kind === "path" ? first : null);
+  const BENDS: { value: Bend; label: MessageKey; d: string }[] = [
+    { value: "", label: "tikz.bend.none", d: "M4 6H30" },
+    { value: "left", label: "tikz.bend.left", d: "M4 10Q17 -2 30 10" },
+    { value: "right", label: "tikz.bend.right", d: "M4 2Q17 14 30 2" },
+  ];
   /** Only texts are selected: they have no line of their own unless framed. */
   const textOnly = $derived(shapes.length > 0 && shapes.every((s) => s.kind === "node"));
   const codeItems = $derived(drawing.shapes.filter((s) => s.kind === "code"));
-  const open = $state({ stroke: false, fill: false, text: false, place: false });
+  const open = $state({ stroke: false, fill: false, text: false, place: false, link: false });
 
   function setShapes(next: Shape[]) {
     drawing = { ...drawing, shapes: next };
@@ -85,6 +94,12 @@
   function updateNode(patch: Partial<Extract<Shape, { kind: "node" }>>) {
     if (!node) return;
     setShapes(drawing.shapes.map((s) => (s.id === node.id ? ({ ...s, ...patch } as Shape) : s)));
+    oncommit();
+  }
+
+  function updateLink(patch: Partial<Extract<Shape, { kind: "link" }>>) {
+    if (!link) return;
+    setShapes(drawing.shapes.map((s) => (s.id === link.id ? ({ ...s, ...patch } as Shape) : s)));
     oncommit();
   }
 
@@ -141,6 +156,9 @@
         {/each}
       </div>
       <label class="check"><input type="checkbox" checked={current.rounded} onchange={(e) => setStyle({ rounded: e.currentTarget.checked })} />{t("tikz.rounded")}</label>
+      {#if path}
+        <label class="check"><input type="checkbox" checked={!!path.smooth} onchange={(e) => setCoord((s) => (s.kind === "path" ? { ...s, smooth: e.currentTarget.checked } : s))} />{t("tikz.smooth")}</label>
+      {/if}
       <label class="line">
         <span>{t("tikz.customColor")}</span>
         <input class="input small mono" placeholder="red!50!black" onkeydown={(e) => typed(e, (c) => setStyle({ stroke: c, noStroke: false }))} />
@@ -167,6 +185,27 @@
     {/snippet}
   </FoldSection>
 
+  {#if link}
+    <FoldSection id="link" title={t("tikz.linkTitle")} bind:open={open.link}>
+      <div class="picks" role="radiogroup" aria-label={t("tikz.linkTitle")}>
+        {#each BENDS as b (b.value)}
+          <button class:active={link.bend === b.value} role="radio" aria-checked={link.bend === b.value} title={t(b.label)} aria-label={t(b.label)} onclick={() => updateLink({ bend: b.value })}>
+            <svg viewBox="0 0 34 12" aria-hidden="true"><path d={b.d} fill="none" stroke-width="2" /></svg>
+          </button>
+        {/each}
+      </div>
+      <input class="input small" value={link.label} onchange={(e) => updateLink({ label: e.currentTarget.value })} placeholder={t("tikz.linkLabel")} aria-label={t("tikz.linkLabel")} />
+      {#snippet advanced()}
+        <label class="line">
+          <span>{t("tikz.position")}</span>
+          <select class="select input small" value={link.labelPosition} onchange={(e) => updateLink({ labelPosition: e.currentTarget.value as NodePosition })}>
+            {#each POSITIONS.filter((p) => p.value) as p (p.value)}<option value={p.value}>{t(p.label)}</option>{/each}
+          </select>
+        </label>
+      {/snippet}
+    </FoldSection>
+  {/if}
+
   {#if node}
     <FoldSection id="text" title={t("tikz.textTitle")} bind:open={open.text}>
       <input class="input small" value={node.text} title={t("tikz.textHint")} onchange={(e) => updateNode({ text: e.currentTarget.value })} placeholder={t("tikz.nodeText")} />
@@ -192,7 +231,7 @@
     </FoldSection>
   {/if}
 
-  {#if shapes.length === 1 && first && first.kind !== "code"}
+  {#if shapes.length === 1 && first && first.kind !== "code" && first.kind !== "link"}
     <FoldSection id="place" title={t("tikz.coordinates")} bind:open={open.place}>
       {#snippet advanced()}
         <div class="coords">
@@ -300,7 +339,8 @@
     width: 34px;
     height: 12px;
   }
-  .picks line {
+  .picks line,
+  .picks path {
     stroke: currentColor;
     stroke-linecap: round;
   }

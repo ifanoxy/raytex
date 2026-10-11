@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
   // TikZ studio. "Drawing" (the default): a whiteboard on a grid, drawn with
   // the mouse, whose TikZ code is written as you draw. "Code": the code
   // with element and style buttons and the picture compiled live (a click
@@ -26,12 +27,12 @@
   import { project } from "$lib/state/project.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import type { PreviewOutcome, TikzTemplate } from "$lib/types";
-  import { debounce, dirname, escapeSnippet, join, prettyKey, relative } from "$lib/utils";
+  import { basename, debounce, dirname, escapeSnippet, join, prettyKey, relative } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
   import Modal from "../common/Modal.svelte";
   import PdfPreview from "../common/PdfPreview.svelte";
   import Resizer from "../common/Resizer.svelte";
-  import { codeShapes, type Drawing, drawingCode, emptyStyle, freeSetName, newId, parseDrawing, setCode as codeOfSet, setShapes as shapesOfSet, type ShapeSet, type Style } from "$lib/tikz/model";
+  import { codeShapes, type Drawing, drawingCode, emptyStyle, freeSetName, newId, parseDrawing, setCode as codeOfSet, setShapes as shapesOfSet, type ShapeSet, type Style, mergeSets, setsFile, setsFromFile } from "$lib/tikz/model";
   import SetsPanel from "./tikz/SetsPanel.svelte";
   import ShapeProps from "./tikz/ShapeProps.svelte";
   import Whiteboard, { type Tool } from "./tikz/Whiteboard.svelte";
@@ -94,7 +95,9 @@
     { id: "circle", icon: "circle", label: "tikz.tool.circle", key: "C" },
     { id: "ellipse", icon: "ellipse", label: "tikz.tool.ellipse", key: "E" },
     { id: "polygon", icon: "polygon", label: "tikz.tool.polygon", key: "P" },
+    { id: "curve", icon: "curve", label: "tikz.tool.curve", key: "B" },
     { id: "text", icon: "type", label: "tikz.tool.text", key: "T" },
+    { id: "link", icon: "link-nodes", label: "tikz.tool.link", key: "K" },
   ];
   const EMPTY = "\\begin{tikzpicture}\n\\end{tikzpicture}";
   const GRID_KEY = "raytex.tikz.grid";
@@ -365,6 +368,34 @@
   function writeSets(next: ShapeSet[]) {
     sets = next;
     void ipc.saveTikzSets(next).catch((e) => ui.toast("error", String(e)));
+  }
+
+  /** Writes the sets in a file, to give to someone else or to another computer. */
+  async function exportSets() {
+    const dest = await saveDialog({ defaultPath: "raytex-tikz-sets.json", filters: [{ name: "JSON", extensions: ["json"] }] }).catch(() => null);
+    if (!dest) return;
+    try {
+      await ipc.exportText(dest, setsFile(sets));
+      ui.toast("success", t("tikz.sets.exported", { n: sets.length, file: basename(dest) }));
+    } catch (e) {
+      ui.toast("error", String(e));
+    }
+  }
+
+  /** Adds the sets of a file to these (those that are here already are not added twice). */
+  async function importSets() {
+    const file = await openDialog({ filters: [{ name: "JSON", extensions: ["json"] }] }).catch(() => null);
+    if (typeof file !== "string") return;
+    const read = await ipc.readTextFile(file).catch(() => null);
+    const found = read ? setsFromFile(read.text) : null;
+    if (!found) {
+      ui.toast("error", t("tikz.sets.notAFile", { file: basename(file) }));
+      return;
+    }
+    const merged = mergeSets(sets, found);
+    if (merged.added) writeSets(merged.sets);
+    setsOpen = true;
+    ui.toast(merged.added ? "success" : "info", merged.added ? t("tikz.sets.imported", { n: merged.added }) : t("tikz.sets.nothingNew"));
   }
 
   /** Keeps the selection as a set, under a name to type at once. */
@@ -727,6 +758,8 @@
             onsave={saveSet}
             onrename={(id, name) => writeSets(sets.map((x) => (x.id === id ? { ...x, name } : x)))}
             ondelete={(id) => writeSets(sets.filter((x) => x.id !== id))}
+            onimport={importSets}
+            onexport={exportSets}
           />
         {/if}
         </div>

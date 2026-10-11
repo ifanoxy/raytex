@@ -16,6 +16,8 @@
     onsave,
     onrename,
     ondelete,
+    onimport,
+    onexport,
   }: {
     /** The sets of the user. */
     sets: ShapeSet[];
@@ -29,6 +31,10 @@
     onsave: () => void;
     onrename: (id: string, name: string) => void;
     ondelete: (id: string) => void;
+    /** Sets are read from a file, and added to these. */
+    onimport: () => void;
+    /** These sets are written in a file. */
+    onexport: () => void;
   } = $props();
 
   function named(e: Event, set: ShapeSet) {
@@ -55,6 +61,9 @@
     <button class="save" disabled={!canSave} onclick={onsave} title={t("tikz.saveSetTitle")}>
       <Icon name="plus" size={13} />{t("tikz.sets.keep")}
     </button>
+    <span class="spacer"></span>
+    <button class="file" onclick={onimport} title={t("tikz.sets.importHint")}><Icon name="download" size={13} />{t("tikz.sets.import")}</button>
+    <button class="file" disabled={!sets.length} onclick={onexport} title={t("tikz.sets.exportHint")}><Icon name="external" size={13} />{t("tikz.sets.export")}</button>
   </header>
 
   {#if open}
@@ -226,5 +235,29 @@
     margin: 0 4px 2px;
     font-size: 11.5px;
     line-height: 1.5;
+  }
+  .spacer {
+    flex: 1;
+  }
+  /* The sets as a file: taken from one, or written in one. */
+  .file {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .file:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text);
+  }
+  .file:disabled {
+    opacity: 0.45;
+    cursor: default;
   }
 </style>

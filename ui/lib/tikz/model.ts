@@ -16,6 +16,8 @@ export type Dash = "dashed" | "dotted" | "densely dashed" | "loosely dashed" | "
 export type Arrow = "->" | "<-" | "<->" | "-Stealth" | "Stealth-" | "Stealth-Stealth" | "|->" | "|<->|";
 export type NodePosition = "" | "above" | "below" | "left" | "right" | "above left" | "above right" | "below left" | "below right";
 export type NodeShape = "" | "rectangle" | "circle" | "ellipse";
+/** How a link goes from one node to the other: straight, or bent to one side. */
+export type Bend = "" | "left" | "right";
 
 export interface Style {
   /** Line colour (xcolor expression); null: the default (black). */
@@ -37,7 +39,14 @@ interface Base {
 }
 
 export type Shape =
-  | (Base & { kind: "path"; points: Point[]; closed: boolean; style: Style })
+  | (Base & {
+      kind: "path";
+      points: Point[];
+      closed: boolean;
+      style: Style;
+      /** A curve through the points (`plot[smooth]`) instead of straight lines. */
+      smooth?: boolean;
+    })
   | (Base & { kind: "rect"; from: Point; to: Point; style: Style })
   | (Base & { kind: "circle"; center: Point; r: number; style: Style })
   | (Base & { kind: "ellipse"; center: Point; rx: number; ry: number; style: Style })
@@ -55,6 +64,18 @@ export type Shape =
       /** `\small`, `\large`… */
       font: string | null;
       name: string | null;
+    })
+  /** A line from one named node to another: it follows them when they move. */
+  | (Base & {
+      kind: "link";
+      /** Names of the nodes it joins. */
+      from: string;
+      to: string;
+      style: Style;
+      bend: Bend;
+      /** A text on the line; empty for none. */
+      label: string;
+      labelPosition: NodePosition;
     })
   | (Base & { kind: "code"; code: string });
 
@@ -92,7 +113,7 @@ export function styleOptions(s: Style, kind: Shape["kind"]): string[] {
   if (s.fill) out.push(`fill=${s.fill}`);
   if (s.width) out.push(s.width);
   if (s.dash) out.push(s.dash);
-  if (s.arrow && kind === "path") out.push(s.arrow);
+  if (s.arrow && (kind === "path" || kind === "link")) out.push(s.arrow);
   if (s.rounded) out.push("rounded corners");
   if (s.opacity !== null && s.opacity < 1) out.push(`opacity=${num(s.opacity)}`);
   out.push(...s.extra);
@@ -117,7 +138,13 @@ export function shapeCode(shape: Shape): string {
       const fillOnly = shape.style.noStroke && shape.style.fill;
       const list = fillOnly ? style.filter((o) => !o.startsWith("fill=")) : style;
       const head = fillOnly ? `\\fill[${[shape.style.fill, ...list].join(", ")}]` : `${command(shape.style)}${opts(list)}`;
+      if (shape.smooth) return `${head} plot[smooth${shape.closed ? " cycle" : ""}] coordinates {${shape.points.map(pt).join(" ")}};`;
       return `${head} ${shape.points.map(pt).join(" -- ")}${shape.closed ? " -- cycle" : ""};`;
+    }
+    case "link": {
+      const way = shape.bend ? `to[bend ${shape.bend}]` : "--";
+      const label = shape.label.trim() ? ` node${opts(shape.labelPosition ? [shape.labelPosition] : [])} {${shape.label.trim()}}` : "";
+      return `\\draw${opts(styleOptions(shape.style, "path"))} (${shape.from}) ${way}${label} (${shape.to});`;
     }
     case "rect":
     case "circle":
@@ -328,7 +355,39 @@ export function parseStatement(statement: string): Shape | null {
     const points = coords(rest);
     return { id: newId(), kind: "path", points, closed: /--\s*cycle$/.test(rest), style };
   }
+  // A curve through points; with a tension of its own it is kept as code.
+  if ((m = new RegExp(String.raw`^plot\s*\[\s*smooth(\s+cycle)?\s*\]\s*coordinates\s*\{((?:\s*${c})+)\s*\}$`).exec(rest))) {
+    const points = coords(m[2]);
+    if (points.length >= 2) return { id: newId(), kind: "path", points, closed: !!m[1], style, smooth: true };
+  }
+  // A line between two named nodes.
+  if (cmd[1] === "draw" && (m = new RegExp(String.raw`^\((${NAME})\)\s*(?:--|to\s*\[\s*bend (left|right)\s*\])\s*(?:node\s*(?:\[([^\]]*)\])?\s*\{([\s\S]*)\}\s*)?\((${NAME})\)$`).exec(rest))) {
+    const position = (m[3] ?? "").trim();
+    const label = m[4] ?? "";
+    if ((!position || POSITIONS.includes(position as NodePosition)) && balancedBraces(label)) {
+      return { id: newId(), kind: "link", from: m[1], to: m[5], style, bend: (m[2] ?? "") as Bend, label: label.trim(), labelPosition: position as NodePosition };
+    }
+  }
   return null;
+}
+
+/** The name of a node: a letter, then letters, digits, `_` and `-`. */
+const NAME = String.raw`[A-Za-z][\w-]*`;
+
+function balancedBraces(text: string): boolean {
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "\\") i++;
+    else if (text[i] === "{") depth++;
+    else if (text[i] === "}" && --depth < 0) return false;
+  }
+  return depth === 0;
+}
+
+/** A link stands only between nodes that are there: one whose end is missing (a node the whiteboard does not draw) is kept as its code. */
+export function settleLinks(shapes: Shape[]): Shape[] {
+  const names = new Set(shapes.flatMap((s) => (s.kind === "node" && s.name ? [s.name] : [])));
+  return shapes.map((s) => (s.kind === "link" && !(names.has(s.from) && names.has(s.to)) ? { id: s.id, kind: "code", code: shapeCode(s) } : s));
 }
 
 /**
@@ -339,7 +398,7 @@ export function parseStatement(statement: string): Shape | null {
 export function parseDrawing(code: string): Drawing | null {
   const m = /^\s*\\begin\{tikzpicture\}\s*(?:\[([^\]]*)\])?([\s\S]*?)\\end\{tikzpicture\}\s*$/.exec(code);
   if (!m) return null;
-  const shapes: Shape[] = statements(m[2]).map((st) => parseStatement(st) ?? { id: newId(), kind: "code", code: st });
+  const shapes: Shape[] = settleLinks(statements(m[2]).map((st) => parseStatement(st) ?? { id: newId(), kind: "code", code: st }));
   return { shapes, options: (m[1] ?? "").trim() };
 }
 
@@ -372,6 +431,7 @@ export function moved(shape: Shape, dx: number, dy: number): Shape {
       return { ...shape, center: m(shape.center) };
     case "node":
       return { ...shape, at: m(shape.at) };
+    case "link":
     case "code":
       return shape;
   }
@@ -461,6 +521,7 @@ export function scaled(shape: Shape, origin: Point, f: number): Shape {
       return { ...shape, center: m(shape.center), rx: shape.rx * k, ry: shape.ry * k };
     case "node":
       return { ...shape, at: m(shape.at) };
+    case "link":
     case "code":
       return shape;
   }
@@ -481,6 +542,7 @@ export function tidy(shape: Shape): Shape {
       return { ...shape, center: p(shape.center), rx: r(shape.rx), ry: r(shape.ry) };
     case "node":
       return { ...shape, at: p(shape.at) };
+    case "link":
     case "code":
       return shape;
   }
@@ -503,7 +565,7 @@ export function shapesCode(shapes: Shape[]): string {
 
 /** The shapes of statements; what the whiteboard cannot draw is kept as code. */
 export function shapesFromCode(code: string): Shape[] {
-  return statements(code).map((st) => parseStatement(st) ?? { id: newId(), kind: "code", code: st });
+  return settleLinks(statements(code).map((st) => parseStatement(st) ?? { id: newId(), kind: "code", code: st }));
 }
 
 /** The code of a set made of `shapes`: moved so that the lower left corner of their box is at (0, 0). */
@@ -541,3 +603,214 @@ export const WIDTH_PT: Record<LineWidth, number> = {
 };
 
 export { ARROWS, DASHES, POSITIONS, WIDTHS };
+
+// ------------------------------------------------------------------ curves
+
+/**
+ * How far the handles of a smooth curve reach, as a share of the distance
+ * between the two neighbours of a point: what `plot[smooth]` uses (pgf
+ * multiplies its tension, 0.5 unless told otherwise, by 0.2775). Checked
+ * against the curve TikZ draws.
+ */
+const SMOOTH = 0.13875;
+
+/** A piece of a curve: a cubic Bézier from the end of the piece before. */
+export interface CurveTo {
+  c1: Point;
+  c2: Point;
+  to: Point;
+}
+
+/**
+ * The curve `plot[smooth]` draws through `points` (`smooth cycle` when
+ * `closed`), from its first point: at each point the curve runs parallel to
+ * the line between its neighbours; an open curve leaves its ends straight.
+ */
+export function smoothCurve(points: Point[], closed: boolean): CurveTo[] {
+  const n = points.length;
+  if (n < 2) return [];
+  const at = (i: number) => points[((i % n) + n) % n];
+  const handle = (i: number, sign: number): Point => {
+    // The ends of an open curve have no neighbour on one side: no handle.
+    if (!closed && (i === 0 || i === n - 1)) return points[i];
+    const [before, after] = [at(i - 1), at(i + 1)];
+    return { x: points[i].x + sign * SMOOTH * (after.x - before.x), y: points[i].y + sign * SMOOTH * (after.y - before.y) };
+  };
+  if (n === 2 && closed) return [{ c1: points[0], c2: points[1], to: points[1] }];
+  const out: CurveTo[] = [];
+  for (let i = 0; i < (closed ? n : n - 1); i++) out.push({ c1: handle(i, 1), c2: handle((i + 1) % n, -1), to: at(i + 1) });
+  return out;
+}
+
+// --------------------------------------------------------------- alignment
+
+export interface Box {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+/** A line showing that what is moved is aligned with another shape. */
+export interface Guide {
+  /** `x`: a vertical line at x = `at`; `y`: a horizontal one. */
+  axis: "x" | "y";
+  at: number;
+  /** Where the line starts and ends, along the other axis. */
+  from: number;
+  to: number;
+}
+
+/**
+ * What to add to the position of the box being moved for one of its sides
+ * or its middle to line up with a side or the middle of another box, when
+ * that is less than `tolerance` away, with the lines that show it.
+ */
+export function alignment(moving: Box, others: Box[], tolerance: number): { dx: number; dy: number; guides: Guide[] } {
+  const guides: Guide[] = [];
+  const along = (axis: "x" | "y"): number => {
+    const [lo, hi, olo, ohi] = axis === "x" ? (["minX", "maxX", "minY", "maxY"] as const) : (["minY", "maxY", "minX", "maxX"] as const);
+    const marks = (b: Box) => [b[lo], (b[lo] + b[hi]) / 2, b[hi]];
+    let best: number | null = null;
+    for (const o of others) {
+      for (const mine of marks(moving)) {
+        for (const theirs of marks(o)) {
+          const d = theirs - mine;
+          if (Math.abs(d) <= tolerance && (best === null || Math.abs(d) < Math.abs(best))) best = d;
+        }
+      }
+    }
+    if (best === null) return 0;
+    const shift = best;
+    const seen = new Set<number>();
+    for (const o of others) {
+      for (const mine of marks(moving)) {
+        for (const theirs of marks(o)) {
+          if (Math.abs(theirs - (mine + shift)) > 1e-6) continue;
+          const key = Math.round(theirs * 1e4);
+          const from = Math.min(moving[olo], o[olo]);
+          const to = Math.max(moving[ohi], o[ohi]);
+          const same = guides.find((g) => g.axis === axis && Math.round(g.at * 1e4) === key);
+          if (same) {
+            same.from = Math.min(same.from, from);
+            same.to = Math.max(same.to, to);
+          } else if (!seen.has(key)) {
+            seen.add(key);
+            guides.push({ axis, at: theirs, from, to });
+          }
+        }
+      }
+    }
+    return shift;
+  };
+  const dx = along("x");
+  const dy = along("y");
+  // The lines go as far as the box once it is moved along the other axis too.
+  for (const g of guides) {
+    const shift = g.axis === "x" ? dy : dx;
+    const [lo, hi] = g.axis === "x" ? [moving.minY + shift, moving.maxY + shift] : [moving.minX + shift, moving.maxX + shift];
+    g.from = Math.min(g.from, lo);
+    g.to = Math.max(g.to, hi);
+  }
+  return { dx, dy, guides };
+}
+
+// ------------------------------------------------------------------- links
+
+/** The names the nodes of `shapes` have. */
+export function nodeNames(shapes: Shape[]): string[] {
+  return shapes.flatMap((s) => (s.kind === "node" && s.name ? [s.name] : []));
+}
+
+/** A name no node has: `n1`, `n2`… */
+export function freeNodeName(taken: Iterable<string>): string {
+  const used = new Set(taken);
+  for (let n = 1; ; n++) if (!used.has(`n${n}`)) return `n${n}`;
+}
+
+/**
+ * The shapes with a link from the node `fromId` to the node `toId`: the
+ * nodes are given a name when they have none, and the link is put at the
+ * end. Null when they are not two different nodes.
+ */
+export function linked(shapes: Shape[], fromId: string, toId: string, style: Style): { shapes: Shape[]; link: Shape } | null {
+  const a = shapes.find((s) => s.id === fromId);
+  const b = shapes.find((s) => s.id === toId);
+  if (a?.kind !== "node" || b?.kind !== "node" || a.id === b.id) return null;
+  const names = new Set(nodeNames(shapes));
+  const named = new Map<string, string>();
+  for (const node of [a, b]) {
+    const name = node.name ?? freeNodeName(names);
+    names.add(name);
+    named.set(node.id, name);
+  }
+  const link: Shape = { id: newId(), kind: "link", from: named.get(a.id)!, to: named.get(b.id)!, style, bend: "", label: "", labelPosition: "above" };
+  return { shapes: [...shapes.map((s) => (s.kind === "node" && named.has(s.id) ? { ...s, name: named.get(s.id)! } : s)), link], link };
+}
+
+/** The shapes without the links that lost one of their nodes. */
+export function withoutLooseLinks(shapes: Shape[]): Shape[] {
+  const names = new Set(nodeNames(shapes));
+  return shapes.filter((s) => s.kind !== "link" || (names.has(s.from) && names.has(s.to)));
+}
+
+/**
+ * Shapes about to be added to `existing` (a copy, a set): their nodes get
+ * names no other node has, their links follow, and a link whose nodes are
+ * not all among them is left out.
+ */
+export function uniqueNames(existing: Shape[], added: Shape[]): Shape[] {
+  const taken = new Set(nodeNames(existing));
+  const renamed = new Map<string, string>();
+  const out = added.map((s) => {
+    if (s.kind !== "node" || !s.name) return s;
+    // The first node of that name among those added keeps it when it is free.
+    const name = taken.has(s.name) || renamed.has(s.name) ? freeNodeName(taken) : s.name;
+    if (!renamed.has(s.name)) renamed.set(s.name, name);
+    taken.add(name);
+    return name === s.name ? s : { ...s, name };
+  });
+  return out.flatMap((s): Shape[] => {
+    if (s.kind !== "link") return [s];
+    const from = renamed.get(s.from);
+    const to = renamed.get(s.to);
+    return from && to ? [{ ...s, from, to }] : [];
+  });
+}
+
+// --------------------------------------------------------- sets, as a file
+
+/** The sets as a file to give to someone else, or to another computer. */
+export function setsFile(sets: Pick<ShapeSet, "name" | "code">[]): string {
+  return `${JSON.stringify({ raytex: "tikz-sets", version: 1, sets: sets.map(({ name, code }) => ({ name, code })) }, null, 2)}\n`;
+}
+
+/** The sets of a file written by [`setsFile`]; null when the text is not one. */
+export function setsFromFile(text: string): Pick<ShapeSet, "name" | "code">[] | null {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  const file = data as { raytex?: unknown; sets?: unknown };
+  if (!file || file.raytex !== "tikz-sets" || !Array.isArray(file.sets)) return null;
+  const out: Pick<ShapeSet, "name" | "code">[] = [];
+  for (const set of file.sets as { name?: unknown; code?: unknown }[]) {
+    if (typeof set?.name !== "string" || typeof set.code !== "string" || !set.name.trim() || !set.code.trim()) return null;
+    out.push({ name: set.name.trim(), code: set.code });
+  }
+  return out;
+}
+
+/** The sets with those of a file added: one that is there already (the same shapes) is not added twice, and a name that is taken gets a number. */
+export function mergeSets(existing: ShapeSet[], incoming: Pick<ShapeSet, "name" | "code">[]): { sets: ShapeSet[]; added: number } {
+  const sets = [...existing];
+  let added = 0;
+  for (const set of incoming) {
+    if (sets.some((s) => s.code.trim() === set.code.trim())) continue;
+    sets.push({ id: newId(), name: freeSetName(set.name, sets), code: set.code });
+    added++;
+  }
+  return { sets, added };
+}

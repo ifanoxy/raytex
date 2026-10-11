@@ -66,6 +66,8 @@ export const renamePath = (from: string, to: string) => call<string>("rename_pat
 export const deletePath = (path: string) => call<void>("delete_path", { path });
 export const importFiles = (sources: string[], dir: string) => call<string[]>("import_files", { sources, dir });
 export const exportFile = (from: string, to: string) => call<void>("export_file", { from, to });
+/** Writes a text where the user said (a save dialog). */
+export const exportText = (to: string, text: string) => call<void>("export_text", { to, text });
 
 // ------------------------------------------------------------ language
 export const updateDocument = (path: string, text: string, version: number) =>

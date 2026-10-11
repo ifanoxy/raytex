@@ -121,6 +121,8 @@
     circle: '<circle cx="12" cy="12" r="8"/>',
     ellipse: '<ellipse cx="12" cy="12" rx="9.5" ry="6"/>',
     polygon: '<path d="M12 3.5 20.5 10 17 20H7L3.5 10z"/>',
+    curve: '<path d="M3.5 17c3-10 6-10 8.5-5s5.500 5 8.500-5"/>',
+    "link-nodes": '<rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.500"/><path d="M10 7h4a3 3 0 0 1 3 3v2"/><path d="m15 10.500 2 2 2-2"/>',
     draw: '<path d="M4 20l1.2-4.4L15.8 5a2.1 2.1 0 0 1 3 3L8.2 18.6z"/><path d="m13.8 7 3 3M4 20h16"/>',
   };
   export type IconName = keyof typeof ICONS;

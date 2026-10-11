@@ -1683,6 +1683,23 @@ const fr: Record<keyof typeof en, string> = {
   "export.write": "Exporter…",
   "export.done": "{file} écrit ({size})",
   "export.show": "Afficher",
+  "tikz.tool.curve": "Courbe",
+  "tikz.tool.link": "Lien entre deux textes",
+  "tikz.linkHint": "Tirez d'un texte à un autre : le lien les suivra",
+  "tikz.linkTitle": "Lien",
+  "tikz.linkLabel": "Texte sur le lien",
+  "tikz.bend.none": "Droit",
+  "tikz.bend.left": "Courbé vers la gauche",
+  "tikz.bend.right": "Courbé vers la droite",
+  "tikz.smooth": "Courbe lisse",
+  "tikz.sets.import": "Importer",
+  "tikz.sets.importHint": "Ajoute les ensembles d'un fichier",
+  "tikz.sets.export": "Exporter",
+  "tikz.sets.exportHint": "Écrit vos ensembles dans un fichier, pour un autre ordinateur ou une autre personne",
+  "tikz.sets.exported": "{n} ensemble(s) écrit(s) dans {file}",
+  "tikz.sets.imported": "{n} ensemble(s) ajouté(s)",
+  "tikz.sets.nothingNew": "Ces ensembles sont déjà là",
+  "tikz.sets.notAFile": "{file} n'est pas un fichier d'ensembles de RayTeX",
 };
 
 export default fr;

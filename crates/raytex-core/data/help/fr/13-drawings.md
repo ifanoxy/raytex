@@ -19,11 +19,15 @@ Le studio s'ouvre sur l'onglet **Dessin** : un tableau blanc quadrillé, sur leq
 | Rectangle | <kbd>R</kbd> | glisser d'un coin à l'autre |
 | Cercle, ellipse | <kbd>C</kbd>, <kbd>E</kbd> | glisser depuis le centre |
 | Polygone | <kbd>P</kbd> | cliquer chaque sommet ; double-clic ou <kbd>Entrée</kbd> pour finir, clic sur le premier point pour fermer |
+| Courbe | <kbd>B</kbd> | cliquer les points par où elle passe ; double-clic ou <kbd>Entrée</kbd> pour finir, clic sur le premier point pour la fermer. C'est la courbe lisse de TikZ (`plot[smooth]`) : le tableau la dessine comme LaTeX la dessinera |
 | Texte | <kbd>T</kbd> | cliquer puis écrire ; `$…$` pour les maths ; double-clic pour modifier. Avec l'outil de sélection, un double-clic sur le papier écrit un texte à cet endroit |
+| Lien | <kbd>K</kbd> | glisser d'un texte à un autre : une flèche les relie, de bord à bord, et **les suit** quand on les déplace |
 
 Une fois une forme dessinée, l'outil de sélection revient : elle est sélectionnée, prête à être déplacée ou mise en forme. La **punaise**, sous les outils, garde l'outil choisi pour dessiner plusieurs formes de suite.
 
 - **Déplacer la vue** : <kbd>Espace</kbd> + glisser, le bouton du milieu, ou la molette ; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + molette pour zoomer. À l'ouverture du studio et au retour depuis un autre onglet, la vue se cadre toute seule sur ce qui est dessiné ; le bouton *Voir tout le dessin* le refait à la demande.
+- **Aligner** : ce que l'on déplace s'aimante aux bords et au milieu des autres formes quand il en est proche, et une ligne rose le montre. <kbd>⌘</kbd>/<kbd>Ctrl</kbd> enfoncé, il ne s'aimante pas.
+- **Les liens** relient des textes (encadrés ou non, ronds ou rectangulaires). Dans le code, chaque texte relié reçoit un nom (`n1`, `n2`…) et le lien s'écrit `\draw[->] (n1) -- (n2);` : c'est TikZ qui le trace de bord à bord. Sélectionné, un lien a son groupe à droite : droit ou courbé d'un côté, et un texte posé dessus. Supprimer un texte supprime ses liens.
 - **Redimensionner** : les poignées d'une forme ; avec plusieurs formes sélectionnées, les coins du cadre les agrandissent ensemble, en gardant leurs proportions.
 - **Dupliquer** : <kbd>Alt</kbd> + glisser une forme en laisse une copie ; le bouton *Dupliquer* de la barre de sélection ou <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>D</kbd> ; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>C</kbd> puis <kbd>V</kbd> copie et colle, aussi d'un schéma à l'autre.
 - **La barre de sélection**, en haut du tableau dès que quelque chose est sélectionné : dupliquer, mettre devant ou derrière, garder comme ensemble, supprimer. Le clic droit propose les mêmes actions.
@@ -47,7 +51,9 @@ Ils ont leur propre **étagère, sous le papier** :
 
 Vos ensembles sont gardés avec les réglages de RayTeX : ils servent dans tous vos schémas et tous vos projets. Un clic sur le nom le change, la croix le supprime. Le titre de l'étagère la replie.
 
-Le dessin et le code restent liés : l'onglet **Code** montre le code du dessin, que l'on peut modifier à la main ; en revenant au dessin, les formes suivent. Les instructions que le tableau blanc ne sait pas dessiner (`\foreach`, `plot`, nœuds reliés…) sont gardées telles quelles.
+**Exporter** écrit vos ensembles dans un fichier (`.json`), pour un autre ordinateur ou pour quelqu'un d'autre ; **Importer** ajoute ceux d'un tel fichier aux vôtres : un ensemble que vous avez déjà n'est pas ajouté deux fois, et un nom déjà pris reçoit un numéro.
+
+Le dessin et le code restent liés : l'onglet **Code** montre le code du dessin, que l'on peut modifier à la main ; en revenant au dessin, les formes suivent. Les instructions que le tableau blanc ne sait pas dessiner (`\foreach`, les tracés de fonctions, les styles à vous…) sont gardées telles quelles.
 
 ## Partir d'un modèle
 

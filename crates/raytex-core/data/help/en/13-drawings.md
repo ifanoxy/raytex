@@ -19,11 +19,15 @@ The studio opens on the **Drawing** tab: a whiteboard with a grid, drawn on with
 | Rectangle | <kbd>R</kbd> | drag from one corner to the other |
 | Circle, ellipse | <kbd>C</kbd>, <kbd>E</kbd> | drag from the centre |
 | Polygon | <kbd>P</kbd> | click each vertex; double-click or <kbd>Enter</kbd> to finish, click the first point to close |
+| Curve | <kbd>B</kbd> | click the points it goes through; double-click or <kbd>Enter</kbd> to finish, click the first point to close it. It is the smooth curve of TikZ (`plot[smooth]`): the board draws it as LaTeX will |
 | Text | <kbd>T</kbd> | click then write; `$…$` for maths; double-click to change it. With the selection tool, a double-click on the paper writes a text there |
+| Link | <kbd>K</kbd> | drag from one text to another: an arrow joins them, from border to border, and **follows them** when they are moved |
 
 Once a shape is drawn, the selection tool comes back: the shape is selected, ready to be moved or styled. The **pin**, under the tools, keeps the chosen tool to draw several shapes in a row.
 
 - **Moving the view**: <kbd>Space</kbd> + drag, the middle button, or the wheel; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + wheel to zoom. When the studio opens and when you come back from another tab, the view frames what is drawn by itself; the *Show the whole drawing* button does it again on demand.
+- **Aligning**: what is moved snaps to the sides and the middle of the other shapes when it is close to them, and a pink line shows it. With <kbd>⌘</kbd>/<kbd>Ctrl</kbd> held, it does not snap.
+- **Links** join texts (framed or not, round or rectangular). In the code, each linked text gets a name (`n1`, `n2`…) and the link is written `\draw[->] (n1) -- (n2);`: TikZ draws it from border to border. Selected, a link has its group on the right: straight or bent to one side, and a text set on it. Deleting a text deletes its links.
 - **Resizing**: the handles of a shape; with several shapes selected, the corners of the box make them grow together, keeping their proportions.
 - **Duplicating**: <kbd>Alt</kbd> + drag on a shape leaves a copy of it; the *Duplicate* button of the selection bar or <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>D</kbd>; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>C</kbd> then <kbd>V</kbd> copies and pastes, also from one picture to another.
 - **The selection bar**, at the top of the board as soon as something is selected: duplicate, bring to front or send to back, keep as a set, delete. The right button offers the same actions.
@@ -47,7 +51,9 @@ They have a **shelf of their own, under the paper**:
 
 Your sets are kept with the settings of RayTeX: they serve in all your pictures and all your projects. A click on the name changes it, the cross removes it. The title of the shelf folds it.
 
-The drawing and the code stay in step: the **Code** tab shows the code of the drawing, which can be changed by hand; back on the drawing, the shapes follow. The statements the whiteboard cannot draw (`\foreach`, `plot`, linked nodes…) are kept as they are.
+**Export** writes your sets in a file (`.json`), for another computer or for someone else; **Import** adds those of such a file to yours: a set you already have is not added twice, and a name that is taken gets a number.
+
+The drawing and the code stay in step: the **Code** tab shows the code of the drawing, which can be changed by hand; back on the drawing, the shapes follow. The statements the whiteboard cannot draw (`\foreach`, plots of functions, styles of your own…) are kept as they are.
 
 ## Starting from a model
 

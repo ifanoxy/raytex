@@ -1,7 +1,7 @@
 <script lang="ts" module>
   import type { Shape as Copied } from "$lib/tikz/model";
 
-  export type Tool = "select" | "line" | "arrow" | "rect" | "circle" | "ellipse" | "polygon" | "text";
+  export type Tool = "select" | "line" | "arrow" | "rect" | "circle" | "ellipse" | "polygon" | "curve" | "text" | "link";
 
   /** What was copied on the whiteboard: kept from one picture to the next. */
   let clipboard: Copied[] = [];
@@ -10,9 +10,12 @@
 <script lang="ts">
   // TikZ whiteboard: shapes drawn with the mouse on a centimetre grid (y
   // pointing up, like TikZ). Tools: select/move, line, arrow, rectangle,
-  // circle, ellipse, polygon, text. With the selection tool, a drag on a
-  // shape moves it (with Alt, a copy of it), a drag on the paper selects
-  // what it touches, and Space or the middle button moves the view.
+  // circle, ellipse, polygon, curve, text, link. With the selection tool, a
+  // drag on a shape moves it (with Alt, a copy of it), a drag on the paper
+  // selects what it touches, and Space or the middle button moves the view.
+  // What is moved lines up with the other shapes (lines show it; Ctrl or ⌘
+  // held: it does not). A link is drawn from one text to another, and
+  // follows them.
   // Handles resize the selected shape, or several shapes together; points
   // snap to the grid when snapping is on. What is selected has its actions
   // in a bar at the top and under the right button. Nodes are HTML over
@@ -22,7 +25,7 @@
   import { mathHtml } from "$lib/editor/math-preview";
   import { plural, t } from "$lib/i18n.svelte";
   import { ui } from "$lib/state/ui.svelte";
-  import { bounds, copies, type Drawing, fitView, moved, newId, type Point, scaled, type Shape, shapesCode, snapPoint, type Style, tidy, touches, WIDTH_PT } from "$lib/tikz/model";
+  import { alignment, bounds, type Box, copies, type Drawing, fitView, type Guide, linked, moved, newId, type Point, scaled, type Shape, shapeBounds, shapesCode, smoothCurve, snapPoint, type Style, tidy, touches, uniqueNames, WIDTH_PT, withoutLooseLinks } from "$lib/tikz/model";
   import Icon from "../../common/Icon.svelte";
 
   let {
@@ -77,13 +80,18 @@
   let marquee = $state<{ a: Point; b: Point } | null>(null);
   let panning = $state(false);
   let draft = $state<Shape | null>(null);
+  /** Lines showing that what is moved is aligned with another shape. */
+  let guides = $state<Guide[]>([]);
+  /** The link being drawn: from a node to where the pointer is. */
+  let linking = $state<{ from: string; to: Point; over: string | null } | null>(null);
   let editingNode = $state<string | null>(null);
   let nodeText = $state("");
 
   type Drag =
     | { kind: "pan"; sx: number; sy: number; ox: number; oy: number }
     | { kind: "draw"; start: Point }
-    | { kind: "move"; start: Point; origin: Shape[]; moved: boolean; copied: boolean; before: string[] }
+    | { kind: "move"; start: Point; origin: Shape[]; others: Box[]; moved: boolean; copied: boolean; before: string[] }
+    | { kind: "link"; from: string }
     | { kind: "handle"; id: string; handle: string; origin: Shape }
     | { kind: "scale"; pivot: Point; corner: Point; origin: Shape[] }
     | { kind: "marquee"; start: Point; base: string[]; moved: boolean };
@@ -221,6 +229,9 @@
     }
   }
 
+  /** The tools that draw point by point: a polygon, a curve. */
+  const pointwise = () => tool === "polygon" || tool === "curve";
+
   function degenerate(s: Shape): boolean {
     if (s.kind === "path") return s.points.length < 2 || s.points.every((p) => p.x === s.points[0].x && p.y === s.points[0].y);
     if (s.kind === "rect") return s.from.x === s.to.x || s.from.y === s.to.y;
@@ -259,6 +270,15 @@
         return;
       }
     }
+    if (tool === "link") {
+      // From a text, to another one.
+      if (id && byId(id)?.kind === "node") {
+        linking = { from: id, to: p, over: null };
+        drag = { kind: "link", from: id };
+        capture(e);
+      }
+      return;
+    }
     if (tool === "select" && id) {
       const before = selected;
       if (e.shiftKey) selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
@@ -267,11 +287,14 @@
       // With Alt, copies are dragged and the shapes stay where they are.
       const copied = e.altKey && origin.length > 0;
       if (copied) {
-        origin = copies(origin);
+        origin = uniqueNames(drawing.shapes, copies(origin));
         setShapes([...drawing.shapes, ...origin]);
         selected = origin.map((s) => s.id);
       }
-      drag = { kind: "move", start: snapped(p), origin, moved: false, copied, before };
+      // What the moved shapes can line up with: the other ones.
+      const moving = new Set(origin.map((s) => s.id));
+      const others = drawing.shapes.filter((s) => !moving.has(s.id)).flatMap((s) => shapeBounds(s) ?? []);
+      drag = { kind: "move", start: snapped(p), origin, others, moved: false, copied, before };
       capture(e);
       return;
     }
@@ -285,7 +308,7 @@
       newNode(snapped(p));
       return;
     }
-    if (tool === "polygon") {
+    if (pointwise()) {
       const q = snapped(p);
       if (draft?.kind === "path") {
         const first = draft.points[0];
@@ -296,7 +319,7 @@
         }
         draft = { ...draft, points: [...draft.points.slice(0, -1), q, q] };
       } else {
-        draft = { id: newId(), kind: "path", points: [q, q], closed: false, style: JSON.parse(JSON.stringify(style)) };
+        draft = { id: newId(), kind: "path", points: [q, q], closed: false, style: JSON.parse(JSON.stringify(style)), ...(tool === "curve" ? { smooth: true } : {}) };
       }
       return;
     }
@@ -338,7 +361,7 @@
     const p = toCm(e);
     hover = snapped(p);
     if (!drag) hoverId = tool === "select" ? ((e.target as Element).closest<Element>("[data-id]")?.getAttribute("data-id") ?? null) : null;
-    if (draft?.kind === "path" && tool === "polygon" && !drag) {
+    if (draft?.kind === "path" && pointwise() && !drag) {
       draft = { ...draft, points: [...draft.points.slice(0, -1), snapped(p)] };
       return;
     }
@@ -348,13 +371,27 @@
       oy = drag.oy + e.clientY - drag.sy;
     } else if (drag.kind === "draw") {
       draft = newShape(drag.start, snapped(p));
+    } else if (drag.kind === "link") {
+      // The pointer is captured by the text the link starts from: what is under it is asked for.
+      const under = document.elementFromPoint(e.clientX, e.clientY)?.closest<Element>("[data-id]")?.getAttribute("data-id") ?? null;
+      const over = under && under !== drag.from && byId(under)?.kind === "node" ? under : null;
+      linking = { from: drag.from, to: p, over };
     } else if (drag.kind === "move") {
       const q = snapped(p);
-      const dx = q.x - drag.start.x;
-      const dy = q.y - drag.start.y;
+      let dx = q.x - drag.start.x;
+      let dy = q.y - drag.start.y;
       if (dx || dy) drag.moved = true;
+      // Lined up with the other shapes when close to it (not with Ctrl or ⌘ held).
+      guides = [];
+      const box = !e.ctrlKey && !e.metaKey && drag.others.length ? bounds(drag.origin) : null;
+      if (box && drag.moved) {
+        const near = alignment({ minX: box.minX + dx, minY: box.minY + dy, maxX: box.maxX + dx, maxY: box.maxY + dy }, drag.others, 6 / scale);
+        dx += near.dx;
+        dy += near.dy;
+        guides = near.guides;
+      }
       const origin = new Map(drag.origin.map((s) => [s.id, s]));
-      setShapes(drawing.shapes.map((s) => (origin.has(s.id) ? moved(origin.get(s.id)!, dx, dy) : s)));
+      setShapes(drawing.shapes.map((s) => (origin.has(s.id) ? tidy(moved(origin.get(s.id)!, dx, dy)) : s)));
     } else if (drag.kind === "handle") {
       const q = snapped(p);
       const { id, origin, handle } = drag;
@@ -406,7 +443,20 @@
     drag = null;
     panning = false;
     marquee = null;
+    guides = [];
+    const link = linking;
+    linking = null;
     if (!d) return;
+    if (d.kind === "link") {
+      const made = link?.over ? linked(drawing.shapes, d.from, link.over, { ...JSON.parse(JSON.stringify(style)), fill: null, noStroke: false, arrow: style.arrow ?? "->" }) : null;
+      if (made) {
+        setShapes(made.shapes);
+        selected = [made.link.id];
+        oncommit();
+        drawn();
+      }
+      return;
+    }
     if (d.kind === "draw" && draft) {
       const shape = draft;
       draft = null;
@@ -448,7 +498,7 @@
   }
 
   function doubleClick(e: MouseEvent) {
-    if (tool === "polygon" && draft) {
+    if (pointwise() && draft) {
       finishPolygon(false);
       return;
     }
@@ -472,7 +522,7 @@
     if (!id) return;
     editingNode = null;
     const text = nodeText.trim();
-    if (!text) setShapes(drawing.shapes.filter((s) => s.id !== id));
+    if (!text) setShapes(withoutLooseLinks(drawing.shapes.filter((s) => s.id !== id)));
     else setShapes(drawing.shapes.map((s) => (s.id === id && s.kind === "node" ? { ...s, text } : s)));
     if (tool === "text") tool = "select";
     oncommit();
@@ -506,7 +556,7 @@
   }
 
   let spaceDown = false;
-  const TOOL_KEYS: Record<string, Tool> = { v: "select", l: "line", a: "arrow", r: "rect", c: "circle", e: "ellipse", p: "polygon", t: "text" };
+  const TOOL_KEYS: Record<string, Tool> = { v: "select", l: "line", a: "arrow", r: "rect", c: "circle", e: "ellipse", p: "polygon", b: "curve", t: "text", k: "link" };
 
   function key(e: KeyboardEvent) {
     if (editingNode) return;
@@ -563,7 +613,8 @@
 
   export function remove() {
     if (!selected.length) return;
-    setShapes(drawing.shapes.filter((s) => !selected.includes(s.id)));
+    // A link goes with the text it was tied to.
+    setShapes(withoutLooseLinks(drawing.shapes.filter((s) => !selected.includes(s.id))));
     selected = [];
     oncommit();
   }
@@ -576,7 +627,9 @@
   const chosen = () => drawing.shapes.filter((s) => selected.includes(s.id));
 
   /** Adds shapes to the drawing and selects them. */
-  export function insert(shapes: Shape[]) {
+  export function insert(added: Shape[]) {
+    // Texts that are linked have names: those added get names of their own.
+    const shapes = uniqueNames(drawing.shapes, added);
     if (!shapes.length) return;
     setShapes([...drawing.shapes, ...shapes]);
     selected = shapes.map((s) => s.id);
@@ -682,6 +735,88 @@
     return [];
   });
 
+  /** The path of a curve through points (screen coordinates), as TikZ draws `plot[smooth]`. */
+  function curvePath(pts: Point[], closed: boolean): string {
+    if (!pts.length) return "";
+    const pieces = smoothCurve(pts, closed).map((c) => `C${c.c1.x},${c.c1.y} ${c.c2.x},${c.c2.y} ${c.to.x},${c.to.y}`);
+    return `M${pts[0].x},${pts[0].y}${pieces.join("")}${closed ? "Z" : ""}`;
+  }
+
+  /** Where a curve comes from at each of its ends: what its arrowheads point away from. */
+  function curveEnds(pts: Point[]): { start: Point; end: Point } {
+    const pieces = smoothCurve(pts, false);
+    return { start: pieces[0]?.c2 ?? pts[1], end: pieces[pieces.length - 1]?.c1 ?? pts[pts.length - 2] };
+  }
+
+  /** The size of each text on the board, in pixels: a link stops at its border. */
+  const nodeSize = $state<Record<string, { w: number; h: number }>>({});
+  function measured(el: HTMLElement, id: string) {
+    const read = () => {
+      const size = { w: el.offsetWidth, h: el.offsetHeight };
+      if (nodeSize[id]?.w !== size.w || nodeSize[id]?.h !== size.h) nodeSize[id] = size;
+    };
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return { destroy: () => ro.disconnect() };
+  }
+
+  /** The middle of a text on the screen, and half its size. */
+  function nodeBox(s: Extract<Shape, { kind: "node" }>): { c: Point; hw: number; hh: number; round: boolean } {
+    const size = nodeSize[s.id] ?? { w: 24, h: 18 };
+    const at = screen(s.at);
+    const cx = at.x + (s.position.includes("left") ? -size.w / 2 - 4 : s.position.includes("right") ? size.w / 2 + 4 : 0);
+    const cy = at.y + (s.position.includes("above") ? -size.h / 2 - 4 : s.position.includes("below") ? size.h / 2 + 4 : 0);
+    return { c: { x: cx, y: cy }, hw: size.w / 2, hh: size.h / 2, round: s.shape === "circle" || s.shape === "ellipse" };
+  }
+
+  /** Where a line leaving the middle of a box in the direction (ux, uy) crosses its border. */
+  function border(box: { c: Point; hw: number; hh: number; round: boolean }, ux: number, uy: number): Point {
+    const k = box.round ? 1 / Math.hypot(ux / box.hw, uy / box.hh) : Math.min(ux ? box.hw / Math.abs(ux) : Infinity, uy ? box.hh / Math.abs(uy) : Infinity);
+    return { x: box.c.x + ux * k, y: box.c.y + uy * k };
+  }
+
+  /** A link on the screen: its path from border to border, where its arrowheads come from, and the place of its text. */
+  function linkShape(s: Extract<Shape, { kind: "link" }>, toPoint: Point | null = null): { d: string; a: Point; b: Point; fromA: Point; fromB: Point; mid: Point } | null {
+    const from = drawing.shapes.find((n) => n.kind === "node" && n.name === s.from);
+    const to = drawing.shapes.find((n) => n.kind === "node" && n.name === s.to);
+    if (from?.kind !== "node" || (!toPoint && to?.kind !== "node")) return null;
+    const A = nodeBox(from);
+    const B = toPoint ? { c: toPoint, hw: 0.01, hh: 0.01, round: true } : nodeBox(to as Extract<Shape, { kind: "node" }>);
+    const dx = B.c.x - A.c.x;
+    const dy = B.c.y - A.c.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) return null;
+    const ux = dx / len;
+    const uy = dy / len;
+    if (!s.bend) {
+      const a = border(A, ux, uy);
+      const b = border(B, -ux, -uy);
+      return { d: `M${a.x},${a.y}L${b.x},${b.y}`, a, b, fromA: b, fromB: a, mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+    }
+    // `bend left`: the line leaves 30° to its left and arrives 30° from its left (the screen has y downwards).
+    const turn = ((s.bend === "left" ? 30 : -30) * Math.PI) / 180;
+    const rot = (x: number, y: number, a: number) => ({ x: x * Math.cos(a) + y * Math.sin(a), y: -x * Math.sin(a) + y * Math.cos(a) });
+    const out = rot(ux, uy, turn);
+    const into = rot(-ux, -uy, -turn);
+    const a = border(A, out.x, out.y);
+    const b = border(B, into.x, into.y);
+    const reach = 0.3915 * Math.hypot(b.x - a.x, b.y - a.y);
+    const c1 = { x: a.x + out.x * reach, y: a.y + out.y * reach };
+    const c2 = { x: b.x + into.x * reach, y: b.y + into.y * reach };
+    const mid = { x: (a.x + 3 * c1.x + 3 * c2.x + b.x) / 8, y: (a.y + 3 * c1.y + 3 * c2.y + b.y) / 8 };
+    return { d: `M${a.x},${a.y}C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`, a, b, fromA: c1, fromB: c2, mid };
+  }
+
+  /** Where the text of a link is written, from the middle of its line. */
+  function labelOffset(position: string): { dx: number; dy: number; anchor: "start" | "middle" | "end" } {
+    return {
+      dx: position.includes("left") ? -7 : position.includes("right") ? 7 : 0,
+      dy: position.includes("above") ? -9 : position.includes("below") ? 17 : 4,
+      anchor: position.includes("left") ? "end" : position.includes("right") ? "start" : "middle",
+    };
+  }
+
   /** HTML of a node's text: `$…$` parts rendered by KaTeX. */
   const nodeHtml = $state<Record<string, string>>({});
   $effect(() => {
@@ -747,7 +882,39 @@
         {@const fill = s.style.fill ? css(s.style.fill, "none") : "none"}
         {@const op = s.style.opacity ?? 1}
         <g data-id={s.id} class="shape" class:sel={selected.includes(s.id)} class:hover={hoverId === s.id && !selected.includes(s.id)} opacity={op}>
-          {#if s.kind === "path"}
+          {#if s.kind === "link"}
+            {@const line = linkShape(s)}
+            {#if line}
+              <path d={line.d} fill="none" {stroke} stroke-width={sw} stroke-dasharray={dash(s.style)} />
+              {#if s.style.arrow && stroke !== "none"}
+                {#if s.style.arrow.endsWith(">") || s.style.arrow.endsWith("Stealth") || s.style.arrow.endsWith("|")}
+                  <polygon class="head" points={head(line.fromB, line.b, sw)} fill={stroke} />
+                {/if}
+                {#if s.style.arrow.startsWith("<") || s.style.arrow.startsWith("Stealth-")}
+                  <polygon class="head" points={head(line.fromA, line.a, sw)} fill={stroke} />
+                {/if}
+              {/if}
+              {#if s.label}
+                {@const place = labelOffset(s.labelPosition)}
+                <text class="link-label" x={line.mid.x + place.dx} y={line.mid.y + place.dy} text-anchor={place.anchor} font-size={0.3528 * scale}>{s.label.replace(/[$\\{}]/g, "")}</text>
+              {/if}
+              <path class="hit" d={line.d} />
+            {/if}
+          {:else if s.kind === "path" && s.smooth}
+            {@const pts = s.points.map(screen)}
+            {@const d = curvePath(pts, s.closed)}
+            <path {d} fill={s.closed ? fill : "none"} {stroke} stroke-width={sw} stroke-dasharray={dash(s.style)} />
+            {#if s.style.arrow && pts.length >= 2 && stroke !== "none" && !s.closed}
+              {@const ends = curveEnds(pts)}
+              {#if s.style.arrow.endsWith(">") || s.style.arrow.endsWith("Stealth") || s.style.arrow.endsWith("|")}
+                <polygon class="head" points={head(ends.end, pts[pts.length - 1], sw)} fill={stroke} />
+              {/if}
+              {#if s.style.arrow.startsWith("<") || s.style.arrow.startsWith("Stealth-")}
+                <polygon class="head" points={head(ends.start, pts[0], sw)} fill={stroke} />
+              {/if}
+            {/if}
+            <path class="hit" {d} />
+          {:else if s.kind === "path"}
             {@const pts = s.points.map(screen)}
             {#if s.closed}
               <polygon points={pts.map((p) => `${p.x},${p.y}`).join(" ")} {fill} {stroke} stroke-width={sw} stroke-dasharray={dash(s.style)} stroke-linejoin={s.style.rounded ? "round" : "miter"} />
@@ -781,12 +948,27 @@
       {/if}
     {/each}
 
-    {#if draft?.kind === "path" && tool === "polygon"}
+    {#if draft?.kind === "path" && pointwise()}
       {#each draft.points.slice(0, -1) as p, i (i)}
         <circle class="vertex" cx={toX(p.x)} cy={toY(p.y)} r="3.5" />
       {/each}
     {/if}
 
+    {#if linking}
+      {@const from = byId(linking.from)}
+      {#if from?.kind === "node"}
+        {@const a = nodeBox(from).c}
+        {@const b = screen(linking.to)}
+        <line class="linking" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+      {/if}
+    {/if}
+    {#each guides as g, i (i)}
+      {#if g.axis === "x"}
+        <line class="guide" x1={toX(g.at)} y1={toY(g.to) - 8} x2={toX(g.at)} y2={toY(g.from) + 8} />
+      {:else}
+        <line class="guide" x1={toX(g.from) - 8} y1={toY(g.at)} x2={toX(g.to) + 8} y2={toY(g.at)} />
+      {/if}
+    {/each}
     {#if group}
       <rect class="group" x={toX(group.minX) - 6} y={toY(group.maxY) - 6} width={(group.maxX - group.minX) * scale + 12} height={(group.maxY - group.minY) * scale + 12} rx="3" />
     {/if}
@@ -813,10 +995,12 @@
         <div
           class="node"
           class:sel={selected.includes(s.id)}
-          class:hover={hoverId === s.id && !selected.includes(s.id)}
+          class:hover={(hoverId === s.id && !selected.includes(s.id)) || linking?.over === s.id}
+          class:linkable={tool === "link"}
           class:boxed={s.boxed}
           class:round={s.shape === "circle" || s.shape === "ellipse"}
           data-id={s.id}
+          use:measured={s.id}
           style:left="{c.x}px"
           style:top="{c.y}px"
           style:font-size="{size}px"
@@ -872,8 +1056,10 @@
   {#if hover}
     <div class="coords mono">({hover.x}, {hover.y})</div>
   {/if}
-  {#if tool === "polygon" && draft}
+  {#if pointwise() && draft}
     <div class="hint">{t("tikz.polygonHint")}</div>
+  {:else if tool === "link"}
+    <div class="hint">{t("tikz.linkHint")}</div>
   {/if}
 </div>
 
@@ -972,6 +1158,25 @@
   .vertex {
     fill: var(--accent);
   }
+  /* What is moved is aligned with another shape. */
+  .guide {
+    stroke: #e0428a;
+    stroke-width: 1;
+    stroke-dasharray: 5 3;
+    pointer-events: none;
+  }
+  /* A link being drawn, from its text to the pointer. */
+  .linking {
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+    pointer-events: none;
+  }
+  .link-label {
+    font-family: "Latin Modern Roman", "CMU Serif", "Times New Roman", serif;
+    fill: #111;
+    pointer-events: none;
+  }
   .cursor {
     fill: none;
     stroke: var(--accent);
@@ -1010,6 +1215,14 @@
   }
   .tool-select .node.hover {
     outline: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    outline-offset: 2px;
+  }
+  /* With the link tool, texts are what is taken hold of; the one the link would go to is shown. */
+  .node.linkable {
+    cursor: crosshair;
+  }
+  .tool-link .node.hover {
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
   .bar {

@@ -273,6 +273,13 @@ pub async fn import_files(
     .await?
 }
 
+/// Writes a text at a location chosen by the user (the sets of the
+/// whiteboard, to give to someone else).
+#[tauri::command]
+pub async fn export_text(to: String, text: String) -> CmdResult<()> {
+    write_atomic(&abs(&to), text.as_bytes()).map_err(err)
+}
+
 /// Copies the PDF (or any file of the project) to a location chosen by the user.
 #[tauri::command]
 pub async fn export_file(from: String, to: String) -> CmdResult<()> {

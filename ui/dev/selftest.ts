@@ -1163,11 +1163,66 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
       span.left >= paper.left && span.right <= paper.right && span.top >= paper.top && span.bottom <= paper.bottom && Math.abs(off[0]) < paper.width * 0.1 && Math.abs(off[1]) < paper.height * 0.1 && filled > 0.4,
       `off ${off.map(Math.round)}, filled ${filled.toFixed(2)}, paper ${Math.round(paper.width)}×${Math.round(paper.height)}`,
     );
+    // A curve through three points, a second text, and a link from the
+    // first text to it; the second text, moved, lines up with the first
+    // (a line shows it) and the link follows.
+    {
+      const at = svg.getBoundingClientRect();
+      const on = (type: string, x: number, y: number, target: Element = svg) => target.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: x, clientY: y, pointerId: 1, button: 0, isPrimary: true }));
+      const before = shapeCount();
+      boardEl.focus();
+      k("b");
+      for (const [x, y] of [[0.12, 0.86], [0.2, 0.72], [0.3, 0.88]]) on("pointerdown", at.left + at.width * x, at.top + at.height * y);
+      k("Enter");
+      await pause(200);
+      const curved = !!document.querySelector('.studio .board g.shape path[d*="C"]');
+      k("t");
+      on("pointerdown", at.left + at.width * 0.8, at.top + at.height * 0.82);
+      await pause(150);
+      const second = document.querySelector<HTMLInputElement>(".node-input")!;
+      second.value = "Sortie";
+      second.dispatchEvent(new Event("input", { bubbles: true }));
+      second.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      await pause(400);
+      const nodes = () => [...document.querySelectorAll<HTMLElement>(".studio .board .node")];
+      const centre = (el: Element) => {
+        const b = el.getBoundingClientRect();
+        return [b.left + b.width / 2, b.top + b.height / 2];
+      };
+      const [first, last] = [nodes().find((n) => n.textContent?.includes("Entrée"))!, nodes().find((n) => n.textContent?.trim() === "Sortie")!];
+      boardEl.focus();
+      k("k");
+      await pause(100);
+      const [ax, ay] = centre(first);
+      const [bx, by] = centre(last);
+      on("pointerdown", ax, ay, first);
+      on("pointermove", (ax + bx) / 2, (ay + by) / 2, first);
+      on("pointermove", bx, by, first);
+      on("pointerup", bx, by, first);
+      await pause(300);
+      const linkedNow = shapeCount() === before + 2 && document.querySelectorAll(".studio .board g.shape path.hit").length >= 2;
+      // Dragged to nearly the height of the first text: taken to it, with a line.
+      const moving = nodes().find((n) => n.textContent?.trim() === "Sortie")!;
+      const [mx, my] = centre(moving);
+      const lineBefore = document.querySelector(".studio .board g.shape.sel path:not(.hit)")?.getAttribute("d");
+      boardEl.focus();
+      k("v");
+      on("pointerdown", mx, my, moving);
+      on("pointermove", mx - 20, ay + 3, moving);
+      await pause(100);
+      const guided = document.querySelectorAll(".studio .board .guide").length > 0;
+      on("pointerup", mx - 20, ay + 3, moving);
+      await pause(300);
+      const [, endY] = centre(nodes().find((n) => n.textContent?.trim() === "Sortie")!);
+      const followed = [...document.querySelectorAll(".studio .board g.shape path:not(.hit)")].some((path) => path.getAttribute("d")?.includes("L") && path.getAttribute("d") !== lineBefore);
+      check("whiteboard: a curve, a link, a guide", curved && linkedNow && guided && Math.abs(endY - ay) < 1.5 && followed, `curve ${curved}, link ${linkedNow} (${shapeCount()} shapes, ${before} before), guide ${guided}, aligned ${Math.round(endY - ay)}px, followed ${followed}`);
+    }
     await scene("whiteboard", 2500);
     document.querySelector<HTMLButtonElement>(".footer .btn.primary")!.click();
     await until(() => ui.overlay === null, 20_000, "drawing inserted");
     const withDrawing = editor.textOf(main) ?? "";
-    check("drawing inserted", /\\draw \([^)]*\) rectangle/.test(withDrawing) && withDrawing.includes("\\node at") && withDrawing.includes("{Entrée $x_1$}"));
+    check("drawing inserted", /\\draw \([^)]*\) rectangle/.test(withDrawing) && withDrawing.includes("\\node") && withDrawing.includes("{Entrée $x_1$}"));
+    check("curve and link written as TikZ", /plot\[smooth\] coordinates \{(\([^)]*\) ?){3}\}/.test(withDrawing) && /\\draw\[->\] \(n\d\) -- \(n\d\);/.test(withDrawing) && /\\node \(n\d\) at \([^)]*\) \{Sortie\}/.test(withDrawing), withDrawing.slice(withDrawing.indexOf("\\begin{tikzpicture}"), withDrawing.indexOf("\\end{tikzpicture}")));
     check("drawing build", await buildOk(log, "drawing"));
     await scene("final-document", 2500);
   } catch (e) {

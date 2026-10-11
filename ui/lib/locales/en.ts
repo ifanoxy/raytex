@@ -1681,6 +1681,23 @@ const en = {
   "export.write": "Export…",
   "export.done": "{file} written ({size})",
   "export.show": "Show",
+  "tikz.tool.curve": "Curve",
+  "tikz.tool.link": "Link between two texts",
+  "tikz.linkHint": "Drag from one text to another: the link will follow them",
+  "tikz.linkTitle": "Link",
+  "tikz.linkLabel": "Text on the link",
+  "tikz.bend.none": "Straight",
+  "tikz.bend.left": "Bent to the left",
+  "tikz.bend.right": "Bent to the right",
+  "tikz.smooth": "Smooth curve",
+  "tikz.sets.import": "Import",
+  "tikz.sets.importHint": "Adds the sets of a file",
+  "tikz.sets.export": "Export",
+  "tikz.sets.exportHint": "Writes your sets in a file, for another computer or someone else",
+  "tikz.sets.exported": "{n} set(s) written in {file}",
+  "tikz.sets.imported": "{n} set(s) added",
+  "tikz.sets.nothingNew": "These sets are already here",
+  "tikz.sets.notAFile": "{file} is not a file of RayTeX sets",
 };
 
 export default en;
