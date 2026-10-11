@@ -59,3 +59,17 @@ If the header is taller than the room the page keeps for it (an image, two lines
 > A page that opens a chapter keeps the style its chapter gives it, even when its number is in a range: use *Title and chapter pages* for those.
 
 **Save the style** writes its definition in the preamble, with the packages it needs. **Delete the style** also removes what used it; *Undo* in the editor brings it back.
+
+## The title page
+
+**See all › Page › Title page…** (or the command palette) opens a window that writes the title page for you: you fill in fields, and the page is shown next to them, compiled with the class and the preamble of your project.
+
+- **Four layouts**, chosen by their picture: *Classic* (the `\maketitle` of LaTeX, above the text in an article), *Centered*, *Report* (the institution at the top, authors on the left and supervisors on the right) and *Modern* (aligned on the left along a rule).
+- **Text**: title, subtitle, authors (one per line), date (today, none, or the one you write).
+- **Institution**: university or school, department, kind of document ("Master's thesis"), supervisors, logo. Under *Advanced*: the width of the logo, what is written above the supervisors, the colour of the rules.
+
+**Write the title page** puts it in the main file, in place of the title it had (`\maketitle` or another title page), with the packages it needs; one undo removes it. Open the window again to change it: it finds its fields.
+
+The code written is ordinary LaTeX, which you can touch up: each line says what it is in a comment (`% title`, `% author`), and it is by these comments that the window knows its fields. The characters `&`, `%`, `#` and `_` are written as LaTeX wants them (`\&`…); the rest is kept as it is, commands included (`\LaTeX`, `\\` for a line break in a title).
+
+With the `beamer` class, the window sets `\title`, `\subtitle`, `\author`, `\institute` and `\date`, and the title frame.

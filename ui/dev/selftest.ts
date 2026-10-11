@@ -10,6 +10,7 @@ import { refused } from "$lib/policy";
 import { acceptCompletion, currentCompletions, setSelectedCompletion, startCompletion } from "@codemirror/autocomplete";
 import { EditorView } from "@codemirror/view";
 import { invoke } from "@tauri-apps/api/core";
+import { i18n } from "../lib/i18n.svelte";
 import * as ipc from "../lib/ipc";
 import { app } from "../lib/state/app.svelte";
 import { build } from "../lib/state/build.svelte";
@@ -27,6 +28,7 @@ import { templates } from "../lib/state/templates.svelte";
 import { ui } from "../lib/state/ui.svelte";
 import { viewer } from "../lib/state/viewer.svelte";
 import { whatsNew } from "../lib/state/whatsnew.svelte";
+import { readTitlePage } from "../lib/titlepage";
 import { basename, samePath } from "../lib/utils";
 
 async function until(check: () => boolean, timeoutMs: number, what: string) {
@@ -657,6 +659,59 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     // measured from one that was not compiled.
     const shows = (sel: string) => document.querySelector(`.studio ${sel}`)?.textContent?.replace(/\s+/g, " ").trim() ?? "none";
     log(`layout: measure «${shows(".measure")}», error «${shows(".error-box")}», preview «${shows(".empty")}», compiling ${!!document.querySelector(".studio .busy")}`);
+    ok = false;
+  }
+  // ------------------------------------------------------------- title page
+  // A layout chosen by its picture, the fields typed, the page compiled next
+  // to them; written in the main file in place of the title it had, read
+  // back field by field, and the document still compiles.
+  try {
+    const main = project.info!.main!;
+    const lang = i18n.lang === "fr" ? "fr" : "en";
+    if (ui.overlay) ui.closeOverlay();
+    await editor.open(main);
+    const had = readTitlePage(editor.textOf(main) ?? "", lang).kind;
+    ui.openOverlay("title");
+    await until(() => !!document.querySelector(".title-studio .style"), 10_000, "title studio");
+    const typeIn = (el: HTMLInputElement | HTMLTextAreaElement, text: string) => {
+      el.value = text;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    const group = (id: string) => document.querySelector<HTMLElement>(`.title-studio .fold[data-id="${id}"]`)!;
+    document.querySelector<HTMLButtonElement>('.title-studio .style[data-style="report"]')!.click();
+    await until(() => !!document.querySelector('.title-studio .fold[data-id="institution"]'), 3_000, "fields of the layout");
+    const text = [...group("text").querySelectorAll<HTMLInputElement>("input")];
+    typeIn(text[0], "Étude de la chaleur & de ses usages");
+    typeIn(text[1], "Rapport d'étape");
+    typeIn(group("text").querySelector("textarea")!, "Camille Martin\nSacha Durand");
+    const institution = [...group("institution").querySelectorAll<HTMLInputElement>("input")];
+    typeIn(institution[0], "Université de Lyon");
+    typeIn(institution[2], "Mémoire de master");
+    typeIn(group("institution").querySelector("textarea")!, "Pr. Ada Lovelace");
+    await pause(900);
+    await until(() => !!document.querySelector(".title-studio .preview-box canvas") && !document.querySelector(".title-studio .busy"), 180_000, "title page previewed");
+    const said = document.querySelector(".title-studio .error-box")?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    await scene("title-page");
+    document.querySelector<HTMLButtonElement>(".title-studio .buttons .primary")!.click();
+    await until(() => ui.overlay === null, 5_000, "title studio closed");
+    const written = editor.textOf(main) ?? "";
+    const found = readTitlePage(written, lang);
+    const block = /\\begin\{titlepage\} % .+/.test(written) && written.includes("{\\huge\\bfseries Étude de la chaleur \\& de ses usages\\par} % ") && !/^\s*\\maketitle/m.test(written);
+    const readBack =
+      found.kind === "block" &&
+      found.page.style === "report" &&
+      found.page.title === "Étude de la chaleur & de ses usages" &&
+      found.page.subtitle === "Rapport d'étape" &&
+      found.page.authors.join("|") === "Camille Martin|Sacha Durand" &&
+      found.page.institution === "Université de Lyon" &&
+      found.page.kind === "Mémoire de master" &&
+      found.page.supervisors.join("|") === "Pr. Ada Lovelace";
+    log(`title page: had ${had}, preview ${said ? `error «${said}»` : "compiled"}, written ${block}, read back ${readBack}`);
+    ok = !said && block && readBack && (await buildOk(log, "title page")) && ok;
+  } catch (e) {
+    log(`title page failed: ${e}`);
+    const said = document.querySelector(".title-studio .error-box, .title-studio .preview-box .empty")?.textContent?.replace(/\s+/g, " ").trim() ?? "none";
+    log(`title page: the window says «${said}», compiling ${!!document.querySelector(".title-studio .busy")}`);
     ok = false;
   }
   await editor.saveAll();

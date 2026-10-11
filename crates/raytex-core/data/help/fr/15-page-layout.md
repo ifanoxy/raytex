@@ -59,3 +59,17 @@ Si l'en-tête est plus haut que la place que la page lui garde (une image, deux 
 > Une page qui ouvre un chapitre garde le style que son chapitre lui donne, même si son numéro est dans une plage : utilisez *Pages de titre et de chapitre* pour celles-là.
 
 **Enregistrer le style** écrit sa définition dans le préambule, avec les packages qu'il lui faut. **Supprimer le style** retire aussi ce qui l'utilisait ; *Annuler* dans l'éditeur le fait revenir.
+
+## La page de titre
+
+**Tout voir › Page › Page de titre…** (ou la palette de commandes) ouvre une fenêtre qui écrit la page de titre à votre place : vous remplissez des champs, la page s'affiche à côté, compilée avec la classe et le préambule de votre projet.
+
+- **Quatre mises en page**, à choisir sur leur dessin : *Classique* (le `\maketitle` de LaTeX, au-dessus du texte dans un article), *Centrée*, *Rapport* (établissement en haut, auteurs à gauche et encadrants à droite) et *Moderne* (alignée à gauche le long d'un filet).
+- **Texte** : titre, sous-titre, auteurs (un par ligne), date (aujourd'hui, aucune, ou celle que vous écrivez).
+- **Établissement** : université ou école, formation, type de document (« Mémoire de master »), encadrants, logo. Sous *Avancé* : la largeur du logo, ce qui est écrit au-dessus des encadrants, la couleur des filets.
+
+**Écrire la page de titre** la met dans le fichier principal, à la place du titre qu'il avait (`\maketitle` ou une autre page de titre), avec les packages qu'il faut ; une seule annulation la retire. Rouvrez la fenêtre pour la modifier : elle retrouve ses champs.
+
+Le code écrit est du LaTeX ordinaire, que vous pouvez retoucher : chaque ligne dit ce qu'elle est dans un commentaire (`% titre`, `% auteur`), et c'est à ces commentaires que la fenêtre reconnaît ses champs. Les caractères `&`, `%`, `#` et `_` sont écrits comme LaTeX les veut (`\&`…) ; le reste est gardé tel quel, commandes comprises (`\LaTeX`, `\\` pour passer à la ligne dans un titre).
+
+Avec la classe `beamer`, la fenêtre règle `\title`, `\subtitle`, `\author`, `\institute` et `\date`, et la diapositive de titre.

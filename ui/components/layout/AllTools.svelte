@@ -130,6 +130,7 @@
     {
       title: "format.groupPage",
       items: [
+        action("format.titlePage"),
         action("format.margins"),
         action("format.pageStyles"),
         snippet("format.pageBreak", "page-break", "\\newpage\n"),

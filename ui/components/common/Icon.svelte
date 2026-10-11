@@ -65,6 +65,7 @@
     todo: '<rect x="3" y="5" width="5" height="5" rx="1"/><path d="m4 15 1.5 1.5L8 14M11 7.5h10M11 15.5h10"/>',
     target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8" fill="currentColor"/>',
     bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+    "title-page": '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 9h7M8.5 13h7"/><path d="M10 11h4" stroke-width="2.4"/><path d="M10.5 17.5h3"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     broom: '<path d="m15 3-6 9"/><path d="M8 11c-2.5 0-5 2.5-5 6 0 1 0 2.5 1 4h9c1-2 1-4 1-5 0-3-3-5-6-5z"/><path d="M6 21c0-2 .5-3 1.5-4M10 21c0-2 .5-3 1.5-4"/>',
     command: '<path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"/>',
