@@ -56,3 +56,11 @@ Vérifiez le panneau **Problèmes** : une erreur fatale empêche la production d
 ## Signaler un problème
 
 RayTeX est libre et open source : signalez un bug ou proposez une amélioration sur le dépôt du projet, en joignant si possible un petit document qui reproduit le problème.
+
+## Signaler un problème
+
+*Signaler un problème…* (palette de commandes, ou *Réglages › À propos*) prépare un rapport à coller dans une issue sur GitHub : la version de RayTeX et de votre système, votre distribution TeX, la façon dont le document est compilé, et les erreurs de la dernière compilation.
+
+**Rien n'est envoyé d'ici.** Le rapport s'affiche en entier : vous le lisez, vous le copiez, et vous le collez où vous voulez. *Copier et ouvrir GitHub* le copie puis ouvre la page où écrire l'issue dans votre navigateur.
+
+Le rapport ne dit pas qui vous êtes : le dossier du projet et votre nom d'utilisateur sont retirés des chemins. La fin de la sortie de la compilation n'y est que si vous la cochez, parce qu'elle peut citer des lignes de votre document.

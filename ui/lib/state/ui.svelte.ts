@@ -4,7 +4,7 @@ import type { CommandRequest } from "../commands";
 import { uid } from "../utils";
 
 export type SidebarView = "files" | "templates" | "outline" | "search" | "symbols" | "snippets" | "commands" | "bibliography" | "packages";
-export type Overlay = null | "settings" | "help" | "newProject" | "setup" | "palette" | "shortcuts" | "image" | "fonts" | "tikz" | "projects" | "convert" | "grid" | "commands" | "layout" | "history" | "title" | "export";
+export type Overlay = null | "settings" | "help" | "newProject" | "setup" | "palette" | "shortcuts" | "image" | "fonts" | "tikz" | "projects" | "convert" | "grid" | "commands" | "layout" | "history" | "title" | "export" | "report";
 export type BottomTab = "problems" | "output" | "jobs";
 
 export interface Toast {

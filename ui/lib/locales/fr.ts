@@ -1700,6 +1700,18 @@ const fr: Record<keyof typeof en, string> = {
   "tikz.sets.imported": "{n} ensemble(s) ajouté(s)",
   "tikz.sets.nothingNew": "Ces ensembles sont déjà là",
   "tikz.sets.notAFile": "{file} n'est pas un fichier d'ensembles de RayTeX",
+  "action.reportProblem": "Signaler un problème…",
+  "report.title": "Signaler un problème",
+  "report.nothingSent": "Rien n'est envoyé d'ici : vous lisez le rapport, vous le copiez, et vous le collez où vous voulez.",
+  "report.what": "Que s'est-il passé ?",
+  "report.whatPlaceholder": "Ce que vous faisiez, ce que vous attendiez, ce que vous avez obtenu",
+  "report.problems": "Les erreurs de la dernière compilation",
+  "report.output": "La fin de la sortie de la compilation",
+  "report.outputHint": "elle peut citer des lignes de votre document",
+  "report.preview": "LE RAPPORT",
+  "report.copy": "Copier le rapport",
+  "report.copied": "Rapport copié",
+  "report.open": "Copier et ouvrir GitHub",
 };
 
 export default fr;

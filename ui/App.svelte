@@ -58,6 +58,7 @@
     history: () => import("./components/views/History.svelte"),
     title: () => import("./components/views/TitleStudio.svelte"),
     export: () => import("./components/views/ExportProject.svelte"),
+    report: () => import("./components/views/ReportProblem.svelte"),
   } as const;
   type LazyView = keyof typeof VIEWS;
   const lazyView = $derived(ui.overlay && ui.overlay in VIEWS ? VIEWS[ui.overlay as LazyView]() : null);

@@ -56,3 +56,11 @@ Look at the **Problems** panel: a fatal error prevents the PDF from being produc
 ## Reporting a problem
 
 RayTeX is free and open source: report a bug or suggest an improvement on the project repository, ideally with a small document that reproduces the problem.
+
+## Reporting a problem
+
+*Report a problem…* (the command palette, or *Settings › About*) prepares a report to paste in an issue on GitHub: the version of RayTeX and of your system, your TeX distribution, how the document is built, and the errors of the last build.
+
+**Nothing is sent from here.** The report is shown whole: you read it, you copy it, and you paste it where you want. *Copy and open GitHub* copies it, then opens the page where the issue is written in your browser.
+
+The report does not say who you are: the folder of the project and your user name are taken out of the paths. The end of the build output is there only if you tick it, because it may quote lines of your document.

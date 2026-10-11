@@ -588,6 +588,7 @@
             </button>
             <button class="btn small" onclick={() => whatsNew.show()}><Icon name="sparkles" size={13} />{t("action.whatsNew")}</button>
             <button class="btn small" onclick={() => ipc.openUrl(REPOSITORY_URL)}><Icon name="globe" size={13} />GitHub</button>
+            <button class="btn small" onclick={() => ui.openOverlay("report")}><Icon name="alert-circle" size={13} />{t("action.reportProblem")}</button>
             <button class="btn small" onclick={() => app.info && ipc.revealInOs(app.info.templatesPath)}><Icon name="folder-open" size={13} />{t("settings.templatesFolder")}</button>
           </div>
           <div class="about-updates">

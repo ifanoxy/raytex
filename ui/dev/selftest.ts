@@ -1663,6 +1663,28 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
       await editor.save(mainFile, { silent: true });
     }
 
+    // ------------------------------------------------- report a problem
+    // The report says what runs here and names no folder of the user; it is
+    // shown whole, and nothing is sent.
+    {
+      ui.openOverlay("report");
+      await until(() => !!document.querySelector(".report-window pre"), 10_000, "report window");
+      const text = () => document.querySelector(".report-window pre")?.textContent ?? "";
+      const typed = document.querySelector<HTMLTextAreaElement>(".report-window textarea")!;
+      typed.value = "Le tableau ne compile plus.";
+      typed.dispatchEvent(new Event("input", { bubbles: true }));
+      await pause(200);
+      const home = /^(?:\/(?:Users|home)\/|[A-Za-z]:[\\/]Users[\\/])([^\\/]+)/.exec(root)?.[1] ?? "";
+      check(
+        "report: what runs here, and no folder of the user",
+        text().includes(`RayTeX ${app.info?.version}`) && text().includes("### Environment") && text().includes("Le tableau ne compile plus.") && !text().includes(root) && (!home || !text().includes(home)),
+        text().slice(0, 400),
+      );
+      check("report: read before it is copied", [...document.querySelectorAll(".report-window .buttons .btn")].length === 3 && !!document.querySelector(".report-window .promise"));
+      await scene("report-problem");
+      ui.closeOverlay();
+    }
+
     // The formatting bar at the size of the window.
     await editor.open(project.info!.main!);
     await pause(500);

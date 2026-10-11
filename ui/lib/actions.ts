@@ -256,6 +256,7 @@ export const actions: Action[] = [
   { id: "help.open", title: "action.help", category: "help", keys: "F1", icon: "help", run: () => ui.openHelp() },
   { id: "help.updates", title: "action.checkUpdates", category: "help", icon: "download", run: () => void updates.check(true) },
   { id: "help.whatsNew", title: "action.whatsNew", category: "help", icon: "sparkles", run: () => whatsNew.show() },
+  { id: "help.report", title: "action.reportProblem", category: "help", icon: "alert-circle", run: () => ui.openOverlay("report") },
   { id: "help.shortcuts", title: "action.shortcuts", category: "help", icon: "keyboard", run: () => ui.openHelp("shortcuts") },
   { id: "help.symbols", title: "action.symbolReference", category: "help", icon: "sigma", run: () => ui.openHelp("symbols") },
   { id: "help.errors", title: "action.errorReference", category: "help", icon: "bug", run: () => ui.openHelp("errors") },

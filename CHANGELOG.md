@@ -4,6 +4,7 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- **Reporting a problem from the application** (*Report a problem…* in the command palette, and *Settings › About*): a report to paste in an issue, with the version of RayTeX and of the system, the TeX distribution, how the document is built and the errors of the last build. Nothing is sent: the report is shown whole, copied by the user and pasted where they choose; *Copy and open GitHub* opens the page of a new issue. The folder of the project and the name of the user are taken out of every path; the end of the build output, which may quote the document, is added only when asked.
 - **Whiteboard (TikZ studio), four additions**:
   - **Links that follow the texts**: with the link tool (K), a drag from one text to another joins them with an arrow, drawn from border to border, which follows them when they are moved. It is written the way TikZ wants it: each linked text gets a name (`n1`, `n2`…) and the link is `\draw[->] (n1) -- (n2);`. A selected link is straight or bent to one side, and can carry a text; deleting a text deletes its links; copies and sets get names of their own. Such lines written by hand are read back as links.
   - **Alignment guides**: what is moved snaps to the sides and the middle of the other shapes when it comes close, and a line shows what it is aligned with (not with Ctrl or ⌘ held).

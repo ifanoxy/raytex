@@ -1698,6 +1698,18 @@ const en = {
   "tikz.sets.imported": "{n} set(s) added",
   "tikz.sets.nothingNew": "These sets are already here",
   "tikz.sets.notAFile": "{file} is not a file of RayTeX sets",
+  "action.reportProblem": "Report a problem…",
+  "report.title": "Report a problem",
+  "report.nothingSent": "Nothing is sent from here: you read the report, you copy it, and you paste it where you want.",
+  "report.what": "What happened?",
+  "report.whatPlaceholder": "What you were doing, what you expected, what you got",
+  "report.problems": "The errors of the last build",
+  "report.output": "The end of the build output",
+  "report.outputHint": "it may quote lines of your document",
+  "report.preview": "THE REPORT",
+  "report.copy": "Copy the report",
+  "report.copied": "Report copied",
+  "report.open": "Copy and open GitHub",
 };
 
 export default en;
