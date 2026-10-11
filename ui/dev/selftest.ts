@@ -1687,36 +1687,69 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     }
 
     // ---------------------------------------------------------- spelling
-    // The checker of the system is given the language of the document (the
-    // one babel is given), a passage in another language says its own, and
-    // commands, formulas and the preamble are not to be spelled.
+    // Turned on for a document whose language has no dictionary here, the
+    // checker asks before it downloads anything, and downloads nothing when
+    // the answer is no. With a dictionary (a very small one, written here
+    // by hand: the scenes use no network), a word it does not know is
+    // underlined in the prose, and only there; the right button offers a
+    // correction and adds the word to those of the user.
     {
       const mainFile = project.info!.main!;
       await editor.open(mainFile);
       const original = editor.textOf(mainFile) ?? "";
-      await editor.rewrite(mainFile, () => "\\documentclass{article}\n\\usepackage[english, ngerman]{babel}\n\\title{Ein Titel}\n\\begin{document}\nEin Satz mit $x^2$ und \\foreignlanguage{english}{some words}.\n\\end{document}\n");
-      await app.update((s) => (s.editor.spellcheck = true));
-      const content = () => document.querySelector<HTMLElement>(".editor-pane .cm-content, .cm-editor .cm-content")!;
-      await until(() => content()?.getAttribute("lang") === "de", 10_000, "language of the document given to the checker");
+      const letter = (language: string, body: string) => `\\documentclass{article}\n\\usepackage[${language}]{babel}\n\\title{Ein Titel}\n\\begin{document}\n${body}\n\\end{document}\n`;
+      const content = () => document.querySelector<HTMLElement>(".cm-editor .cm-content")!;
+      const underlined = () => [...content().querySelectorAll(".cm-misspelled")].map((el) => el.textContent ?? "");
+      const dialog = () => document.querySelector<HTMLElement>('[role="alertdialog"]');
+
+      await editor.rewrite(mainFile, () => letter("italian", "Una frase."));
+      void spelling.enable();
+      await until(() => !!dialog(), 10_000, "question before the download");
+      const asked = dialog()!.textContent ?? "";
+      const said = asked.includes("github.com/LibreOffice/dictionaries") && /1[,.]3\s?M/.test(asked) && /italien|Italian/i.test(asked);
+      // "Not now": the button that is not the main one.
+      dialog()!.querySelector<HTMLButtonElement>(".btn:not(.primary)")!.click();
+      await until(() => !dialog(), 5_000, "question answered");
       await pause(300);
-      const offs = [...content().querySelectorAll('[spellcheck="false"]')].map((el) => el.textContent ?? "");
-      const skipped = (text: string) => offs.some((o) => o.includes(text));
-      const english = [...content().querySelectorAll('[lang="en"]')].map((el) => el.textContent).join("");
+      const refused = (await ipc.spellStatus()).installed.length === 0 && app.settings?.editor.spellcheck === true;
+      const offered = document.querySelector(".status .spelling")?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+      check("spelling: asks before downloading, and downloads nothing on a no", said && refused && /télécharger|download/i.test(offered), `${asked.slice(0, 200)} · installed ${(await ipc.spellStatus()).installed.length} · status «${offered}»`);
+
+      // A dictionary of German, by hand, where the downloaded ones are kept.
+      const dictionaries = `${app.info!.settingsPath.replace(/[\\/][^\\/]*$/, "")}/dictionaries`;
+      await ipc.exportText(`${dictionaries}/de.aff`, "SET UTF-8\nTRY esianrtolcdugmphbyfvkwz\n");
+      await ipc.exportText(`${dictionaries}/de.dic`, "6\nEin\nSatz\nmit\nund\nTitel\nFehler\n");
+      await editor.rewrite(mainFile, () => letter("english, ngerman", "Ein Satz mit Fehlerr und $xyzzy^2$ und \\foreignlanguage{english}{sume wurds}. % Fehler\n\\begin{tikzpicture}\n\\node {abcde};\n\\end{tikzpicture}"));
+      await spelling.loadStatus();
+      await spelling.refresh();
+      await until(() => underlined().length > 0, 15_000, "misspelled word underlined");
+      await pause(500);
       check(
-        "spelling: the language of the document, code left out",
-        content().getAttribute("spellcheck") === "true" && skipped("\\usepackage") && skipped("babel") && skipped("x") && skipped("\\foreignlanguage") && !skipped("Ein Satz mit") && !skipped("Ein Titel") && english === "some words",
-        `lang ${content().getAttribute("lang")}, english «${english}», off: ${[...new Set(offs)].slice(0, 30).join(" | ")}`,
+        "spelling: only the misspelled word of the prose is underlined",
+        underlined().join("|") === "Fehlerr" && content().getAttribute("spellcheck") === "false" && content().getAttribute("lang") === "de",
+        `underlined ${underlined().join("|")}, lang ${content().getAttribute("lang")}`,
       );
-      const shown = document.querySelector(".status .spelling")?.textContent?.trim() ?? "";
-      check("spelling: its language in the status bar", /deutsch|german|allemand/i.test(shown), shown);
-      // Chosen by hand for the project: it wins over what the document says.
-      await spelling.choose("it");
-      await until(() => content()?.getAttribute("lang") === "it", 10_000, "language chosen for the project");
-      await spelling.choose(null);
-      await until(() => content()?.getAttribute("lang") === "de", 10_000, "back to the language of the document");
+      const shown = document.querySelector(".status .spelling")?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+      check("spelling: its language in the status bar", /deutsch|german|allemand/i.test(shown) && !/télécharger|download/i.test(shown), shown);
       await scene("spelling");
-      await app.update((s) => (s.editor.spellcheck = false));
-      await until(() => content()?.getAttribute("spellcheck") === "false" && !content().querySelector('[lang="en"]'), 5_000, "checker off");
+      // The right button on the word: what the dictionary offers, and the word added.
+      const word = content().querySelector<HTMLElement>(".cm-misspelled")!;
+      const at = word.getBoundingClientRect();
+      word.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: at.left + 6, clientY: at.top + at.height / 2 }));
+      await until(() => !!ui.menu, 10_000, "menu of the word");
+      const items = (ui.menu?.items ?? []).flatMap((item) => ("label" in item && item.label ? [item] : []));
+      const offers = items.map((item) => item.label).join(" | ");
+      items[items.length - 1]?.run?.();
+      ui.closeMenu();
+      await until(() => underlined().length === 0, 10_000, "word added to the dictionary");
+      const words = (await ipc.spellStatus()).words;
+      check("spelling: a correction is offered, and the word can be added", offers.includes("Fehler") && offers.includes("Fehlerr") && words.includes("Fehlerr"), `${offers} · words ${words.join(",")}`);
+
+      // As it was.
+      await spelling.forget("Fehlerr");
+      await spelling.remove("de");
+      await spelling.disable();
+      await until(() => underlined().length === 0 && !document.querySelector(".status .spelling"), 5_000, "checker off");
       await editor.rewrite(mainFile, () => original);
       await editor.save(mainFile, { silent: true });
     }

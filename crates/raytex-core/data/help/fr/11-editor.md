@@ -79,12 +79,13 @@ L'enregistrement automatique est activé par défaut. Un point dans l'onglet sig
 
 ## L'orthographe
 
-*Réglages › Éditeur › Correcteur orthographique* (ou *Activer ou désactiver le correcteur orthographique* dans la palette de commandes) souligne les fautes avec le **correcteur de votre système**. RayTeX lui dit trois choses :
+*Réglages › Éditeur › Correcteur orthographique* (ou *Activer ou désactiver le correcteur orthographique* dans la palette de commandes) souligne d'un trait rose ondulé les mots que le dictionnaire ne connaît pas.
 
-- **la langue du document** : celle que le document donne à babel (`\usepackage[french]{babel}` ; avec plusieurs langues, la dernière, ou celle de `main=`), à polyglossia (`\setdefaultlanguage`), ou à une ligne `% !TEX spellcheck = fr_FR` ;
-- **les passages dans une autre langue** : `\foreignlanguage{english}{…}`, l'environnement `otherlanguage`, les commandes `\textenglish{…}` de polyglossia ;
-- **ce qui n'est pas du texte** : les commandes, les formules, les étiquettes et les clés, les noms de fichiers, le préambule (sauf le titre), les schémas TikZ et les listings ne sont pas vérifiés.
+**Le dictionnaire se télécharge une fois, quand vous le demandez.** RayTeX n'en contient aucun. Quand vous activez le correcteur pour une langue qu'il n'a pas encore, une fenêtre dit ce qui sera téléchargé (le dictionnaire de cette langue, sa taille) et d'où (`github.com/LibreOffice/dictionaries`, le dépôt des dictionnaires de LibreOffice) : **Télécharger** ou **Pas maintenant**. Sans votre accord, rien n'est téléchargé ; rien d'autre n'est envoyé. Ensuite le correcteur fonctionne sans connexion.
 
-La langue utilisée s'affiche en bas de la fenêtre ; un clic dessus en choisit une autre pour le projet, ou revient à celle du document. Le clic droit sur un mot souligné propose les corrections du système.
+- **La langue** est celle du document : celle qu'il donne à babel (`\usepackage[french]{babel}` ; avec plusieurs langues, la dernière, ou celle de `main=`), à polyglossia (`\setdefaultlanguage`), ou à une ligne `% !TEX spellcheck = fr_FR`. Elle s'affiche en bas de la fenêtre ; un clic dessus en choisit une autre pour le projet, ou propose le dictionnaire quand il manque.
+- **Seul le texte est vérifié** : pas les commandes, les formules, les étiquettes et les clés, les noms de fichiers, le préambule (sauf le titre), les schémas TikZ ni les listings. Les sigles (`CNRS`), les noms à majuscule intérieure (`LaTeX`) et ce qui touche un chiffre sont laissés de côté.
+- **Les passages dans une autre langue** (`\foreignlanguage{english}{…}`, l'environnement `otherlanguage`, `\textenglish{…}`) sont vérifiés avec le dictionnaire de cette langue s'il est installé, et laissés tranquilles sinon.
+- **Clic droit sur un mot souligné** : les corrections que le dictionnaire propose, et *Ajouter au dictionnaire* pour un nom propre ou un terme de votre domaine. Les mots ajoutés valent dans toutes les langues.
 
-Les dictionnaires sont ceux de votre système : une langue qu'il ne connaît pas n'est pas vérifiée, et c'est dans ses réglages qu'on en ajoute.
+*Réglages › Éditeur* liste les dictionnaires installés (la croix en retire un) et les mots ajoutés, et permet d'en ajouter d'autres : français, anglais (américain, britannique…), allemand, espagnol, italien, portugais, néerlandais, catalan, polonais, suédois, danois, norvégien, tchèque, russe, grec.

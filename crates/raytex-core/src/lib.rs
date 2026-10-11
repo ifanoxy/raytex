@@ -51,6 +51,7 @@ pub mod preview;
 pub mod process;
 pub mod projects;
 pub mod settings;
+pub mod spell;
 pub mod synctex;
 pub mod syntax;
 pub mod templates;

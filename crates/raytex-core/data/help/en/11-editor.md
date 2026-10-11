@@ -79,12 +79,13 @@ Auto-save is on by default. A dot on a tab marks unsaved changes; when closing, 
 
 ## Spelling
 
-*Settings › Editor › Spell checker* (or *Turn the spell checker on or off* in the command palette) underlines mistakes with the **spell checker of your system**. RayTeX tells it three things:
+*Settings › Editor › Spell checker* (or *Turn the spell checker on or off* in the command palette) underlines with a pink wavy line the words the dictionary does not know.
 
-- **the language of the document**: the one the document gives to babel (`\usepackage[french]{babel}`; with several languages, the last one, or the one of `main=`), to polyglossia (`\setdefaultlanguage`), or to a line `% !TEX spellcheck = fr_FR`;
-- **the passages in another language**: `\foreignlanguage{english}{…}`, the `otherlanguage` environment, the `\textenglish{…}` commands of polyglossia;
-- **what is not text**: commands, formulas, labels and keys, file names, the preamble (but for the title), TikZ pictures and listings are not checked.
+**The dictionary is downloaded once, when you ask for it.** RayTeX holds none. When you turn the checker on for a language it does not have yet, a window says what will be downloaded (the dictionary of that language, its size) and from where (`github.com/LibreOffice/dictionaries`, the repository of the dictionaries of LibreOffice): **Download** or **Not now**. Without your agreement, nothing is downloaded; nothing else is sent. After that the checker works without a connection.
 
-The language in use is shown at the bottom of the window; a click on it chooses another one for the project, or goes back to the one of the document. A right click on an underlined word offers the corrections of the system.
+- **The language** is the one of the document: the one it gives to babel (`\usepackage[french]{babel}`; with several languages, the last one, or the one of `main=`), to polyglossia (`\setdefaultlanguage`), or to a line `% !TEX spellcheck = fr_FR`. It is shown at the bottom of the window; a click on it chooses another one for the project, or offers the dictionary when it is missing.
+- **Only text is checked**: not commands, formulas, labels and keys, file names, the preamble (but for the title), TikZ pictures or listings. Acronyms (`CNRS`), names with a capital inside (`LaTeX`) and what touches a digit are left out.
+- **Passages in another language** (`\foreignlanguage{english}{…}`, the `otherlanguage` environment, `\textenglish{…}`) are checked with the dictionary of that language when it is installed, and left alone otherwise.
+- **A right click on an underlined word**: the corrections the dictionary offers, and *Add to the dictionary* for a proper name or a term of your field. The words added are right in every language.
 
-The dictionaries are those of your system: a language it does not know is not checked, and its settings are where one is added.
+*Settings › Editor* lists the installed dictionaries (the cross removes one) and the words added, and lets you add others: French, English (American, British…), German, Spanish, Italian, Portuguese, Dutch, Catalan, Polish, Swedish, Danish, Norwegian, Czech, Russian, Greek.

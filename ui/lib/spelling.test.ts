@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { codeRegions, documentLanguage, foreignPassages, languageTag } from "./spelling.ts";
+import { codeArguments, codeRegions, documentLanguage, foreignPassages, languageTag, serving, wordsIn } from "./spelling.ts";
 
 const doc = (preamble: string, body = "Texte.") => `\\documentclass{article}\n${preamble}\n\\begin{document}\n${body}\n\\end{document}\n`;
 
@@ -65,4 +65,48 @@ test("the preamble and the pictures are code, a chapter is all text", () => {
   // A picture that is not closed yet: to the end.
   const open = "Texte.\n\\begin{tikzpicture}\n\\draw";
   assert.deepEqual(codeRegions(open).map((r) => open.slice(r.from, r.to)), ["\\begin{tikzpicture}\n\\draw"]);
+});
+
+test("a language is served by its dictionary, or by one of the same language", () => {
+  assert.equal(serving("fr", ["de", "fr"]), "fr");
+  assert.equal(serving("en-GB", ["en-US", "fr"]), "en-US");
+  assert.equal(serving("en-GB", ["en-US", "en-GB"]), "en-GB");
+  assert.equal(serving("fr-CA", ["fr"]), "fr");
+  assert.equal(serving("en", ["en-GB"]), "en-GB");
+  assert.equal(serving("de", ["fr", "en-US"]), null);
+  assert.equal(serving("de", []), null);
+});
+
+test("the words of a stretch of prose that are looked up", () => {
+  const text = "L'équation de la chaleur, peut-être «résolue» aujourd’hui: voir LaTeX, le CNRS, H2O, x2 et l'URL; à 3 h.";
+  assert.deepEqual(
+    wordsIn(text).map((w) => w.text),
+    ["L'équation", "de", "la", "chaleur", "peut-être", "résolue", "aujourd’hui", "voir", "le", "et", "l'URL"],
+  );
+  // Their place in the document.
+  const found = wordsIn("un mot", 100);
+  assert.deepEqual(found, [
+    { from: 100, to: 102, text: "un" },
+    { from: 103, to: 106, text: "mot" },
+  ]);
+  assert.equal("xx un mot".slice(3 + 0, 3 + 2), "un");
+  // An accent written as a command cuts a word in two: what follows it is not a word of its own.
+  assert.deepEqual(wordsIn("une \\'etude et l'\\oe{}uvre faite").map((w) => w.text), ["une", "et", "faite"]);
+  assert.deepEqual(wordsIn("").length, 0);
+  // Other alphabets.
+  assert.deepEqual(wordsIn("Привет мир, Straße über").map((w) => w.text), ["Привет", "мир", "Straße", "über"]);
+});
+
+test("arguments that are code are not prose", () => {
+  const marked = (text: string) => codeArguments(text).map((r) => text.slice(r.from, r.to));
+  assert.deepEqual(marked("\\textcolor{red}{du texte} et \\foreignlanguage{english}{some words}"), ["{red}", "{english}"]);
+  assert.deepEqual(marked("\\includegraphics[width=0.5\\linewidth]{figures/courbe} \\hspace*{1cm} suite"), ["[width=0.5\\linewidth]", "{figures/courbe}", "{1cm}"]);
+  // The options of an environment, the columns of a table, the language of a passage.
+  assert.deepEqual(marked("\\begin{figure}[htbp] \\begin{tabular}{lcr} \\begin{otherlanguage}{german} \\begin{center}"), ["[htbp]", "{lcr}", "{german}"]);
+  assert.deepEqual(marked("\\begin{minipage}[t]{0.5\\textwidth}Texte"), ["[t]", "{0.5\\textwidth}"]);
+  // Not the text of a heading, of an item, nor the short title between brackets.
+  assert.deepEqual(marked("\\section[Court]{Un long titre} \\item[note] texte \\emph{mot}"), []);
+  assert.deepEqual(marked("\\setlength{\\parindent}{0pt} \\definecolor{bleu}{RGB}{0,0,255} \\multicolumn{2}{c}{Titre}"), ["{\\parindent}", "{0pt}", "{bleu}", "{RGB}", "{0,0,255}", "{2}", "{c}"]);
+  // Commented out: nothing; a group that is not closed: nothing.
+  assert.deepEqual(marked("% \\color{red}\n\\color{red"), []);
 });

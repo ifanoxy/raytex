@@ -22,4 +22,6 @@ export const hooks = {
   settings: () => ({ autoAddPackage: true, hoverDocs: true, mathPreview: true, autoCloseEnvironments: true }),
   /** Saves a pasted image and returns its path relative to the root document. */
   pasteImage: async (_view: EditorView, _file: File): Promise<boolean> => false,
+  /** Opens the menu of a misspelled word: what the dictionary offers, and adding the word. */
+  spellingMenu: (_view: EditorView, _event: MouseEvent, _word: { from: number; to: number; text: string; dictionary: string }): void => {},
 };

@@ -140,7 +140,11 @@
   $effect(() => {
     void app.settings;
     void i18n.lang;
+    // The spelling: its language, its dictionary, a word learned.
     void spelling.language;
+    void spelling.dictionary;
+    void spelling.status;
+    void spelling.revision;
     if (app.ready) void editor.reconfigure();
   });
 

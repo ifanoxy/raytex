@@ -14,6 +14,7 @@ pub mod history;
 pub mod language;
 pub mod media;
 pub mod project;
+pub mod spell;
 pub mod synctex;
 pub mod tex;
 

@@ -26,6 +26,7 @@ import { history } from "./state/history.svelte";
 import { media } from "./state/media.svelte";
 import { project } from "./state/project.svelte";
 import { searchStore } from "./state/search.svelte";
+import { spelling } from "./state/spelling.svelte";
 import { tex } from "./state/tex.svelte";
 import { ui } from "./state/ui.svelte";
 import { updates } from "./state/updates.svelte";
@@ -115,7 +116,7 @@ export const actions: Action[] = [
   { id: "file.reveal", title: "action.revealInOs", category: "file", when: () => !!editor.active, run: () => editor.active && ipc.revealInOs(editor.active) },
   { id: "project.saveAsTemplate", title: "action.saveAsTemplate", category: "file", when: hasProject, run: () => project.saveAsTemplate() },
   { id: "project.settings", title: "action.projectSettings", category: "file", when: () => hasProject() && !project.info?.light, run: () => ui.openSettings("project") },
-  { id: "edit.spellcheck", title: "action.spellcheck", category: "edit", icon: "spell", run: () => app.update((s) => (s.editor.spellcheck = !s.editor.spellcheck)) },
+  { id: "edit.spellcheck", title: "action.spellcheck", category: "edit", icon: "spell", run: () => (app.settings?.editor.spellcheck ? spelling.disable() : spelling.enable()) },
   { id: "project.history", title: "action.history", category: "file", icon: "clock", when: hasProject, run: () => history.show(editor.active) },
   { id: "project.export", title: "action.exportProject", category: "file", icon: "download", when: hasProject, run: async () => (await project.requireProject(t("light.reasonExport"))) && ui.openOverlay("export") },
 

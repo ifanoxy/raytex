@@ -6,7 +6,9 @@
   import { REPOSITORY_URL } from "$lib/constants";
   import { HISTORY_DEFAULTS, type HistorySettings, INTERVALS, KEEP_DAYS } from "$lib/history";
   import { COMMON_LANGUAGES } from "$lib/spelling";
-  import { languageName } from "$lib/state/spelling.svelte";
+  import { sizeLabel } from "$lib/history";
+  import { i18n } from "$lib/i18n.svelte";
+  import { languageName, spelling } from "$lib/state/spelling.svelte";
   import { type MessageKey, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { app } from "$lib/state/app.svelte";
@@ -325,7 +327,31 @@
         {@render toggle(t("settings.closeEnvironments"), t("settings.closeEnvironmentsHint"), s.editor.autoCloseEnvironments, (v) => set((x) => (x.editor.autoCloseEnvironments = v)))}
         {@render toggle(t("settings.mathPreview"), t("settings.mathPreviewHint"), s.editor.mathPreview, (v) => set((x) => (x.editor.mathPreview = v)))}
         {@render toggle(t("settings.hoverDocs"), t("settings.hoverDocsHint"), s.editor.hoverDocs, (v) => set((x) => (x.editor.hoverDocs = v)))}
-        {@render toggle(t("settings.spellcheck"), t("settings.spellcheckHint"), s.editor.spellcheck, (v) => set((x) => (x.editor.spellcheck = v)))}
+        {@render toggle(t("settings.spellcheck"), t("settings.spellcheckHint"), s.editor.spellcheck, (v) => void (v ? spelling.enable() : spelling.disable()))}
+        {#if s.editor.spellcheck && spelling.status}
+          {#snippet dictionariesControl()}
+            <div class="tags">
+              {#each spelling.status?.installed ?? [] as d (d.tag)}
+                <span class="tag">{languageName(d.tag)}<button title={t("common.delete")} aria-label={t("common.delete")} onclick={() => spelling.remove(d.tag)}><Icon name="x" size={11} /></button></span>
+              {/each}
+              <select class="select input" value="" disabled={!!spelling.installing} onchange={(e) => { const tag = value(e); (e.currentTarget as HTMLSelectElement).value = ""; if (tag) void spelling.download(tag); }}>
+                <option value="">{spelling.installing ? t("spelling.downloading") : t("spelling.add")}</option>
+                {#each (spelling.status?.catalog ?? []).filter((c) => !spelling.status?.installed.some((d) => d.tag === c.tag)) as c (c.tag)}<option value={c.tag}>{languageName(c.tag)} · {sizeLabel(c.size, i18n.lang)}</option>{/each}
+              </select>
+            </div>
+          {/snippet}
+          {@render field(t("spelling.dictionaries"), t("spelling.dictionariesHint", { source: spelling.status.source }), dictionariesControl)}
+          {#if spelling.status.words.length}
+            {#snippet wordsControl()}
+              <div class="tags words">
+                {#each spelling.status?.words ?? [] as w (w)}
+                  <span class="tag">{w}<button title={t("common.delete")} aria-label={t("common.delete")} onclick={() => spelling.forget(w)}><Icon name="x" size={11} /></button></span>
+                {/each}
+              </div>
+            {/snippet}
+            {@render field(t("spelling.words"), null, wordsControl)}
+          {/if}
+        {/if}
         {@render toggle(t("settings.vim"), t("settings.vimHint"), s.editor.vimMode, (v) => set((x) => (x.editor.vimMode = v)))}
         <h4>{t("settings.saving")}</h4>
         {@render toggle(t("settings.autoSave"), t("settings.autoSaveHint"), s.editor.autoSave, (v) => set((x) => (x.editor.autoSave = v)))}
@@ -859,5 +885,44 @@
   }
   .small {
     font-size: 12px;
+  }
+  /* Dictionaries and words: what is there, each with its cross. */
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    max-width: 460px;
+  }
+  .tags.words {
+    max-height: 96px;
+    overflow: auto;
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 4px 3px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .tag button {
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--text-faint);
+    cursor: pointer;
+  }
+  .tag button:hover {
+    background: var(--bg-hover);
+    color: var(--text);
   }
 </style>

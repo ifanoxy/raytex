@@ -6,6 +6,8 @@
   import { diagnostics } from "$lib/state/diagnostics.svelte";
   import { editor } from "$lib/state/editor.svelte";
   import { project } from "$lib/state/project.svelte";
+  import { sizeLabel } from "$lib/history";
+  import { i18n } from "$lib/i18n.svelte";
   import { COMMON_LANGUAGES } from "$lib/spelling";
   import { languageName, spelling } from "$lib/state/spelling.svelte";
   import { distLabel, tex } from "$lib/state/tex.svelte";
@@ -21,7 +23,10 @@
   function spellingMenu(event: MouseEvent) {
     const light = !!project.info?.light;
     const others = [...new Set([...COMMON_LANGUAGES, ...(spelling.chosen ? [spelling.chosen] : [])])];
+    const offer = spelling.offer;
     ui.openMenuBelow(event.currentTarget as HTMLElement, [
+      // No dictionary yet for this language: the download is asked for here, and confirmed in a window that says what it is.
+      ...(offer ? [{ label: t("spelling.downloadFor", { language: languageName(offer.tag), size: sizeLabel(offer.size, i18n.lang) }), icon: "download", run: () => void spelling.download() }, { separator: true }] : []),
       {
         label: spelling.detected ? t("spelling.ofDocument", { language: languageName(spelling.detected) }) : t("spelling.ofInterface", { language: languageName(spelling.language) }),
         checked: !spelling.chosen,
@@ -29,7 +34,7 @@
       },
       ...(light ? [] : [{ separator: true }, ...others.map((tag) => ({ label: languageName(tag), checked: spelling.chosen === tag, run: () => spelling.choose(tag) }))]),
       { separator: true },
-      { label: t("spelling.off"), icon: "x", run: () => app.update((s) => (s.editor.spellcheck = false)) },
+      { label: t("spelling.off"), icon: "x", run: () => spelling.disable() },
     ]);
   }
 </script>
@@ -78,7 +83,11 @@
       </span>
     {/if}
     {#if e?.spellcheck && editor.activeTab.kind === "tex"}
-      <button class="item spelling" onclick={spellingMenu} title={t("spelling.title")}><Icon name="spell" size={13} />{languageName(spelling.language)}</button>
+      <button class="item spelling" class:missing={!!spelling.status && !spelling.dictionary} onclick={spellingMenu} title={t("spelling.title")}>
+        {#if spelling.installing}<span class="spinner"></span>{:else}<Icon name={spelling.dictionary || !spelling.offer ? "spell" : "download"} size={13} />{/if}
+        {languageName(spelling.language)}
+        {#if spelling.status && !spelling.dictionary && !spelling.installing}<span class="warn">· {t(spelling.offer ? "spelling.toDownload" : "spelling.none")}</span>{/if}
+      </button>
     {/if}
     <button class="item" onclick={() => ui.openSettings("editor")}>{e?.useTabs ? t("status.tabs") : t("status.spaces", { n: e?.tabSize ?? 2 })}</button>
     <span class="item static">UTF-8</span>

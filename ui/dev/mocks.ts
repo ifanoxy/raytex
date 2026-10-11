@@ -327,6 +327,11 @@ function diffLines(before: string, after: string) {
   return out;
 }
 
+/** The spelling of the demo: no dictionary until one is "downloaded"; a few words it calls wrong. */
+const spellInstalled = new Set<string>();
+const spellWords = new Set<string>();
+const SPELL_WRONG = new Set(["diffusionn", "decrite", "temperature", "numériqes"]);
+
 const session: T.Session = {
   recent: [
     { path: ROOT, name: "memoire", openedAt: Date.now() / 1000 - 3600 * 5, light: false },
@@ -783,6 +788,35 @@ export function installMocks() {
           found.sort((x, y) => x.name.localeCompare(y.name));
           return { files: found, size: found.reduce((n, f) => n + f.size, 0), recorded: true, stale: false };
         }
+        case "spell_status":
+          return {
+            installed: [...spellInstalled].map((tag) => ({ tag, size: 1_436_360 })),
+            catalog: [
+              { tag: "fr", path: "fr_FR/dictionaries/fr", size: 1_436_360 },
+              { tag: "en-US", path: "en/en_US", size: 554_967 },
+              { tag: "en-GB", path: "en/en_GB", size: 1_274_729 },
+              { tag: "de", path: "de/de_DE_frami", size: 4_375_970 },
+              { tag: "es", path: "es/es_ES", size: 885_191 },
+              { tag: "it", path: "it_IT/it_IT", size: 1_365_137 },
+            ],
+            source: "github.com/LibreOffice/dictionaries",
+            words: [...spellWords],
+          };
+        case "spell_install":
+          await new Promise((r) => setTimeout(r, 1200));
+          spellInstalled.add(String(a.tag));
+          return a.tag;
+        case "spell_remove":
+          spellInstalled.delete(String(a.tag));
+          return null;
+        case "spell_check":
+          return (a.words as string[]).map((w) => spellWords.has(w) || !SPELL_WRONG.has(w.toLowerCase()));
+        case "spell_suggest":
+          return { diffusionn: ["diffusion"], decrite: ["décrite", "décrié"], temperature: ["température"] }[String(a.word).toLowerCase()] ?? [];
+        case "spell_learn":
+          if (a.add) spellWords.add(String(a.word));
+          else spellWords.delete(String(a.word));
+          return null;
         case "export_write":
           await new Promise((r) => setTimeout(r, 500));
           return 96_400;

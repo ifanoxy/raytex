@@ -46,7 +46,7 @@ import { linkedEnvironments } from "../editor/linked-envs";
 import { navigableAt } from "../editor/navigation";
 import { frenchPhrases } from "../editor/phrases";
 import { enterKeymap, latexStructure } from "../editor/structure";
-import { proseOnly } from "../editor/spelling";
+import { spelling as spellingExtension } from "../editor/spelling";
 import { editorTheme } from "../editor/theme";
 import { fixLabel, runFix, suggestionOf } from "../fixes";
 import { figureAt } from "../images";
@@ -293,6 +293,23 @@ class EditorStore {
     };
     hooks.goToDefinition = (view, pos) => this.goToDefinition(view, pos);
     hooks.pasteImage = (view, file) => this.pasteImage(view, file);
+    // A misspelled word: what its dictionary offers in its place, and adding it to the words of the user.
+    hooks.spellingMenu = (view, event, word) => {
+      const { clientX: x, clientY: y } = event;
+      void spelling.suggest(word.dictionary, word.text).then((offered) => {
+        ui.menu = {
+          x,
+          y,
+          items: [
+            ...(offered.length
+              ? offered.map((text) => ({ label: text, run: () => view.dispatch({ changes: { from: word.from, to: word.to, insert: text }, userEvent: "input.spelling" }) }))
+              : [{ label: t("spelling.noSuggestion"), disabled: true }]),
+            { separator: true },
+            { label: t("spelling.learn", { word: word.text }), icon: "plus", run: () => void spelling.learn(word.text) },
+          ],
+        };
+      });
+    };
     hooks.settings = () => {
       const s = app.settings;
       return {
@@ -357,7 +374,7 @@ class EditorStore {
 
   private computeConfigKey(): string {
     const s = this.settings();
-    return JSON.stringify([s?.editor, s?.completion.enabled, s?.macros, s?.keybindings, i18n.lang, !!vimModule, spelling.language]);
+    return JSON.stringify([s?.editor, s?.completion.enabled, s?.macros, s?.keybindings, i18n.lang, !!vimModule, spelling.language, spelling.dictionary, spelling.status?.installed.length, spelling.revision]);
   }
 
   /** Extensions of each compartment for the current settings. */
@@ -383,13 +400,14 @@ class EditorStore {
       [c.whitespace, e?.showWhitespace ? highlightWhitespace() : []],
       [c.vim, vimOn ? Prec.highest(vimModule!.vim({ status: true })) : []],
       [c.keys, Prec.high(keymap.of(this.userKeymap()))],
-      // The checker of the system, told the language of the document and
-      // what in a LaTeX file is not prose.
+      // Spelling is RayTeX's own (a dictionary of the language of the
+      // document); the checker of the system is off, or both would underline.
       [
         c.spell,
-        e?.spellcheck
-          ? [EditorView.contentAttributes.of({ spellcheck: "true", lang: spelling.language, autocorrect: "off", autocapitalize: "off" }), fileKind(path) === "tex" ? proseOnly() : []]
-          : EditorView.contentAttributes.of({ spellcheck: "false" }),
+        [
+          EditorView.contentAttributes.of({ spellcheck: "false", lang: spelling.language, autocorrect: "off", autocapitalize: "off" }),
+          e?.spellcheck && fileKind(path) === "tex" ? spellingExtension(spelling) : [],
+        ],
       ],
       [c.phrases, i18n.lang === "fr" ? EditorState.phrases.of(frenchPhrases) : []],
       [c.completion, s?.completion.enabled === false ? [] : latexCompletion()],

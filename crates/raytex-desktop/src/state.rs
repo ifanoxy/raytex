@@ -31,6 +31,8 @@ pub struct AppPaths {
     pub cache: PathBuf,
     /// Local history of the projects (data: never emptied by the system).
     pub history: PathBuf,
+    /// Spelling dictionaries the user downloaded, and their own words.
+    pub dictionaries: PathBuf,
 }
 
 impl Default for AppPaths {
@@ -48,6 +50,7 @@ impl Default for AppPaths {
                 templates: config.join("templates"),
                 cache: config.join("cache"),
                 history: config.join("history"),
+                dictionaries: config.join("dictionaries"),
             };
         }
         let dirs = raytex_core::settings::app_dirs();
@@ -69,6 +72,7 @@ impl Default for AppPaths {
             templates: config.join("templates"),
             cache,
             history: data.join("history"),
+            dictionaries: data.join("dictionaries"),
         }
     }
 }
@@ -233,6 +237,10 @@ pub struct AppState {
     pub history_lock: Mutex<()>,
     /// Stops the PDF of the changes being built.
     pub changes_cancel: Arc<AtomicBool>,
+    /// Spelling dictionaries read so far, by language tag.
+    pub spell: Mutex<HashMap<String, Arc<raytex_core::spell::Checker>>>,
+    /// The words the user added to the dictionaries.
+    pub spell_words: raytex_core::spell::Personal,
 }
 
 fn recover<T>(r: Result<T, std::sync::PoisonError<T>>) -> T {
@@ -333,6 +341,8 @@ impl AppState {
             history_next: AtomicU64::new(0),
             history_lock: Mutex::new(()),
             changes_cancel: Arc::new(AtomicBool::new(false)),
+            spell: Mutex::new(HashMap::new()),
+            spell_words: raytex_core::spell::Personal::default(),
         }
     }
 

@@ -6,6 +6,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type * as T from "./types";
 import type { BibDraft, BibField, Bibliography } from "./bibliography";
 import type { ExportOptions, ExportPlan } from "./export";
+import type { SpellStatus } from "./spelling";
 import type { Change, ChangesPdf, Comparison, HistoryView, Moment } from "./history";
 import type { CommandDraft, CommandSpec, CustomCommand } from "./commands";
 import type { PagePreview } from "./layout";
@@ -66,6 +67,16 @@ export const renamePath = (from: string, to: string) => call<string>("rename_pat
 export const deletePath = (path: string) => call<void>("delete_path", { path });
 export const importFiles = (sources: string[], dir: string) => call<string[]>("import_files", { sources, dir });
 export const exportFile = (from: string, to: string) => call<void>("export_file", { from, to });
+/** The spelling dictionaries on this computer and those that can be downloaded. */
+export const spellStatus = () => call<SpellStatus>("spell_status");
+/** Downloads the dictionary of a language: called only once the user agreed to it. */
+export const spellInstall = (tag: string) => call<string>("spell_install", { tag });
+export const spellRemove = (tag: string) => call<void>("spell_remove", { tag });
+/** Whether each word is spelled right in an installed dictionary. */
+export const spellCheck = (tag: string, words: string[]) => call<boolean[]>("spell_check", { tag, words });
+export const spellSuggest = (tag: string, word: string) => call<string[]>("spell_suggest", { tag, word });
+/** Adds a word to those of the user, or takes it back. */
+export const spellLearn = (word: string, add: boolean) => call<void>("spell_learn", { word, add });
 /** Writes a text where the user said (a save dialog). */
 export const exportText = (to: string, text: string) => call<void>("export_text", { to, text });
 
