@@ -3303,7 +3303,7 @@ checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
 
 [[package]]
 name = "raytex-cli"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "clap",
  "dunce",
@@ -3313,7 +3313,7 @@ dependencies = [
 
 [[package]]
 name = "raytex-core"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "directories",
  "dunce",
@@ -3339,7 +3339,7 @@ dependencies = [
 
 [[package]]
 name = "raytex-desktop"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "directories",
  "dunce",

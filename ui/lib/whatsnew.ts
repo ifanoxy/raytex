@@ -34,6 +34,170 @@ export interface VersionNotes {
 
 export const NOTES: VersionNotes[] = [
   {
+    version: "0.5.0",
+    date: "2026-10-11",
+    en: {
+      points: [
+        "A bibliography panel: the entries of your `.bib` files listed, edited in a form, added from a DOI or an arXiv identifier.",
+        "A local history of the project, to compare and to go back, and a PDF of the changes since a moment.",
+        "A title page studio, and the export of the project as an archive, whole or ready for arXiv or a journal.",
+        "A spell checker in the language of the document; its dictionary is downloaded once, and only when you agree.",
+        "TikZ whiteboard: links that follow the texts they join, alignment guides, a curve tool, sets as a file.",
+        "With MiKTeX, a language or a file that is missing is installed in one click, and the margins window measures the page.",
+      ],
+      details: [
+        {
+          title: "Bibliography",
+          items: [
+            "The book in the bar on the left lists every entry of the `.bib` files of the project, with its key, its title, its authors and how many times it is cited.",
+            "A click opens an entry in a form: the usual fields of its kind in sight, the others behind Advanced. What the file says is kept as it is written, and a change can be undone.",
+            "A new entry from a DOI, an arXiv identifier or pasted BibTeX: Fill in fills the fields and suggests a key. The network is used for that only, when you ask.",
+            "Not cited lists the entries the document never cites, To check the duplicate keys and the works entered twice.",
+          ],
+        },
+        {
+          title: "Local history",
+          items: [
+            "RayTeX keeps moments of the source files. Project history shows them by day and, for the one chosen, what changed since, file by file and line by line.",
+            "Restore this file and Restore everything go back; the project as it is now is kept first, and going back can itself be undone.",
+            "Light by default: a moment when the project opens, then at most one every 10 minutes, none when nothing changed; old moments thin out. Nothing is written in the project folder, nothing leaves the computer.",
+            "A PDF of the changes since a moment: removed text struck out, added text underlined, made by `latexdiff` and compiled like the project.",
+            "Settings › Editor › Local history sets the time between two moments and how long they are kept, or turns the history off.",
+          ],
+        },
+        {
+          title: "Title page",
+          items: [
+            "See all › Page › Title page… writes the title page from a few fields, with the page compiled next to them.",
+            "Four layouts chosen by their picture: Classic (`\\maketitle`), Centered, Report and Modern; the institution, the supervisors and a logo in their group.",
+            "The code is plain LaTeX, each line saying what it is: it can be touched up by hand, and the window opened again finds its fields. With beamer, it sets the title frame.",
+          ],
+        },
+        {
+          title: "Export of the project",
+          items: [
+            "Export the project… makes a `.zip` archive, whose content is listed before anything is written.",
+            "The whole project without the files of the build, or, for arXiv or a journal, only what the document uses, with its compiled bibliography (`.bbl`).",
+            "For a submission, comments are removed unless told otherwise, and Advanced writes everything in one `.tex` file or adds the PDF.",
+          ],
+        },
+        {
+          title: "Spelling",
+          items: [
+            "The words the dictionary does not know are underlined in the prose only (not in commands, formulas, labels or file names), the same way on macOS, Windows and Linux.",
+            "RayTeX ships no dictionary: one window says what is downloaded, its size and from where (the dictionaries of LibreOffice), with Download or Not now. Nothing else is downloaded or sent, and the checker then works without a connection.",
+            "The language is read from babel, polyglossia or a `% !TEX spellcheck` line and shown at the bottom of the window; passages in another language use their own dictionary.",
+            "A right click on an underlined word offers corrections and adds the word to your dictionary. Settings › Editor lists the dictionaries and removes them.",
+          ],
+        },
+        {
+          title: "TikZ whiteboard",
+          items: [
+            "Link tool (K): a drag from one text to another joins them with an arrow that follows them when they move; straight or bent, with a text of its own.",
+            "Alignment guides: what is moved snaps to the sides and the middle of the other shapes, and a line shows what it is aligned with.",
+            "Curve tool (B): a smooth curve through the points clicked, open or closed.",
+            "Sets are exported to a file and imported from one, to take them to another computer.",
+          ],
+        },
+        {
+          title: "MiKTeX",
+          items: [
+            "A language of babel that is not installed is said before the build, on its name, with its installation.",
+            "Install installs the package that holds the missing file (`scalefnt.sty` is in `carlisle`); it asked MiKTeX for a package named like the file, and nothing was installed.",
+            "The margins window measured nothing with MiKTeX; it reads the lengths of the page there too.",
+          ],
+        },
+        {
+          title: "And also",
+          items: [
+            "Report a problem… (command palette, Settings › About) prepares a report to paste in an issue. Nothing is sent, and the folder of the project and your name are taken out of every path.",
+            "What's new in RayTeX: this window, at the first start after an update and in the command palette.",
+          ],
+        },
+      ],
+    },
+    fr: {
+      points: [
+        "Un panneau de bibliographie : les entrées de vos fichiers `.bib` listées, modifiées dans un formulaire, ajoutées depuis un DOI ou un identifiant arXiv.",
+        "Un historique local du projet, pour comparer et revenir en arrière, et un PDF des changements depuis un moment.",
+        "Un studio de page de titre, et l'export du projet en archive, entier ou prêt pour arXiv ou une revue.",
+        "Un correcteur orthographique dans la langue du document ; son dictionnaire est téléchargé une seule fois, et seulement avec votre accord.",
+        "Tableau blanc TikZ : des liens qui suivent les textes qu'ils relient, des guides d'alignement, un outil courbe, les ensembles en fichier.",
+        "Avec MiKTeX, une langue ou un fichier manquant s'installe d'un clic, et la fenêtre des marges mesure la page.",
+      ],
+      details: [
+        {
+          title: "Bibliographie",
+          items: [
+            "Le livre dans la barre de gauche liste toutes les entrées des fichiers `.bib` du projet, avec leur clé, leur titre, leurs auteurs et le nombre de fois où elles sont citées.",
+            "Un clic ouvre une entrée dans un formulaire : les champs habituels de son type en vue, les autres derrière Avancé. Ce que dit le fichier est gardé tel qu'il est écrit, et une modification s'annule.",
+            "Une nouvelle entrée depuis un DOI, un identifiant arXiv ou du BibTeX collé : Remplir remplit les champs et propose une clé. Le réseau ne sert qu'à cela, quand vous le demandez.",
+            "Non citées liste les entrées que le document ne cite jamais, À vérifier les clés en double et les ouvrages saisis deux fois.",
+          ],
+        },
+        {
+          title: "Historique local",
+          items: [
+            "RayTeX garde des moments des fichiers source. Historique du projet les montre par jour et, pour celui choisi, ce qui a changé depuis, fichier par fichier et ligne par ligne.",
+            "Restaurer ce fichier et Tout restaurer reviennent en arrière ; le projet tel qu'il est est gardé d'abord, et ce retour s'annule lui aussi.",
+            "Léger par défaut : un moment à l'ouverture du projet, puis au plus un toutes les 10 minutes, aucun quand rien n'a changé ; les anciens moments s'espacent. Rien n'est écrit dans le dossier du projet, rien ne quitte l'ordinateur.",
+            "Un PDF des changements depuis un moment : le texte retiré barré, le texte ajouté souligné, produit par `latexdiff` et compilé comme le projet.",
+            "Réglages › Éditeur › Historique local règle le temps entre deux moments et leur durée de conservation, ou désactive l'historique.",
+          ],
+        },
+        {
+          title: "Page de titre",
+          items: [
+            "Tout voir › Page › Page de titre… écrit la page de titre à partir de quelques champs, avec la page compilée à côté.",
+            "Quatre mises en page choisies par leur image : Classique (`\\maketitle`), Centrée, Rapport et Moderne ; l'établissement, les encadrants et un logo dans leur groupe.",
+            "Le code est du LaTeX simple, chaque ligne disant ce qu'elle est : il se retouche à la main, et la fenêtre rouverte retrouve ses champs. Avec beamer, elle règle la diapositive de titre.",
+          ],
+        },
+        {
+          title: "Export du projet",
+          items: [
+            "Exporter le projet… crée une archive `.zip`, dont le contenu est listé avant toute écriture.",
+            "Le projet entier sans les fichiers de compilation, ou, pour arXiv ou une revue, seulement ce que le document utilise, avec sa bibliographie compilée (`.bbl`).",
+            "Pour une soumission, les commentaires sont retirés sauf avis contraire, et Avancé écrit tout dans un seul fichier `.tex` ou ajoute le PDF.",
+          ],
+        },
+        {
+          title: "Orthographe",
+          items: [
+            "Les mots que le dictionnaire ne connaît pas sont soulignés dans le texte seulement (pas dans les commandes, les formules, les étiquettes ni les noms de fichiers), de la même façon sur macOS, Windows et Linux.",
+            "RayTeX n'embarque aucun dictionnaire : une fenêtre dit ce qui est téléchargé, sa taille et d'où (les dictionnaires de LibreOffice), avec Télécharger ou Pas maintenant. Rien d'autre n'est téléchargé ni envoyé, et le correcteur fonctionne ensuite sans connexion.",
+            "La langue est lue dans babel, polyglossia ou une ligne `% !TEX spellcheck` et affichée en bas de la fenêtre ; les passages dans une autre langue utilisent leur propre dictionnaire.",
+            "Un clic droit sur un mot souligné propose des corrections et ajoute le mot à votre dictionnaire. Réglages › Éditeur liste les dictionnaires et les retire.",
+          ],
+        },
+        {
+          title: "Tableau blanc TikZ",
+          items: [
+            "Outil lien (K) : glisser d'un texte à un autre les relie par une flèche qui les suit quand ils bougent ; droite ou courbée, avec son propre texte.",
+            "Guides d'alignement : ce qui est déplacé s'aimante aux bords et au milieu des autres formes, et un trait montre avec quoi il est aligné.",
+            "Outil courbe (B) : une courbe lisse par les points cliqués, ouverte ou fermée.",
+            "Les ensembles s'exportent dans un fichier et s'importent depuis un fichier, pour les emporter sur un autre ordinateur.",
+          ],
+        },
+        {
+          title: "MiKTeX",
+          items: [
+            "Une langue de babel qui n'est pas installée est signalée avant la compilation, sur son nom, avec son installation.",
+            "Installer installe le paquet qui contient le fichier manquant (`scalefnt.sty` est dans `carlisle`) ; il demandait à MiKTeX un paquet du nom du fichier, et rien n'était installé.",
+            "La fenêtre des marges ne mesurait rien avec MiKTeX ; elle y lit aussi les longueurs de la page.",
+          ],
+        },
+        {
+          title: "Et aussi",
+          items: [
+            "Signaler un problème… (palette de commandes, Réglages › À propos) prépare un rapport à coller dans une issue. Rien n'est envoyé, et le dossier du projet et votre nom sont retirés de tous les chemins.",
+            "Quoi de neuf dans RayTeX : cette fenêtre, au premier démarrage après une mise à jour et dans la palette de commandes.",
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: "0.4.2",
     date: "2026-10-08",
     en: {

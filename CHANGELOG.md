@@ -4,6 +4,8 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-10-11
+
 - **A spell checker of its own, in the language of the document**: the words the dictionary does not know are underlined in the prose, the same way on macOS, Windows and Linux (the checker of the system, which was given the language of the interface and every command of a LaTeX file to spell, is no longer used).
   - **A dictionary is downloaded once, and only when you agree to it.** RayTeX ships none. Turning the checker on for a language it does not have opens a window that says what is downloaded (the dictionary of that language, its size), from where (`github.com/LibreOffice/dictionaries`, at a fixed commit) and that nothing else is downloaded or sent: *Download* or *Not now*. The checker then works without a connection. Twenty-one dictionaries are offered; *Settings › Editor* lists those installed and removes them.
   - **The language** is read from what the document gives to babel (the last language, or `main=`), to polyglossia, or from a `% !TEX spellcheck` line; it is shown at the bottom of the window, where another one can be chosen for the project. Passages in another language (`\foreignlanguage`, `otherlanguage`, `\textenglish{…}`) are checked with their own dictionary when it is installed.
@@ -263,6 +265,7 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[0.5.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.0
 [0.4.2]: https://github.com/ifanoxy/raytex/releases/tag/v0.4.2
 [0.4.1]: https://github.com/ifanoxy/raytex/releases/tag/v0.4.1
 [0.4.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.4.0
