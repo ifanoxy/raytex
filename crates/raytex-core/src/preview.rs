@@ -111,9 +111,23 @@ pub fn document(req: &PreviewRequest<'_>) -> (String, usize) {
 }
 
 /// `RTXMEASURE:597.5pt:845.0pt` → the lengths, in points.
+///
+/// The line is long, and TeX cuts the lines of its log at 79 characters
+/// unless told otherwise: TeX Live is told (`max_print_line`), MiKTeX does
+/// not read that setting. The pieces of a line that was cut are put back
+/// together, or only the first lengths would be read, the last one cut short.
 fn measures_from_log(log: &str) -> Option<Vec<f64>> {
-    let line = log.lines().find_map(|l| l.strip_prefix("RTXMEASURE:"))?;
-    line.split(':')
+    let mut lines = log.lines();
+    let first = lines.find(|l| l.starts_with("RTXMEASURE:"))?;
+    let mut line = first.to_owned();
+    let mut cut = first.len() == 79;
+    while cut {
+        let Some(next) = lines.next() else { break };
+        line.push_str(next);
+        cut = next.len() == 79;
+    }
+    line.strip_prefix("RTXMEASURE:")?
+        .split(':')
         .map(|v| v.trim().trim_end_matches("pt").parse::<f64>().ok())
         .collect()
 }
@@ -685,6 +699,18 @@ mod tests {
             Some(vec![597.50787, 845.04684, -15.36449])
         );
         assert_eq!(measures_from_log("nothing"), None);
+        // The same line as MiKTeX writes it: cut at 79 characters.
+        let whole = "RTXMEASURE:597.50787pt:845.04684pt:455.24408pt:702.78308pt:-1.1337pt:-1.1337pt:-30.51595pt:12.0pt:18.38225pt:30.0pt:65.0pt:11.0pt:0.0pt:0.0pt";
+        let cut = [&whole[..79], &whole[79..]];
+        assert!(cut[0].len() == 79 && cut[1].len() < 79);
+        let log = format!("(./page.tex\n{}\n) \nOutput written", cut.join("\n"));
+        assert_eq!(
+            measures_from_log(&log),
+            Some(vec![
+                597.50787, 845.04684, 455.24408, 702.78308, -1.1337, -1.1337, -30.51595, 12.0,
+                18.38225, 30.0, 65.0, 11.0, 0.0, 0.0
+            ])
+        );
         assert_eq!(measures_from_log("RTXMEASURE:12pt:\\textwidth"), None);
     }
 

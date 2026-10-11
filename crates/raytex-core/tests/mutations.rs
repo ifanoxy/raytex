@@ -1594,14 +1594,32 @@ fn compile(dist: &Distribution, analyzer: &Arc<PackageAnalyzer>, main: &Path) ->
     }
     let engine = started.elapsed();
     let mut diagnostics = outcome.diagnostics;
-    let opts = LintOptions {
-        lang: Lang::Fr,
-        style_hints: false,
-        installed: Some(analyzer.index()),
-        ..Default::default()
-    };
     let files: Vec<PathBuf> = ws.documents().map(|d| d.path.clone()).collect();
-    diagnostics.extend(files.iter().flat_map(|f| lint::lint(&ws, f, &opts)));
+    let checks = |installed: &TexmfIndex| {
+        let opts = LintOptions {
+            lang: Lang::Fr,
+            style_hints: false,
+            installed: Some(installed),
+            ..Default::default()
+        };
+        files
+            .iter()
+            .flat_map(|f| lint::lint(&ws, f, &opts))
+            .collect::<Vec<_>>()
+    };
+    let mut live = checks(analyzer.index());
+    // MiKTeX installed packages during the build: the application reads the
+    // installed files again after such a build, and so does the test (a
+    // package of a sound document was said not to be installed).
+    if dist.kind == raytex_core::tex::DistroKind::MikTex
+        && outcome.success
+        && live
+            .iter()
+            .any(|d| d.code.as_deref() == Some("missing-package"))
+    {
+        live = checks(&TexmfIndex::build(dist));
+    }
+    diagnostics.extend(live);
     Built {
         diagnostics,
         success: outcome.success,

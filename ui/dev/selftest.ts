@@ -1389,8 +1389,15 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     check("one confirmation", /2/.test(document.querySelector(".dialog")?.textContent ?? ""));
     await scene("delete-confirm", 1500);
     document.querySelector<HTMLButtonElement>(".dialog .btn.primary")!.click();
-    await until(() => project.findNode(`${root}/annexes/chap1.tex`) === null, 5_000, "deleted");
-    check("deleted together", !(await ipc.pathExists(`${root}/annexes/chap1.tex`)) && !(await ipc.pathExists(`${root}/annexes/chap2.tex`)));
+    // Both are gone from the tree, then from the disk (the second one is
+    // still on its way to the bin when the first has left the tree).
+    await until(() => project.findNode(`${root}/annexes/chap1.tex`) === null && project.findNode(`${root}/annexes/chap2.tex`) === null, 8_000, "deleted");
+    let gone = false;
+    for (let i = 0; i < 50 && !gone; i++) {
+      gone = !(await ipc.pathExists(`${root}/annexes/chap1.tex`)) && !(await ipc.pathExists(`${root}/annexes/chap2.tex`));
+      if (!gone) await pause(100);
+    }
+    check("deleted together", gone);
 
     // ------------------------------------------------- bibliography
     // An entry written in the form makes the .bib file of a project that has
