@@ -182,6 +182,8 @@ pub fn run() {
             commands::history::history_clear,
             commands::history::history_changes_pdf,
             commands::history::history_changes_cancel,
+            commands::export::export_plan,
+            commands::export::export_write,
             commands::language::update_document,
             commands::language::close_document,
             commands::language::lint_project,

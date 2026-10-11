@@ -116,6 +116,7 @@ export const actions: Action[] = [
   { id: "project.saveAsTemplate", title: "action.saveAsTemplate", category: "file", when: hasProject, run: () => project.saveAsTemplate() },
   { id: "project.settings", title: "action.projectSettings", category: "file", when: () => hasProject() && !project.info?.light, run: () => ui.openSettings("project") },
   { id: "project.history", title: "action.history", category: "file", icon: "clock", when: hasProject, run: () => history.show(editor.active) },
+  { id: "project.export", title: "action.exportProject", category: "file", icon: "download", when: hasProject, run: async () => (await project.requireProject(t("light.reasonExport"))) && ui.openOverlay("export") },
 
   // ------------------------------------------------------------ build
   { id: "build.run", title: "action.build", category: "build", keys: "Mod-Enter", icon: "play", when: hasProject, run: () => build.run() },

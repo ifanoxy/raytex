@@ -770,6 +770,22 @@ export function installMocks() {
           return { pdf: p("build/main.pdf"), errors: 0 };
         case "history_changes_cancel":
           return null;
+        case "export_plan": {
+          const o = a.options as { submission: boolean; includeBib: boolean; includePdf: boolean; singleFile: boolean };
+          const role = (name: string) => (name === "main.tex" ? "main" : name.endsWith(".bib") ? "bibliography" : name.endsWith(".tex") ? "source" : "other");
+          let found = Object.entries(sources()).map(([name, text]) => ({ source: p(name), name, size: text.length, role: role(name) }));
+          found.push({ source: p("figures/courbe.pdf"), name: "figures/courbe.pdf", size: 48_200, role: "picture" });
+          if (o.submission) {
+            found = found.filter((f) => f.role !== "other" && (o.includeBib || f.role !== "bibliography") && (!o.singleFile || f.role !== "source"));
+            found.push({ source: p("build/main.bbl"), name: "main.bbl", size: 3_140, role: "compiled" });
+          }
+          if (o.includePdf) found.push({ source: p("build/main.pdf"), name: "main.pdf", size: 212_000, role: "pdf" });
+          found.sort((x, y) => x.name.localeCompare(y.name));
+          return { files: found, size: found.reduce((n, f) => n + f.size, 0), recorded: true, stale: false };
+        }
+        case "export_write":
+          await new Promise((r) => setTimeout(r, 500));
+          return 96_400;
         case "bib_key":
           return "lagrange1788";
         case "bib_drafts":

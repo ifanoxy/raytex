@@ -18,6 +18,7 @@ import { editor } from "../lib/state/editor.svelte";
 import { project } from "../lib/state/project.svelte";
 import { distLabel, tex } from "../lib/state/tex.svelte";
 import { diagnostics } from "../lib/state/diagnostics.svelte";
+import { defaultOptions } from "../lib/export";
 import { causeOf, fixable, quickFix } from "../lib/fixes";
 import { fileSelection } from "../lib/state/selection.svelte";
 import { media } from "../lib/state/media.svelte";
@@ -712,6 +713,37 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     log(`title page failed: ${e}`);
     const said = document.querySelector(".title-studio .error-box, .title-studio .preview-box .empty")?.textContent?.replace(/\s+/g, " ").trim() ?? "none";
     log(`title page: the window says «${said}», compiling ${!!document.querySelector(".title-studio .busy")}`);
+    ok = false;
+  }
+  // ----------------------------------------------------------------- export
+  // The whole project without what its builds left; then what the document
+  // reads, as its last build recorded it; the window lists it, and the
+  // archive is written.
+  try {
+    const main = project.info!.main!;
+    const root = project.info!.root;
+    if (ui.overlay) ui.closeOverlay();
+    await editor.saveAll({ silent: true });
+    const whole = await ipc.exportPlan(main, defaultOptions(false));
+    const sent = await ipc.exportPlan(main, defaultOptions(true));
+    const built = (plan: typeof whole) => plan.files.filter((f) => /^build\/|\.(aux|log|fls|synctex\.gz)$/.test(f.name)).map((f) => f.name);
+    const clean = whole.files.length > 0 && whole.files.some((f) => f.role === "main") && !built(whole).length;
+    const used = sent.recorded && sent.files.some((f) => f.role === "main") && !built(sent).length && sent.files.every((f) => f.role === "compiled" || whole.files.some((w) => w.name === f.name));
+    ui.openOverlay("export");
+    await until(() => document.querySelectorAll(".export-window .file").length === whole.files.length, 10_000, "files of the project listed");
+    document.querySelector<HTMLButtonElement>('.export-window .kind[data-kind="submission"]')!.click();
+    await until(() => document.querySelectorAll(".export-window .file").length === sent.files.length && !!document.querySelector('.export-window .kind[data-kind="submission"].active'), 10_000, "files of the document listed");
+    const boxes = [...document.querySelectorAll<HTMLInputElement>(".export-window .check input")].map((b) => b.checked).join(",");
+    await scene("export");
+    ui.closeOverlay();
+    // The dialog of the system that asks where is not driven here: the archive is written next to the project.
+    const dest = `${root}-export-${Date.now()}.zip`;
+    const size = await ipc.exportWrite(main, defaultOptions(true), dest).catch((e) => `failed: ${e}`);
+    const written = typeof size === "number" && size > 0 && (await ipc.pathExists(dest));
+    log(`export: project ${whole.files.length} files clean ${clean} ${built(whole).join(" ")}, document ${sent.files.length} files recorded ${sent.recorded} stale ${sent.stale} used ${used} (${sent.files.map((f) => f.name).join(" ")}), options ${boxes}, archive ${size}`);
+    ok = clean && used && boxes === "true,true" && written && ok;
+  } catch (e) {
+    log(`export failed: ${e}`);
     ok = false;
   }
   await editor.saveAll();

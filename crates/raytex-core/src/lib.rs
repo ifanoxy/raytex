@@ -36,6 +36,7 @@ pub mod build;
 pub mod completion;
 pub mod custom;
 pub mod diagnostics;
+pub mod export;
 pub mod fixes;
 pub mod fonts;
 pub mod help;

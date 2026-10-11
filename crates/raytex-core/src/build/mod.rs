@@ -637,7 +637,9 @@ impl Runner<'_, '_> {
         if s.synctex {
             cmd = cmd.arg("-synctex=1");
         }
-        cmd = cmd.args(["-interaction=nonstopmode", "-file-line-error"]);
+        // `-recorder`: the engine lists the files it reads in `<job>.fls`,
+        // which is how an export knows what the document uses.
+        cmd = cmd.args(["-interaction=nonstopmode", "-file-line-error", "-recorder"]);
         if s.halt_on_error {
             cmd = cmd.arg("-halt-on-error");
         }
@@ -651,6 +653,12 @@ impl Runner<'_, '_> {
         }
         cmd = cmd.arg(format!("-output-directory={}", plan.out_dir.display()));
         if let Some((format, _)) = &self.format {
+            // The engine takes the name of the format for its own, and
+            // names the file of the recorder after it: with the path of a
+            // format, that is a file in a folder that does not exist, and
+            // the pass stops ("…/main-1a2b3c1234.fls: No such file or
+            // directory"). Its own name is said.
+            cmd = cmd.arg(format!("-progname={}", plan.engine.program()));
             cmd = cmd.arg(format!("-fmt={}", format.display()));
         }
         cmd = cmd.args(s.extra_args.iter().cloned());

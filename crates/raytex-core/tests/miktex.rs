@@ -36,12 +36,18 @@ fn miktex() -> Option<Distribution> {
 
 /// Compiles `main` without letting MiKTeX install anything.
 fn compile(dist: &Distribution, main: &Path) -> (bool, Vec<Diagnostic>) {
+    compile_with(dist, main, false)
+}
+
+/// Compiles `main`, MiKTeX installing what is missing while it compiles
+/// when `install` is set (what RayTeX does unless the user turned it off).
+fn compile_with(dist: &Distribution, main: &Path, install: bool) -> (bool, Vec<Diagnostic>) {
     let ws = Workspace::open(main.parent().unwrap());
     let root = ws.root_for(main);
     let docs = ws.project_documents(&root);
     let facts = DocumentFacts::from_indexes(docs.iter().map(|d| &d.index));
     let settings = BuildSettings {
-        miktex_auto_install: false,
+        miktex_auto_install: install,
         precompile_preamble: false,
         ..ws.config.effective_build(&BuildSettings::default())
     };
@@ -184,4 +190,105 @@ fn a_language_that_is_not_installed_is_installed() {
         installed.push(missing);
     }
     panic!("{language} still does not compile after installing {installed:?}");
+}
+
+/// `ulem.sty`, seen on 2026-10-11: MiKTeX, allowed to install what a
+/// document needs while it compiles, stopped on "File `ulem.sty' not found"
+/// in a run where it fetched every other package asked of it (lipsum,
+/// cancel, multirow, mhchem, soul, todonotes…), one build at a time.
+///
+/// This says what MiKTeX answers for that file, which package its database
+/// gives for it, and checks that the *Install* RayTeX offers on the error
+/// ends in a document.
+#[test]
+#[ignore = "needs MiKTeX"]
+fn a_package_miktex_does_not_fetch_while_it_compiles() {
+    let Some(dist) = miktex() else {
+        println!("MiKTeX is not the distribution found first: nothing checked");
+        return;
+    };
+    let file = "ulem.sty".to_owned();
+    println!(
+        "{file}: in the files of the distribution before anything: {}",
+        TexmfIndex::build(&dist).contains(&file)
+    );
+    println!(
+        "{file}: package given by the database of MiKTeX: {:?}",
+        manager::resolve_packages(&dist, std::slice::from_ref(&file))
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let main = dir.path().join("main.tex");
+    std::fs::write(
+        &main,
+        "\\documentclass{article}\n\\usepackage{ulem}\n\\begin{document}\nUn mot \\sout{barré}.\n\\end{document}\n",
+    )
+    .unwrap();
+
+    // What MiKTeX says when it is asked for the file directly, its
+    // installer on: the program that finds files installs them too.
+    let found = raytex_core::process::output(
+        &dist.cmd("kpsewhich").arg(file.clone()),
+        Duration::from_secs(300),
+    );
+    match &found {
+        Ok(out) => println!(
+            "kpsewhich {file}: code {:?}\n  stdout: {}\n  stderr: {}",
+            out.code,
+            out.stdout.trim(),
+            out.stderr.trim()
+        ),
+        Err(e) => println!("kpsewhich {file}: {e}"),
+    }
+
+    let (success, diagnostics) = compile_with(&dist, &main, true);
+    println!("with the installer of MiKTeX on: success {success}");
+    for d in diagnostics.iter().filter(|d| d.severity == Severity::Error) {
+        println!(
+            "  {:?} {} → {:?}",
+            d.code,
+            d.message.lines().next().unwrap_or_default(),
+            to_install(d)
+        );
+    }
+    let log =
+        std::fs::read_to_string(dir.path().join("build").join("main.log")).unwrap_or_default();
+    for line in log
+        .lines()
+        .filter(|l| l.to_lowercase().contains("miktex") || l.contains("ulem") || l.starts_with('!'))
+        .take(30)
+    {
+        println!("  log | {line}");
+    }
+    if success {
+        println!("{file}: MiKTeX fetched it by itself this time");
+        return;
+    }
+
+    // What the user is offered: installing the file the error names.
+    let missing = diagnostics
+        .iter()
+        .filter(|d| d.severity == Severity::Error)
+        .find_map(|d| to_install(d))
+        .unwrap_or_else(|| panic!("no error offers an installation: {diagnostics:#?}"))
+        .to_owned();
+    assert_eq!(missing, file);
+    let plan = manager::install_files(&dist, std::slice::from_ref(&missing), true)
+        .expect("a plan to install the file");
+    for step in &plan.steps {
+        println!("  {} {}", step.program.display(), step.args.join(" "));
+        let out = raytex_core::process::output(step, Duration::from_secs(600)).expect("run");
+        println!(
+            "  → code {:?}\n  stdout: {}\n  stderr: {}",
+            out.code,
+            out.stdout.trim(),
+            out.stderr.trim()
+        );
+        assert_eq!(out.code, Some(0), "the installation RayTeX offers failed");
+    }
+    let (success, diagnostics) = compile(&dist, &main);
+    assert!(
+        success,
+        "{file} installed as RayTeX offers, and the document still does not compile: {diagnostics:#?}"
+    );
+    println!("{file}: compiled after the installation RayTeX offers");
 }

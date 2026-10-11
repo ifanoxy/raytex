@@ -20,6 +20,7 @@ toml = "0.9"
 thiserror = "2"
 flate2 = "1"
 sha2 = "0.10"
+zip = { version = "4", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 regex = "1"
 memchr = "2"
 ignore = "0.4"

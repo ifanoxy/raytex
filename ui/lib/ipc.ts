@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type * as T from "./types";
 import type { BibDraft, BibField, Bibliography } from "./bibliography";
+import type { ExportOptions, ExportPlan } from "./export";
 import type { Change, ChangesPdf, Comparison, HistoryView, Moment } from "./history";
 import type { CommandDraft, CommandSpec, CustomCommand } from "./commands";
 import type { PagePreview } from "./layout";
@@ -111,6 +112,10 @@ export const historyClear = () => call<void>("history_clear");
 export const historyChangesPdf = (path: string, id: string) => call<ChangesPdf>("history_changes_pdf", { path, id });
 /** Stops the PDF of the changes being built. */
 export const historyChangesCancel = () => call<void>("history_changes_cancel");
+/** What an export of the document of `path` would hold. */
+export const exportPlan = (path: string, options: ExportOptions) => call<ExportPlan>("export_plan", { path, options });
+/** Writes the archive of an export at `dest`; its size in bytes. */
+export const exportWrite = (path: string, options: ExportOptions, dest: string) => call<number>("export_write", { path, options, dest });
 /** A new definition, written and checked against the project of `path`. */
 export const draftCommand = (path: string, spec: CommandSpec) => call<CommandDraft>("draft_command", { path, spec });
 export const structure = (path: string) => call<T.Structure | null>("structure", { path });

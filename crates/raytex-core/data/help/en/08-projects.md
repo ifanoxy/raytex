@@ -85,6 +85,18 @@ RayTeX keeps **moments** of the project: its source files (`.tex`, `.bib`, `.sty
 
 The history is not a backup: it is on the same disk as the project. For work that matters, keep a copy elsewhere too.
 
+## Exporting the project
+
+**Export the project…** (the project menu, or the command palette) makes a `.zip` archive of it. The window lists what the archive will hold before anything is written.
+
+- **The whole project**: all its files, without the folder of the build, auxiliary files (`.aux`, `.log`…) or hidden files. To share it or to archive it; the PDF can be added.
+- **For arXiv or a journal**: only what the document uses (its `.tex` files, its pictures, classes and packages of its own), with its compiled bibliography (`.bbl`) under the name of the main file, where LaTeX reads it. Drafts, unused pictures and notes stay with you.
+  - **Remove the comments** (ticked): what is submitted to arXiv can be read by everyone. Verbatim text and the `%` of addresses are not touched.
+  - **Add the .bib files** (ticked).
+  - *Advanced*: **One .tex file** writes the included files (`\input`, `\include`) in the main file; **Add the PDF**.
+
+The list of the files used is not guessed from the text: the build gives it (the engine notes every file it reads). If the document has not been compiled yet, the window offers to do it; if files changed since, it says so.
+
 ## Sessions
 
 When starting, RayTeX reopens the last project, its tabs and the active file (can be disabled in *Settings › General*).

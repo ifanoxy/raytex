@@ -306,7 +306,14 @@ pub fn build_format(
     let mut cmd = dist
         .engine_cmd(Engine::Pdflatex, false)
         .cwd(&plan.root_dir)
-        .args(["-ini", "-interaction=nonstopmode", "-halt-on-error"])
+        // `-recorder`: what the preamble reads is not read again by the
+        // passes that use the format; an export finds it in this record.
+        .args([
+            "-ini",
+            "-interaction=nonstopmode",
+            "-halt-on-error",
+            "-recorder",
+        ])
         .arg(format!("-jobname={tmp}"))
         .arg(format!("-output-directory={}", dir.display()));
     for (k, v) in env {
@@ -323,23 +330,29 @@ pub fn build_format(
     let ok = process::output(&cmd, Duration::from_secs(120)).is_ok_and(|o| o.code == Some(0));
     let made = dir.join(format!("{tmp}.fmt"));
     let _ = std::fs::remove_file(dir.join(format!("{tmp}.log")));
+    let record = dir.join(format!("{tmp}.fls"));
     if !ok || !made.is_file() {
         let _ = std::fs::remove_file(&made);
+        let _ = std::fs::remove_file(&record);
         return false;
     }
     if std::fs::rename(&made, base.with_extension("fmt")).is_err() {
         return false;
     }
+    let _ = std::fs::rename(&record, base.with_extension("fls"));
     // Formats of former preambles of this document are not needed any more.
     if let Ok(rd) = std::fs::read_dir(&dir) {
-        let keep = base.with_extension("fmt");
+        let keep = [base.with_extension("fmt"), base.with_extension("fls")];
         for entry in rd.flatten() {
             let p = entry.path();
             let file = p
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
                 .unwrap_or_default();
-            if p != keep && file.starts_with(&format!("{}-", plan.job)) && file.ends_with(".fmt") {
+            if !keep.contains(&p)
+                && file.starts_with(&format!("{}-", plan.job))
+                && (file.ends_with(".fmt") || file.ends_with(".fls"))
+            {
                 let _ = std::fs::remove_file(p);
             }
         }
