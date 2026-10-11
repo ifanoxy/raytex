@@ -19,6 +19,8 @@ MiKTeX s'installe avec peu de packages et télécharge les autres pendant la com
 
 RayTeX le signale avant la compilation quand il s'agit d'une langue de babel, et dans tous les cas le problème porte le bouton **Installer**. Le fichier porte rarement le nom de son package (`scalefnt.sty` est dans `carlisle`, `french.ldf` dans `babel-french`, `tikz.sty` dans `pgf`) : RayTeX lit le vrai nom dans la base de MiKTeX et vous montre la commande avant de la lancer. Recompilez ensuite ; s'il manque encore un fichier, le même bouton revient pour lui.
 
+Si l'installation se termine par « Sorry, but: Timeout was reached », c'est MiKTeX qui n'a pas pu joindre son dépôt à temps : relancer l'installation un peu plus tard suffit le plus souvent.
+
 Si l'installation échoue aussi : vérifiez la connexion, puis lancez *TeX › Mettre à jour tous les packages* (MiKTeX signale lui-même comme un problème majeur de n'avoir encore jamais cherché de mises à jour), et réessayez. L'installation automatique se règle dans *Réglages › Distribution TeX*.
 
 ## « Undefined control sequence »

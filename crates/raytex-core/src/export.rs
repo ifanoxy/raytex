@@ -112,6 +112,18 @@ impl Target<'_> {
     }
 }
 
+/// A path as the system itself names it. The same folder can be named in
+/// several ways (a short name of Windows, `C:\Users\RUNNER~1`, for
+/// `C:\Users\runneradmin`; a link), and the engine records the files it
+/// read under the name it was given: paths are compared in this form, or a
+/// file of the project would not be seen as one. A file that is gone keeps
+/// its name as it is written.
+fn real(path: &Path) -> PathBuf {
+    dunce::canonicalize(path)
+        .map(|p| normalize(&p))
+        .unwrap_or_else(|_| normalize(path))
+}
+
 fn extension(path: &Path) -> String {
     path.extension()
         .map(|e| e.to_string_lossy().to_lowercase())
@@ -171,9 +183,9 @@ fn finish(mut files: Vec<ExportFile>, recorded: bool, stale: bool) -> ExportPlan
 /// The whole project: every file of its folder, except hidden ones, the
 /// folder of the build and what a build leaves next to the sources.
 fn plan_project(t: &Target<'_>, opts: &ExportOptions) -> ExportPlan {
-    let root = normalize(t.root_dir);
-    let out = normalize(t.out_dir);
-    let main = normalize(t.main);
+    let root = real(t.root_dir);
+    let out = real(t.out_dir);
+    let main = real(t.main);
     let built_apart = out != root && out.starts_with(&root);
     let mut files = Vec::new();
     let walk = ignore::WalkBuilder::new(&root)
@@ -181,7 +193,7 @@ fn plan_project(t: &Target<'_>, opts: &ExportOptions) -> ExportPlan {
         .hidden(true)
         .build();
     for entry in walk.flatten() {
-        let path = normalize(entry.path());
+        let path = real(entry.path());
         if !entry.file_type().is_some_and(|ft| ft.is_file())
             || (built_apart && path.starts_with(&out))
         {
@@ -218,7 +230,7 @@ fn read_record(fls: &Path, pwd: &Path, seen: &mut BTreeSet<PathBuf>) -> Option<(
             pwd = PathBuf::from(dir.trim());
         } else if let Some(read) = line.strip_prefix("INPUT ") {
             let read = Path::new(read.trim());
-            seen.insert(normalize(&if read.is_absolute() {
+            seen.insert(real(&if read.is_absolute() {
                 read.to_path_buf()
             } else {
                 pwd.join(read)
@@ -259,10 +271,10 @@ fn plan_submission(t: &Target<'_>, opts: &ExportOptions) -> ExportPlan {
     let Some((read, at)) = recorded(t) else {
         return finish(Vec::new(), false, true);
     };
-    let root = normalize(t.root_dir);
-    let base = normalize(t.main_dir());
-    let out = normalize(t.out_dir);
-    let main = normalize(t.main);
+    let root = real(t.root_dir);
+    let base = real(t.main_dir());
+    let out = real(t.out_dir);
+    let main = real(t.main);
     let job = t.job();
     let built_apart = out != base;
     let mut files = Vec::new();
@@ -313,7 +325,7 @@ fn plan_submission(t: &Target<'_>, opts: &ExportOptions) -> ExportPlan {
     }
     if opts.include_bib {
         for bib in t.bib_files {
-            add(&mut files, &normalize(bib), Role::Bibliography);
+            add(&mut files, &real(bib), Role::Bibliography);
         }
     }
     if opts.single_file
@@ -501,11 +513,7 @@ pub fn expand(text: &str, dir: &Path, folded: &mut BTreeSet<PathBuf>, depth: usi
             let open = after.find('{').unwrap_or(0);
             let name = after[open + 1..close].trim();
             let candidates = [dir.join(name), dir.join(format!("{name}.tex"))];
-            let Some(path) = candidates
-                .iter()
-                .find(|p| p.is_file())
-                .map(|p| normalize(p))
-            else {
+            let Some(path) = candidates.iter().find(|p| p.is_file()).map(|p| real(p)) else {
                 continue;
             };
             if depth >= 20 || folded.contains(&path) {
@@ -553,7 +561,7 @@ pub fn write(
     dest: &Path,
 ) -> std::io::Result<u64> {
     let zip_error = |e: zip::result::ZipError| std::io::Error::other(e.to_string());
-    let base = normalize(t.main_dir());
+    let base = real(t.main_dir());
     let mut zip = zip::ZipWriter::new(std::fs::File::create(dest)?);
     let options = zip::write::SimpleFileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated);
@@ -754,6 +762,59 @@ mod tests {
             .set_modified(later)
             .unwrap();
         assert!(plan(&t, &submission(&|_| {})).stale);
+    }
+
+    /// The folder of the project named two ways (here through a link; on
+    /// Windows, a short name): the files the build read are still its files.
+    #[cfg(unix)]
+    #[test]
+    fn a_project_named_two_ways_is_one_project() {
+        let (dir, root) = project();
+        record(&root);
+        let link = dir.path().join("lien");
+        std::os::unix::fs::symlink(&root, &link).unwrap();
+        let bib = [link.join("refs.bib")];
+        // The project is known by its link, the build ran in the folder itself.
+        let t = Target {
+            root_dir: &link,
+            main: &link.join("main.tex"),
+            out_dir: &link.join("build"),
+            bib_files: &bib,
+        };
+        let opts = ExportOptions {
+            submission: true,
+            include_bib: true,
+            ..Default::default()
+        };
+        assert_eq!(
+            names(&plan(&t, &opts)),
+            [
+                "chapitres/fin.tex",
+                "chapitres/intro.tex",
+                "figures/courbe.png",
+                "main.bbl",
+                "main.tex",
+                "refs.bib"
+            ]
+        );
+        // And the other way round: known by its folder, recorded through the link.
+        let fls = std::fs::read_to_string(root.join("build/main.fls"))
+            .unwrap()
+            .replace(&root.display().to_string(), &link.display().to_string());
+        std::fs::write(root.join("build/main.fls"), fls).unwrap();
+        let bib = [root.join("refs.bib")];
+        let t = Target {
+            root_dir: &root,
+            main: &root.join("main.tex"),
+            out_dir: &root.join("build"),
+            bib_files: &bib,
+        };
+        assert_eq!(names(&plan(&t, &opts)).len(), 6);
+        let whole = plan(&t, &ExportOptions::default());
+        assert_eq!(
+            whole.files.iter().filter(|f| f.role == Role::Main).count(),
+            1
+        );
     }
 
     /// A 1 × 1 PNG.

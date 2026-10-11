@@ -67,6 +67,25 @@ fn compile_with(dist: &Distribution, main: &Path, install: bool) -> (bool, Vec<D
     (outcome.success, outcome.diagnostics)
 }
 
+/// Runs a step of an installation. MiKTeX sometimes cannot reach its
+/// repository in time ("Sorry, but: Timeout was reached", seen on
+/// 2026-10-11 for a package it installed in every other run): that is the
+/// network of the moment, not an answer about the package, and the step is
+/// run again.
+fn install_step(step: &raytex_core::process::Cmd) -> raytex_core::process::Output {
+    let mut out = raytex_core::process::output(step, Duration::from_secs(600)).expect("run");
+    for wait in [30, 90] {
+        let said = format!("{}\n{}", out.stdout, out.stderr);
+        if out.code == Some(0) || !said.contains("Timeout was reached") {
+            break;
+        }
+        println!("  MiKTeX did not reach its repository in time: again in {wait} s");
+        std::thread::sleep(Duration::from_secs(wait));
+        out = raytex_core::process::output(step, Duration::from_secs(600)).expect("run");
+    }
+    out
+}
+
 /// The file a problem offers to install.
 fn to_install(d: &Diagnostic) -> Option<&str> {
     d.fixes.iter().find_map(|f| match f {
@@ -184,7 +203,7 @@ fn a_language_that_is_not_installed_is_installed() {
             .expect("a plan to install the file");
         for step in &plan.steps {
             println!("  {} {}", step.program.display(), step.args.join(" "));
-            let out = raytex_core::process::output(step, Duration::from_secs(600)).expect("run");
+            let out = install_step(step);
             assert_eq!(out.code, Some(0), "{}\n{}", out.stdout, out.stderr);
         }
         installed.push(missing);
@@ -276,7 +295,7 @@ fn a_package_miktex_does_not_fetch_while_it_compiles() {
         .expect("a plan to install the file");
     for step in &plan.steps {
         println!("  {} {}", step.program.display(), step.args.join(" "));
-        let out = raytex_core::process::output(step, Duration::from_secs(600)).expect("run");
+        let out = install_step(step);
         println!(
             "  → code {:?}\n  stdout: {}\n  stderr: {}",
             out.code,

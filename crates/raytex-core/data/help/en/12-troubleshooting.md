@@ -19,6 +19,8 @@ MiKTeX comes with few packages and downloads the others while it compiles. When 
 
 RayTeX says so before the build when it is a language of babel, and in every case the problem carries the **Install** button. A file seldom has the name of its package (`scalefnt.sty` is in `carlisle`, `french.ldf` in `babel-french`, `tikz.sty` in `pgf`): RayTeX reads the real name in the database of MiKTeX and shows you the command before running it. Build again; if another file is missing, the same button comes back for it.
 
+If the installation ends with "Sorry, but: Timeout was reached", MiKTeX could not reach its repository in time: running the installation again a little later is usually enough.
+
 If the installation fails too: check the connection, then run *TeX › Update all packages* (MiKTeX itself reports as a major issue that it has never looked for updates), and try again. Automatic installation is set in *Settings › TeX distribution*.
 
 ## "Undefined control sequence"
