@@ -4,11 +4,13 @@
   // and a way back (one file, or all of them).
   import { byDay, type Change, counts, dayName, HISTORY_DEFAULTS, type Moment, rows, sizeLabel } from "$lib/history";
   import { i18n, plural, t } from "$lib/i18n.svelte";
+  import * as ipc from "$lib/ipc";
   import { app } from "$lib/state/app.svelte";
   import { history } from "$lib/state/history.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import Icon from "../common/Icon.svelte";
   import Modal from "../common/Modal.svelte";
+  import PdfPreview from "../common/PdfPreview.svelte";
 
   const settings = $derived(app.settings?.history ?? HISTORY_DEFAULTS);
   const days = $derived(byDay(history.view.moments));
@@ -117,7 +119,40 @@
             <span class="faint">{plural(history.changes.length, "history.changedOne", "history.changedMany")}</span>
           {/if}
         </header>
-        {#if history.changes.length}
+        {#if history.pdfShown}
+          <div class="changes">
+            {#if history.pdfBusy}
+              <div class="empty same">
+                <span class="spinner"></span>
+                <span>{t("history.pdfBuilding")}</span>
+                <button class="btn small" onclick={() => history.cancelPdf()}>{t("common.cancel")}</button>
+              </div>
+            {:else if history.pdfProblem}
+              {@const problem = history.pdfProblem}
+              <div class="empty same problem">
+                <Icon name="alert-triangle" size={22} />
+                <strong>{t(`history.pdfProblem.${problem.kind}`)}</strong>
+                {#if problem.kind === "no-latexdiff" || problem.kind === "build" || problem.kind === "exists"}<span class="faint">{t(`history.pdfHint.${problem.kind}`)}</span>{/if}
+                {#if problem.detail}<pre class="said selectable">{problem.detail}</pre>{/if}
+                {#if problem.kind === "no-latexdiff"}
+                  <button class="btn primary" onclick={() => history.installLatexdiff()}><Icon name="download" size={14} />{t("history.installLatexdiff")}</button>
+                {/if}
+              </div>
+            {:else if history.pdf}
+              <PdfPreview pdf={history.pdf.path} revision={history.pdfRevision} maxScale={1.6} />
+            {/if}
+          </div>
+          <footer class="actions">
+            <button class="btn" onclick={() => history.closePdf()}><Icon name="chevron-left" size={14} />{t("history.backToText")}</button>
+            {#if history.pdf?.errors}<span class="faint small">{plural(history.pdf.errors, "history.pdfErrorOne", "history.pdfErrorMany")}</span>{/if}
+            <span class="spacer"></span>
+            {#if history.pdf}
+              {@const built = history.pdf.path}
+              <button class="btn" onclick={() => ipc.openInOs(built)}><Icon name="external" size={14} />{t("history.pdfOpen")}</button>
+              <button class="btn primary" onclick={() => history.savePdf()}><Icon name="download" size={14} />{t("history.pdfSave")}</button>
+            {/if}
+          </footer>
+        {:else if history.changes.length}
           <div class="files" role="tablist">
             {#each history.changes as c (c.path)}
               <button class="file" class:active={c.path === history.file} role="tab" aria-selected={c.path === history.file} onclick={() => history.pick(c.path)} title={c.path}>
@@ -158,10 +193,11 @@
                 <Icon name="undo" size={14} />{t(change.status === "removed" ? "history.recreate" : "history.restoreFile")}
               </button>
             {/if}
-            <span class="spacer"></span>
             {#if restorable.length > 1}
               <button class="btn" disabled={history.busy} onclick={restoreAll}>{t("history.restoreAll")}</button>
             {/if}
+            <span class="spacer"></span>
+            <button class="btn" disabled={history.busy} onclick={() => history.changesPdf()} title={t("history.pdfHint")}><Icon name="pdf" size={14} />{t("history.pdf")}</button>
           </footer>
         {:else}
           <div class="empty same">
@@ -407,6 +443,45 @@
     font-family: var(--font-ui);
     font-size: 11px;
     color: var(--text-faint);
+  }
+  .changes {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    margin: 0 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-input);
+    overflow: hidden;
+  }
+  .changes :global(.preview) {
+    flex: 1;
+    min-width: 0;
+  }
+  .problem {
+    padding: 0 32px;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+  .problem strong {
+    color: var(--text);
+  }
+  .said {
+    max-width: 100%;
+    max-height: 120px;
+    margin: 4px 0;
+    padding: 8px 10px;
+    overflow: auto;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elev);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    text-align: left;
+    white-space: pre-wrap;
+    color: var(--text-muted);
+  }
+  .small {
+    font-size: 11.5px;
   }
   .actions {
     display: flex;

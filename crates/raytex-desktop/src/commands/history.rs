@@ -6,15 +6,17 @@
 //! with the data of the application. A file opened on its own has none (it
 //! has no folder of its own).
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use raytex_core::history::{self, Change, DiffLine, History, Moment};
+use raytex_core::build::{self, BuildEvent, RunContext};
+use raytex_core::diagnostics::Severity;
+use raytex_core::history::{self, CHANGES_JOB, Change, ChangesError, DiffLine, History, Moment};
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, State};
 
-use super::{CmdResult, blocking, err};
+use super::{CmdResult, abs, blocking, err};
 use crate::state::AppState;
 
 fn now() -> u64 {
@@ -213,4 +215,150 @@ pub async fn history_clear(app: AppHandle) -> CmdResult<()> {
         Ok(())
     })
     .await?
+}
+
+/// The PDF of what changed since a moment.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangesPdf {
+    /// The PDF, kept with the cache of the application.
+    pub pdf: PathBuf,
+    /// Errors of its build (a document of changes often has a few and
+    /// still gives its pages).
+    pub errors: usize,
+}
+
+/// Removes the document of the changes when its build is over, however it ends.
+struct Transient<'a> {
+    state: &'a AppState,
+    tex: PathBuf,
+    out_dir: Option<PathBuf>,
+}
+
+impl Drop for Transient<'_> {
+    fn drop(&mut self) {
+        self.state.note_own_write(&self.tex);
+        let _ = std::fs::remove_file(&self.tex);
+        if let Some(dir) = &self.out_dir {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+    }
+}
+
+/// Builds the PDF of what changed in the document of `path` since the
+/// moment `id`: the document latexdiff writes is compiled like the project
+/// (same engine, same bibliography tool), next to its main file so that its
+/// pictures and its bibliography are found, and removed once compiled.
+///
+/// Fails with a word the interface knows: `no-distribution`, `no-latexdiff`,
+/// `no-main`, `no-document`, `exists`, `cancelled`, or `latexdiff:…` and `build:…` followed
+/// by what the program said.
+#[tauri::command]
+pub async fn history_changes_pdf(
+    app: AppHandle,
+    path: String,
+    id: String,
+) -> CmdResult<ChangesPdf> {
+    let file = abs(&path);
+    blocking(&app, move |_, state| {
+        let (root_dir, history) = open_history(state).ok_or("no-project")?;
+        let prep = super::build::prepare(state, &file).ok_or("no-project")?;
+        let dist = state.active_distribution().ok_or("no-distribution")?;
+        let lang = state.lang();
+        let cancel = state.changes_cancel.clone();
+        cancel.store(false, Ordering::SeqCst);
+        let name = history::folder(Path::new(""), &root_dir);
+        let work = state.paths.cache.join("changes").join(name);
+
+        let text = history
+            .changes_document(&id, &root_dir, &prep.root, &dist, &work.join("then"))
+            .map_err(|e| match e {
+                ChangesError::NoLatexdiff => "no-latexdiff".to_owned(),
+                ChangesError::NoMain => "no-main".to_owned(),
+                ChangesError::NoDocument => "no-document".to_owned(),
+                ChangesError::Failed(said) => format!("latexdiff:{said}"),
+                ChangesError::Io(e) => e.to_string(),
+            })?;
+        if cancel.load(Ordering::SeqCst) {
+            return Err("cancelled".to_owned());
+        }
+
+        // Next to the main file: what it reads by a relative path is found.
+        let dir = prep.root.parent().ok_or("no-project")?;
+        let tex = dir.join(format!("{CHANGES_JOB}.tex"));
+        // A file of that name that is not one of ours is left alone.
+        if tex.exists() && !std::fs::read_to_string(&tex).is_ok_and(|t| t.starts_with("%DIF")) {
+            return Err("exists".to_owned());
+        }
+        let mut transient = Transient {
+            state,
+            tex: tex.clone(),
+            out_dir: None,
+        };
+        state.note_own_write(&tex);
+        std::fs::write(&tex, text).map_err(err)?;
+
+        // Built in a folder of its own: nothing of the build of the project
+        // is touched, and the folder goes away with what it holds.
+        let mut settings = prep.settings.clone();
+        let out = settings.out_dir.trim().trim_end_matches(['/', '\\']);
+        settings.out_dir = if out.is_empty() || out == "." {
+            format!("{CHANGES_JOB}-build")
+        } else {
+            format!("{out}/{CHANGES_JOB}")
+        };
+        settings.synctex = false;
+        settings.precompile_preamble = false;
+        settings.halt_on_error = false;
+        settings.copy_pdf_to_root = false;
+        let plan = build::plan(&tex, &settings, Some(&dist), &prep.facts, lang)
+            .map_err(|e| format!("build:{}", e.to_diagnostic(lang).message))?;
+        transient.out_dir = Some(plan.out_dir.clone());
+        let source = |p: &Path| std::fs::read_to_string(p).ok();
+        let ctx = RunContext {
+            dist: &dist,
+            settings: &settings,
+            cancel: &cancel,
+            lang,
+            source: &source,
+            packages: None,
+            background: false,
+        };
+        let outcome = build::run(&plan, &ctx, &mut |_: BuildEvent| {});
+        if outcome.cancelled {
+            return Err("cancelled".to_owned());
+        }
+        let errors: Vec<_> = outcome
+            .diagnostics
+            .iter()
+            .filter(|d| d.severity == Severity::Error)
+            .collect();
+        let Some(built) = outcome.pdf.as_ref().filter(|p| p.is_file()) else {
+            let why = errors
+                .first()
+                .map(|d| d.message.lines().next().unwrap_or_default().to_owned())
+                .unwrap_or_default();
+            return Err(format!("build:{why}"));
+        };
+        let stem = prep
+            .root
+            .file_stem()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "document".into());
+        std::fs::create_dir_all(&work).map_err(err)?;
+        let pdf = work.join(format!("{stem}-changes.pdf"));
+        std::fs::copy(built, &pdf).map_err(err)?;
+        Ok(ChangesPdf {
+            pdf,
+            errors: errors.len(),
+        })
+    })
+    .await?
+}
+
+/// Stops the PDF of the changes being built.
+#[tauri::command]
+pub async fn history_changes_cancel(state: State<'_, AppState>) -> CmdResult<()> {
+    state.changes_cancel.store(true, Ordering::SeqCst);
+    Ok(())
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { byDay, changedPart, counts, dayName, type DiffLine, type Moment, rows, sizeLabel } from "./history.ts";
+import { byDay, changedPart, changesProblem, counts, dayName, type DiffLine, type Moment, rows, sizeLabel } from "./history.ts";
 
 /** A comparison from `-removed`, `+added` and ` same` lines. */
 function lines(...marked: string[]): DiffLine[] {
@@ -55,4 +55,13 @@ test("a size is written as it is read", () => {
   assert.equal(sizeLabel(12_300, "fr"), "12 Ko");
   assert.equal(sizeLabel(1_500_000, "fr"), "1,4 Mo");
   assert.equal(sizeLabel(1_500_000, "en"), "1.4 MB");
+});
+
+test("what stopped the PDF of the changes is told apart", () => {
+  assert.equal(changesProblem("cancelled"), null);
+  assert.deepEqual(changesProblem("no-latexdiff"), { kind: "no-latexdiff", detail: "" });
+  assert.deepEqual(changesProblem("no-main"), { kind: "no-main", detail: "" });
+  assert.deepEqual(changesProblem("build: Undefined control sequence."), { kind: "build", detail: "Undefined control sequence." });
+  assert.deepEqual(changesProblem("latexdiff:Can't locate Algorithm/Diff.pm"), { kind: "latexdiff", detail: "Can't locate Algorithm/Diff.pm" });
+  assert.deepEqual(changesProblem("disk full"), { kind: "other", detail: "disk full" });
 });

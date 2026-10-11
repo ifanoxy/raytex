@@ -202,3 +202,29 @@ export function sizeLabel(bytes: number, lang: "fr" | "en"): string {
   const digits = unit === 0 || value >= 10 ? 0 : 1;
   return `${new Intl.NumberFormat(lang, { maximumFractionDigits: digits }).format(value)} ${units[unit]}`;
 }
+
+/** The PDF of what changed since a moment. */
+export interface ChangesPdf {
+  pdf: string;
+  /** Errors of its build (it often has a few and still gives its pages). */
+  errors: number;
+}
+
+/** Why the PDF of the changes was not made. */
+export interface ChangesProblem {
+  kind: "no-latexdiff" | "no-main" | "no-document" | "no-distribution" | "exists" | "latexdiff" | "build" | "other";
+  /** What the program said, when it said something. */
+  detail: string;
+}
+
+/** What the engine answered when the PDF of the changes could not be made (null: stopped by the user). */
+export function changesProblem(said: string): ChangesProblem | null {
+  if (said === "cancelled") return null;
+  for (const kind of ["no-latexdiff", "no-main", "no-document", "no-distribution", "exists"] as const) {
+    if (said === kind) return { kind, detail: "" };
+  }
+  for (const kind of ["latexdiff", "build"] as const) {
+    if (said.startsWith(`${kind}:`)) return { kind, detail: said.slice(kind.length + 1).trim() };
+  }
+  return { kind: "other", detail: said };
+}

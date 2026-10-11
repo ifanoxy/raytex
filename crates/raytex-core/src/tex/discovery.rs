@@ -142,6 +142,7 @@ pub const TOOLS: &[&str] = &[
     "xindy",
     "synctex",
     "kpsewhich",
+    "latexdiff",
     "tlmgr",
     "miktex",
     "mpm",

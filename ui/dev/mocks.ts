@@ -765,6 +765,11 @@ export function installMocks() {
         case "history_clear":
           moments.length = 0;
           return null;
+        case "history_changes_pdf":
+          await new Promise((r) => setTimeout(r, 1200));
+          return { pdf: p("build/main.pdf"), errors: 0 };
+        case "history_changes_cancel":
+          return null;
         case "bib_key":
           return "lagrange1788";
         case "bib_drafts":

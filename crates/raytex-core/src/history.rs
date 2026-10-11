@@ -19,6 +19,9 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+use crate::process::{self, Cmd};
+use crate::tex::Distribution;
+
 /// Extensions of the files a moment keeps: what the user writes.
 const KEPT: &[&str] = &[
     "tex", "bib", "sty", "cls", "tikz", "pgf", "bst", "bbx", "cbx", "def", "cfg", "ltx", "toml",
@@ -439,6 +442,109 @@ impl History {
             .collect();
         out.sort_by(|a, b| a.path.cmp(&b.path));
         out
+    }
+}
+
+/// Name of the document of the changes ([`History::changes_document`]):
+/// written next to the main file for the time of its build, then removed.
+pub const CHANGES_JOB: &str = "raytex-changes";
+
+/// Why the document of the changes could not be written.
+#[derive(Debug, thiserror::Error)]
+pub enum ChangesError {
+    /// The distribution has no latexdiff (or no Perl to run it).
+    #[error("latexdiff is not installed")]
+    NoLatexdiff,
+    /// The main file was not in the project at that moment.
+    #[error("the main file did not exist at that moment")]
+    NoMain,
+    /// latexdiff ran and gave nothing: what it said.
+    #[error("{0}")]
+    Failed(String),
+    /// What latexdiff wrote has no `\begin{document}`: the main file is not
+    /// a whole document.
+    #[error("the main file is not a whole document")]
+    NoDocument,
+    /// A file could not be written.
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+}
+
+/// latexdiff as this distribution has it: its program, or its script run by
+/// Perl (a distribution may have the one without the other).
+fn latexdiff(dist: &Distribution) -> Option<Cmd> {
+    if dist.tool("latexdiff").is_some() {
+        return Some(dist.cmd("latexdiff"));
+    }
+    let perl = dist.tool("perl")?;
+    let found = process::output(
+        &dist
+            .cmd("kpsewhich")
+            .args(["-format=texmfscripts", "latexdiff.pl"]),
+        std::time::Duration::from_secs(60),
+    )
+    .ok()?;
+    let script = found.stdout.lines().next()?.trim().to_owned();
+    Path::new(&script)
+        .is_file()
+        .then(|| Cmd::new(perl).path_prefix(dist.bin_dir.clone()).arg(script))
+}
+
+impl History {
+    /// The LaTeX document that shows what changed in the project at `root`
+    /// since the moment `id`: its main file then and now, with the files
+    /// they include folded in, compared by latexdiff (what was removed is
+    /// struck out, what was added is underlined). `work` is a folder of its
+    /// own, emptied first: the project as it was is written there.
+    pub fn changes_document(
+        &self,
+        id: &str,
+        root: &Path,
+        main: &Path,
+        dist: &Distribution,
+        work: &Path,
+    ) -> Result<String, ChangesError> {
+        let rel = main.strip_prefix(root).map_err(|_| ChangesError::NoMain)?;
+        let rel: Vec<String> = rel
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy().into_owned())
+            .collect();
+        if !self.files(id).iter().any(|f| f.path == rel.join("/")) {
+            return Err(ChangesError::NoMain);
+        }
+        let cmd = latexdiff(dist).ok_or(ChangesError::NoLatexdiff)?;
+        match std::fs::remove_dir_all(work) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e.into()),
+            _ => {}
+        }
+        self.export(id, work)?;
+        let then = rel
+            .iter()
+            .fold(work.to_path_buf(), |dir, part| dir.join(part));
+        let cmd = cmd
+            .arg("--flatten")
+            .arg(then.to_string_lossy())
+            .arg(main.to_string_lossy())
+            .cwd(root);
+        let out = process::output(&cmd, std::time::Duration::from_secs(180))?;
+        let _ = std::fs::remove_dir_all(work);
+        if !out.success() || out.stdout.trim().is_empty() {
+            let said: Vec<&str> = out
+                .stderr
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .collect();
+            let tail = said[said.len().saturating_sub(4)..].join("\n");
+            return Err(ChangesError::Failed(if tail.is_empty() {
+                format!("latexdiff: exit code {:?}", out.code)
+            } else {
+                tail
+            }));
+        }
+        if !out.stdout.contains("\\begin{document}") {
+            return Err(ChangesError::NoDocument);
+        }
+        Ok(out.stdout)
     }
 }
 
@@ -873,6 +979,59 @@ mod tests {
         let lines = diff(&before.join("\n"), &after.join("\n"));
         assert_eq!(lines.len(), 6000);
         assert!(lines[..3000].iter().all(|l| l.kind == LineKind::Removed));
+    }
+
+    /// The document of the changes, by the latexdiff of the distribution
+    /// found here (`cargo test -p raytex-core --lib changes -- --ignored`).
+    #[test]
+    #[ignore = "needs a TeX distribution with latexdiff"]
+    fn the_changes_since_a_moment_as_a_document() {
+        let Some(dist) = crate::tex::detect(&[]).into_iter().next() else {
+            println!("no TeX distribution: nothing checked");
+            return;
+        };
+        let (dir, root, history) = project();
+        let main = root.join("main.tex");
+        std::fs::write(
+            &main,
+            "\\documentclass{article}\n\\begin{document}\n\\input{chapitres/intro}\nUne phrase qui reste.\n\\end{document}\n",
+        )
+        .unwrap();
+        history.snapshot(&root, "open", 1).unwrap();
+        std::fs::write(root.join("chapitres/intro.tex"), "Bonsoir tout le monde.\n").unwrap();
+        let work = dir.path().join("work");
+        let text = match history.changes_document("1", &root, &main, &dist, &work) {
+            Ok(text) => text,
+            Err(ChangesError::NoLatexdiff) => {
+                println!(
+                    "no latexdiff in {}: nothing checked",
+                    dist.bin_dir.display()
+                );
+                return;
+            }
+            Err(e) => panic!("{e}"),
+        };
+        // The included file is folded in, with what it lost and gained.
+        assert!(text.contains("\\DIFdel{Bonjour}"), "{text}");
+        assert!(text.contains("\\DIFadd{Bonsoir tout le monde}"), "{text}");
+        assert!(text.contains("Une phrase qui reste."), "{text}");
+        assert!(!work.exists(), "the project as it was is not left behind");
+        // A moment that did not have the main file.
+        std::fs::rename(&main, root.join("these.tex")).unwrap();
+        history.snapshot(&root, "save", 2).unwrap();
+        std::fs::rename(root.join("these.tex"), &main).unwrap();
+        assert!(matches!(
+            history.changes_document("2", &root, &main, &dist, &work),
+            Err(ChangesError::NoMain)
+        ));
+        // A main file that is not a document.
+        std::fs::write(&main, "Quelques notes.\n").unwrap();
+        history.snapshot(&root, "save", 3).unwrap();
+        std::fs::write(&main, "Quelques notes de plus.\n").unwrap();
+        assert!(matches!(
+            history.changes_document("3", &root, &main, &dist, &work),
+            Err(ChangesError::NoDocument)
+        ));
     }
 
     #[test]

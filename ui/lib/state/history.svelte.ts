@@ -4,10 +4,12 @@
 // its document: the change can be undone and is saved like any other, and a
 // moment is taken first, so that nothing is ever lost by going back.
 
-import type { Change, Comparison, HistoryView } from "../history";
+import { save } from "@tauri-apps/plugin-dialog";
+import { type Change, type ChangesProblem, changesProblem, type Comparison, type HistoryView } from "../history";
 import { t } from "../i18n.svelte";
 import * as ipc from "../ipc";
-import { join, relative } from "../utils";
+import { confirmAndRun } from "../install";
+import { basename, join, relative } from "../utils";
 import { editor } from "./editor.svelte";
 import { project } from "./project.svelte";
 import { ui } from "./ui.svelte";
@@ -25,6 +27,13 @@ class HistoryStore {
   comparison = $state<Comparison | null>(null);
   /** Something is being put back, kept or forgotten. */
   busy = $state(false);
+  /** The PDF of the changes since the moment looked at, once built. */
+  pdf = $state<{ path: string; errors: number } | null>(null);
+  /** Bumped with each PDF built (the same file is written again). */
+  pdfRevision = $state(0);
+  pdfBusy = $state(false);
+  /** Why the PDF was not made. */
+  pdfProblem = $state<ChangesProblem | null>(null);
   /** The file the window was asked for (shown first when it changed). */
   private wanted: string | null = null;
   private listening = false;
@@ -38,6 +47,7 @@ class HistoryStore {
     this.changes = [];
     this.file = null;
     this.comparison = null;
+    this.closePdf();
     ui.openOverlay("history");
     if (!this.listening) {
       this.listening = true;
@@ -65,6 +75,7 @@ class HistoryStore {
 
   /** Looks at a moment: what changed since, and the first file that did. */
   async select(id: string | null) {
+    if (id !== this.selected) this.closePdf();
     this.selected = id;
     if (!id) {
       this.changes = [];
@@ -146,6 +157,63 @@ class HistoryStore {
     } finally {
       this.busy = false;
     }
+  }
+
+  /** The PDF is shown, being built, or could not be. */
+  get pdfShown(): boolean {
+    return this.pdfBusy || !!this.pdf || !!this.pdfProblem;
+  }
+
+  /** Builds the PDF of what changed in the document since the moment looked at. */
+  async changesPdf() {
+    const id = this.selected;
+    const main = project.info?.main;
+    if (!id || !main || this.pdfBusy) return;
+    this.pdf = null;
+    this.pdfProblem = null;
+    this.pdfBusy = true;
+    try {
+      await editor.saveAll({ silent: true });
+      const built = await ipc.historyChangesPdf(main, id);
+      if (this.selected !== id) return;
+      this.pdf = { path: built.pdf, errors: built.errors };
+      this.pdfRevision++;
+    } catch (e) {
+      if (this.selected === id) this.pdfProblem = changesProblem(String(e));
+    } finally {
+      this.pdfBusy = false;
+    }
+  }
+
+  cancelPdf() {
+    void ipc.historyChangesCancel();
+  }
+
+  /** Back to the comparison. */
+  closePdf() {
+    if (this.pdfBusy) this.cancelPdf();
+    this.pdf = null;
+    this.pdfProblem = null;
+  }
+
+  /** Saves the PDF of the changes where the user says. */
+  async savePdf() {
+    if (!this.pdf) return;
+    const root = project.info?.root;
+    const name = basename(this.pdf.path);
+    const dest = await save({ defaultPath: root ? join(root, name) : name, filters: [{ name: "PDF", extensions: ["pdf"] }] });
+    if (!dest) return;
+    try {
+      await ipc.exportFile(this.pdf.path, dest);
+      ui.toast("success", t("viewer.exported", { file: basename(dest) }));
+    } catch (e) {
+      ui.toast("error", String(e));
+    }
+  }
+
+  /** Installs latexdiff in the distribution (asked first), then builds the PDF. */
+  async installLatexdiff() {
+    if (await confirmAndRun({ kind: "installPackages", packages: ["latexdiff"] }, t("history.installLatexdiff"))) await this.changesPdf();
   }
 
   /** Forgets the history of the project (asked first). */

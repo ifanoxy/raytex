@@ -653,6 +653,10 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     ok = read === "2.5 2.5 2.5 2.5" && pictured && centred && widened && gathered && asked && previewed && defined && packages && here && (await buildOk(log, "layout")) && ok;
   } catch (e) {
     log(`layout failed: ${e}`);
+    // What the window shows of its preview, to tell a page that was not
+    // measured from one that was not compiled.
+    const shows = (sel: string) => document.querySelector(`.studio ${sel}`)?.textContent?.replace(/\s+/g, " ").trim() ?? "none";
+    log(`layout: measure «${shows(".measure")}», error «${shows(".error-box")}», preview «${shows(".empty")}», compiling ${!!document.querySelector(".studio .busy")}`);
     ok = false;
   }
   await editor.saveAll();
@@ -1473,20 +1477,39 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     {
       const mainFile = project.info!.main!;
       await editor.open(mainFile);
+      const original = editor.textOf(mainFile) ?? "";
+      const letter = (text: string) => `\\documentclass{article}\n\\begin{document}\n${text}\n\\end{document}\n`;
+      await editor.rewrite(mainFile, () => letter("Une phrase."));
       await editor.saveAll({ silent: true });
       await ipc.historyKeep("manual");
       const then = editor.textOf(mainFile) ?? "";
-      await editor.rewrite(mainFile, (text) => `${text}% une ligne de plus\n`);
+      await editor.rewrite(mainFile, () => letter("Une phrase.\nUne ligne de plus."));
       await editor.save(mainFile, { silent: true });
       void history.show(mainFile);
       await until(() => !!document.querySelector(".history .line.added"), 10_000, "comparison with the moment");
       const added = [...document.querySelectorAll(".history .line.added .text")].map((l) => l.textContent);
       check(
         "history: what changed since the moment",
-        added.length === 1 && added[0] === "% une ligne de plus" && document.querySelector(".history .file.active")?.textContent?.trim() === basename(mainFile) && !document.querySelector(".history .line.removed"),
+        added.length === 1 && added[0] === "Une ligne de plus." && document.querySelector(".history .file.active")?.textContent?.trim() === basename(mainFile) && !document.querySelector(".history .line.removed"),
         `${added.join(" | ")} in ${document.querySelector(".history .file.active")?.textContent?.trim()}`,
       );
       await scene("history");
+      // The PDF of the changes: compiled by the distribution with latexdiff,
+      // shown in the window, and nothing of it left in the project. A
+      // distribution without latexdiff says so and offers to install it.
+      [...document.querySelectorAll<HTMLButtonElement>(".history .actions .btn")].at(-1)!.click();
+      await until(() => !history.pdfBusy && history.pdfShown, 180_000, "PDF of the changes");
+      if (history.pdf) await until(() => !!document.querySelector(".history .changes canvas"), 20_000, "PDF of the changes shown");
+      const leftBehind = (await ipc.pathExists(`${root}/raytex-changes.tex`)) || (await ipc.pathExists(`${root}/build/raytex-changes`));
+      log(`history: PDF of the changes ${history.pdf ? `built (${history.pdf.errors} errors)` : `not built: ${history.pdfProblem?.kind} ${history.pdfProblem?.detail ?? ""}`}`);
+      check(
+        "history: the PDF of the changes, or why there is none",
+        !leftBehind && (history.pdf ? history.pdf.errors === 0 && (await ipc.pathExists(history.pdf.path)) : history.pdfProblem?.kind === "no-latexdiff" && !!document.querySelector(".history .problem .btn.primary")),
+        `left behind ${leftBehind}, ${history.pdfProblem?.kind} ${history.pdfProblem?.detail}`,
+      );
+      if (history.pdf) await scene("history-pdf");
+      history.closePdf();
+      await until(() => !!document.querySelector(".history .line.added"), 5_000, "back to the comparison");
       document.querySelector<HTMLButtonElement>(".history .actions .btn")!.click();
       for (let i = 0; i < 80 && (editor.textOf(mainFile) !== then || history.busy); i++) await pause(100);
       const onDisk = (await ipc.readTextFile(mainFile)).text;
@@ -1494,6 +1517,8 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
       const kept = (await ipc.historyList()).moments;
       check("history: a moment taken before going back", kept[0]?.reason === "before-restore" && kept.some((m) => m.reason === "manual"), kept.map((m) => m.reason).join(","));
       if (ui.overlay === "history") ui.closeOverlay();
+      await editor.rewrite(mainFile, () => original);
+      await editor.save(mainFile, { silent: true });
     }
 
     // The formatting bar at the size of the window.

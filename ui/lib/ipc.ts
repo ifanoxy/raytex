@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type * as T from "./types";
 import type { BibDraft, BibField, Bibliography } from "./bibliography";
-import type { Change, Comparison, HistoryView, Moment } from "./history";
+import type { Change, ChangesPdf, Comparison, HistoryView, Moment } from "./history";
 import type { CommandDraft, CommandSpec, CustomCommand } from "./commands";
 import type { PagePreview } from "./layout";
 import type { ShapeSet } from "./tikz/model";
@@ -107,6 +107,10 @@ export const historyCompare = (id: string, file: string) => call<Comparison>("hi
 export const historyKeep = (reason: "manual" | "before-restore") => call<Moment | null>("history_keep", { reason });
 /** Forgets the history of the open project. */
 export const historyClear = () => call<void>("history_clear");
+/** Builds the PDF of what changed in the document of `path` since a moment (latexdiff). */
+export const historyChangesPdf = (path: string, id: string) => call<ChangesPdf>("history_changes_pdf", { path, id });
+/** Stops the PDF of the changes being built. */
+export const historyChangesCancel = () => call<void>("history_changes_cancel");
 /** A new definition, written and checked against the project of `path`. */
 export const draftCommand = (path: string, spec: CommandSpec) => call<CommandDraft>("draft_command", { path, spec });
 export const structure = (path: string) => call<T.Structure | null>("structure", { path });

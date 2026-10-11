@@ -714,6 +714,67 @@ mod tests {
         assert_eq!(measures_from_log("RTXMEASURE:12pt:\\textwidth"), None);
     }
 
+    /// What the margins window compiles (`previewSource` and `MEASURE` in
+    /// ui/lib/layout.ts): the preamble of a document, `showframe`, and the
+    /// fourteen lengths of the page on one line. When they are not read,
+    /// the test says what the log has of that line, cut as the engine cut
+    /// it, and what the build said.
+    #[test]
+    #[ignore = "needs a TeX distribution"]
+    fn the_margins_window_gets_its_fourteen_lengths() {
+        let dist = distribution();
+        let dir = tempfile::tempdir().unwrap();
+        let whole = "\\documentclass[12pt,a4paper]{report}\n\\usepackage[T1]{fontenc}\n\\usepackage[french]{babel}\n\\usepackage{geometry}\n\\geometry{margin=2.5cm}\n\\usepackage{showframe}\n\\begin{document}\n\\typeout{RTXMEASURE:\\the\\paperwidth:\\the\\paperheight:\\the\\textwidth:\\the\\textheight:\\the\\oddsidemargin:\\the\\evensidemargin:\\the\\topmargin:\\the\\headheight:\\the\\headsep:\\the\\footskip:\\the\\marginparwidth:\\the\\marginparsep:\\the\\hoffset:\\the\\voffset}\nUn paragraphe.\n\\end{document}\n";
+        let outcome = compile(
+            &dist,
+            &PreviewRequest {
+                class_options: "",
+                preamble: "",
+                body: "",
+                document: Some(whole),
+                engine: Engine::Pdflatex,
+                workdir: dir.path(),
+                out_dir: dir.path(),
+                job: "layout-preview",
+                timeout: Duration::from_secs(300),
+                lang: Lang::En,
+                install_missing: true,
+            },
+        );
+        let log = std::fs::read(
+            dunce::canonicalize(dir.path())
+                .unwrap()
+                .join("layout-preview.log"),
+        )
+        .map(|b| String::from_utf8_lossy(&b).into_owned())
+        .unwrap_or_default();
+        let around: Vec<String> = log
+            .lines()
+            .skip_while(|l| !l.contains("RTXMEASURE"))
+            .take(4)
+            .map(|l| format!("{:>3} | {l}", l.len()))
+            .collect();
+        let said = format!(
+            "measures: {:?}\nlog ({} lines), from the line of the lengths:\n{}\nproblems: {:#?}",
+            outcome.measures,
+            log.lines().count(),
+            around.join("\n"),
+            outcome.diagnostics
+        );
+        let measures = outcome.measures.clone().unwrap_or_default();
+        assert_eq!(measures.len(), 14, "{said}");
+        // 21 × 29.7 cm of paper, 16 × 24.7 cm of text.
+        assert!(
+            (measures[0] - 597.5).abs() < 0.1 && (measures[1] - 845.05).abs() < 0.1,
+            "{said}"
+        );
+        assert!(
+            (measures[2] - 455.24).abs() < 0.1 && (measures[3] - 702.78).abs() < 0.1,
+            "{said}"
+        );
+        assert!(outcome.pdf.is_some(), "{said}");
+    }
+
     /// A whole document, with the class and the layout it asks for: the
     /// pages are made, the lengths TeX sets are given back, and a page
     /// that refers to the last one is compiled once more.

@@ -231,6 +231,8 @@ pub struct AppState {
     pub history_next: AtomicU64,
     /// One moment of the history is taken at a time.
     pub history_lock: Mutex<()>,
+    /// Stops the PDF of the changes being built.
+    pub changes_cancel: Arc<AtomicBool>,
 }
 
 fn recover<T>(r: Result<T, std::sync::PoisonError<T>>) -> T {
@@ -330,6 +332,7 @@ impl AppState {
             quitting: AtomicBool::new(false),
             history_next: AtomicU64::new(0),
             history_lock: Mutex::new(()),
+            changes_cancel: Arc::new(AtomicBool::new(false)),
         }
     }
 

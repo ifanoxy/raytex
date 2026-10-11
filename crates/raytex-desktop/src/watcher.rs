@@ -59,6 +59,11 @@ fn ignored(root: &Path, path: &Path) -> bool {
         let s = c.as_os_str().to_string_lossy();
         s.starts_with('.') || s == "node_modules"
     }) || path.extension().is_some_and(|e| e == "lbt-tmp")
+        // The document of the changes of the history, there for one build.
+        || rel.components().any(|c| {
+            let name = c.as_os_str().to_string_lossy();
+            name.starts_with(raytex_core::history::CHANGES_JOB)
+        })
 }
 
 fn handle(app: &AppHandle, root: &Path, events: Vec<notify::Event>) {

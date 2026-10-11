@@ -513,7 +513,16 @@ fn common_mistakes_are_explained_and_fixed() {
         .collect();
     let next = Mutex::new(0usize);
     let results = Mutex::new(Vec::new());
-    let threads = std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
+    // MiKTeX installs what a document needs while it compiles, and several
+    // builds that install at once get in each other's way: on 2026-10-11,
+    // four at a time, one read `pdftex.map` with an entry cut short, and
+    // another did not get `ulem`, in a run where every other package was
+    // installed. One at a time, a case tells what a user sees.
+    let threads = if dist.kind == raytex_core::tex::DistroKind::MikTex {
+        1
+    } else {
+        std::thread::available_parallelism().map_or(4, |n| n.get().min(8))
+    };
     std::thread::scope(|s| {
         for _ in 0..threads {
             s.spawn(|| {
