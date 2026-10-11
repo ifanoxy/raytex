@@ -76,3 +76,15 @@ The **View** menu (top right) shows or hides this bar, the side panel, the PDF p
 ## Saving
 
 Auto-save is on by default. A dot on a tab marks unsaved changes; when closing, RayTeX offers to save. Files that are not UTF-8 are converted when saved.
+
+## Spelling
+
+*Settings › Editor › Spell checker* (or *Turn the spell checker on or off* in the command palette) underlines mistakes with the **spell checker of your system**. RayTeX tells it three things:
+
+- **the language of the document**: the one the document gives to babel (`\usepackage[french]{babel}`; with several languages, the last one, or the one of `main=`), to polyglossia (`\setdefaultlanguage`), or to a line `% !TEX spellcheck = fr_FR`;
+- **the passages in another language**: `\foreignlanguage{english}{…}`, the `otherlanguage` environment, the `\textenglish{…}` commands of polyglossia;
+- **what is not text**: commands, formulas, labels and keys, file names, the preamble (but for the title), TikZ pictures and listings are not checked.
+
+The language in use is shown at the bottom of the window; a click on it chooses another one for the project, or goes back to the one of the document. A right click on an underlined word offers the corrections of the system.
+
+The dictionaries are those of your system: a language it does not know is not checked, and its settings are where one is added.

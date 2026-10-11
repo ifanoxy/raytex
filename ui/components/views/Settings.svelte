@@ -5,6 +5,8 @@
   import { specFromEvent, typingKey } from "$lib/keys";
   import { REPOSITORY_URL } from "$lib/constants";
   import { HISTORY_DEFAULTS, type HistorySettings, INTERVALS, KEEP_DAYS } from "$lib/history";
+  import { COMMON_LANGUAGES } from "$lib/spelling";
+  import { languageName } from "$lib/state/spelling.svelte";
   import { type MessageKey, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { app } from "$lib/state/app.svelte";
@@ -565,8 +567,7 @@
         {#snippet pLang()}
           <select class="select input" value={cfg.project.language ?? ""} onchange={(e) => setProject((c) => (c.project.language = value(e) || null))}>
             <option value="">{t("settings.auto")}</option>
-            <option value="fr">Français</option>
-            <option value="en">English</option>
+            {#each [...new Set([...COMMON_LANGUAGES, ...(cfg.project.language ? [cfg.project.language] : [])])] as tag (tag)}<option value={tag}>{languageName(tag)}</option>{/each}
           </select>
         {/snippet}
         {@render field(t("settings.projectLanguage"), t("settings.projectLanguageHint"), pLang)}

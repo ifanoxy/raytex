@@ -76,3 +76,15 @@ Le menu **Affichage** (en haut à droite) montre ou masque cette barre, le panne
 ## Enregistrement
 
 L'enregistrement automatique est activé par défaut. Un point dans l'onglet signale des modifications non enregistrées ; à la fermeture, RayTeX propose d'enregistrer. Les fichiers qui ne sont pas en UTF-8 sont convertis à l'enregistrement.
+
+## L'orthographe
+
+*Réglages › Éditeur › Correcteur orthographique* (ou *Activer ou désactiver le correcteur orthographique* dans la palette de commandes) souligne les fautes avec le **correcteur de votre système**. RayTeX lui dit trois choses :
+
+- **la langue du document** : celle que le document donne à babel (`\usepackage[french]{babel}` ; avec plusieurs langues, la dernière, ou celle de `main=`), à polyglossia (`\setdefaultlanguage`), ou à une ligne `% !TEX spellcheck = fr_FR` ;
+- **les passages dans une autre langue** : `\foreignlanguage{english}{…}`, l'environnement `otherlanguage`, les commandes `\textenglish{…}` de polyglossia ;
+- **ce qui n'est pas du texte** : les commandes, les formules, les étiquettes et les clés, les noms de fichiers, le préambule (sauf le titre), les schémas TikZ et les listings ne sont pas vérifiés.
+
+La langue utilisée s'affiche en bas de la fenêtre ; un clic dessus en choisit une autre pour le projet, ou revient à celle du document. Le clic droit sur un mot souligné propose les corrections du système.
+
+Les dictionnaires sont ceux de votre système : une langue qu'il ne connaît pas n'est pas vérifiée, et c'est dans ses réglages qu'on en ajoute.

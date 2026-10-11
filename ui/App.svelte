@@ -28,6 +28,7 @@
   import UpdateDialog from "./components/dialogs/UpdateDialog.svelte";
   import WhatsNew from "./components/dialogs/WhatsNew.svelte";
   import { updates } from "$lib/state/updates.svelte";
+  import { spelling } from "$lib/state/spelling.svelte";
   import { whatsNew } from "$lib/state/whatsnew.svelte";
   import Toasts from "./components/dialogs/Toasts.svelte";
   import EditorArea from "./components/editor/EditorArea.svelte";
@@ -87,6 +88,8 @@
         viewer.setDefaultZoom(app.settings?.viewer.defaultZoom);
         await editor.reconfigure();
         void editor.loadSnippets();
+        // The language of a document may change as it is typed (babel, polyglossia).
+        editor.onDidSync(() => app.settings?.editor.spellcheck && spelling.refreshSoon());
         // Opened from the Finder or with a file: that file, else the last session.
         const requested = (await ipc.takeOpenRequests().catch(() => null)) ?? [];
         const last = app.session?.lastProject;
@@ -137,7 +140,15 @@
   $effect(() => {
     void app.settings;
     void i18n.lang;
+    void spelling.language;
     if (app.ready) void editor.reconfigure();
+  });
+
+  // The spelling follows the language of the document being edited.
+  $effect(() => {
+    void editor.active;
+    void project.info?.main;
+    if (app.ready && app.settings?.editor.spellcheck) void spelling.refresh();
   });
 
   // First launch without any TeX distribution: open the setup assistant once.

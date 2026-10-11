@@ -526,7 +526,7 @@ const fr: Record<keyof typeof en, string> = {
   "settings.hoverDocs": "Documentation au survol",
   "settings.hoverDocsHint": "Commandes, packages, étiquettes, citations et images.",
   "settings.spellcheck": "Correcteur orthographique",
-  "settings.spellcheckHint": "Utilise le correcteur du système, dans la langue de l'interface.",
+  "settings.spellcheckHint": "Celui du système, dans la langue du document ; les commandes, les formules et les schémas ne sont pas vérifiés.",
   "settings.vim": "Mode Vim",
   "settings.vimHint": "Raccourcis de Vim (:w enregistre).",
   "settings.saving": "Enregistrement",
@@ -614,7 +614,7 @@ const fr: Record<keyof typeof en, string> = {
   "settings.disabled": "Désactivé",
   "settings.auto": "Automatique",
   "settings.projectLanguage": "Langue du document",
-  "settings.projectLanguageHint": "Utilisée par les vérifications et les suggestions.",
+  "settings.projectLanguageHint": "La langue dans laquelle l'orthographe est vérifiée. Automatique : celle que le document donne à babel ou à polyglossia.",
   "settings.editToml": "Modifier raytex.toml",
   "settings.license": "Logiciel libre et open source (MIT ou Apache-2.0).",
   "settings.templatesFolder": "Dossier de mes modèles",
@@ -1712,6 +1712,11 @@ const fr: Record<keyof typeof en, string> = {
   "report.copy": "Copier le rapport",
   "report.copied": "Rapport copié",
   "report.open": "Copier et ouvrir GitHub",
+  "spelling.title": "Langue du correcteur orthographique",
+  "spelling.ofDocument": "Celle du document : {language}",
+  "spelling.ofInterface": "Le document ne dit pas sa langue : {language}",
+  "spelling.off": "Désactiver le correcteur",
+  "action.spellcheck": "Activer ou désactiver le correcteur orthographique",
 };
 
 export default fr;

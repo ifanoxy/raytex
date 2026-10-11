@@ -6,6 +6,8 @@
   import { diagnostics } from "$lib/state/diagnostics.svelte";
   import { editor } from "$lib/state/editor.svelte";
   import { project } from "$lib/state/project.svelte";
+  import { COMMON_LANGUAGES } from "$lib/spelling";
+  import { languageName, spelling } from "$lib/state/spelling.svelte";
   import { distLabel, tex } from "$lib/state/tex.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import Icon from "../common/Icon.svelte";
@@ -14,6 +16,22 @@
   const dist = $derived(tex.active);
   const running = $derived(tex.jobs.find((j) => j.running));
   const e = $derived(app.settings?.editor);
+
+  /** The language the spelling is checked in: the one of the document, or one chosen for the project. */
+  function spellingMenu(event: MouseEvent) {
+    const light = !!project.info?.light;
+    const others = [...new Set([...COMMON_LANGUAGES, ...(spelling.chosen ? [spelling.chosen] : [])])];
+    ui.openMenuBelow(event.currentTarget as HTMLElement, [
+      {
+        label: spelling.detected ? t("spelling.ofDocument", { language: languageName(spelling.detected) }) : t("spelling.ofInterface", { language: languageName(spelling.language) }),
+        checked: !spelling.chosen,
+        run: () => spelling.choose(null),
+      },
+      ...(light ? [] : [{ separator: true }, ...others.map((tag) => ({ label: languageName(tag), checked: spelling.chosen === tag, run: () => spelling.choose(tag) }))]),
+      { separator: true },
+      { label: t("spelling.off"), icon: "x", run: () => app.update((s) => (s.editor.spellcheck = false)) },
+    ]);
+  }
 </script>
 
 <footer class="status">
@@ -58,6 +76,9 @@
       <span class="item static" title={t("status.wordsTitle", { file: editor.words.file, project: editor.words.project })}>
         {t("status.words", { n: editor.words.project.toLocaleString() })}
       </span>
+    {/if}
+    {#if e?.spellcheck && editor.activeTab.kind === "tex"}
+      <button class="item spelling" onclick={spellingMenu} title={t("spelling.title")}><Icon name="spell" size={13} />{languageName(spelling.language)}</button>
     {/if}
     <button class="item" onclick={() => ui.openSettings("editor")}>{e?.useTabs ? t("status.tabs") : t("status.spaces", { n: e?.tabSize ?? 2 })}</button>
     <span class="item static">UTF-8</span>

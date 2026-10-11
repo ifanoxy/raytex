@@ -524,7 +524,7 @@ const en = {
   "settings.hoverDocs": "Documentation on hover",
   "settings.hoverDocsHint": "Commands, packages, labels, citations and images.",
   "settings.spellcheck": "Spell checking",
-  "settings.spellcheckHint": "Uses the system spell checker, in the interface language.",
+  "settings.spellcheckHint": "The one of the system, in the language of the document; commands, formulas and pictures are not checked.",
   "settings.vim": "Vim mode",
   "settings.vimHint": "Vim key bindings (:w saves).",
   "settings.saving": "Saving",
@@ -612,7 +612,7 @@ const en = {
   "settings.disabled": "Disabled",
   "settings.auto": "Automatic",
   "settings.projectLanguage": "Language of the document",
-  "settings.projectLanguageHint": "Used by checks and suggestions.",
+  "settings.projectLanguageHint": "The language the spelling is checked in. Automatic: the one the document gives to babel or polyglossia.",
   "settings.editToml": "Edit raytex.toml",
   "settings.license": "Free and open source software (MIT or Apache-2.0).",
   "settings.templatesFolder": "My templates folder",
@@ -1710,6 +1710,11 @@ const en = {
   "report.copy": "Copy the report",
   "report.copied": "Report copied",
   "report.open": "Copy and open GitHub",
+  "spelling.title": "Language of the spell checker",
+  "spelling.ofDocument": "The one of the document: {language}",
+  "spelling.ofInterface": "The document does not say its language: {language}",
+  "spelling.off": "Turn the spell checker off",
+  "action.spellcheck": "Turn the spell checker on or off",
 };
 
 export default en;

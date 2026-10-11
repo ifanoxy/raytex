@@ -25,6 +25,7 @@ import { media } from "../lib/state/media.svelte";
 import { colors } from "../lib/state/colors.svelte";
 import { fonts } from "../lib/state/fonts.svelte";
 import { history } from "../lib/state/history.svelte";
+import { spelling } from "../lib/state/spelling.svelte";
 import { templates } from "../lib/state/templates.svelte";
 import { ui } from "../lib/state/ui.svelte";
 import { viewer } from "../lib/state/viewer.svelte";
@@ -1683,6 +1684,41 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
       check("report: read before it is copied", [...document.querySelectorAll(".report-window .buttons .btn")].length === 3 && !!document.querySelector(".report-window .promise"));
       await scene("report-problem");
       ui.closeOverlay();
+    }
+
+    // ---------------------------------------------------------- spelling
+    // The checker of the system is given the language of the document (the
+    // one babel is given), a passage in another language says its own, and
+    // commands, formulas and the preamble are not to be spelled.
+    {
+      const mainFile = project.info!.main!;
+      await editor.open(mainFile);
+      const original = editor.textOf(mainFile) ?? "";
+      await editor.rewrite(mainFile, () => "\\documentclass{article}\n\\usepackage[english, ngerman]{babel}\n\\title{Ein Titel}\n\\begin{document}\nEin Satz mit $x^2$ und \\foreignlanguage{english}{some words}.\n\\end{document}\n");
+      await app.update((s) => (s.editor.spellcheck = true));
+      const content = () => document.querySelector<HTMLElement>(".editor-pane .cm-content, .cm-editor .cm-content")!;
+      await until(() => content()?.getAttribute("lang") === "de", 10_000, "language of the document given to the checker");
+      await pause(300);
+      const offs = [...content().querySelectorAll('[spellcheck="false"]')].map((el) => el.textContent ?? "");
+      const skipped = (text: string) => offs.some((o) => o.includes(text));
+      const english = [...content().querySelectorAll('[lang="en"]')].map((el) => el.textContent).join("");
+      check(
+        "spelling: the language of the document, code left out",
+        content().getAttribute("spellcheck") === "true" && skipped("\\usepackage") && skipped("babel") && skipped("x") && skipped("\\foreignlanguage") && !skipped("Ein Satz mit") && !skipped("Ein Titel") && english === "some words",
+        `lang ${content().getAttribute("lang")}, english «${english}», off: ${[...new Set(offs)].slice(0, 30).join(" | ")}`,
+      );
+      const shown = document.querySelector(".status .spelling")?.textContent?.trim() ?? "";
+      check("spelling: its language in the status bar", /deutsch|german|allemand/i.test(shown), shown);
+      // Chosen by hand for the project: it wins over what the document says.
+      await spelling.choose("it");
+      await until(() => content()?.getAttribute("lang") === "it", 10_000, "language chosen for the project");
+      await spelling.choose(null);
+      await until(() => content()?.getAttribute("lang") === "de", 10_000, "back to the language of the document");
+      await scene("spelling");
+      await app.update((s) => (s.editor.spellcheck = false));
+      await until(() => content()?.getAttribute("spellcheck") === "false" && !content().querySelector('[lang="en"]'), 5_000, "checker off");
+      await editor.rewrite(mainFile, () => original);
+      await editor.save(mainFile, { silent: true });
     }
 
     // The formatting bar at the size of the window.

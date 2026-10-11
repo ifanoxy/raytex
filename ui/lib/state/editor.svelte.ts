@@ -46,6 +46,7 @@ import { linkedEnvironments } from "../editor/linked-envs";
 import { navigableAt } from "../editor/navigation";
 import { frenchPhrases } from "../editor/phrases";
 import { enterKeymap, latexStructure } from "../editor/structure";
+import { proseOnly } from "../editor/spelling";
 import { editorTheme } from "../editor/theme";
 import { fixLabel, runFix, suggestionOf } from "../fixes";
 import { figureAt } from "../images";
@@ -62,6 +63,7 @@ import { diagnostics, mapDiagnostic, pathKey, type PositionMap } from "./diagnos
 import { gridStore } from "./grid.svelte";
 import { media, type TikzRequest } from "./media.svelte";
 import { project } from "./project.svelte";
+import { spelling } from "./spelling.svelte";
 import { searchStore } from "./search.svelte";
 import { ui } from "./ui.svelte";
 import { viewer } from "./viewer.svelte";
@@ -355,7 +357,7 @@ class EditorStore {
 
   private computeConfigKey(): string {
     const s = this.settings();
-    return JSON.stringify([s?.editor, s?.completion.enabled, s?.macros, s?.keybindings, i18n.lang, !!vimModule]);
+    return JSON.stringify([s?.editor, s?.completion.enabled, s?.macros, s?.keybindings, i18n.lang, !!vimModule, spelling.language]);
   }
 
   /** Extensions of each compartment for the current settings. */
@@ -381,11 +383,13 @@ class EditorStore {
       [c.whitespace, e?.showWhitespace ? highlightWhitespace() : []],
       [c.vim, vimOn ? Prec.highest(vimModule!.vim({ status: true })) : []],
       [c.keys, Prec.high(keymap.of(this.userKeymap()))],
+      // The checker of the system, told the language of the document and
+      // what in a LaTeX file is not prose.
       [
         c.spell,
-        EditorView.contentAttributes.of(
-          e?.spellcheck ? { spellcheck: "true", lang: i18n.lang, autocorrect: "off", autocapitalize: "off" } : { spellcheck: "false" },
-        ),
+        e?.spellcheck
+          ? [EditorView.contentAttributes.of({ spellcheck: "true", lang: spelling.language, autocorrect: "off", autocapitalize: "off" }), fileKind(path) === "tex" ? proseOnly() : []]
+          : EditorView.contentAttributes.of({ spellcheck: "false" }),
       ],
       [c.phrases, i18n.lang === "fr" ? EditorState.phrases.of(frenchPhrases) : []],
       [c.completion, s?.completion.enabled === false ? [] : latexCompletion()],

@@ -4,6 +4,11 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- **Spelling in the language of the document**: the spell checker of the system was given the language of the interface, and every command of a LaTeX file to spell. It is now told:
+  - **the language the document is written in**, read from what it gives to babel (the last language, or `main=`), to polyglossia, or from a `% !TEX spellcheck` line; the language is shown at the bottom of the window, where another one can be chosen for the project;
+  - **the passages in another language** (`\foreignlanguage`, `otherlanguage`, `\textenglish{…}`), each with its own;
+  - **what is not prose**: commands, formulas, labels, keys and file names, the preamble but for its title, TikZ pictures and listings are left out.
+  - The checker, its dictionaries and its corrections stay those of the system (WebKit on macOS and Linux, WebView2 on Windows): a language the system has no dictionary for is not checked. What was verified here is what RayTeX hands over (the language and the parts to skip, in the development application on macOS); how each system underlines with it was not.
 - **Reporting a problem from the application** (*Report a problem…* in the command palette, and *Settings › About*): a report to paste in an issue, with the version of RayTeX and of the system, the TeX distribution, how the document is built and the errors of the last build. Nothing is sent: the report is shown whole, copied by the user and pasted where they choose; *Copy and open GitHub* opens the page of a new issue. The folder of the project and the name of the user are taken out of every path; the end of the build output, which may quote the document, is added only when asked.
 - **Whiteboard (TikZ studio), four additions**:
   - **Links that follow the texts**: with the link tool (K), a drag from one text to another joins them with an arrow, drawn from border to border, which follows them when they are moved. It is written the way TikZ wants it: each linked text gets a name (`n1`, `n2`…) and the link is `\draw[->] (n1) -- (n2);`. A selected link is straight or bent to one side, and can carry a text; deleting a text deletes its links; copies and sets get names of their own. Such lines written by hand are read back as links.
