@@ -69,7 +69,7 @@ pub async fn write_text_file(
     text: String,
 ) -> CmdResult<u64> {
     let p = writable_path(&state, &path)?;
-    blocking(&app, move |_, state| {
+    blocking(&app, move |app, state| {
         state.note_own_write(&p);
         write_atomic(&p, text.as_bytes()).map_err(err)?;
         if p.file_name()
@@ -78,6 +78,7 @@ pub async fn write_text_file(
         {
             pr.ws.reload_config();
         }
+        super::history::tick(app, "save");
         Ok(modified_ms(&p))
     })
     .await?

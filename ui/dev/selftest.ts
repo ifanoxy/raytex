@@ -22,6 +22,7 @@ import { fileSelection } from "../lib/state/selection.svelte";
 import { media } from "../lib/state/media.svelte";
 import { colors } from "../lib/state/colors.svelte";
 import { fonts } from "../lib/state/fonts.svelte";
+import { history } from "../lib/state/history.svelte";
 import { templates } from "../lib/state/templates.svelte";
 import { ui } from "../lib/state/ui.svelte";
 import { viewer } from "../lib/state/viewer.svelte";
@@ -1463,6 +1464,36 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
       }
       check("entry removed", listed.length === 0 && !document.querySelector(".bib-entry"), JSON.stringify(listed).slice(0, 200));
       ui.showSidebar("files");
+    }
+
+    // ------------------------------------------------------ history
+    // A moment of the project is kept; a line is added to the main file; the
+    // window of the history shows it, and puts the file back as it was
+    // (after a moment of what it had become).
+    {
+      const mainFile = project.info!.main!;
+      await editor.open(mainFile);
+      await editor.saveAll({ silent: true });
+      await ipc.historyKeep("manual");
+      const then = editor.textOf(mainFile) ?? "";
+      await editor.rewrite(mainFile, (text) => `${text}% une ligne de plus\n`);
+      await editor.save(mainFile, { silent: true });
+      void history.show(mainFile);
+      await until(() => !!document.querySelector(".history .line.added"), 10_000, "comparison with the moment");
+      const added = [...document.querySelectorAll(".history .line.added .text")].map((l) => l.textContent);
+      check(
+        "history: what changed since the moment",
+        added.length === 1 && added[0] === "% une ligne de plus" && document.querySelector(".history .file.active")?.textContent?.trim() === basename(mainFile) && !document.querySelector(".history .line.removed"),
+        `${added.join(" | ")} in ${document.querySelector(".history .file.active")?.textContent?.trim()}`,
+      );
+      await scene("history");
+      document.querySelector<HTMLButtonElement>(".history .actions .btn")!.click();
+      for (let i = 0; i < 80 && (editor.textOf(mainFile) !== then || history.busy); i++) await pause(100);
+      const onDisk = (await ipc.readTextFile(mainFile)).text;
+      check("history: the file put back as it was", editor.textOf(mainFile) === then && onDisk === then, onDisk.slice(-80));
+      const kept = (await ipc.historyList()).moments;
+      check("history: a moment taken before going back", kept[0]?.reason === "before-restore" && kept.some((m) => m.reason === "manual"), kept.map((m) => m.reason).join(","));
+      if (ui.overlay === "history") ui.closeOverlay();
     }
 
     // The formatting bar at the size of the window.

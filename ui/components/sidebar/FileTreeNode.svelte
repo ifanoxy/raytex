@@ -8,6 +8,7 @@
   import * as ipc from "$lib/ipc";
   import { diagnostics, pathKey } from "$lib/state/diagnostics.svelte";
   import { editor } from "$lib/state/editor.svelte";
+  import { history } from "$lib/state/history.svelte";
   import { media } from "$lib/state/media.svelte";
   import { project } from "$lib/state/project.svelte";
   import { fileSelection } from "$lib/state/selection.svelte";
@@ -127,6 +128,7 @@
       if (editor.view && editor.activeTab?.kind === "tex" && !samePath(node.path, editor.active) && !["ttf", "otf", "ttc", "otc"].includes(ext)) {
         items.push({ label: t("files.insertReference"), icon: "link", run: () => editor.view && editor.insertFileReference(editor.view, node.path) });
       }
+      if (!project.info?.light && ["tex", "bib", "code", "text"].includes(kind)) items.push({ label: t("files.history"), icon: "clock", run: () => history.show(node.path) });
       items.push({ label: t("files.openExternal"), icon: "external", run: () => ipc.openInOs(node.path) }, { separator: true });
     }
     items.push(

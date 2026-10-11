@@ -70,6 +70,20 @@ shell_escape = false
 disabled_rules = ["nbsp-ref"]
 ```
 
+## Local history
+
+RayTeX keeps **moments** of the project: its source files (`.tex`, `.bib`, `.sty`, `.cls`…) as they were, to compare and to go back. Nothing is added to the project folder and nothing is sent anywhere: the history stays on your computer, with the data of RayTeX.
+
+- A moment is kept when the project opens, then when you save, **at most every 10 minutes** and only if something changed. Pictures, the PDF and the files of the build are not part of it.
+- **Project history** (the project menu, the command palette, or a right click on a file › *History of the file*) opens the window: the moments by day on the left; on the right, what changed **since** the chosen moment, file by file and line by line.
+- **Restore this file** gives it back the content it had; **Restore everything** does so for every file that changed. The project as it is now is first kept as a moment: you can always come back from going back, and Ctrl/⌘ + Z also undoes the restoration in the file. A file created since then is not deleted.
+- **Keep this moment** takes one right away, before a large rewrite for instance.
+- Old moments thin out by themselves: all of the last 24 hours, one per hour for a week, then one per day, up to 30 days.
+
+*Settings › Editor › Local history* sets the time between two moments and how long they are kept, or pauses the history. The “…” menu of the window clears the history of the project. A file opened on its own (light mode) has no history.
+
+The history is not a backup: it is on the same disk as the project. For work that matters, keep a copy elsewhere too.
+
 ## Sessions
 
 When starting, RayTeX reopens the last project, its tabs and the active file (can be disabled in *Settings › General*).

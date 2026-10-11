@@ -55,6 +55,7 @@
     grid: () => import("./components/views/GridEditor.svelte"),
     commands: () => import("./components/views/CommandStudio.svelte"),
     layout: () => import("./components/views/PageStudio.svelte"),
+    history: () => import("./components/views/History.svelte"),
   } as const;
   type LazyView = keyof typeof VIEWS;
   const lazyView = $derived(ui.overlay && ui.overlay in VIEWS ? VIEWS[ui.overlay as LazyView]() : null);

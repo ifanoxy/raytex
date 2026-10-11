@@ -70,6 +70,20 @@ shell_escape = false
 disabled_rules = ["nbsp-ref"]
 ```
 
+## Historique local
+
+RayTeX garde des **moments** du projet : ses fichiers sources (`.tex`, `.bib`, `.sty`, `.cls`…) tels qu'ils étaient, pour comparer et revenir en arrière. Rien n'est ajouté au dossier du projet et rien n'est envoyé nulle part : l'historique reste sur votre ordinateur, avec les données de RayTeX.
+
+- Un moment est gardé à l'ouverture du projet, puis quand vous enregistrez, **au plus toutes les 10 minutes** et seulement si quelque chose a changé. Les images, le PDF et les fichiers de compilation n'en font pas partie.
+- **Historique du projet** (menu du projet, palette de commandes, ou clic droit sur un fichier › *Historique du fichier*) ouvre la fenêtre : les moments par jour à gauche ; à droite, ce qui a changé **depuis** le moment choisi, fichier par fichier et ligne par ligne.
+- **Restaurer ce fichier** lui rend le contenu qu'il avait ; **Tout restaurer** le fait pour tous les fichiers modifiés. L'état actuel est d'abord gardé comme un moment : on revient toujours d'un retour en arrière, et Ctrl/⌘ + Z annule aussi la restauration dans le fichier. Un fichier créé depuis n'est pas supprimé.
+- **Garder ce moment** en prend un tout de suite, avant une grande réécriture par exemple.
+- Les anciens moments s'éclaircissent d'eux-mêmes : tous ceux des dernières 24 heures, un par heure pendant une semaine, puis un par jour, jusqu'à 30 jours.
+
+*Réglages › Éditeur › Historique local* règle l'intervalle entre deux moments et la durée pendant laquelle ils sont gardés, ou met l'historique en pause. Le menu « … » de la fenêtre vide l'historique du projet. Un fichier ouvert seul (mode léger) n'a pas d'historique.
+
+L'historique n'est pas une sauvegarde : il est sur le même disque que le projet. Pour un travail qui compte, gardez aussi une copie ailleurs.
+
 ## Sessions
 
 À la réouverture, RayTeX restaure le dernier projet, ses onglets et le fichier actif (désactivable dans *Réglages › Général*).

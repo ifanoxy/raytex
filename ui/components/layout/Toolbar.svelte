@@ -35,7 +35,7 @@
       { separator: true },
       ...(light
         ? [actionItem("project.convert"), actionItem("pdf.export")]
-        : [actionItem("view.templates"), actionItem("project.settings"), actionItem("project.saveAsTemplate")]),
+        : [actionItem("project.history"), actionItem("view.templates"), actionItem("project.settings"), actionItem("project.saveAsTemplate")]),
       actionItem("project.close"),
     ]);
   }

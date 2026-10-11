@@ -22,6 +22,7 @@ import { app } from "./state/app.svelte";
 import { build } from "./state/build.svelte";
 import { editor } from "./state/editor.svelte";
 import { gridStore } from "./state/grid.svelte";
+import { history } from "./state/history.svelte";
 import { media } from "./state/media.svelte";
 import { project } from "./state/project.svelte";
 import { searchStore } from "./state/search.svelte";
@@ -114,6 +115,7 @@ export const actions: Action[] = [
   { id: "file.reveal", title: "action.revealInOs", category: "file", when: () => !!editor.active, run: () => editor.active && ipc.revealInOs(editor.active) },
   { id: "project.saveAsTemplate", title: "action.saveAsTemplate", category: "file", when: hasProject, run: () => project.saveAsTemplate() },
   { id: "project.settings", title: "action.projectSettings", category: "file", when: () => hasProject() && !project.info?.light, run: () => ui.openSettings("project") },
+  { id: "project.history", title: "action.history", category: "file", icon: "clock", when: hasProject, run: () => history.show(editor.active) },
 
   // ------------------------------------------------------------ build
   { id: "build.run", title: "action.build", category: "build", keys: "Mod-Enter", icon: "play", when: hasProject, run: () => build.run() },

@@ -261,7 +261,71 @@ let settings: T.Settings = {
   macros: [{ name: "Fraction", trigger: "ff", key: "", body: "\\frac{${1:a}}{${2:b}}${0}", math: true }],
   keybindings: {},
   updates: { checkAtStartup: true, skippedVersion: null, seenVersion: null },
+  history: { enabled: true, intervalMinutes: 10, keepDays: 30 },
 };
+
+/** The sources of the demo project, by their path in it. */
+function sources(): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(files)
+      .filter(([path]) => /\.(tex|bib|toml)$/.test(path))
+      .map(([path, text]) => [path.slice(ROOT.length + 1), text]),
+  );
+}
+
+interface MockMoment {
+  id: string;
+  time: number;
+  reason: string;
+  texts: Record<string, string>;
+}
+
+/** The history of the demo project: what it was a little earlier, and before. */
+const moments: MockMoment[] = (() => {
+  const now = sources();
+  const intro = "chapitres/introduction.tex";
+  const earlier: Record<string, string> = {
+    ...now,
+    [intro]: now[intro]
+      .replace("Comme le montre la figure~\\ref{fig:courbe}, la température $T(x,t)$ décroît.", "Comme le montre la figure~\\ref{fig:courbe}, la température $T(x,t)$ diminue.")
+      .replace("\\section{Plan du mémoire}\n\\textbff{Chapitre 2} présente les méthodes numériques.\n", "\\section{Plan}\nÀ écrire.\n"),
+  };
+  const yesterday: Record<string, string> = { ...earlier, "main.tex": earlier["main.tex"].replace("\\usepackage{hyperref}\n", "") };
+  delete yesterday["chapitres/methodes.tex"];
+  const at = Date.now();
+  const moment = (ago: number, reason: string, texts: Record<string, string>): MockMoment => ({ id: String(at - ago), time: at - ago, reason, texts });
+  const morning: Record<string, string> = { ...earlier, [intro]: earlier[intro].replace(" % TODO: ajouter l'historique", "") };
+  const before: Record<string, string> = { ...yesterday, "refs.bib": "" };
+  return [moment(12 * 60_000, "save", now), moment(47 * 60_000, "save", earlier), moment(2 * 3_600_000, "open", morning), moment(26 * 3_600_000, "save", yesterday), moment(27 * 3_600_000, "open", before)];
+})();
+
+/** The files that differ between two states of the project. */
+function changedBetween(then: Record<string, string>, now: Record<string, string>) {
+  const out: { path: string; status: "changed" | "added" | "removed" }[] = [];
+  for (const path of [...new Set([...Object.keys(then), ...Object.keys(now)])].sort()) {
+    if (!(path in then)) out.push({ path, status: "added" });
+    else if (!(path in now)) out.push({ path, status: "removed" });
+    else if (then[path] !== now[path]) out.push({ path, status: "changed" });
+  }
+  return out;
+}
+
+/** Two small texts compared line by line (longest common subsequence). */
+function diffLines(before: string, after: string) {
+  const a = before ? before.replace(/\n$/, "").split("\n") : [];
+  const b = after ? after.replace(/\n$/, "").split("\n") : [];
+  const lcs = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  for (let i = a.length - 1; i >= 0; i--) for (let j = b.length - 1; j >= 0; j--) lcs[i][j] = a[i] === b[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+  const out: { kind: "same" | "removed" | "added"; text: string; before: number | null; after: number | null }[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < a.length || j < b.length) {
+    if (i < a.length && j < b.length && a[i] === b[j]) out.push({ kind: "same", text: a[i], before: ++i, after: ++j });
+    else if (i < a.length && (j === b.length || lcs[i + 1][j] >= lcs[i][j + 1])) out.push({ kind: "removed", text: a[i], before: ++i, after: null });
+    else out.push({ kind: "added", text: b[j], before: null, after: ++j });
+  }
+  return out;
+}
 
 const session: T.Session = {
   recent: [
@@ -673,6 +737,34 @@ export function installMocks() {
           return customCommands();
         case "bibliography":
           return mockBibliography();
+        case "history_list":
+          return {
+            available: true,
+            size: 184_000,
+            moments: moments.map((m, i) => ({
+              id: m.id,
+              time: m.time,
+              reason: m.reason,
+              files: Object.keys(m.texts).length,
+              changed: moments[i + 1] ? changedBetween(moments[i + 1].texts, m.texts).map((c) => c.path) : [],
+            })),
+          };
+        case "history_changes":
+          return changedBetween(moments.find((m) => m.id === a.id)?.texts ?? {}, sources());
+        case "history_compare": {
+          const then = moments.find((m) => m.id === a.id)?.texts[a.file as string] ?? null;
+          const now = sources()[a.file as string] ?? null;
+          return { then, exists: now !== null, lines: diffLines(then ?? "", now ?? "") };
+        }
+        case "history_keep": {
+          const now = sources();
+          if (moments[0] && !changedBetween(moments[0].texts, now).length) return null;
+          moments.unshift({ id: String(Date.now()), time: Date.now(), reason: String(a.reason), texts: now });
+          return { id: moments[0].id, time: moments[0].time, reason: moments[0].reason, files: Object.keys(now).length, changed: [] };
+        }
+        case "history_clear":
+          moments.length = 0;
+          return null;
         case "bib_key":
           return "lagrange1788";
         case "bib_drafts":

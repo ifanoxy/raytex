@@ -4,6 +4,7 @@
   import { actions, keyFor } from "$lib/actions";
   import { specFromEvent, typingKey } from "$lib/keys";
   import { REPOSITORY_URL } from "$lib/constants";
+  import { HISTORY_DEFAULTS, type HistorySettings, INTERVALS, KEEP_DAYS } from "$lib/history";
   import { type MessageKey, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { app } from "$lib/state/app.svelte";
@@ -58,6 +59,8 @@
   });
 
   const s = $derived(app.settings);
+  const history = $derived({ ...HISTORY_DEFAULTS, ...app.settings?.history });
+  const setHistory = (change: Partial<HistorySettings>) => set((x) => (x.history = { ...HISTORY_DEFAULTS, ...x.history, ...change }));
   const cfg = $derived(project.info?.config ?? null);
 
   function set(mutate: (s: Settings) => void) {
@@ -330,6 +333,22 @@
             <span class="unit">ms</span>
           {/snippet}
           {@render field(t("settings.autoSaveDelay"), null, autoSaveControl)}
+        {/if}
+        <h4>{t("settings.history")}</h4>
+        {@render toggle(t("settings.historyEnabled"), t("settings.historyHint"), history.enabled, (v) => setHistory({ enabled: v }))}
+        {#if history.enabled}
+          {#snippet historyEveryControl()}
+            <select class="select input" value={String(history.intervalMinutes)} onchange={(e) => setHistory({ intervalMinutes: Number(value(e)) })}>
+              {#each [...new Set([...INTERVALS, history.intervalMinutes])].sort((a, b) => a - b) as n (n)}<option value={String(n)}>{n < 60 ? t("settings.minutes", { n }) : t("settings.hour")}</option>{/each}
+            </select>
+          {/snippet}
+          {@render field(t("settings.historyEvery"), null, historyEveryControl)}
+          {#snippet historyKeepControl()}
+            <select class="select input" value={String(history.keepDays)} onchange={(e) => setHistory({ keepDays: Number(value(e)) })}>
+              {#each [...new Set([...KEEP_DAYS, history.keepDays])].sort((a, b) => a - b) as n (n)}<option value={String(n)}>{n === 365 ? t("settings.year") : n === 90 ? t("settings.months", { n: 3 }) : t("settings.days", { n })}</option>{/each}
+            </select>
+          {/snippet}
+          {@render field(t("settings.historyKeep"), null, historyKeepControl)}
         {/if}
       {:else if ui.settingsSection === "build"}
         <h3>{t("settings.build")}</h3>

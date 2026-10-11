@@ -58,6 +58,11 @@ pub async fn save_settings(
             || old.build.distribution != settings.build.distribution
     };
     settings.save(&state.paths.settings).map_err(err)?;
+    if state.settings().history != settings.history {
+        state
+            .history_next
+            .store(0, std::sync::atomic::Ordering::Relaxed);
+    }
     *state.settings_mut() = settings;
     if redetect {
         super::tex::start_detection(app);

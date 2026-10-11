@@ -29,6 +29,8 @@ pub struct AppPaths {
     pub templates: PathBuf,
     /// Cache (CTAN catalogue…).
     pub cache: PathBuf,
+    /// Local history of the projects (data: never emptied by the system).
+    pub history: PathBuf,
 }
 
 impl Default for AppPaths {
@@ -45,14 +47,20 @@ impl Default for AppPaths {
                 session: config.join("session.json"),
                 templates: config.join("templates"),
                 cache: config.join("cache"),
+                history: config.join("history"),
             };
         }
         let dirs = raytex_core::settings::app_dirs();
-        let (config, cache) = match &dirs {
-            Some(d) => (d.config_dir().to_path_buf(), d.cache_dir().to_path_buf()),
+        let (config, cache, data) = match &dirs {
+            Some(d) => (
+                d.config_dir().to_path_buf(),
+                d.cache_dir().to_path_buf(),
+                d.data_local_dir().to_path_buf(),
+            ),
             None => (
                 std::env::temp_dir().join("raytex"),
                 std::env::temp_dir().join("raytex-cache"),
+                std::env::temp_dir().join("raytex"),
             ),
         };
         Self {
@@ -60,6 +68,7 @@ impl Default for AppPaths {
             session: config.join("session.json"),
             templates: config.join("templates"),
             cache,
+            history: data.join("history"),
         }
     }
 }
@@ -217,6 +226,11 @@ pub struct AppState {
     pub open_requests: Mutex<Vec<PathBuf>>,
     /// The interface agreed to quit (unsaved files handled).
     pub quitting: AtomicBool,
+    /// Before this time (ms since 1970) no moment of the history is due:
+    /// a save has nothing to look at.
+    pub history_next: AtomicU64,
+    /// One moment of the history is taken at a time.
+    pub history_lock: Mutex<()>,
 }
 
 fn recover<T>(r: Result<T, std::sync::PoisonError<T>>) -> T {
@@ -314,6 +328,8 @@ impl AppState {
             system_fonts: Mutex::new(None),
             open_requests: Mutex::new(Vec::new()),
             quitting: AtomicBool::new(false),
+            history_next: AtomicU64::new(0),
+            history_lock: Mutex::new(()),
         }
     }
 

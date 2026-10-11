@@ -128,6 +128,7 @@ pub async fn open_project(app: AppHandle, path: String) -> CmdResult<ProjectInfo
             light: None,
         });
         remember(state, &root_dir, name, false);
+        super::history::tick(app, "open");
         info(state, initial).ok_or_else(|| "project not opened".to_owned())
     })
     .await?

@@ -9,6 +9,7 @@ pub mod bibliography;
 pub mod build;
 pub mod files;
 pub mod help;
+pub mod history;
 pub mod language;
 pub mod media;
 pub mod project;

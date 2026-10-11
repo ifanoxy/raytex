@@ -95,6 +95,8 @@ pub fn run() {
                 fit_to_screen(&window);
             }
             commands::tex::start_detection(app.handle().clone());
+            let handle = app.handle().clone();
+            std::thread::spawn(move || commands::history::forget_old(&handle.state::<AppState>()));
             // Files passed on the command line ("Open with…" on Windows and Linux).
             let files: Vec<PathBuf> = std::env::args()
                 .skip(1)
@@ -173,6 +175,11 @@ pub fn run() {
             commands::bibliography::bib_drafts,
             commands::bibliography::bib_key,
             commands::bibliography::bib_fetch,
+            commands::history::history_list,
+            commands::history::history_changes,
+            commands::history::history_compare,
+            commands::history::history_keep,
+            commands::history::history_clear,
             commands::language::update_document,
             commands::language::close_document,
             commands::language::lint_project,

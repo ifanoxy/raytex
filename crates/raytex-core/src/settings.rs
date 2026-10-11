@@ -37,6 +37,30 @@ pub struct Settings {
     pub keybindings: std::collections::BTreeMap<String, String>,
     /// New versions of RayTeX.
     pub updates: UpdateSettings,
+    /// Local history of the projects.
+    pub history: HistorySettings,
+}
+
+/// Local history of the projects ([`crate::history`]): light by default.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct HistorySettings {
+    /// Keep moments of the projects.
+    pub enabled: bool,
+    /// At most one moment every so many minutes while the project changes.
+    pub interval_minutes: u32,
+    /// Moments older than this many days are dropped.
+    pub keep_days: u32,
+}
+
+impl Default for HistorySettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            interval_minutes: 10,
+            keep_days: 30,
+        }
+    }
 }
 
 /// New versions of RayTeX.
@@ -75,6 +99,7 @@ impl Default for Settings {
             macros: Vec::new(),
             keybindings: std::collections::BTreeMap::new(),
             updates: UpdateSettings::default(),
+            history: HistorySettings::default(),
         }
     }
 }

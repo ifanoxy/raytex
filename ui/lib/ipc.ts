@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type * as T from "./types";
 import type { BibDraft, BibField, Bibliography } from "./bibliography";
+import type { Change, Comparison, HistoryView, Moment } from "./history";
 import type { CommandDraft, CommandSpec, CustomCommand } from "./commands";
 import type { PagePreview } from "./layout";
 import type { ShapeSet } from "./tikz/model";
@@ -96,6 +97,16 @@ export const bibDrafts = (text: string) => call<BibDraft[]>("bib_drafts", { text
 export const bibKey = (fields: BibField[], taken: string[]) => call<string>("bib_key", { fields, taken });
 /** The entry of a DOI or of an arXiv preprint (the only call here that uses the network). */
 export const bibFetch = (source: "doi" | "arxiv", id: string) => call<BibDraft[]>("bib_fetch", { source, id });
+/** The local history of the open project: its moments, the latest first. */
+export const historyList = () => call<HistoryView>("history_list");
+/** The files of the project that are not what they were at a moment. */
+export const historyChanges = (id: string) => call<Change[]>("history_changes", { id });
+/** A file of the project (its path in the project) then and now. */
+export const historyCompare = (id: string, file: string) => call<Comparison>("history_compare", { id, file });
+/** Takes a moment now (null when nothing changed since the last one). */
+export const historyKeep = (reason: "manual" | "before-restore") => call<Moment | null>("history_keep", { reason });
+/** Forgets the history of the open project. */
+export const historyClear = () => call<void>("history_clear");
 /** A new definition, written and checked against the project of `path`. */
 export const draftCommand = (path: string, spec: CommandSpec) => call<CommandDraft>("draft_command", { path, spec });
 export const structure = (path: string) => call<T.Structure | null>("structure", { path });
@@ -171,6 +182,7 @@ export interface Events {
   "job:output": { id: number; lines: string[] };
   "job:finished": { id: number; success: boolean; cancelled: boolean; code: number | null };
   "fs:changed": { paths: string[]; structure: boolean };
+  "history:changed": null;
   "app:open-files": null;
   "app:quit-requested": null;
 }

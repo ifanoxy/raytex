@@ -39,6 +39,7 @@ pub mod diagnostics;
 pub mod fixes;
 pub mod fonts;
 pub mod help;
+pub mod history;
 pub mod i18n;
 pub mod images;
 pub mod kb;
