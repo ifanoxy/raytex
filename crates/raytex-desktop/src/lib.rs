@@ -183,6 +183,7 @@ pub fn run() {
             commands::history::history_changes_pdf,
             commands::history::history_changes_cancel,
             commands::export::export_plan,
+            commands::export::pdf_fresh,
             commands::export::export_write,
             commands::files::export_text,
             commands::spell::spell_status,

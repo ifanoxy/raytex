@@ -179,6 +179,8 @@ pub struct BuildControl {
     /// A build requested while another was running (coalesced), and
     /// whether one of the coalesced requests came from the user.
     pub queued: Option<(PathBuf, bool)>,
+    /// The PDF the running build writes, once its plan is known.
+    pub writing: Option<PathBuf>,
 }
 
 /// Cached SyncTeX data of a PDF.

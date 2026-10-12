@@ -88,7 +88,8 @@ Les avertissements (renvois indéfinis, boîtes trop pleines) sont affichés sé
 - Le PDF se recharge après chaque compilation **sans perdre votre position**.
 - Double-clic dans le PDF → ligne source correspondante ; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>J</kbd> → position du curseur dans le PDF.
 - Zoom : <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + molette, pincement, ou le menu de zoom.
-- *Exporter le PDF…* le copie où vous voulez ; l'option *Copier le PDF à côté du fichier principal* le fait à chaque compilation.
+- *Exporter le PDF…* le copie où vous voulez. Si le document a changé depuis sa dernière compilation, ou s'il est en train de compiler, il est compilé d'abord : une petite fenêtre montre l'étape du compilateur, la page en cours et une estimation du temps restant, puis se ferme quand le PDF est écrit (fermée avant, l'export continue ; *Annuler* l'abandonne). Le PDF n'est jamais copié pendant que le compilateur l'écrit. Si la compilation se termine avec des erreurs, rien n'est exporté sans votre accord : la fenêtre les montre, ou exporte le PDF tel quel.
+- L'option *Copier le PDF à côté du fichier principal* le fait à chaque compilation.
 
 ## Programmes externes (shell escape)
 

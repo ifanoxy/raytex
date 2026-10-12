@@ -96,6 +96,7 @@ pub async fn build(
                     }
                     None => {
                         b.running = None;
+                        b.writing = None;
                         None
                     }
                 }
@@ -181,6 +182,8 @@ fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBo
         }
     };
     let dist = dist.expect("plan checked the distribution");
+    // Known from here on: this PDF is not to be copied until the build ends.
+    state.build().writing = Some(plan.pdf.clone());
     let _ = app.emit(
         "build:started",
         Started {

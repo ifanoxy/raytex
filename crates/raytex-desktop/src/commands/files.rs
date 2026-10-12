@@ -280,10 +280,34 @@ pub async fn export_text(to: String, text: String) -> CmdResult<()> {
     write_atomic(&abs(&to), text.as_bytes()).map_err(err)
 }
 
-/// Copies the PDF (or any file of the project) to a location chosen by the user.
+/// Copies the PDF (or any file of the project) to a location chosen by the
+/// user. A PDF is copied whole or not at all: never while a build writes it
+/// (the answer is `building`), nor when it has no end (`incomplete`).
 #[tauri::command]
-pub async fn export_file(from: String, to: String) -> CmdResult<()> {
+pub async fn export_file(app: AppHandle, from: String, to: String) -> CmdResult<()> {
     let from: PathBuf = abs(&from);
     let to: PathBuf = abs(&to);
-    std::fs::copy(from, to).map(|_| ()).map_err(err)
+    blocking(&app, move |_, state| {
+        let pdf = from
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("pdf"));
+        if !pdf {
+            return std::fs::copy(&from, &to).map(|_| ()).map_err(err);
+        }
+        // Held for the time of the copy: no build starts in the middle of it.
+        let builds = state.build();
+        let written = match &builds.writing {
+            Some(pdf) => raytex_core::export::same_file(pdf, &from),
+            // A build that has not said yet what it writes.
+            None => builds.running.is_some(),
+        };
+        if written {
+            return Err("building".to_owned());
+        }
+        state.note_own_write(&to);
+        raytex_core::export::copy_pdf(&from, &to)
+            .map(|_| ())
+            .map_err(err)
+    })
+    .await?
 }

@@ -11,13 +11,21 @@ use tauri::AppHandle;
 use super::{CmdResult, abs, blocking, err};
 use crate::state::AppState;
 
-/// The document of `file` in the open project: its folder, its main file,
-/// where it is built and its `.bib` files. `None` without a project, and for
-/// a file opened on its own (it has no folder of its own to export).
-fn document(state: &AppState, file: &Path) -> Option<(PathBuf, PathBuf, PathBuf, Vec<PathBuf>)> {
+/// A document: its folder, its main file, where it is built, its `.bib` files.
+type Document = (PathBuf, PathBuf, PathBuf, Vec<PathBuf>);
+
+/// The document of `file` in the open project. `None` without a project,
+/// and for a file opened on its own (it has no folder of its own to export).
+fn document(state: &AppState, file: &Path) -> Option<Document> {
+    state.project().as_ref().filter(|pr| pr.light.is_none())?;
+    built_document(state, file)
+}
+
+/// The document of `file` as it is built, a file opened on its own included.
+fn built_document(state: &AppState, file: &Path) -> Option<Document> {
     let prep = super::build::prepare(state, file)?;
     let project = state.project();
-    let pr = project.as_ref().filter(|pr| pr.light.is_none())?;
+    let pr = project.as_ref()?;
     let main_dir = prep.root.parent()?.to_path_buf();
     let out = prep.settings.out_dir.trim();
     let out_dir = if out.is_empty() || out == "." {
@@ -27,6 +35,29 @@ fn document(state: &AppState, file: &Path) -> Option<(PathBuf, PathBuf, PathBuf,
     };
     let bib_files = pr.ws.bib_files(&prep.root);
     Some((pr.ws.root_dir.clone(), prep.root, out_dir, bib_files))
+}
+
+/// Whether the PDF of the document of `path` is that of its files as they
+/// are: whole, and built since the last change of what it reads. It is not
+/// while a build runs.
+#[tauri::command]
+pub async fn pdf_fresh(app: AppHandle, path: String) -> CmdResult<bool> {
+    let file = abs(&path);
+    blocking(&app, move |_, state| {
+        if state.build().running.is_some() {
+            return false;
+        }
+        let Some((root_dir, main, out_dir, bib_files)) = built_document(state, &file) else {
+            return false;
+        };
+        export::pdf_fresh(&Target {
+            root_dir: &root_dir,
+            main: &main,
+            out_dir: &out_dir,
+            bib_files: &bib_files,
+        })
+    })
+    .await
 }
 
 /// What an export of the document of `path` would hold.

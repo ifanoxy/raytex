@@ -84,12 +84,9 @@ class ViewerStore {
     const defaultPath = main ? main.replace(/\.[^./\\]+$/, ".pdf") : basename(this.pdf);
     const dest = await save({ defaultPath, filters: [{ name: "PDF", extensions: ["pdf"] }] });
     if (!dest) return;
-    try {
-      await ipc.exportFile(this.pdf, dest);
-      ui.toast("success", t("viewer.exported", { file: basename(dest) }));
-    } catch (e) {
-      ui.toast("error", String(e));
-    }
+    // Compiled first if need be, and never copied while it is written.
+    const { pdfExport } = await import("./pdfexport.svelte");
+    await pdfExport.start(dest);
   }
 
   openExternal() {

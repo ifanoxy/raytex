@@ -1,6 +1,7 @@
 // Compilation: runs builds, streams their output, publishes diagnostics
 // and refreshes the PDF.
 
+import type { BuildReference } from "../buildprogress";
 import { t } from "../i18n.svelte";
 import * as ipc from "../ipc";
 import type { BuildOutcome, BuildPlan, Diagnostic } from "../types";
@@ -10,6 +11,7 @@ import { diagnostics } from "./diagnostics.svelte";
 import { editor } from "./editor.svelte";
 import { project } from "./project.svelte";
 import { tex } from "./tex.svelte";
+import { BuildTracker } from "./tracker.svelte";
 import { ui } from "./ui.svelte";
 import { viewer } from "./viewer.svelte";
 
@@ -33,6 +35,13 @@ class BuildStore {
   output: ConsoleLine[] = [];
   /** The running build was asked for by the user (not a live or on-save build). */
   manual = $state(false);
+  /** Where the running build stands (step, pages, last line). */
+  readonly tracker = new BuildTracker();
+  /** What the last whole build of each document took: the measure of the next one. */
+  private references = new Map<string, BuildReference>();
+  /** Builds that ended, and those waiting for the end of the running one. */
+  private ended = 0;
+  private waiters: (() => void)[] = [];
 
   get status(): "idle" | "running" | "success" | "failed" | "cancelled" {
     if (this.running) return "running";
@@ -54,12 +63,17 @@ class BuildStore {
       this.startedAt = Date.now();
       this.output = [];
       this.outputRevision++;
+      this.tracker.start(this.references.get(plan.root) ?? null);
     });
     await ipc.on("build:step", ({ name, command }) => {
       this.step = name;
+      this.tracker.stepStarted(name);
       this.push([{ stream: "cmd", text: `$ ${command}` }]);
     });
-    await ipc.on("build:output", ({ lines }) => this.push(lines));
+    await ipc.on("build:output", ({ lines }) => {
+      this.tracker.output(lines);
+      this.push(lines);
+    });
     await ipc.on("build:finished", ({ outcome, error, manual }) => this.finished(outcome, error, manual));
   }
 
@@ -76,32 +90,54 @@ class BuildStore {
     return project.info?.main ?? null;
   }
 
-  async run(opts: { auto?: boolean } = {}) {
+  /** Asks for a build; false when none was asked (nothing to build, no TeX…). */
+  async run(opts: { auto?: boolean } = {}): Promise<boolean> {
     const target = this.target();
     if (!target) {
       if (!opts.auto) ui.toast("info", t("build.nothingToBuild"));
-      return;
+      return false;
     }
     // An empty main file (new project): nothing to compile yet.
     const text = editor.textOf(target);
     if (text !== null && !text.trim() && samePath(target, project.info?.main)) {
       if (!opts.auto) ui.toast("info", t("build.emptyDocument"));
-      return;
+      return false;
     }
     if (!tex.ready) {
-      if (opts.auto) return;
+      if (opts.auto) return false;
       if (tex.status?.detecting) ui.toast("info", t("build.stillDetecting"));
       else ui.openOverlay("setup");
-      return;
+      return false;
     }
     // The engine reads files from disk: save first.
     await editor.saveAll({ auto: true, silent: true });
     await editor.flush();
     try {
       await ipc.build(target, !opts.auto);
+      return true;
     } catch (e) {
       ui.toast("error", t("build.failedToStart"), { detail: String(e) });
+      return false;
     }
+  }
+
+  /** Resolves once no build runs, one that was queued behind it included. */
+  async idle(): Promise<void> {
+    while (this.running) {
+      await new Promise<void>((resolve) => this.waiters.push(resolve));
+      // A queued build starts right after the one that ended.
+      await new Promise((r) => setTimeout(r, 80));
+    }
+  }
+
+  /** Compiles and waits for the end; false when no build was asked. */
+  async runToEnd(opts: { auto?: boolean } = {}): Promise<boolean> {
+    const before = this.ended;
+    if (!(await this.run(opts))) return false;
+    // The engine says it started a moment after it was asked.
+    for (let i = 0; i < 100 && !this.running && this.ended === before; i++) await new Promise((r) => setTimeout(r, 50));
+    await this.idle();
+    return true;
   }
 
   cancel() {
@@ -137,6 +173,12 @@ class BuildStore {
   private finished(outcome: BuildOutcome | null, error: Diagnostic | null, manual: boolean) {
     this.running = false;
     this.step = null;
+    this.ended++;
+    // A whole build that made its PDF is what the next one is measured with.
+    if (outcome?.success && !outcome.cancelled && outcome.steps.length) {
+      this.references.set(outcome.plan.root, { steps: outcome.steps.map((st) => ({ name: st.name, durationMs: st.durationMs })), pages: outcome.pages ?? null });
+    }
+    for (const done of this.waiters.splice(0)) done();
     const auto = !manual;
     this.manual = false;
     if (error) {

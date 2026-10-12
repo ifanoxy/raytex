@@ -26,6 +26,7 @@
   import DialogHost from "./components/dialogs/DialogHost.svelte";
   import BibEntryDialog from "./components/dialogs/BibEntryDialog.svelte";
   import UpdateDialog from "./components/dialogs/UpdateDialog.svelte";
+  import ExportProgress from "./components/dialogs/ExportProgress.svelte";
   import WhatsNew from "./components/dialogs/WhatsNew.svelte";
   import { updates } from "$lib/state/updates.svelte";
   import { spelling } from "$lib/state/spelling.svelte";
@@ -292,6 +293,7 @@
 <DialogHost />
 <BibEntryDialog />
 <WhatsNew />
+<ExportProgress />
 <UpdateDialog />
 <Toasts />
 

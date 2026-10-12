@@ -66,7 +66,10 @@ export const createDir = (path: string) => call<void>("create_dir", { path });
 export const renamePath = (from: string, to: string) => call<string>("rename_path", { from, to });
 export const deletePath = (path: string) => call<void>("delete_path", { path });
 export const importFiles = (sources: string[], dir: string) => call<string[]>("import_files", { sources, dir });
+/** Copies a file where the user says. A PDF is refused while a build writes it (`building`) or when it has no end (`incomplete`). */
 export const exportFile = (from: string, to: string) => call<void>("export_file", { from, to });
+/** Whether the PDF of the document of `path` is that of its files as they are. */
+export const pdfFresh = (path: string) => call<boolean>("pdf_fresh", { path });
 /** The spelling dictionaries on this computer and those that can be downloaded. */
 export const spellStatus = () => call<SpellStatus>("spell_status");
 /** Downloads the dictionary of a language: called only once the user agreed to it. */

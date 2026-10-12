@@ -220,6 +220,11 @@ fn plan_project(t: &Target<'_>, opts: &ExportOptions) -> ExportPlan {
     finish(files, true, false)
 }
 
+/// Whether two paths name the same file, however each of them is written.
+pub fn same_file(a: &Path, b: &Path) -> bool {
+    real(a) == real(b)
+}
+
 /// Adds the files a record (`.fls`) lists as read to `seen`. `pwd` is where
 /// the engine ran, unless the record says it.
 fn read_record(fls: &Path, pwd: &Path, seen: &mut BTreeSet<PathBuf>) -> Option<()> {
@@ -352,6 +357,85 @@ fn plan_submission(t: &Target<'_>, opts: &ExportOptions) -> ExportPlan {
                 .is_ok_and(|m| m > at)
         });
     finish(files, true, stale)
+}
+
+/// Whether a PDF is whole. An engine writes its PDF as it goes: read while
+/// a build runs, or left by a build that was stopped, the file has a start
+/// and no end, and no reader opens it.
+pub fn pdf_complete(path: &Path) -> bool {
+    use std::io::{Read, Seek, SeekFrom};
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return false;
+    };
+    let mut head = [0u8; 5];
+    if file.read_exact(&mut head).is_err() || &head != b"%PDF-" {
+        return false;
+    }
+    let Ok(len) = file.seek(SeekFrom::End(0)) else {
+        return false;
+    };
+    let tail = len.min(1024);
+    if file.seek(SeekFrom::Start(len - tail)).is_err() {
+        return false;
+    }
+    let mut end = Vec::with_capacity(tail as usize);
+    file.read_to_end(&mut end).is_ok() && end.windows(5).any(|w| w == b"%%EOF")
+}
+
+/// Whether the PDF of `t` is that of its files as they are now: it is whole,
+/// its build recorded what it read, and none of those files of the project,
+/// nor its `.bib` files, was written since.
+pub fn pdf_fresh(t: &Target<'_>) -> bool {
+    let pdf = t.out_dir.join(format!("{}.pdf", t.job()));
+    if !pdf_complete(&pdf) {
+        return false;
+    }
+    let Some((read, at)) = recorded(t) else {
+        return false;
+    };
+    let root = real(t.root_dir);
+    let out = real(t.out_dir);
+    let built_apart = out != real(t.main_dir());
+    let newer = |path: &Path| {
+        std::fs::metadata(path)
+            .and_then(|m| m.modified())
+            .is_ok_and(|m| m > at)
+    };
+    let source = |path: &&PathBuf| {
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        path.starts_with(&root) && !(built_apart && path.starts_with(&out)) && !is_aux(&name)
+    };
+    !newer(t.main)
+        && !read.iter().filter(source).any(|p| newer(p))
+        && !t.bib_files.iter().any(|b| newer(b))
+}
+
+/// Copies a PDF where the user wants it, whole or not at all: it is refused
+/// when it has no end, and written next to its destination first, so that a
+/// copy that fails leaves nothing that looks like a document.
+pub fn copy_pdf(from: &Path, to: &Path) -> std::io::Result<u64> {
+    if !pdf_complete(from) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "incomplete",
+        ));
+    }
+    let name = to
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let part = to.with_file_name(format!(".{name}.raytex-part"));
+    let copied = std::fs::copy(from, &part).and_then(|n| {
+        std::fs::rename(&part, to)?;
+        Ok(n)
+    });
+    if copied.is_err() {
+        let _ = std::fs::remove_file(&part);
+    }
+    copied
 }
 
 /// What an export of `t` will hold.
@@ -605,6 +689,90 @@ mod tests {
         assert_eq!(strip_comments("a % b\r\nc\r\n"), "a %\r\nc\r\n");
         let plain = "\\section{Titre}\n\nTexte avec 10\\,\\% de marge.\n";
         assert_eq!(strip_comments(plain), plain);
+    }
+
+    #[test]
+    fn a_pdf_cut_short_is_not_copied() {
+        let dir = tempfile::tempdir().unwrap();
+        let whole = dir.path().join("whole.pdf");
+        let cut = dir.path().join("cut.pdf");
+        let body = format!("%PDF-1.5\n{}\nstartxref\n123\n%%EOF\n", "x".repeat(5000));
+        std::fs::write(&whole, &body).unwrap();
+        // As an engine leaves it in the middle of a build.
+        std::fs::write(&cut, &body[..3000]).unwrap();
+        std::fs::write(dir.path().join("text.pdf"), "not a PDF %%EOF").unwrap();
+        assert!(pdf_complete(&whole));
+        assert!(!pdf_complete(&cut));
+        assert!(!pdf_complete(&dir.path().join("text.pdf")));
+        assert!(!pdf_complete(&dir.path().join("missing.pdf")));
+
+        let dest = dir.path().join("out").join("copie.pdf");
+        std::fs::create_dir_all(dest.parent().unwrap()).unwrap();
+        assert_eq!(copy_pdf(&whole, &dest).unwrap(), body.len() as u64);
+        assert_eq!(std::fs::read_to_string(&dest).unwrap(), body);
+        // Refused, the copy leaves the document that was there, and nothing else.
+        let err = copy_pdf(&cut, &dest).unwrap_err();
+        assert_eq!(err.to_string(), "incomplete");
+        assert_eq!(std::fs::read_to_string(&dest).unwrap(), body);
+        assert_eq!(
+            std::fs::read_dir(dest.parent().unwrap()).unwrap().count(),
+            1
+        );
+    }
+
+    #[test]
+    fn a_pdf_is_fresh_until_one_of_its_files_is_written() {
+        let (_dir, root) = project();
+        let main = root.join("main.tex");
+        let out = root.join("build");
+        let bib = vec![root.join("refs.bib")];
+        let target = Target {
+            root_dir: &root,
+            main: &main,
+            out_dir: &out,
+            bib_files: &bib,
+        };
+        // No PDF, then a PDF without the record of its build.
+        assert!(!pdf_fresh(&target));
+        std::fs::write(out.join("main.pdf"), "%PDF-1.5\n%%EOF\n").unwrap();
+        assert!(!pdf_fresh(&target));
+        let record = format!(
+            "PWD {}\nINPUT main.tex\nINPUT ./chapitres/intro.tex\nINPUT figures/courbe.png\nINPUT build/main.aux\nOUTPUT build/main.pdf\n",
+            root.display()
+        );
+        std::fs::write(out.join("main.fls"), record).unwrap();
+        assert!(pdf_fresh(&target));
+        // What the build itself writes does not make its PDF old.
+        let later = SystemTime::now() + std::time::Duration::from_secs(5);
+        let touch = |name: &str| {
+            let file = std::fs::File::options()
+                .write(true)
+                .open(root.join(name))
+                .unwrap();
+            file.set_modified(later).unwrap();
+        };
+        std::fs::write(out.join("main.aux"), "\\relax").unwrap();
+        touch("build/main.aux");
+        touch("chapitres/brouillon.tex");
+        assert!(pdf_fresh(&target));
+        // A picture, a source or the bibliography written since: it is.
+        for name in ["figures/courbe.png", "chapitres/intro.tex", "refs.bib"] {
+            let before = std::fs::metadata(root.join(name))
+                .unwrap()
+                .modified()
+                .unwrap();
+            touch(name);
+            assert!(!pdf_fresh(&target), "{name}");
+            let file = std::fs::File::options()
+                .write(true)
+                .open(root.join(name))
+                .unwrap();
+            file.set_modified(before).unwrap();
+            assert!(pdf_fresh(&target), "{name} back");
+        }
+        // A PDF being written is not fresh, whatever the dates.
+        std::fs::write(out.join("main.pdf"), "%PDF-1.5\nhalf").unwrap();
+        assert!(!pdf_fresh(&target));
     }
 
     fn project() -> (tempfile::TempDir, PathBuf) {

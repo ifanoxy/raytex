@@ -775,6 +775,11 @@ export function installMocks() {
           return { pdf: p("build/main.pdf"), errors: 0 };
         case "history_changes_cancel":
           return null;
+        // A PDF that always needs its build: the window of the export is seen.
+        case "pdf_fresh":
+          return false;
+        case "export_file":
+          return sleep(250).then(() => null);
         case "export_plan": {
           const o = a.options as { submission: boolean; includeBib: boolean; includePdf: boolean; singleFile: boolean };
           const role = (name: string) => (name === "main.tex" ? "main" : name.endsWith(".bib") ? "bibliography" : name.endsWith(".tex") ? "source" : "other");

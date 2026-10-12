@@ -22,6 +22,7 @@ import { defaultOptions } from "../lib/export";
 import { causeOf, fixable, quickFix } from "../lib/fixes";
 import { fileSelection } from "../lib/state/selection.svelte";
 import { media } from "../lib/state/media.svelte";
+import { pdfExport } from "../lib/state/pdfexport.svelte";
 import { colors } from "../lib/state/colors.svelte";
 import { fonts } from "../lib/state/fonts.svelte";
 import { history } from "../lib/state/history.svelte";
@@ -745,6 +746,58 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     ok = clean && used && boxes === "true,true" && written && ok;
   } catch (e) {
     log(`export failed: ${e}`);
+    ok = false;
+  }
+  // ------------------------------------------------------------- PDF export
+  // Asked for while the document compiles: the engine refuses to copy the
+  // PDF it is writing, the small window follows the build, and what is
+  // written is a whole PDF. Asked again with nothing changed: no build, no
+  // window. After a change: the document is compiled first.
+  try {
+    const main = project.info!.main!;
+    const root = project.info!.root;
+    const stamp = Date.now();
+    /** Size of a PDF that has its start and its end, 0 for anything else. */
+    const wholePdf = async (path: string) => {
+      const bytes = new Uint8Array(await ipc.readBinaryFile(path).catch(() => new ArrayBuffer(0)));
+      const text = new TextDecoder("latin1").decode(bytes);
+      return text.startsWith("%PDF-") && text.slice(-1024).includes("%%EOF") ? bytes.length : 0;
+    };
+    await build.idle();
+    void build.run();
+    await until(() => build.running, 15_000, "build started for the export");
+    const refusal = await ipc.exportFile(viewer.pdf!, `${root}-refused-${stamp}.pdf`).then(
+      () => "copied",
+      (e) => String(e),
+    );
+    const during = `${root}-during-${stamp}.pdf`;
+    const exporting = pdfExport.start(during);
+    await until(() => !!document.querySelector(".export-progress .bar"), 10_000, "export window");
+    const told = document.querySelector(".export-progress .step")?.textContent?.trim() ?? "";
+    await scene("pdf-export");
+    await exporting;
+    await until(() => pdfExport.job === null, 120_000, "export during a build");
+    const sizeDuring = await wholePdf(during);
+    const closed = !document.querySelector(".export-progress");
+
+    const builds = build.startedAt;
+    const again = `${root}-again-${stamp}.pdf`;
+    await pdfExport.start(again);
+    const quiet = build.startedAt === builds && pdfExport.job === null && !document.querySelector(".export-progress");
+    const sizeAgain = await wholePdf(again);
+
+    await editor.rewrite(main, (text) => `${text}\n% exported\n`);
+    const after = `${root}-after-${stamp}.pdf`;
+    await pdfExport.start(after);
+    await until(() => pdfExport.job === null, 120_000, "export after a change");
+    const rebuilt = build.startedAt !== builds;
+    const sizeAfter = await wholePdf(after);
+    log(
+      `pdf export: copy during a build «${refusal}», window «${told}» closed ${closed}, during ${sizeDuring} bytes, unchanged ${sizeAgain} bytes without a build ${quiet}, after a change ${sizeAfter} bytes rebuilt ${rebuilt}`,
+    );
+    ok = refusal.includes("building") && told.length > 0 && closed && sizeDuring > 0 && quiet && sizeAgain === sizeDuring && rebuilt && sizeAfter > 0 && ok;
+  } catch (e) {
+    log(`pdf export failed: ${e}, job ${JSON.stringify(pdfExport.job)}`);
     ok = false;
   }
   await editor.saveAll();
