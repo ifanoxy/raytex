@@ -1127,16 +1127,18 @@
     border-color: var(--accent);
     background: var(--accent-soft);
   }
-  /* The LaTeX rendering: nearly half of the panel, more or less when its upper edge is dragged. */
+  /* The LaTeX rendering: nearly half of the panel and never less than a fair
+     size, the settings scroll first; more or less when its upper edge is dragged. */
   .mini {
-    flex: 1.6 1 180px;
-    min-height: 140px;
+    flex: 1.6 1 220px;
+    min-height: 200px;
     display: flex;
     flex-direction: column;
     border-top: 1px solid var(--border);
   }
   .mini.sized {
     flex: 0 1 auto;
+    min-height: 140px;
   }
   .mini-bar {
     display: flex;
