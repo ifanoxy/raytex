@@ -100,14 +100,14 @@ pub struct Target<'a> {
 }
 
 impl Target<'_> {
-    fn job(&self) -> String {
+    pub(crate) fn job(&self) -> String {
         self.main
             .file_stem()
             .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or_default()
     }
 
-    fn main_dir(&self) -> &Path {
+    pub(crate) fn main_dir(&self) -> &Path {
         self.main.parent().unwrap_or(self.root_dir)
     }
 }
@@ -118,13 +118,13 @@ impl Target<'_> {
 /// read under the name it was given: paths are compared in this form, or a
 /// file of the project would not be seen as one. A file that is gone keeps
 /// its name as it is written.
-fn real(path: &Path) -> PathBuf {
+pub(crate) fn real(path: &Path) -> PathBuf {
     dunce::canonicalize(path)
         .map(|p| normalize(&p))
         .unwrap_or_else(|_| normalize(path))
 }
 
-fn extension(path: &Path) -> String {
+pub(crate) fn extension(path: &Path) -> String {
     path.extension()
         .map(|e| e.to_string_lossy().to_lowercase())
         .unwrap_or_default()
@@ -142,7 +142,7 @@ fn role_of(path: &Path) -> Role {
 }
 
 /// Whether a file name is one a build leaves behind.
-fn is_aux(name: &str) -> bool {
+pub(crate) fn is_aux(name: &str) -> bool {
     AUX_EXTENSIONS
         .iter()
         .any(|e| name.ends_with(&format!(".{e}")))
@@ -150,7 +150,7 @@ fn is_aux(name: &str) -> bool {
 }
 
 /// The path of `path` under `base`, with `/`.
-fn name_under(base: &Path, path: &Path) -> Option<String> {
+pub(crate) fn name_under(base: &Path, path: &Path) -> Option<String> {
     let rel = path.strip_prefix(base).ok()?;
     let parts: Vec<String> = rel
         .components()
@@ -249,7 +249,7 @@ fn read_record(fls: &Path, pwd: &Path, seen: &mut BTreeSet<PathBuf>) -> Option<(
 /// record)`; `None` when no build left one. A pass that used a precompiled
 /// preamble read the format in place of what the preamble reads: the record
 /// of that format, kept next to it, is read too.
-fn recorded(t: &Target<'_>) -> Option<(Vec<PathBuf>, SystemTime)> {
+pub(crate) fn recorded(t: &Target<'_>) -> Option<(Vec<PathBuf>, SystemTime)> {
     let job = t.job();
     let fls = [t.out_dir, t.main_dir()]
         .into_iter()

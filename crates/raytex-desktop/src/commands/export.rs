@@ -12,7 +12,7 @@ use super::{CmdResult, abs, blocking, err};
 use crate::state::AppState;
 
 /// A document: its folder, its main file, where it is built, its `.bib` files.
-type Document = (PathBuf, PathBuf, PathBuf, Vec<PathBuf>);
+pub(crate) type Document = (PathBuf, PathBuf, PathBuf, Vec<PathBuf>);
 
 /// The document of `file` in the open project. `None` without a project,
 /// and for a file opened on its own (it has no folder of its own to export).
@@ -22,7 +22,7 @@ fn document(state: &AppState, file: &Path) -> Option<Document> {
 }
 
 /// The document of `file` as it is built, a file opened on its own included.
-fn built_document(state: &AppState, file: &Path) -> Option<Document> {
+pub(crate) fn built_document(state: &AppState, file: &Path) -> Option<Document> {
     let prep = super::build::prepare(state, file)?;
     let project = state.project();
     let pr = project.as_ref()?;

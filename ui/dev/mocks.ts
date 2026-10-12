@@ -803,6 +803,27 @@ export function installMocks() {
         // A PDF that always needs its build: the window of the export is seen.
         case "pdf_fresh":
           return false;
+        // A document of 42 MB, of which 40 are its twelve pictures.
+        case "pdf_pictures":
+          return { pictures: 12, original: 40_300_000, pdf: 42_100_000 };
+        case "pdf_weights":
+          return sleep(1400).then(() => ({ pictures: 12, original: 40_300_000, steps: [16_200_000, 9_400_000, 7_100_000, 4_300_000, 2_900_000, 1_900_000, 1_250_000, 860_000], pdf: 42_100_000 }));
+        case "pdf_weights_cancel":
+        case "export_pdf_cancel":
+          return null;
+        case "export_pdf_lighter":
+          return (async () => {
+            for (let done = 1; done <= 12; done++) {
+              await sleep(90);
+              await emit("export:pictures", { done, total: 12 });
+            }
+            await emit("export:step", { name: "pdflatex", command: "pdflatex main.tex" });
+            for (let i = 0; i < 6; i++) {
+              await sleep(160);
+              await emit("export:output", { lines: [{ stream: "stdout", text: `(./chapitres/introduction.tex [${i + 1}]` }] });
+            }
+            return { size: 6_180_000, step: Number(a.step), within: true, errors: 0 };
+          })();
         case "export_file":
           return sleep(250).then(() => null);
         case "export_plan": {

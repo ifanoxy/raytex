@@ -239,6 +239,11 @@ pub struct AppState {
     pub history_lock: Mutex<()>,
     /// Stops the PDF of the changes being built.
     pub changes_cancel: Arc<AtomicBool>,
+    /// Raised to give up the export of a lighter PDF, and the weighing of
+    /// the pictures that comes before it.
+    pub export_cancel: Arc<AtomicBool>,
+    /// As [`Self::export_cancel`], for the weighing.
+    pub weigh_cancel: Arc<AtomicBool>,
     /// Spelling dictionaries read so far, by language tag.
     pub spell: Mutex<HashMap<String, Arc<raytex_core::spell::Checker>>>,
     /// The words the user added to the dictionaries.
@@ -343,6 +348,8 @@ impl AppState {
             history_next: AtomicU64::new(0),
             history_lock: Mutex::new(()),
             changes_cancel: Arc::new(AtomicBool::new(false)),
+            export_cancel: Arc::new(AtomicBool::new(false)),
+            weigh_cancel: Arc::new(AtomicBool::new(false)),
             spell: Mutex::new(HashMap::new()),
             spell_words: raytex_core::spell::Personal::default(),
         }

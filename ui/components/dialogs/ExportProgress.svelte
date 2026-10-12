@@ -12,8 +12,12 @@
   import Icon from "../common/Icon.svelte";
 
   const job = $derived(pdfExport.job);
-  const tracker = build.tracker;
-  const building = $derived(job?.phase === "building");
+  /** A lighter PDF is built apart: its own build is the one to follow. */
+  const apart = $derived(job?.phase === "pictures" || job?.phase === "lighter");
+  const tracker = $derived(apart ? pdfExport.tracker : build.tracker);
+  /** A compiler is at work, and tells where it is. */
+  const compiling = $derived(job?.phase === "lighter" || (job?.phase === "building" && build.running));
+  const building = $derived(job?.phase === "building" || apart);
 
   // The clock of the window: it only runs while there is a build to follow.
   let now = $state(Date.now());
@@ -24,15 +28,19 @@
     return () => clearInterval(timer);
   });
 
-  const progress = $derived(building && build.running ? tracker.progress(now) : { fraction: null, remainingMs: null });
-  const step = $derived(job?.phase === "copying" ? t("pdfExport.copying") : build.running ? (tracker.step ?? t("pdfExport.starting")) : t("pdfExport.starting"));
+  const progress = $derived.by(() => {
+    if (job?.phase === "pictures") return { fraction: pdfExport.pictures?.total ? pdfExport.pictures.done / pdfExport.pictures.total : null, remainingMs: null };
+    return compiling ? tracker.progress(now) : { fraction: null, remainingMs: null };
+  });
+  const step = $derived(job?.phase === "copying" ? t("pdfExport.copying") : job?.phase === "pictures" ? t("pdfExport.pictures") : compiling ? (tracker.step ?? t("pdfExport.starting")) : t("pdfExport.starting"));
   const page = $derived.by(() => {
-    if (!building || !build.running || !tracker.pages) return "";
+    if (job?.phase === "pictures") return pdfExport.pictures ? t("pdfExport.picturesOf", { n: pdfExport.pictures.done, total: pdfExport.pictures.total }) : "";
+    if (!compiling || !tracker.pages) return "";
     const total = tracker.reference?.pages ?? 0;
     return total >= tracker.pages ? t("pdfExport.pageOf", { n: tracker.pages, total }) : t("pdfExport.page", { n: tracker.pages });
   });
   const left = $derived.by(() => {
-    if (!building || !build.running) return "";
+    if (!compiling) return "";
     if (progress.remainingMs !== null) {
       const { n, unit } = roundedRemaining(progress.remainingMs);
       return t(unit === "s" ? "pdfExport.leftSeconds" : "pdfExport.leftMinutes", { n });
@@ -79,7 +87,7 @@
         <div class="fill" style:width={progress.fraction === null ? undefined : `${Math.round(progress.fraction * 1000) / 10}%`}></div>
       </div>
       <div class="foot">
-        <span class="last mono ellipsis faint" title={tracker.lastLine}>{building && build.running ? tracker.lastLine : ""}</span>
+        <span class="last mono ellipsis faint" title={tracker.lastLine}>{compiling ? tracker.lastLine : ""}</span>
         <button class="btn small" onclick={() => pdfExport.cancel()}>{t("common.cancel")}</button>
       </div>
     {/if}

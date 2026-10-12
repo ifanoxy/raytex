@@ -89,6 +89,7 @@ Warnings (undefined references, overfull boxes) are shown separately and can be 
 - Double-click in the PDF → matching source line; <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>J</kbd> → cursor position in the PDF.
 - Zoom: <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + wheel, pinch, or the zoom menu.
 - *Export PDF…* copies it wherever you want. When the document changed since its last build, or is being built, it is built first: a small window shows the step of the compiler, the page it is at and an estimate of the time left, then closes when the PDF is written (closed before, the export goes on; *Cancel* gives it up). The PDF is never copied while the compiler is writing it. When the build ends with errors, nothing is exported without your say: the window shows them, or exports the PDF as it is.
+- **A lighter PDF**: when the document has images (PNG, JPEG), *Export PDF…* first asks how: *Images as they are* (the PDF as it is), *Lighter images*, *Light images*, or *No more than* a size in MB. Each choice says about what the PDF will weigh. The document is then built apart, in a copy of the project, with lighter copies of the images: **your images and your project are not changed**. With a size limit, RayTeX picks the gentlest compression that is enough, checks the weight of the PDF it gets and compresses further if it is still over; when the limit cannot be met, it says so with the weight it got.
 - *Copy the PDF next to the main file* does it after every build.
 
 ## External programs (shell escape)

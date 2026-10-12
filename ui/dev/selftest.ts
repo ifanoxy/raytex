@@ -881,6 +881,87 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     log(`pdf export failed: ${e}, job ${JSON.stringify(pdfExport.job)}`);
     ok = false;
   }
+  // ------------------------------------------------------------- lighter PDF
+  // A heavy photograph in the document: the export asks how (as it is,
+  // lighter, under a size) and says about what each would weigh; the lighter
+  // PDF is built apart and is many times lighter; under a limit, it is within
+  // it; and the photograph of the project is as it was.
+  try {
+    const main = project.info!.main!;
+    const root = project.info!.root;
+    const stamp = Date.now();
+    const pdfSize = async (path: string) => {
+      const bytes = new Uint8Array(await ipc.readBinaryFile(path).catch(() => new ArrayBuffer(0)));
+      const text = new TextDecoder("latin1").decode(bytes);
+      return text.startsWith("%PDF-") && text.slice(-1024).includes("%%EOF") ? bytes.length : 0;
+    };
+    const canvas = document.createElement("canvas");
+    canvas.width = 1800;
+    canvas.height = 1200;
+    const ctx = canvas.getContext("2d")!;
+    const grain = ctx.createImageData(1800, 1200);
+    for (let i = 0; i < grain.data.length; i += 4) {
+      const x = (i / 4) % 1800;
+      grain.data[i] = (x / 9 + Math.random() * 50) | 0;
+      grain.data[i + 1] = (90 + Math.random() * 50) | 0;
+      grain.data[i + 2] = (210 - x / 10 + Math.random() * 40) | 0;
+      grain.data[i + 3] = 255;
+    }
+    ctx.putImageData(grain, 0, 0);
+    const photo = new Uint8Array(await (await new Promise<Blob>((r) => canvas.toBlob((b) => r(b!), "image/png"))).arrayBuffer());
+    const picture = `${root}/figures/grain.png`;
+    await ipc.writeBinaryFile(picture, photo);
+    await editor.rewrite(chapter, (text) => `${text}\n\n\\includegraphics[width=6cm]{figures/grain}\n`);
+    const heavy = `${root}-heavy-${stamp}.pdf`;
+    await pdfExport.start(heavy);
+    await until(() => pdfExport.job === null, 120_000, "export with the photograph");
+    const sizeHeavy = await pdfSize(heavy);
+
+    const found = await ipc.pdfPictures(main);
+    const weights = await ipc.pdfWeights(main);
+    // The button of the export now asks how.
+    void viewer.exportPdf();
+    await until(() => !!document.querySelector(".pdf-choice") && !document.querySelector(".pdf-choice .spinner"), 120_000, "choices of the export");
+    const offered = [...document.querySelectorAll<HTMLElement>(".pdf-choice .choice")].map((c) => `${c.dataset.kind} ${c.querySelector(".size")?.textContent?.trim()}`);
+    await scene("pdf-choice");
+    ui.closeOverlay();
+
+    const light = `${root}-light-${stamp}.pdf`;
+    const lightening = pdfExport.start(light, { kind: "step", step: 3 });
+    await until(() => pdfExport.job?.phase === "pictures" || pdfExport.job?.phase === "lighter" || pdfExport.job === null, 30_000, "lighter export started");
+    const shown = !!document.querySelector(".export-progress") || pdfExport.job === null;
+    await lightening;
+    await until(() => pdfExport.job === null, 180_000, "lighter export");
+    const sizeLight = await pdfSize(light);
+
+    const limit = Math.round(sizeHeavy / 6);
+    const limited = `${root}-limited-${stamp}.pdf`;
+    await pdfExport.start(limited, { kind: "limit", bytes: limit });
+    await until(() => pdfExport.job === null, 240_000, "export under a limit");
+    const sizeLimited = await pdfSize(limited);
+    const untouched = (await ipc.readBinaryFile(picture)).byteLength === photo.length;
+    const strays = (await ipc.fileTree()).map((n) => n.name).filter((n) => /export|copy|\.part$/i.test(n));
+    log(
+      `lighter pdf: photograph ${photo.length} bytes, PDF ${sizeHeavy}; ${found?.pictures} pictures of ${found?.original} bytes, steps ${weights?.steps.join(" ")}; offered ${offered.join(" | ")}; lighter ${sizeLight} (window ${shown}); under ${limit}: ${sizeLimited}; photograph untouched ${untouched}, strays ${strays.join(" ") || "none"}`,
+    );
+    ok =
+      sizeHeavy > photo.length / 2 &&
+      (found?.pictures ?? 0) >= 1 &&
+      weights?.steps.length === 8 &&
+      offered.length === 4 &&
+      offered.every((o) => /\d/.test(o)) &&
+      shown &&
+      sizeLight > 0 &&
+      sizeLight * 3 < sizeHeavy &&
+      sizeLimited > 0 &&
+      sizeLimited <= limit &&
+      untouched &&
+      !strays.length &&
+      ok;
+  } catch (e) {
+    log(`lighter pdf failed: ${e}, job ${JSON.stringify(pdfExport.job)}`);
+    ok = false;
+  }
   await editor.saveAll();
   log(`media scenes ${ok ? "PASSED" : "FAILED"}`);
   return ok;

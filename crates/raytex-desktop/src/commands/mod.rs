@@ -12,6 +12,7 @@ pub mod files;
 pub mod help;
 pub mod history;
 pub mod language;
+pub mod lighter;
 pub mod media;
 pub mod project;
 pub mod spell;

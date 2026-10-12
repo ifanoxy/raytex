@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type * as T from "./types";
 import type { BibDraft, BibField, Bibliography } from "./bibliography";
+import type { PdfWeights } from "./pdfweight";
 import type { ExportOptions, ExportPlan } from "./export";
 import type { SpellStatus } from "./spelling";
 import type { Change, ChangesPdf, Comparison, HistoryView, Moment } from "./history";
@@ -70,6 +71,21 @@ export const importFiles = (sources: string[], dir: string) => call<string[]>("i
 export const exportFile = (from: string, to: string) => call<void>("export_file", { from, to });
 /** Whether the PDF of the document of `path` is that of its files as they are. */
 export const pdfFresh = (path: string) => call<boolean>("pdf_fresh", { path });
+/** The PNG and JPEG pictures the document embeds (from the record of its last build), and the PDF as it is. */
+export const pdfPictures = (path: string) => call<{ pictures: number; original: number; pdf: number | null } | null>("pdf_pictures", { path });
+/** What these pictures weigh at each step of compression (seconds, the first time); null when given up. */
+export const pdfWeights = (path: string) => call<PdfWeights | null>("pdf_weights", { path });
+export const pdfWeightsCancel = () => call<void>("pdf_weights_cancel");
+/** A lighter PDF: its size, the step it was made with, whether it is within the limit asked. */
+export interface LighterPdf {
+  size: number;
+  step: number;
+  within: boolean;
+  errors: number;
+}
+/** Builds the document again with its pictures at `step` in a copy of the project, and writes the PDF at `dest`. */
+export const exportPdfLighter = (path: string, dest: string, step: number, limit: number | null) => call<LighterPdf>("export_pdf_lighter", { path, dest, step, limit });
+export const exportPdfCancel = () => call<void>("export_pdf_cancel");
 /** The spelling dictionaries on this computer and those that can be downloaded. */
 export const spellStatus = () => call<SpellStatus>("spell_status");
 /** Downloads the dictionary of a language: called only once the user agreed to it. */
@@ -218,6 +234,9 @@ export interface Events {
   "build:step": { name: string; command: string };
   "build:output": { lines: T.OutputLine[] };
   "build:finished": { outcome: T.BuildOutcome | null; error: T.Diagnostic | null; manual: boolean };
+  "export:pictures": { done: number; total: number };
+  "export:step": { name: string; command: string };
+  "export:output": { lines: T.OutputLine[] };
   "tex:status": T.TexStatus;
   "job:output": { id: number; lines: string[] };
   "job:finished": { id: number; success: boolean; cancelled: boolean; code: number | null };

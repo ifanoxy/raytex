@@ -269,53 +269,83 @@ fn encode_png(image: &image::DynamicImage, icc: Option<&[u8]>) -> Option<Vec<u8>
     Some(out)
 }
 
-/// A lighter copy of a PNG or JPEG image, or `None` when there is none to
-/// make: another format, an image that cannot be read, colours for print
-/// (CMYK, which would not come back the same), or a copy that would not
-/// be lighter than the image is.
-///
-/// The image is made smaller when its longest side is over `how.max_side`.
-/// A JPEG is written again as a JPEG. A PNG stays a PNG, without loss,
-/// unless it is a photograph without transparency: then it becomes a JPEG,
-/// many times lighter, when `keep_format` allows its extension to change.
-/// The colour profile of the image is kept, and its pixels are not turned
-/// (the engines of LaTeX do not read the orientation a camera notes either).
-pub fn compress(data: &[u8], how: Compression, keep_format: bool) -> Option<Compressed> {
-    use image::{ImageDecoder, ImageFormat};
-    let reader = image::ImageReader::new(std::io::Cursor::new(data))
-        .with_guessed_format()
-        .ok()?;
-    let format = reader.format()?;
-    if !matches!(format, ImageFormat::Png | ImageFormat::Jpeg) {
-        return None;
+/// A PNG or JPEG image read once, to be written at one weight or several.
+#[allow(missing_debug_implementations)]
+pub struct Picture {
+    image: image::DynamicImage,
+    /// It came as a JPEG (else a PNG).
+    jpeg: bool,
+    /// Its colour profile, kept in what is written.
+    icc: Option<Vec<u8>>,
+    /// Some of it lets what is behind show.
+    transparent: bool,
+    /// It looks like a photograph (told for a PNG that hides nothing).
+    photograph: bool,
+    /// Size of the file it was read from.
+    len: u64,
+}
+
+impl Picture {
+    /// Reads an image. `None` for what is not a PNG or a JPEG, for an image
+    /// that cannot be read, and for colours made for print (CMYK, which
+    /// would not come back the same).
+    pub fn read(data: &[u8]) -> Option<Picture> {
+        use image::{ImageDecoder, ImageFormat};
+        let reader = image::ImageReader::new(std::io::Cursor::new(data))
+            .with_guessed_format()
+            .ok()?;
+        let format = reader.format()?;
+        if !matches!(format, ImageFormat::Png | ImageFormat::Jpeg) {
+            return None;
+        }
+        let mut decoder = reader.into_decoder().ok()?;
+        if matches!(
+            decoder.original_color_type(),
+            image::ExtendedColorType::Cmyk8
+        ) {
+            return None;
+        }
+        let icc = decoder.icc_profile().ok().flatten();
+        let image = image::DynamicImage::from_decoder(decoder).ok()?;
+        let jpeg = format == ImageFormat::Jpeg;
+        let transparent =
+            image.color().has_alpha() && image.to_rgba8().pixels().any(|p| p[3] != 255);
+        let photograph = !jpeg && !transparent && photographic(&image.to_rgb8());
+        Some(Picture {
+            image,
+            jpeg,
+            icc,
+            transparent,
+            photograph,
+            len: data.len() as u64,
+        })
     }
-    let mut decoder = reader.into_decoder().ok()?;
-    if matches!(
-        decoder.original_color_type(),
-        image::ExtendedColorType::Cmyk8
-    ) {
-        return None;
-    }
-    let icc = decoder.icc_profile().ok().flatten();
-    let mut image = image::DynamicImage::from_decoder(decoder).ok()?;
-    let longest = image.width().max(image.height());
-    if how.max_side > 0 && longest > how.max_side {
-        image = image.resize(
-            how.max_side,
-            how.max_side,
-            image::imageops::FilterType::Lanczos3,
-        );
-    }
-    let transparent = image.color().has_alpha() && image.to_rgba8().pixels().any(|p| p[3] != 255);
-    // A JPEG stays one; a PNG becomes one when it is a photograph that hides nothing.
-    let as_jpeg = format == ImageFormat::Jpeg
-        || (!transparent && !keep_format && photographic(&image.to_rgb8()));
-    let (out, ext) = if as_jpeg {
-        (encode_jpeg(&image, how.quality, icc.as_deref())?, "jpg")
-    } else {
-        // An alpha channel that hides nothing is so much weight for nothing.
-        if image.color().has_alpha() && !transparent {
-            image = match image {
+
+    /// A lighter copy of the image, or `None` when it would not be lighter
+    /// than the image is.
+    ///
+    /// The image is made smaller when its longest side is over
+    /// `how.max_side`. A JPEG is written again as a JPEG. A PNG stays a PNG,
+    /// without loss, unless it is a photograph without transparency: then it
+    /// becomes a JPEG, many times lighter, when `keep_format` allows its
+    /// format to change. The colour profile of the image is kept, and its
+    /// pixels are not turned (the engines of LaTeX do not read the
+    /// orientation a camera notes either).
+    pub fn compress(&self, how: Compression, keep_format: bool) -> Option<Compressed> {
+        let longest = self.image.width().max(self.image.height());
+        let resized = (how.max_side > 0 && longest > how.max_side).then(|| {
+            self.image.resize(
+                how.max_side,
+                how.max_side,
+                image::imageops::FilterType::Lanczos3,
+            )
+        });
+        let image = resized.as_ref().unwrap_or(&self.image);
+        let (out, ext) = if self.jpeg || (self.photograph && !keep_format) {
+            (encode_jpeg(image, how.quality, self.icc.as_deref())?, "jpg")
+        } else if image.color().has_alpha() && !self.transparent {
+            // An alpha channel that hides nothing is so much weight for nothing.
+            let plain = match image {
                 image::DynamicImage::ImageRgba16(_) => {
                     image::DynamicImage::ImageRgb16(image.to_rgb16())
                 }
@@ -327,19 +357,28 @@ pub fn compress(data: &[u8], how: Compression, keep_format: bool) -> Option<Comp
                 }
                 other => image::DynamicImage::ImageRgb8(other.to_rgb8()),
             };
+            (encode_png(&plain, self.icc.as_deref())?, "png")
+        } else {
+            (encode_png(image, self.icc.as_deref())?, "png")
+        };
+        // Not worth a copy that is hardly lighter.
+        if out.len() as u64 * 100 >= self.len * 95 {
+            return None;
         }
-        (encode_png(&image, icc.as_deref())?, "png")
-    };
-    // Not worth a copy that is hardly lighter.
-    if out.len() as u64 * 100 >= data.len() as u64 * 95 {
-        return None;
+        Some(Compressed {
+            data: out,
+            ext,
+            width: image.width(),
+            height: image.height(),
+        })
     }
-    Some(Compressed {
-        data: out,
-        ext,
-        width: image.width(),
-        height: image.height(),
-    })
+}
+
+/// A lighter copy of a PNG or JPEG image given as the data of its file
+/// ([`Picture::read`], then [`Picture::compress`]), or `None` when there is
+/// none to make.
+pub fn compress(data: &[u8], how: Compression, keep_format: bool) -> Option<Compressed> {
+    Picture::read(data)?.compress(how, keep_format)
 }
 
 /// Copies `source` into `dir` under a LaTeX-safe name (`name`, or the

@@ -44,6 +44,7 @@ pub mod history;
 pub mod i18n;
 pub mod images;
 pub mod kb;
+pub mod lighter;
 pub mod lint;
 pub mod log;
 pub mod navigation;

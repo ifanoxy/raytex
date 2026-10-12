@@ -79,6 +79,14 @@ class ViewerStore {
 
   async exportPdf() {
     if (!this.pdf) return;
+    // A document with pictures: as it is, or lighter? Its window asks, then goes on from there.
+    const { build } = await import("./build.svelte");
+    const target = build.target();
+    const found = target ? await ipc.pdfPictures(target).catch(() => null) : null;
+    if (found?.pictures) {
+      ui.openOverlay("pdfChoice");
+      return;
+    }
     // Light mode: proposed next to the .tex file (its build is in the cache).
     const main = project.info?.light ? project.info.main : null;
     const defaultPath = main ? main.replace(/\.[^./\\]+$/, ".pdf") : basename(this.pdf);

@@ -49,9 +49,9 @@ struct Output {
 }
 
 #[derive(Debug, Clone, Serialize)]
-struct Step {
-    name: String,
-    command: String,
+pub(crate) struct Step {
+    pub(crate) name: String,
+    pub(crate) command: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -108,6 +108,39 @@ pub async fn build(
         }
     });
     Ok(())
+}
+
+/// Forwards the lines of a compiler to the interface as `event`, in batches
+/// (every 60 ms) to keep it fluid on verbose builds. The lines are sent to
+/// the channel; the thread ends when the channel is dropped.
+pub(crate) fn forward_output(
+    app: &AppHandle,
+    event: &'static str,
+) -> (mpsc::Sender<OutputLine>, std::thread::JoinHandle<()>) {
+    let (tx, rx) = mpsc::channel::<OutputLine>();
+    let app = app.clone();
+    let forwarder = std::thread::spawn(move || {
+        loop {
+            let first = match rx.recv() {
+                Ok(l) => l,
+                Err(_) => return,
+            };
+            let mut lines = vec![first];
+            let deadline = std::time::Instant::now() + Duration::from_millis(60);
+            while let Some(left) = deadline.checked_duration_since(std::time::Instant::now()) {
+                match rx.recv_timeout(left) {
+                    Ok(l) => lines.push(l),
+                    Err(mpsc::RecvTimeoutError::Timeout) => break,
+                    Err(mpsc::RecvTimeoutError::Disconnected) => {
+                        let _ = app.emit(event, Output { lines });
+                        return;
+                    }
+                }
+            }
+            let _ = app.emit(event, Output { lines });
+        }
+    });
+    (tx, forwarder)
 }
 
 /// Stops the running build and forgets queued ones.
@@ -192,30 +225,7 @@ fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBo
         },
     );
 
-    // Forward output in batches to keep the interface fluid on verbose builds.
-    let (tx, rx) = mpsc::channel::<OutputLine>();
-    let forward_app = app.clone();
-    let forwarder = std::thread::spawn(move || {
-        loop {
-            let first = match rx.recv() {
-                Ok(l) => l,
-                Err(_) => return,
-            };
-            let mut lines = vec![first];
-            let deadline = std::time::Instant::now() + Duration::from_millis(60);
-            while let Some(left) = deadline.checked_duration_since(std::time::Instant::now()) {
-                match rx.recv_timeout(left) {
-                    Ok(l) => lines.push(l),
-                    Err(mpsc::RecvTimeoutError::Timeout) => break,
-                    Err(mpsc::RecvTimeoutError::Disconnected) => {
-                        let _ = forward_app.emit("build:output", Output { lines });
-                        return;
-                    }
-                }
-            }
-            let _ = forward_app.emit("build:output", Output { lines });
-        }
-    });
+    let (tx, forwarder) = forward_output(app, "build:output");
 
     let sources = prep.sources;
     let source = move |p: &Path| {

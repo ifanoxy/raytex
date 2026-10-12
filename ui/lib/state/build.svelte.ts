@@ -121,6 +121,12 @@ class BuildStore {
     }
   }
 
+  /** What the last whole build of the document took: the measure of a build of the same document. */
+  get reference(): BuildReference | null {
+    const root = this.outcome?.plan.root ?? this.plan?.root;
+    return (root && this.references.get(root)) || null;
+  }
+
   /** Resolves once no build runs, one that was queued behind it included. */
   async idle(): Promise<void> {
     while (this.running) {
