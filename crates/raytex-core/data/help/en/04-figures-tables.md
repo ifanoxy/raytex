@@ -98,3 +98,18 @@ The **TikZ studio** (*TikZ drawing* button of the toolbar) creates a drawing wit
 ```
 
 The **TikZ figure** template creates a `standalone` project, ideal to prepare a drawing on its own.
+
+## Code in the document
+
+*Insert code…* (in *See all* or the command palette; with text selected, it becomes the code) opens a window with the code on the left and, on the right, its settings and the result compiled by LaTeX:
+
+- **the language**, among about forty: Python, C, Java, JavaScript, TypeScript, Rust, Go, SQL, Bash, LaTeX… Those the `listings` package does not know (JavaScript, Rust, Go, JSON, YAML…) are defined in the preamble when you use them;
+- **the indentation**: *2 spaces*, *4 spaces* or *Tabs* writes the code again level by level. Code pasted from the middle of a file comes back to the margin, without the spaces at the end of its lines; tabs and spaces that are mixed are pointed out;
+- **the style of code in the whole document**: *Light* (colours on a pale ground), *Plain* (black and white, prints anywhere) or *Dark*, line numbers, line wrapping, the frame and the size of the text. It is written once in the preamble, and every listing of the document follows it;
+- **the caption** and its label for `\ref`.
+
+LaTeX measures how many characters a line of your document holds: the window says how many lines are too long, and offers to wrap them or a smaller text before they run into the margin. Accented letters (a comment in French) work with every engine. In a `beamer` presentation, the frame gets the `fragile` option code needs.
+
+Behind *Advanced*: the width of a tab, reading the code from a file of the project (`\lstinputlisting`, the document then follows the file), and other options for this code alone (`firstnumber=10`).
+
+In the editor, the **Code** chip after `\begin{lstlisting}` opens the window again on that code.

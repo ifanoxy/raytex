@@ -3,6 +3,7 @@
 
 import { t } from "../i18n.svelte";
 import type { FigureAt, FigureGroup } from "../images";
+import type { Listing } from "../listing";
 import type { FontRole } from "../types";
 import { ui } from "./ui.svelte";
 
@@ -46,6 +47,20 @@ export interface ImageEdit {
   unit: string;
 }
 
+/** A listing of the document to change (its chip): where it is, and what it says. */
+export interface CodeEdit {
+  doc: string;
+  from: number;
+  to: number;
+  listing: Listing;
+}
+
+export interface CodeRequest {
+  edit?: CodeEdit;
+  /** Code to start from (the selection). */
+  code?: string;
+}
+
 export interface TikzRequest {
   code: string;
   /** Range replaced by "Update" (a picture of the document)… */
@@ -57,6 +72,8 @@ export interface TikzRequest {
 class MediaStore {
   imageRequest = $state<ImageRequest | null>(null);
   tikzRequest = $state<TikzRequest | null>(null);
+  /** What the code window opens on (read once, when it opens). */
+  codeRequest: CodeRequest | null = null;
   /** Font files to show first in the font dialog. */
   fontRequest = $state<string[] | null>(null);
   /** Role chosen before opening the font dialog (from the font menu). */
@@ -79,6 +96,11 @@ class MediaStore {
   openTikz(request: TikzRequest | null = null) {
     this.tikzRequest = request;
     ui.openOverlay("tikz");
+  }
+
+  openCode(request: CodeRequest | null = null) {
+    this.codeRequest = request;
+    ui.openOverlay("code");
   }
 
   openFonts(files: string[] | null = null, preset: FontPreset | null = null) {

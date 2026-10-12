@@ -50,6 +50,7 @@ import { spelling as spellingExtension } from "../editor/spelling";
 import { editorTheme } from "../editor/theme";
 import { fixLabel, runFix, suggestionOf } from "../fixes";
 import { figureAt, figureGroupAt } from "../images";
+import { listingAt } from "../listing";
 import { i18n, type MessageKey, t } from "../i18n.svelte";
 import * as ipc from "../ipc";
 import { diskChange, remember, type Written } from "../disk";
@@ -249,6 +250,7 @@ const CHIP_TEXT: Record<ChipKind, [MessageKey, MessageKey]> = {
   table: ["grid.table", "grid.chipTable"],
   tikz: ["chip.tikz", "chip.tikzHint"],
   image: ["chip.image", "chip.imageHint"],
+  code: ["chip.code", "chip.codeHint"],
 };
 
 class EditorStore {
@@ -1305,6 +1307,11 @@ class EditorStore {
       const request = await this.tikzAt(from + 1);
       if (request) media.openTikz(request);
       else ui.toast("warning", t("chip.unreadable"));
+    } else if (kind === "code") {
+      const doc = view.state.doc;
+      const found = listingAt(doc.sliceString(from, Math.min(doc.length, from + 200_000)), 0);
+      if (found) media.openCode({ edit: { doc: path, from, to: from + found.to, listing: found.listing } });
+      else ui.toast("warning", t("chip.unreadable"));
     } else {
       const doc = view.state.doc;
       const start = Math.max(0, from - 20_000);
@@ -1339,6 +1346,13 @@ class EditorStore {
       }
     }
     return null;
+  }
+
+  /** The code window: on the selection, when there is one (it becomes the listing). */
+  openCode() {
+    const view = this.view;
+    const selection = view && !view.state.selection.main.empty ? view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to) : "";
+    media.openCode(selection.trim() ? { code: selection } : null);
   }
 
   /** The TikZ picture at `pos` (the cursor by default), for the studio. */

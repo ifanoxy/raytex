@@ -1037,7 +1037,8 @@ export function installMocks() {
             pdf: p("build/preview.pdf"),
             bbox: null,
             border: 0,
-            measures: [597.50787, 845.04684, 455.24408, 702.78308, -1.1337, -1.1337, -30.51595, 12, 18.38225, 30, 65, 11, 0, 0],
+            // A listing asks for the width of a line, of a character of code and of the line numbers.
+            measures: (a.request as { job?: string })?.job === "code" ? [345, 4.72498, 20] : [597.50787, 845.04684, 455.24408, 702.78308, -1.1337, -1.1337, -30.51595, 12, 18.38225, 30, 65, 11, 0, 0],
             diagnostics: [],
             durationMs: 640,
             engine: "pdflatex",

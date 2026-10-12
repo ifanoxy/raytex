@@ -6,8 +6,9 @@ import type { Range } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate, WidgetType } from "@codemirror/view";
 import { commented, envHead, gridKind } from "../grid";
 import { figureGroupAt, firstPictureOf } from "../images";
+import { listingAt } from "../listing";
 
-export type ChipKind = "matrix" | "table" | "tikz" | "image";
+export type ChipKind = "matrix" | "table" | "tikz" | "image" | "code";
 
 export interface ChipOptions {
   /** `count`: pictures the chip stands for, when they are several written together. */
@@ -22,7 +23,11 @@ const ICONS: Record<ChipKind, string> = {
   table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16M15 4v16"/>',
   tikz: '<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
   image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/>',
+  code: '<path d="m8 7-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/>',
 };
+
+/** What starts a listing: its environment, or the command that reads it from a file. */
+const LISTING = ["\\begin{lstlisting}", "\\lstinputlisting"];
 
 /** Several pictures written together. */
 const IMAGES = '<rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7 4h12a2 2 0 0 1 2 2v10"/><circle cx="8" cy="12" r="1.5"/><path d="M17 17l-4-4-7 7"/>';
@@ -59,7 +64,8 @@ class Chip extends WidgetType {
       // The chip sits after the arguments: its command is the last one before it.
       const pos = view.posAtDOM(el);
       const start = Math.max(0, pos - 1000);
-      const i = view.state.doc.sliceString(start, pos).lastIndexOf(this.kind === "image" ? "\\includegraphics" : "\\begin");
+      const before = view.state.doc.sliceString(start, pos);
+      const i = this.kind === "code" ? Math.max(...LISTING.map((head) => before.lastIndexOf(head))) : before.lastIndexOf(this.kind === "image" ? "\\includegraphics" : "\\begin");
       if (i >= 0) this.options.open(view, this.kind, start + i);
     });
     return el;
@@ -88,13 +94,20 @@ function chips(view: EditorView, options: ChipOptions): DecorationSet {
   for (const { from, to } of view.visibleRanges) {
     // A little further than the visible end: the arguments may go on.
     const text = doc.sliceString(from, Math.min(doc.length, to + 600));
-    const re = /\\begin\s*\{([A-Za-z]+\*?)\}|\\includegraphics\b/g;
+    const re = /\\begin\s*\{([A-Za-z]+\*?)\}|\\includegraphics\b|(\\lstinputlisting)\b/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(text)) && from + m.index < to) {
       if (commented(text, m.index)) continue;
       let kind: ChipKind | null = null;
       let end = -1;
       let count = 1;
+      if (m[2] || m[1] === "lstlisting") {
+        // After its options: the code itself is left alone.
+        const at = from + m.index;
+        const found = listingAt(doc.sliceString(at, Math.min(doc.length, at + 20_000)), 0);
+        if (found) out.push(Decoration.widget({ widget: new Chip("code", options), side: 1 }).range(at + found.codeEnd));
+        continue;
+      }
       if (!m[1]) {
         kind = "image";
         end = graphicsEnd(text, m.index);

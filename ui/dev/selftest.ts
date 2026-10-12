@@ -421,6 +421,59 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     ok = false;
   }
 
+  // ---------------------------------------------------------------- code
+  // Code taken from the middle of a file, with an accent and a line too
+  // long: it comes back to the margin, the window says how many columns a
+  // line holds (TeX measured them) and that a line is too long; inserted, it
+  // is a listing with its language, and the style is in the preamble. Its
+  // chip opens it again; another language comes with its definition. The
+  // document builds each time.
+  try {
+    const main = project.info!.main!;
+    const v = editor.view!;
+    v.dispatch({ changes: { from: v.state.doc.length, insert: "\n\n" }, selection: { anchor: v.state.doc.length + 2 } });
+    const long = "x".repeat(90);
+    media.openCode({ code: `        def moyenne(notes):\n            # Moyenne des élèves\n            return sum(notes) / len(notes)  # ${long}\n` });
+    await until(() => !!document.querySelector<HTMLTextAreaElement>(".code-studio textarea")?.value, 10_000, "code window");
+    const tidy = document.querySelector<HTMLTextAreaElement>(".code-studio textarea")!.value.startsWith("def moyenne(notes):\n    # Moyenne");
+    await drawn(".code-studio .preview-box canvas", log, "code preview");
+    await until(() => !!document.querySelector(".code-studio .note"), 30_000, "lines measured");
+    const told = document.querySelector(".code-studio .note")?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    const caption = document.querySelector<HTMLInputElement>(".code-studio .right > .field input.input")!;
+    type(caption, "Moyenne des notes");
+    await scene("code-studio");
+    document.querySelector<HTMLButtonElement>(".code-studio .right .btn.primary")!.click();
+    await until(() => ui.overlay === null, 20_000, "code inserted");
+    const text = () => editor.textOf(chapter)!;
+    const inserted = text().includes("\\begin{lstlisting}[language=Python, caption={Moyenne des notes}, label={lst:moyenne-des-notes}]\ndef moyenne(notes):\n    # Moyenne des élèves");
+    const preamble = () => editor.textOf(main) ?? "";
+    const styled = preamble().includes("% RayTeX code style: theme=light") && preamble().includes("\\usepackage{listings}") && preamble().indexOf("\\lstset{style=raytex}") < preamble().indexOf("\\begin{document}");
+    const built = await buildOk(log, "code");
+    // Its chip opens it again, with what it says.
+    v.dispatch({ selection: { anchor: text().indexOf("\\begin{lstlisting}") }, scrollIntoView: true });
+    await until(() => [...v.dom.querySelectorAll(".cm-code-chip")].some((c) => v.posAtDOM(c) > text().indexOf("\\begin{lstlisting}") && v.posAtDOM(c) < text().indexOf("def moyenne")), 10_000, "chip of the code");
+    const chip = [...v.dom.querySelectorAll<HTMLElement>(".cm-code-chip")].find((c) => v.posAtDOM(c) > text().indexOf("\\begin{lstlisting}") && v.posAtDOM(c) < text().indexOf("def moyenne"))!;
+    chip.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+    await until(() => document.querySelector<HTMLSelectElement>(".code-studio select")?.value === "Python" && !!document.querySelector<HTMLTextAreaElement>(".code-studio textarea")?.value, 10_000, "code opened again");
+    const read = document.querySelector<HTMLInputElement>(".code-studio .right > .field input.input")!.value;
+    const language = document.querySelector<HTMLSelectElement>(".code-studio select")!;
+    language.value = "Rust";
+    language.dispatchEvent(new Event("change", { bubbles: true }));
+    type(document.querySelector<HTMLTextAreaElement>(".code-studio textarea") as unknown as HTMLInputElement, 'fn main() {\n    // « Bonjour », élève\n    println!("été");\n}');
+    await pause(300);
+    document.querySelector<HTMLButtonElement>(".code-studio .right .btn.primary")!.click();
+    await until(() => ui.overlay === null, 20_000, "code updated");
+    const updated = text().includes("\\begin{lstlisting}[language=Rust, caption={Moyenne des notes}, label={lst:moyenne-des-notes}]\nfn main() {") && text().split("\\begin{lstlisting}").length === 2;
+    const defined = preamble().includes("% RayTeX code language: Rust\n\\lstdefinelanguage{Rust}{") && preamble().split("\\lstdefinestyle{raytex}").length === 2;
+    const rebuilt = await buildOk(log, "code in Rust");
+    log(`code: margin ${tidy}, window «${told}», inserted ${inserted}, style ${styled}, caption read back «${read}», updated ${updated}, language defined ${defined}`);
+    ok = tidy && /\d+ caract|\d+ char/.test(told) && inserted && styled && built && read === "Moyenne des notes" && updated && defined && rebuilt && ok;
+  } catch (e) {
+    log(`code failed: ${e}`);
+    if (ui.overlay) ui.closeOverlay();
+    ok = false;
+  }
+
   // ---------------------------------------------------------------- TikZ
   try {
     const v = editor.view!;

@@ -116,6 +116,7 @@
       title: "format.groupInsert",
       items: [
         action("insert.image"),
+        action("insert.code"),
         action("insert.table", "table"),
         action("insert.figure", "image"),
         action("insert.tikz"),

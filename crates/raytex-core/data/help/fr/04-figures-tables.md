@@ -98,3 +98,18 @@ Le **studio TikZ** (bouton *Schéma TikZ* de la barre d'outils) crée un schéma
 ```
 
 Le modèle **Figure TikZ** crée un projet `standalone` idéal pour préparer un schéma à part.
+
+## Du code dans le document
+
+*Insérer du code…* (dans *Tout voir* ou la palette de commandes ; avec du texte sélectionné, il devient le code) ouvre une fenêtre avec le code à gauche et, à droite, ses réglages et le résultat compilé par LaTeX :
+
+- **le langage**, parmi une quarantaine : Python, C, Java, JavaScript, TypeScript, Rust, Go, SQL, Bash, LaTeX… Ceux que le paquet `listings` ne connaît pas (JavaScript, Rust, Go, JSON, YAML…) sont définis dans le préambule quand vous les utilisez ;
+- **l'indentation** : *2 espaces*, *4 espaces* ou *Tabulations* réécrit le code niveau par niveau. Un code collé depuis le milieu d'un fichier revient à la marge, sans les espaces en fin de ligne ; des tabulations et des espaces mélangés sont signalés ;
+- **le style du code dans tout le document** : *Clair* (couleurs sur fond pâle), *Sobre* (noir et blanc, s'imprime partout) ou *Sombre*, les numéros de ligne, le retour à la ligne, le cadre et la taille du texte. Il est écrit une seule fois dans le préambule, et tous les codes du document le suivent ;
+- **la légende** et son étiquette pour `\ref`.
+
+LaTeX mesure combien de caractères tient une ligne de votre document : la fenêtre dit combien de lignes sont trop longues, et propose le retour à la ligne ou un texte plus petit avant qu'elles ne dépassent dans la marge. Les lettres accentuées (un commentaire en français) passent avec tous les moteurs. Dans une présentation `beamer`, la diapositive reçoit l'option `fragile` dont le code a besoin.
+
+Derrière *Avancé* : la largeur d'une tabulation, lire le code dans un fichier du projet (`\lstinputlisting`, le document suit alors le fichier), et d'autres options pour ce code seul (`firstnumber=10`).
+
+Dans l'éditeur, la pastille **Code** après `\begin{lstlisting}` rouvre la fenêtre sur ce code.
