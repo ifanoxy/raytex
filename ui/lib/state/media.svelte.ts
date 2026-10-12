@@ -2,7 +2,7 @@
 // chosen (pasted image, dropped files, picture under the cursor…).
 
 import { t } from "../i18n.svelte";
-import type { FigureAt } from "../images";
+import type { FigureAt, FigureGroup } from "../images";
 import type { FontRole } from "../types";
 import { ui } from "./ui.svelte";
 
@@ -20,6 +20,19 @@ export interface ImageRequest {
   blobs?: File[];
   /** A picture of the document to change (chip after `\includegraphics`). */
   edit?: ImageEdit;
+  /** Several pictures written together to change (their chip). */
+  group?: ImageGroupEdit;
+}
+
+export interface ImageGroupEdit {
+  /** Document holding the pictures. */
+  doc: string;
+  group: FigureGroup;
+  /** The file of each picture, when found. */
+  files: (string | null)[];
+  /** Indentation of the first line and unit of the document. */
+  indent: string;
+  unit: string;
 }
 
 export interface ImageEdit {

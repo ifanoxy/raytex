@@ -3320,6 +3320,7 @@ dependencies = [
  "encoding_rs",
  "flate2",
  "ignore",
+ "image",
  "libc",
  "memchr",
  "pulldown-cmark",

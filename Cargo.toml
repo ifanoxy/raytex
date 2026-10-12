@@ -46,6 +46,8 @@ notify = "8"
 trash = "5"
 clap = { version = "4", features = ["derive"] }
 svg2pdf = "0.13"
+# Already built for svg2pdf with these formats: compressing images adds no code of others.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

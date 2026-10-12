@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { figureAt, figureCode, safeStem, targetExtension } from "./images.ts";
+import { figureAt, figureCode, figureGroupAt, firstPictureOf, safeStem, targetExtension } from "./images.ts";
 
 test("names follow the engine's rules", () => {
   assert.equal(safeStem("Capture d’écran 2026-09-27 à 10.12.33"), "capture-d-ecran-2026-09-27-a-10-12-33");
@@ -53,4 +53,67 @@ test("a figure of the document is read back for the image dialog", () => {
   assert.equal(h.options, "scale=0.5, angle=90");
   assert.equal(figureAt("\\includegraphics{b}", 0)!.width, null);
   assert.equal(figureAt("\\includegraphics[width=\\textwidth]{b}", 0)!.width, 100);
+});
+
+test("a figure of several images is read back as one group", () => {
+  const options = { paths: ["figures/a", "figures/b", "figures/c"], captions: ["Avant", "", "Après {x}"], labels: ["fig:a", "", "fig:c"], mode: "figure" as const, width: 80, placement: "H", caption: "Les trois essais.", label: "fig:essais", columns: 2 };
+  const fig = figureCode(options);
+  const text = `Texte avant.\n${fig}\nTexte après.`;
+  // From any of its pictures, the same group: the whole figure.
+  for (const path of options.paths) {
+    const g = figureGroupAt(text, text.indexOf(`\\includegraphics[width=\\linewidth]{${path}}`))!;
+    assert.equal(text.slice(g.from, g.to), fig);
+    assert.equal(g.mode, "figure");
+    assert.deepEqual(g.images, [
+      { path: "figures/a", caption: "Avant", label: "fig:a" },
+      { path: "figures/b", caption: "", label: "" },
+      { path: "figures/c", caption: "Après {x}", label: "fig:c" },
+    ]);
+    assert.deepEqual([g.columns, g.placement, g.caption, g.label], [2, "H", "Les trois essais.", "fig:essais"]);
+    assert.equal(firstPictureOf(text, g), text.indexOf("\\includegraphics"));
+    // Written again from what was read, it is the same code.
+    assert.equal(figureCode({ ...options, paths: g.images.map((i) => i.path), captions: g.images.map((i) => i.caption), labels: g.images.map((i) => i.label), columns: g.columns, placement: g.placement, caption: g.caption, label: g.label }), fig);
+  }
+  // Pictures per row: where the first row ends, or what their width allows.
+  for (const [n, columns] of [[2, 2], [3, 3], [4, 4], [4, 2], [3, 1], [2, 1]] as const) {
+    const code = figureCode({ ...options, paths: options.paths.concat("figures/d").slice(0, n), captions: [], labels: [], columns });
+    assert.equal(figureGroupAt(code, code.indexOf("\\includegraphics"))!.columns, columns, `${n} images, ${columns} per row`);
+  }
+  // Indented with spaces, with a comment: still the group.
+  const spaced = fig.replace(/\t/g, "    ").replace("\\hfill", "\\hfill % côte à côte");
+  assert.equal(figureGroupAt(spaced, spaced.indexOf("\\includegraphics"))!.images.length, 3);
+});
+
+test("what the dialog did not write is left alone", () => {
+  const fig = figureCode({ paths: ["a", "b"], captions: [], labels: [], mode: "figure", width: 80, placement: "htbp", caption: "Deux.", label: "", columns: 2 });
+  // Something else in the figure, or in one of its sub-figures: not a group to rewrite.
+  const noted = fig.replace("\\caption{Deux.}", "\\caption{Deux.}\n\t\\footnotesize Source : INSEE.");
+  assert.equal(figureGroupAt(noted, noted.indexOf("\\includegraphics")), null);
+  const framed = fig.replace("\\includegraphics[width=\\linewidth]{a}", "\\fbox{\\includegraphics[width=\\linewidth]{a}}");
+  assert.equal(figureGroupAt(framed, framed.indexOf("\\includegraphics")), null);
+  // A picture on its own, in a figure or not.
+  const one = figureCode({ paths: ["a"], captions: [], labels: [], mode: "figure", width: 60, placement: "htbp", caption: "Une.", label: "", columns: 2 });
+  assert.equal(figureGroupAt(one, one.indexOf("\\includegraphics")), null);
+  assert.equal(figureGroupAt("Voir \\includegraphics{a} et plus loin \\includegraphics{b}.", 5), null);
+  assert.equal(figureGroupAt("pas une image", 0), null);
+});
+
+test("images side by side are one group", () => {
+  const run = figureCode({ paths: ["x", "y", "z"], captions: [], labels: [], mode: "inline", width: 30, placement: "", caption: "", label: "", columns: 1 });
+  const text = `\\begin{center}\n${run}\n\\end{center}`;
+  const g = figureGroupAt(text, text.indexOf("\\includegraphics[width=0.3\\linewidth]{y}"))!;
+  assert.equal(g.mode, "inline");
+  assert.equal(text.slice(g.from, g.to), run);
+  assert.deepEqual(g.images.map((i) => i.path), ["x", "y", "z"]);
+  assert.deepEqual([g.width, g.options], [30, null]);
+  // In a figure written by hand: the pictures only, the rest of the figure is not touched.
+  const byHand = "\\begin{figure}\n\\centering\n\\includegraphics[height=3cm]{a}\\hfill\\includegraphics[height=3cm]{b}\n\\caption{Deux images} \\small Source.\n\\end{figure}";
+  const h = figureGroupAt(byHand, byHand.indexOf("\\includegraphics"))!;
+  assert.equal(byHand.slice(h.from, h.to), "\\includegraphics[height=3cm]{a}\\hfill\\includegraphics[height=3cm]{b}");
+  assert.deepEqual([h.width, h.options], [null, "height=3cm"]);
+  // Each with its own size: they are not rewritten as one.
+  const mixed = "\\includegraphics[width=2cm]{a}\\hfill\\includegraphics[width=5cm]{b}";
+  assert.equal(figureGroupAt(mixed, 0), null);
+  // Next to each other without `\hfill`: two pictures, not a group.
+  assert.equal(figureGroupAt("\\includegraphics{a} \\includegraphics{b}", 0), null);
 });

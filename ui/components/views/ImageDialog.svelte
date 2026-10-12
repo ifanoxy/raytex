@@ -6,12 +6,13 @@
   import { convertFileSrc } from "@tauri-apps/api/core";
   import { open } from "@tauri-apps/plugin-dialog";
   import { onDestroy, onMount } from "svelte";
-  import { t } from "$lib/i18n.svelte";
-  import { ACCEPTED, extensionOf, figureCode, mimeOf, safeStem, stemOf, targetExtension, timestamp, toPng, TO_PNG } from "$lib/images";
+  import { sizeLabel } from "$lib/history";
+  import { i18n, t } from "$lib/i18n.svelte";
+  import { ACCEPTED, extensionOf, figureCode, MAX_COLUMNS, mimeOf, safeStem, stemOf, targetExtension, timestamp, toPng, TO_PNG } from "$lib/images";
   import * as ipc from "$lib/ipc";
   import { addPackages, graphicsPaths } from "$lib/preamble";
   import { editor } from "$lib/state/editor.svelte";
-  import { type ImageEdit, media } from "$lib/state/media.svelte";
+  import { type ImageEdit, type ImageGroupEdit, media } from "$lib/state/media.svelte";
   import { project } from "$lib/state/project.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import type { FileNode } from "$lib/types";
@@ -21,9 +22,17 @@
 
   interface Item {
     id: string;
-    /** `project`: already in the project and readable by LaTeX (used where it is). */
-    kind: "file" | "blob" | "project";
+    /**
+     * `project`: already in the project and readable by LaTeX (used where it
+     * is); `kept`: a picture of the document whose file was not found, left
+     * as it is written.
+     */
+    kind: "file" | "blob" | "project" | "kept";
     path?: string;
+    /** What the document writes in `\includegraphics{…}` for it: kept as it is. */
+    written?: string;
+    /** Its own label in the document (sub-figure), kept as it is; undefined: one is made with its caption. */
+    label?: string;
     blob?: Blob;
     original: string;
     /** File name without extension, in the project. */
@@ -32,7 +41,17 @@
     url: string | null;
     ratio: number | null;
     caption: string;
+    /** Size of the image as it is, in bytes, once read. */
+    size?: number;
+    /** The image as a PNG, once converted (a format LaTeX does not read). */
+    png?: Uint8Array;
   }
+
+  /** How much the images copied into the project are lightened. */
+  type Weight = "original" | ipc.CompressionLevel;
+  const WEIGHTS: Weight[] = ["original", "balanced", "light"];
+  const WEIGHT_KEY = "raytex.image.weight";
+  const lang = i18n.lang === "fr" ? "fr" : "en";
 
   const FOLDERS = ["figures", "images", "img", "figs", "graphics", "pictures", "fig"];
   /** Stands for an empty caption until the code becomes a snippet. */
@@ -54,8 +73,25 @@
   let dragOver = $state(false);
   /** A picture of the document being changed (chip after `\includegraphics`). */
   let edit = $state<ImageEdit | null>(null);
+  /** Several pictures of the document, written together, being changed. */
+  let group = $state<ImageGroupEdit | null>(null);
+  /** What "Update" rewrites: that picture, or those pictures. */
+  const changed = $derived(edit ? { doc: edit.doc, from: edit.figure.from, to: edit.figure.to, indent: edit.indent, unit: edit.unit } : group ? { doc: group.doc, from: group.group.from, to: group.group.to, indent: group.indent, unit: group.unit } : null);
   /** Options of that picture other than a width of the line, kept until the width is changed. */
   let keepOptions = $state<string | null>(null);
+  /** Kept from one time to the next: who wants light images wants them each time. */
+  let weight = $state<Weight>(
+    (() => {
+      try {
+        const saved = localStorage.getItem(WEIGHT_KEY);
+        return WEIGHTS.includes(saved as Weight) ? (saved as Weight) : "original";
+      } catch {
+        return "original";
+      }
+    })(),
+  );
+  /** What each image would weigh at a level, by `id:level`; `null` while it is being worked out. */
+  let weights = $state<Record<string, ipc.ImageWeight | null>>({});
   let rootReady: () => void = () => {};
   const ready = new Promise<void>((resolve) => (rootReady = resolve));
 
@@ -87,8 +123,10 @@
     for (const p of request.paths ?? []) void addPath(p);
     for (const b of request.blobs ?? []) void addBlob(b);
     const change = request.edit;
+    const several = request.group;
     // After the root is known: an image of the project is used where it is.
     if (change) void ready.then(() => startEdit(change));
+    if (several) void ready.then(() => startGroup(several));
   });
 
   function startEdit(change: ImageEdit) {
@@ -101,8 +139,29 @@
     caption = f.caption;
     label = f.label;
     labelEdited = true;
-    if (change.file) void addPath(change.file);
+    if (change.file) void addPath(change.file, { written: f.path });
     else ui.toast("warning", t("image.missing", { path: f.path }));
+  }
+
+  /** The pictures of a group, in their order, with what the document says of each. */
+  function startGroup(change: ImageGroupEdit) {
+    group = change;
+    const g = change.group;
+    mode = g.mode;
+    if (g.width !== null) width = g.width;
+    else if (g.options !== null) keepOptions = g.options;
+    placement = g.placement || "htbp";
+    caption = g.caption;
+    label = g.label;
+    labelEdited = true;
+    columns = g.columns;
+    g.images.forEach((image, i) => {
+      const file = change.files[i];
+      // A picture with a caption has the label it was given, none included; one without gets a label with its caption.
+      const said = { written: image.path, caption: image.caption, label: image.caption || image.label ? image.label : undefined };
+      if (file) void addPath(file, said);
+      else items = [...items, { id: uid(), kind: "kept", original: image.path, stem: safeStem(stemOf(image.path)), ext: extensionOf(image.path), url: null, ratio: null, ...said }];
+    });
   }
 
   /** Continuation lines indented like the first one, in the unit of the document. */
@@ -141,7 +200,70 @@
     return !!rootDir && relative(rootDir, path) !== path.replace(/\\/g, "/");
   }
 
+  /** Images a lighter copy can be made of: those copied into the project, but drawings (PDF, EPS, SVG). */
+  function compressible(item: Item): boolean {
+    if (item.kind !== "file" && item.kind !== "blob") return false;
+    const ext = item.kind === "blob" ? targetExtension(item.ext, item.blob?.type) : item.ext;
+    return ["png", "jpg", "jpeg"].includes(ext) || TO_PNG.includes(item.ext);
+  }
+
+  /** The bytes of an image as LaTeX can read them: its own for a PNG or a JPEG, a PNG made of it otherwise. */
+  async function rasterBytes(item: Item): Promise<Uint8Array> {
+    const direct = item.kind === "blob" ? item.blob!.type === "image/png" || item.blob!.type === "image/jpeg" : !TO_PNG.includes(item.ext);
+    const blob = item.blob ?? new Blob([await ipc.readBinaryFile(item.path!)], { type: mimeOf(item.ext) });
+    if (direct) return new Uint8Array(await blob.arrayBuffer());
+    item.png ??= await toPng(blob);
+    return item.png;
+  }
+
+  // What each image would weigh at the level chosen, worked out once.
+  $effect(() => {
+    const level = weight;
+    if (level === "original") return;
+    for (const item of items) {
+      const key = `${item.id}:${level}`;
+      if (!compressible(item) || key in weights) continue;
+      weights[key] = null;
+      const asked = item.kind === "file" && !TO_PNG.includes(item.ext) ? ipc.imageWeight(item.path!, level) : rasterBytes(item).then((bytes) => ipc.imageWeightData(bytes, level));
+      void asked.then(
+        (w) => (weights[key] = w),
+        () => (weights[key] = { original: item.size ?? 0, compressed: null, ext: null }),
+      );
+    }
+  });
+
+  function chooseWeight(level: Weight) {
+    weight = level;
+    try {
+      localStorage.setItem(WEIGHT_KEY, level);
+    } catch {
+      /* not remembered */
+    }
+  }
+
+  /** What an image will weigh in the project at the level chosen (undefined: not known yet). */
+  function weightOf(item: Item): ipc.ImageWeight | null | undefined {
+    return weight === "original" || !compressible(item) ? undefined : weights[`${item.id}:${weight}`];
+  }
+
+  /** The total of the images copied: as they are, and as they will be. */
+  const total = $derived.by(() => {
+    let from = 0;
+    let to = 0;
+    let pending = false;
+    for (const item of items) {
+      if (item.kind !== "file" && item.kind !== "blob") continue;
+      const size = item.size ?? 0;
+      const w = weightOf(item);
+      if (w === null) pending = true;
+      from += w?.original || size;
+      to += w?.compressed ?? (w?.original || size);
+    }
+    return { from, to, pending };
+  });
+
   async function preview(item: Item, blob: Blob) {
+    item.size = blob.size;
     if (item.ext === "pdf" || item.ext === "eps") return;
     item.url = URL.createObjectURL(blob);
     const img = new Image();
@@ -149,7 +271,7 @@
     img.src = item.url;
   }
 
-  async function addPath(path: string) {
+  async function addPath(path: string, said: { written?: string; caption?: string; label?: string } = {}) {
     const ext = extensionOf(path);
     if (!ACCEPTED.includes(ext)) {
       ui.toast("warning", t("image.unsupported", { name: path.split(/[\\/]/).pop() ?? path }));
@@ -167,6 +289,7 @@
       url: null,
       ratio: null,
       caption: "",
+      ...said,
     };
     items = [...items, item];
     const added = items[items.length - 1];
@@ -226,6 +349,43 @@
     items = items.filter((i) => i !== item);
   }
 
+  /** The picture being dragged to another place by its handle, and the list it is in. */
+  let dragging = $state<string | null>(null);
+  let list = $state<HTMLElement | null>(null);
+
+  function move(item: Item, to: number) {
+    const from = items.indexOf(item);
+    const target = Math.max(0, Math.min(items.length - 1, to));
+    if (from < 0 || from === target) return;
+    const next = [...items];
+    next.splice(from, 1);
+    next.splice(target, 0, item);
+    items = next;
+  }
+
+  function dragStart(e: PointerEvent, item: Item) {
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    dragging = item.id;
+  }
+
+  /** The dragged picture takes the place of the one whose middle the pointer passed. */
+  function dragMove(e: PointerEvent, item: Item) {
+    if (dragging !== item.id || !list) return;
+    const from = items.indexOf(item);
+    const rows = [...list.querySelectorAll<HTMLElement>(".item")];
+    rows.forEach((row, i) => {
+      const r = row.getBoundingClientRect();
+      const middle = r.top + r.height / 2;
+      if ((i > from && e.clientY > middle) || (i < from && e.clientY < middle)) move(item, i);
+    });
+  }
+
+  function reorderKey(e: KeyboardEvent, item: Item) {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault();
+    move(item, items.indexOf(item) + (e.key === "ArrowUp" ? -1 : 1));
+  }
+
   function toggleProjectImage(path: string) {
     const existing = items.find((i) => i.path === path);
     if (existing) remove(existing);
@@ -250,12 +410,18 @@
     return join(rootDir, folder, `${item.stem}.${targetExtension(item.ext, item.blob?.type)}`);
   }
 
+  /** The label of a picture among several: the one it has, else one made from its name once it has a caption. */
+  function subLabel(item: Item): string {
+    if (!multiple) return "";
+    return item.label ?? (item.caption ? `fig:${item.stem}` : "");
+  }
+
   const code = $derived(
     items.length
       ? figureCode({
-          paths: items.map((i) => includePath(targetPath(i))),
+          paths: items.map((i) => i.written ?? includePath(targetPath(i))),
           captions: items.map((i) => i.caption),
-          labels: items.map((i) => (multiple && i.caption ? `fig:${i.stem}` : "")),
+          labels: items.map(subLabel),
           mode,
           width,
           placement,
@@ -276,7 +442,14 @@
   /** Copies or converts one image into the project; returns its path there. */
   async function importItem(item: Item): Promise<string> {
     const dir = join(rootDir, folder);
+    if (item.kind === "kept") return item.written ?? "";
     if (item.kind === "project" && item.path) return item.path;
+    // Lighter on its way in: the engine writes the copy, the image chosen is not touched.
+    if (weight !== "original" && compressible(item)) {
+      if (item.kind === "file" && !TO_PNG.includes(item.ext)) return ipc.importImage(item.path!, dir, `${item.stem}.${item.ext}`, weight);
+      const ext = item.kind === "blob" && item.blob!.type === "image/jpeg" ? "jpg" : "png";
+      return ipc.importImageData(dir, `${item.stem}.${ext}`, await rasterBytes(item), weight);
+    }
     if (item.kind === "blob" && item.blob) {
       const direct = item.blob.type === "image/png" || item.blob.type === "image/jpeg";
       if (item.blob.type === "image/svg+xml") return ipc.importSvgData(dir, item.stem, new Uint8Array(await item.blob.arrayBuffer()));
@@ -304,14 +477,17 @@
     try {
       // Pasted images come with the dialog: the project's folder may not be known yet.
       await ready;
-      const files: string[] = [];
-      for (const item of items) files.push(await importItem(item));
-      const paths = files.map(includePath);
-      if (edit) {
-        const changed = figureCode({
+      // What the document already writes for a picture is kept as it is written.
+      const paths: string[] = [];
+      for (const item of items) {
+        const file = await importItem(item);
+        paths.push(item.written ?? includePath(file));
+      }
+      if (changed) {
+        const rewritten = figureCode({
           paths,
           captions: items.map((i) => i.caption),
-          labels: items.map((i) => (multiple && i.caption ? `fig:${i.stem}` : "")),
+          labels: items.map(subLabel),
           mode,
           width,
           placement,
@@ -320,12 +496,12 @@
           columns,
           options: keepOptions,
         });
-        editor.replaceRange(edit.doc, edit.figure.from, edit.figure.to, reindent(changed, edit.indent, edit.unit));
+        editor.replaceRange(changed.doc, changed.from, changed.to, reindent(rewritten, changed.indent, changed.unit));
       }
       const final = figureCode({
         paths,
         captions: items.map((i) => i.caption),
-        labels: items.map((i) => (multiple && i.caption ? `fig:${i.stem}` : "")),
+        labels: items.map(subLabel),
         mode,
         width,
         placement,
@@ -337,14 +513,14 @@
       const line = view.state.doc.lineAt(view.state.selection.main.head);
       const prefix = mode === "figure" && line.text.trim() !== "" ? "\n" : "";
       const body = escapeSnippet(prefix + final).replace(CAPTION_FIELD, `\${1:${t("snippet.caption")}}`);
-      if (!edit) editor.insertSnippet(`${body}\${0}`, view);
+      if (!changed) editor.insertSnippet(`${body}\${0}`, view);
       const packages = [{ name: "graphicx" }];
       if (mode === "figure" && multiple) packages.push({ name: "subcaption" });
       if (mode === "figure" && placement === "H") packages.push({ name: "float" });
       await editor.transformRoot((text) => addPackages(text, packages));
       await project.refreshTree();
-      const copied = items.filter((i) => i.kind !== "project").length;
-      if (edit) ui.toast("success", t("image.updated"));
+      const copied = items.filter((i) => i.kind !== "project" && i.kind !== "kept").length;
+      if (changed) ui.toast("success", t(items.length > 1 ? "image.updatedMany" : "image.updated"));
       else ui.toast("success", copied ? t("image.inserted", { n: items.length, folder }) : t("image.insertedExisting", { n: items.length }));
       if (ui.overlay === "image") ui.closeOverlay();
       editor.focus();
@@ -362,18 +538,13 @@
     }
   }
 
-  /** Proportions of the page sketch (A4 with usual margins). */
-  const sketchImageHeight = $derived.by(() => {
-    const ratio = items[0]?.ratio ?? 4 / 3;
-    const textWidth = 104; // px, in a 150 px wide page
-    const w = (textWidth * width) / 100 / (multiple && mode === "figure" ? Math.min(columns, items.length) : 1);
-    return Math.min(120, w / ratio);
-  });
+  /** Width of a picture in the page sketch (A4 with usual margins: a text 104 px wide in a 150 px page). */
+  const sketchWidth = $derived(multiple && mode === "figure" ? 104 / Math.min(columns, items.length) - 3 : (104 * width) / 100 - (multiple ? 3 : 0));
 </script>
 
 <svelte:window onkeydown={key} />
 
-<Modal title={edit ? t("image.editTitle") : t("image.title")} icon="image" width="min(1080px, 95vw)" height="min(760px, 92vh)">
+<Modal title={group ? t("image.editManyTitle") : edit ? t("image.editTitle") : t("image.title")} icon="image" width="min(1080px, 95vw)" height="min(760px, 92vh)">
   <div class="left">
     <div class="sources">
       <button class="btn primary" onclick={choose}><Icon name="folder-open" size={14} />{t("image.choose")}</button>
@@ -404,6 +575,7 @@
       class="items"
       class:drag-over={dragOver}
       role="list"
+      bind:this={list}
       data-drop-image="true"
       ondragover={(e) => {
         e.preventDefault();
@@ -419,7 +591,21 @@
       }}
     >
       {#each items as item, i (item.id)}
-        <div class="item card" role="listitem">
+        <div class="item card" class:dragging={dragging === item.id} role="listitem">
+          {#if multiple}
+            <button
+              class="grip"
+              title={t("image.reorder")}
+              aria-label={t("image.reorder")}
+              onpointerdown={(e) => dragStart(e, item)}
+              onpointermove={(e) => dragMove(e, item)}
+              onpointerup={() => (dragging = null)}
+              onpointercancel={() => (dragging = null)}
+              onkeydown={(e) => reorderKey(e, item)}
+            >
+              <Icon name="grip" size={16} />
+            </button>
+          {/if}
           <div class="visual">
             {#if item.url}
               <img src={item.url} alt={item.original} />
@@ -432,16 +618,23 @@
               <span class="badge">{i + 1}</span>
               <span class="original ellipsis faint" title={item.path ?? item.original}>{item.original}</span>
               {#if item.kind === "project"}<span class="badge success">{t("image.inProject")}</span>{/if}
+              {#if item.kind === "kept"}<span class="badge warning" title={t("image.keptHint")}>{t("image.kept")}</span>{/if}
               {#if item.ext === "svg" || item.ext === "svgz"}<span class="badge accent" title={t("image.svgHint")}>SVG → PDF</span>{/if}
               {#if TO_PNG.includes(item.ext)}<span class="badge accent" title={t("image.pngHint")}>{item.ext.toUpperCase()} → PNG</span>{/if}
               <div class="spacer"></div>
+              {#if item.size && item.kind !== "project" && item.kind !== "kept"}
+                {@const w = weightOf(item)}
+                <span class="weight faint" class:lighter={!!w?.compressed}>
+                  {sizeLabel(item.size, lang)}{#if w === null}<span class="spinner tiny"></span>{:else if w?.compressed}<Icon name="arrow-right" size={11} />{sizeLabel(w.compressed, lang)}{/if}
+                </span>
+              {/if}
               <button class="icon-btn" title={t("common.delete")} onclick={() => remove(item)}><Icon name="x" size={14} /></button>
             </div>
-            {#if item.kind !== "project"}
+            {#if item.kind !== "project" && item.kind !== "kept"}
               <label class="inline-field">
                 <span>{t("image.fileName")}</span>
                 <input class="input small mono" value={item.stem} oninput={(e) => (item.stem = safeStem(e.currentTarget.value) || "image")} />
-                <span class="ext faint mono">.{targetExtension(item.ext, item.blob?.type)}</span>
+                <span class="ext faint mono">.{weightOf(item)?.ext ?? targetExtension(item.ext, item.blob?.type)}</span>
               </label>
             {/if}
             {#if multiple && mode === "figure"}
@@ -471,6 +664,22 @@
       </datalist>
     </label>
 
+    {#if items.some(compressible)}
+      <div class="field">
+        <span>
+          {t("image.weight")}
+          {#if weight !== "original" && !total.pending && total.to < total.from}<span class="saved">{sizeLabel(total.from, lang)} → {sizeLabel(total.to, lang)}</span>{/if}
+        </span>
+        <div class="segmented weights" role="radiogroup" aria-label={t("image.weight")}>
+          {#each WEIGHTS as level (level)}
+            <button class:active={weight === level} role="radio" aria-checked={weight === level} data-weight={level} title={level === "original" ? undefined : t(`image.weight.${level}Hint`)} onclick={() => chooseWeight(level)}>
+              {t(`image.weight.${level}`)}
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
     <div class="field">
       <span>{t("image.layout")}</span>
       <div class="segmented">
@@ -489,7 +698,7 @@
         <label class="field">
           <span>{t("image.columns")}</span>
           <select class="select input" bind:value={columns}>
-            {#each [1, 2, 3, 4] as n}<option value={n}>{n}</option>{/each}
+            {#each Array.from({ length: MAX_COLUMNS }, (_, i) => i + 1) as n}<option value={n}>{n}</option>{/each}
           </select>
         </label>
       {/if}
@@ -518,9 +727,10 @@
         <div class="text-line"></div>
         <div class="text-line short"></div>
         {#if items.length}
+          <!-- Every picture at its place: the order they are given is the order on the page. -->
           <div class="fig" class:center={mode === "figure"}>
-            {#each items.slice(0, mode === "figure" && multiple ? Math.min(columns, items.length) : 1) as it}
-              <div class="img" style:width="{(104 * width) / 100 / (mode === 'figure' && multiple ? Math.min(columns, items.length) : 1) - (multiple ? 3 : 0)}px" style:height="{sketchImageHeight}px">
+            {#each items as it (it.id)}
+              <div class="img" style:width="{sketchWidth}px" style:height="{Math.min(120, sketchWidth / (it.ratio ?? 4 / 3))}px">
                 {#if it.url}<img src={it.url} alt="" />{/if}
               </div>
             {/each}
@@ -540,7 +750,7 @@
     <div class="spacer"></div>
     <button class="btn primary large" disabled={!items.length || busy} onclick={insert}>
       {#if busy}<span class="spinner"></span>{:else}<Icon name="check" size={15} />{/if}
-      {edit ? t("image.update") : t("image.insert", { n: items.length })}
+      {changed ? t("image.update") : t("image.insert", { n: items.length })}
     </button>
   </aside>
 </Modal>
@@ -636,6 +846,33 @@
     gap: 12px;
     padding: 10px;
   }
+  .item.dragging {
+    border-color: var(--accent);
+    box-shadow: var(--shadow);
+  }
+  /* The handle a picture is dragged by to another place. */
+  .grip {
+    flex-shrink: 0;
+    align-self: stretch;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    margin: -4px -6px -4px -4px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-faint);
+    cursor: grab;
+    touch-action: none;
+  }
+  .grip:hover,
+  .grip:focus-visible {
+    background: var(--bg-hover);
+    color: var(--text);
+  }
+  .dragging .grip {
+    cursor: grabbing;
+  }
   .visual {
     width: 140px;
     height: 100px;
@@ -662,6 +899,28 @@
   .original {
     font-size: 12px;
     min-width: 0;
+  }
+  /* What the image weighs, and what it will weigh in the project. */
+  .weight {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .weight.lighter {
+    color: var(--success);
+  }
+  .spinner.tiny {
+    width: 10px;
+    height: 10px;
+  }
+  .saved {
+    float: right;
+    color: var(--success);
+    font-variant-numeric: tabular-nums;
   }
   .inline-field {
     display: flex;
@@ -766,6 +1025,7 @@
   }
   .fig {
     display: flex;
+    flex-wrap: wrap;
     gap: 3px;
     margin: 4px 0 2px;
   }

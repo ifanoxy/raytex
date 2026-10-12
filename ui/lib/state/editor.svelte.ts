@@ -49,7 +49,7 @@ import { enterKeymap, latexStructure } from "../editor/structure";
 import { spelling as spellingExtension } from "../editor/spelling";
 import { editorTheme } from "../editor/theme";
 import { fixLabel, runFix, suggestionOf } from "../fixes";
-import { figureAt } from "../images";
+import { figureAt, figureGroupAt } from "../images";
 import { i18n, type MessageKey, t } from "../i18n.svelte";
 import * as ipc from "../ipc";
 import { diskChange, remember, type Written } from "../disk";
@@ -428,8 +428,8 @@ class EditorStore {
             readOnly
               ? []
               : codeChips({
-                  label: (kind) => t(CHIP_TEXT[kind][0]),
-                  title: (kind) => t(CHIP_TEXT[kind][1]),
+                  label: (kind, count) => (count > 1 ? t("chip.images", { n: count }) : t(CHIP_TEXT[kind][0])),
+                  title: (kind, count) => (count > 1 ? t("chip.imagesHint") : t(CHIP_TEXT[kind][1])),
                   open: (view, kind, from) => void this.openChip(view, path, kind, from),
                 }),
             EditorView.inputHandler.of((view, from, to, text) => handleDollar(view, from, to, text)),
@@ -1309,6 +1309,16 @@ class EditorStore {
       const doc = view.state.doc;
       const start = Math.max(0, from - 20_000);
       const text = doc.sliceString(start, Math.min(doc.length, from + 20_000));
+      // Pictures written together are changed together.
+      const group = figureGroupAt(text, from - start);
+      if (group) {
+        const whole = { ...group, from: start + group.from, to: start + group.to };
+        const files: (string | null)[] = [];
+        for (const image of group.images) files.push(await this.imageFile(path, image.path));
+        const indent = /^[\t ]*/.exec(doc.lineAt(whole.from).text)![0];
+        await media.openImages({ group: { doc: path, group: whole, files, indent, unit: view.state.facet(indentUnit) } });
+        return;
+      }
       const figure = figureAt(text, from - start);
       if (!figure) return;
       const at = { ...figure, from: start + figure.from, to: start + figure.to };

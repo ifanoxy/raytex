@@ -167,7 +167,22 @@ export const ctanPackage = (name: string) => call<T.CtanDetails>("ctan_package",
 export const openTexdoc = (name: string) => call<boolean>("open_texdoc", { name });
 
 // ------------------------------------------------- images, fonts, TikZ
-export const importImage = (source: string, dir: string, name?: string) => call<string>("import_image", { source, dir, name: name ?? null });
+/** How much an image is lightened when it is copied into the project. */
+export type CompressionLevel = "balanced" | "light";
+/** What an image weighs, and what it would weigh made lighter (null: nothing to gain). */
+export interface ImageWeight {
+  original: number;
+  compressed: number | null;
+  /** Extension of the lighter copy (`jpg` for a photograph kept as PNG). */
+  ext: string | null;
+}
+export const importImage = (source: string, dir: string, name?: string, level?: CompressionLevel | null) =>
+  call<string>("import_image", { source, dir, name: name ?? null, level: level ?? null });
+/** Writes an image given as data in a folder of the project, under `name` (with its extension). */
+export const importImageData = (dir: string, name: string, bytes: Uint8Array, level?: CompressionLevel | null) =>
+  invoke<string>("import_image_data", bytes, { headers: { "x-dir": encodeURIComponent(dir), "x-name": encodeURIComponent(name), ...(level ? { "x-level": level } : {}) } });
+export const imageWeight = (path: string, level: CompressionLevel) => call<ImageWeight>("image_weight", { path, level });
+export const imageWeightData = (bytes: Uint8Array, level: CompressionLevel) => invoke<ImageWeight>("image_weight_data", bytes, { headers: { "x-level": level } });
 export const safeFileName = (name: string) => call<string>("safe_file_name", { name });
 export const importSvgData = (dir: string, name: string, svg: Uint8Array) =>
   invoke<string>("import_svg_data", svg, { headers: { "x-dir": encodeURIComponent(dir), "x-name": encodeURIComponent(name) } });

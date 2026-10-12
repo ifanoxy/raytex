@@ -8,9 +8,10 @@ Cliquez sur **Image** dans la barre d'outils (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <
 - **le dossier** du projet où les copier (`figures/` par défaut) et **le nom** de chaque fichier, rendu sûr pour LaTeX (sans espace ni accent) ;
 - **la disposition** : figure avec légende (numérotée, avec étiquette pour `\ref`) ou image dans le texte ;
 - **la largeur**, en pourcentage de la largeur du texte, avec un aperçu de la page ;
-- **la position** : automatique (conseillé), ici exactement, en haut ou en bas d'une page.
+- **la position** : automatique (conseillé), ici exactement, en haut ou en bas d'une page ;
+- **le poids des images** copiées dans le projet : *D'origine*, *Allégé* ou *Léger*. Chaque image affiche ce qu'elle pèse et ce qu'elle pèsera. Une photo est réduite (2400 ou 1600 pixels de large au plus) et écrite en JPEG, même si elle était en PNG ; un schéma, une capture d'écran ou une image transparente restent en PNG, sans perte ; PDF, EPS et SVG ne sont pas touchés. L'image que vous avez choisie n'est jamais modifiée, et le choix est retenu pour les fois suivantes.
 
-Plusieurs images deviennent des **sous-figures** côte à côte, chacune avec sa légende. Les formats que LaTeX ne lit pas sont convertis : un **SVG** devient un PDF qui reste vectoriel, WebP, GIF, HEIC, BMP ou TIFF deviennent des PNG. Les packages nécessaires (`graphicx`, `subcaption`, `float`) sont ajoutés au préambule, et le curseur se place sur la légende, prête à être tapée.
+Plusieurs images deviennent des **sous-figures** côte à côte, chacune avec sa légende : glissez-les par leur poignée (ou flèches haut et bas) pour changer leur ordre, l'aperçu de la page les montre à leur place. Dans le code, elles n'ont qu'**une pastille**, *2 images* : un clic rouvre la fenêtre sur toutes, avec leur ordre, leurs légendes et leur disposition. Les formats que LaTeX ne lit pas sont convertis : un **SVG** devient un PDF qui reste vectoriel, WebP, GIF, HEIC, BMP ou TIFF deviennent des PNG. Les packages nécessaires (`graphicx`, `subcaption`, `float`) sont ajoutés au préambule, et le curseur se place sur la légende, prête à être tapée.
 
 Le code produit ressemble à ceci :
 

@@ -1750,6 +1750,19 @@ const en = {
   "pdfExport.incomplete": "The PDF is not whole: the build did not finish it.",
   "pdfExport.busy": "A build is still running.",
   "pdfExport.doneWithErrors": "PDF exported despite the errors: {file}",
+  "chip.images": "{n} images",
+  "chip.imagesHint": "Change these images: order, layout, captions",
+  "image.editManyTitle": "Change the images",
+  "image.updatedMany": "Images updated",
+  "image.reorder": "Drag to change the order (or up and down arrows)",
+  "image.kept": "not found",
+  "image.keptHint": "The file of this image was not found: it is kept as it is written.",
+  "image.weight": "Weight of the images",
+  "image.weight.original": "Original",
+  "image.weight.balanced": "Lighter",
+  "image.weight.light": "Light",
+  "image.weight.balancedHint": "Up to 2400 pixels wide: nothing shows, printed too",
+  "image.weight.lightHint": "Up to 1600 pixels wide: fine on a screen, a little soft printed large",
 };
 
 export default en;

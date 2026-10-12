@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use raytex_core::fonts::{self, FontFamily, FontRole, TexFont};
+use raytex_core::images::{Compression, CompressionLevel};
 use raytex_core::preview::{self, PreviewOutcome, PreviewRequest};
 use raytex_core::tex::Engine;
 use raytex_core::tikz::{self, TikzTemplate};
@@ -21,13 +22,16 @@ use crate::state::AppState;
 // ------------------------------------------------------------------ images
 
 /// Copies an image into a folder of the project under a LaTeX-safe name,
-/// converting SVG drawings to PDF. Returns the new file.
+/// converting SVG drawings to PDF, and making a PNG or a JPEG lighter when
+/// `level` says so (the image that was chosen is not touched). Returns the
+/// new file.
 #[tauri::command]
 pub async fn import_image(
     app: AppHandle,
     source: String,
     dir: String,
     name: Option<String>,
+    level: Option<CompressionLevel>,
 ) -> CmdResult<String> {
     let dir_path = {
         let state = app.state::<AppState>();
@@ -35,12 +39,115 @@ pub async fn import_image(
     };
     let source = abs(&source);
     blocking(&app, move |app, state| {
-        let target = images::import(&source, &dir_path, name.as_deref())?;
+        let target = images::import_with(
+            &source,
+            &dir_path,
+            name.as_deref(),
+            level.map(Compression::from),
+        )?;
         state.note_own_write(&target);
         let _ = app.asset_protocol_scope().allow_file(&target);
         Ok(target.to_string_lossy().into_owned())
     })
     .await?
+}
+
+/// A header of a request that carries its data as its body.
+fn header(request: &tauri::ipc::Request<'_>, name: &str) -> Option<String> {
+    request
+        .headers()
+        .get(name)
+        .and_then(|v| v.to_str().ok())
+        .map(super::files::percent_decode)
+}
+
+/// The compression a request names in its `x-level` header, if any.
+fn level_of(request: &tauri::ipc::Request<'_>) -> Option<Compression> {
+    match header(request, "x-level").as_deref() {
+        Some("balanced") => Some(Compression::BALANCED),
+        Some("light") => Some(Compression::LIGHT),
+        _ => None,
+    }
+}
+
+/// Writes an image given as data (pasted, or converted by the interface)
+/// into a folder of the project, lighter when the `x-level` header says so.
+/// The folder and the file name (with its extension) are in the `x-dir` and
+/// `x-name` headers; the image is the raw request body. Returns the new file.
+#[tauri::command]
+pub async fn import_image_data(
+    app: AppHandle,
+    request: tauri::ipc::Request<'_>,
+) -> CmdResult<String> {
+    let dir = header(&request, "x-dir").ok_or("missing x-dir header")?;
+    let name = header(&request, "x-name").ok_or("missing x-name header")?;
+    let how = level_of(&request);
+    let dir_path = {
+        let state = app.state::<AppState>();
+        writable_path(&state, &dir)?
+    };
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected raw bytes".into());
+    };
+    let bytes = bytes.clone();
+    blocking(&app, move |app, state| {
+        let target = images::import_data(&bytes, &dir_path, &name, how)?;
+        state.note_own_write(&target);
+        let _ = app.asset_protocol_scope().allow_file(&target);
+        Ok(target.to_string_lossy().into_owned())
+    })
+    .await?
+}
+
+/// What an image weighs, and what it would weigh made lighter.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageWeight {
+    /// Its size as it is, in bytes.
+    pub original: u64,
+    /// Its size made lighter; `None` when there is nothing to gain.
+    pub compressed: Option<u64>,
+    /// The extension of the lighter copy (`jpg` for a photograph kept as PNG).
+    pub ext: Option<String>,
+}
+
+fn weigh(data: &[u8], how: Compression) -> ImageWeight {
+    let lighter = images::compress(data, how, false);
+    ImageWeight {
+        original: data.len() as u64,
+        compressed: lighter.as_ref().map(|c| c.data.len() as u64),
+        ext: lighter.map(|c| c.ext.to_owned()),
+    }
+}
+
+/// What the image file `path` would weigh at `level`.
+#[tauri::command]
+pub async fn image_weight(
+    app: AppHandle,
+    path: String,
+    level: CompressionLevel,
+) -> CmdResult<ImageWeight> {
+    let path = abs(&path);
+    blocking(&app, move |_, _| {
+        let data = std::fs::read(&path).map_err(|e| e.to_string())?;
+        Ok(weigh(&data, level.into()))
+    })
+    .await?
+}
+
+/// What an image given as data (the raw request body) would weigh at the
+/// level of the `x-level` header.
+#[tauri::command]
+pub async fn image_weight_data(
+    app: AppHandle,
+    request: tauri::ipc::Request<'_>,
+) -> CmdResult<ImageWeight> {
+    let how = level_of(&request).ok_or("missing x-level header")?;
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected raw bytes".into());
+    };
+    let bytes = bytes.clone();
+    blocking(&app, move |_, _| weigh(&bytes, how)).await
 }
 
 /// Converts SVG data (a pasted drawing) to a PDF in a folder of the project.
@@ -51,16 +158,8 @@ pub async fn import_svg_data(
     app: AppHandle,
     request: tauri::ipc::Request<'_>,
 ) -> CmdResult<String> {
-    let header = |name: &str| {
-        request
-            .headers()
-            .get(name)
-            .and_then(|v| v.to_str().ok())
-            .map(super::files::percent_decode)
-            .ok_or(format!("missing {name} header"))
-    };
-    let dir = header("x-dir")?;
-    let name = header("x-name")?;
+    let dir = header(&request, "x-dir").ok_or("missing x-dir header")?;
+    let name = header(&request, "x-name").ok_or("missing x-name header")?;
     let dir_path = {
         let state = app.state::<AppState>();
         writable_path(&state, &dir)?

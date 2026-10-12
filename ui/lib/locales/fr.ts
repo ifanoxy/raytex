@@ -1752,6 +1752,19 @@ const fr: Record<keyof typeof en, string> = {
   "pdfExport.incomplete": "Le PDF n'est pas entier : la compilation ne l'a pas terminé.",
   "pdfExport.busy": "Une compilation est toujours en cours.",
   "pdfExport.doneWithErrors": "PDF exporté malgré les erreurs : {file}",
+  "chip.images": "{n} images",
+  "chip.imagesHint": "Modifier ces images : ordre, disposition, légendes",
+  "image.editManyTitle": "Modifier les images",
+  "image.updatedMany": "Images mises à jour",
+  "image.reorder": "Glisser pour changer l'ordre (ou flèches haut et bas)",
+  "image.kept": "introuvable",
+  "image.keptHint": "Le fichier de cette image n'a pas été trouvé : elle est gardée telle qu'elle est écrite.",
+  "image.weight": "Poids des images",
+  "image.weight.original": "D'origine",
+  "image.weight.balanced": "Allégé",
+  "image.weight.light": "Léger",
+  "image.weight.balancedHint": "Jusqu'à 2400 pixels de large : rien ne se voit, même imprimé",
+  "image.weight.lightHint": "Jusqu'à 1600 pixels de large : parfait à l'écran, un peu doux imprimé en grand",
 };
 
 export default fr;

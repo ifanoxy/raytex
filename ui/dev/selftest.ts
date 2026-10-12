@@ -340,6 +340,87 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     ok = false;
   }
 
+  // ------------------------------------------------- several images, as one
+  // The two images inserted together have one chip; it opens the window on
+  // both, in their order; the second dragged first, the figure is written
+  // again in that order, with what each image had.
+  try {
+    const doc = () => editor.textOf(chapter)!;
+    // The first figure of sub-figures: the one the images above were inserted as.
+    const figure = () => {
+      const text = doc();
+      const from = text.lastIndexOf("\\begin{figure}", text.indexOf("\\begin{subfigure}"));
+      return { from, to: text.indexOf("\\end{figure}", from) };
+    };
+    const order = () => [...doc().slice(figure().from, figure().to).matchAll(/\\includegraphics\[width=\\linewidth\]\{([^}]*)\}/g)].map((m) => m[1]);
+    const first = order();
+    const v = editor.view!;
+    v.dispatch({ selection: { anchor: figure().from }, scrollIntoView: true });
+    await until(() => !!v.dom.querySelector('.cm-code-chip[data-count="2"]'), 10_000, "chip of the two images");
+    const chips = [...v.dom.querySelectorAll<HTMLElement>(".cm-code-chip")].filter((c) => v.posAtDOM(c) >= figure().from && v.posAtDOM(c) <= figure().to).length;
+    v.dom.querySelector<HTMLElement>('.cm-code-chip[data-count="2"]')!.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+    await until(() => document.querySelectorAll(".items .item").length === 2, 10_000, "the two images in the window");
+    await pause(600);
+    const shown = [...document.querySelectorAll(".items .item .original")].map((e) => e.textContent?.trim());
+    const subCaption = document.querySelectorAll<HTMLInputElement>(".items .item .inline-field input")[0];
+    type(subCaption, "Vue de face");
+    document.querySelectorAll<HTMLElement>(".items .item .grip")[1].dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true, cancelable: true }));
+    await pause(300);
+    await scene("image-group");
+    document.querySelector<HTMLButtonElement>(".right .btn.primary")!.click();
+    await until(() => ui.overlay === null, 20_000, "images updated");
+    const second = order();
+    const captioned = /\\includegraphics\[width=\\linewidth\]\{[^}]*photo[^}]*\}\s*\\caption\{Vue de face\}/.test(doc());
+    log(`image group: ${chips} chip for ${first.join(" + ")}, window ${shown.join(" + ")}, after the drag ${second.join(" + ")}, caption with its image ${captioned}`);
+    ok = chips === 1 && first.length === 2 && shown.length === 2 && second.length === 2 && second[0] === first[1] && second[1] === first[0] && captioned && (await buildOk(log, "image group")) && ok;
+  } catch (e) {
+    log(`image group failed: ${e}`);
+    ok = false;
+  }
+
+  // ------------------------------------------------- an image made lighter
+  // A photograph pasted as a PNG, with light images asked for: the window
+  // says what it will weigh, and what is written in the project is a JPEG
+  // many times lighter.
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1500;
+    canvas.height = 1000;
+    const ctx = canvas.getContext("2d")!;
+    const grain = ctx.createImageData(1500, 1000);
+    for (let i = 0; i < grain.data.length; i += 4) {
+      const x = (i / 4) % 1500;
+      grain.data[i] = (x / 8 + Math.random() * 40) | 0;
+      grain.data[i + 1] = (120 + Math.random() * 40) | 0;
+      grain.data[i + 2] = (200 - x / 10 + Math.random() * 40) | 0;
+      grain.data[i + 3] = 255;
+    }
+    ctx.putImageData(grain, 0, 0);
+    const photo = await new Promise<Blob>((r) => canvas.toBlob((b) => r(b!), "image/png"));
+    const v = editor.view!;
+    v.dispatch({ changes: { from: v.state.doc.length, insert: "\n\n" }, selection: { anchor: v.state.doc.length + 2 } });
+    const known = new Set((await ipc.fileTree()).find((n) => n.name === "figures")?.children?.map((c) => c.name) ?? []);
+    media.openImages({ blobs: [new File([photo], "photo.png", { type: "image/png" })] });
+    await until(() => document.querySelectorAll(".items .item").length === 1 && !!document.querySelector('.weights [data-weight="light"]'), 10_000, "photograph in the window");
+    document.querySelector<HTMLButtonElement>('.weights [data-weight="light"]')!.click();
+    await until(() => !!document.querySelector(".items .item .weight.lighter"), 60_000, "weight of the lighter image");
+    const told = document.querySelector(".items .item .weight")?.textContent?.replace(/\s+/g, " ").trim();
+    const extension = document.querySelector(".items .item .ext")?.textContent?.trim();
+    await scene("image-weight");
+    document.querySelector<HTMLButtonElement>(".right .btn.primary")!.click();
+    await until(() => ui.overlay === null, 60_000, "lighter image inserted");
+    const made = ((await ipc.fileTree()).find((n) => n.name === "figures")?.children ?? []).filter((c) => !known.has(c.name));
+    const written = made.length === 1 ? (await ipc.readBinaryFile(made[0].path)).byteLength : 0;
+    log(`lighter image: ${photo.size} bytes pasted, window «${told}» as ${extension}, written ${made.map((c) => c.name).join(" ")} ${written} bytes`);
+    ok = made.length === 1 && made[0].name.endsWith(".jpg") && extension === ".jpg" && written > 0 && written * 4 < photo.size && (await buildOk(log, "lighter image")) && ok;
+    // The choice is kept from one time to the next: back to images as they are, for what follows.
+    localStorage.removeItem("raytex.image.weight");
+  } catch (e) {
+    log(`lighter image failed: ${e}`);
+    localStorage.removeItem("raytex.image.weight");
+    ok = false;
+  }
+
   // ---------------------------------------------------------------- TikZ
   try {
     const v = editor.view!;

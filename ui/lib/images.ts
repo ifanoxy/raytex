@@ -100,6 +100,9 @@ export interface FigureOptions {
   options?: string | null;
 }
 
+/** Pictures the image dialog lays out side by side, at most. */
+export const MAX_COLUMNS = 4;
+
 function fraction(percent: number): string {
   if (percent >= 100) return "\\linewidth";
   return `${Math.round(percent) / 100}\\linewidth`;
@@ -197,4 +200,157 @@ export function figureAt(text: string, at: number): FigureAt | null {
     caption: caption?.value ?? "",
     label: label?.value ?? "",
   };
+}
+
+/** One picture of a group. */
+export interface GroupImage {
+  /** Path written in `\\includegraphics{…}`. */
+  path: string;
+  /** Its own caption and label (sub-figure), empty when it has none. */
+  caption: string;
+  label: string;
+}
+
+/**
+ * Several pictures written together, as the image dialog writes them: a
+ * figure of sub-figures, or pictures side by side joined by `\\hfill`.
+ */
+export interface FigureGroup {
+  /** Range rewritten by "Update". */
+  from: number;
+  to: number;
+  mode: "figure" | "inline";
+  images: GroupImage[];
+  /** Pictures per row (sub-figures). */
+  columns: number;
+  /** Width of each picture in percent of the line (side by side), or null when their options say something else. */
+  width: number | null;
+  /** Their options as written, when they are not such a width. */
+  options: string | null;
+  placement: string;
+  caption: string;
+  label: string;
+}
+
+const GRAPHICS = /\\includegraphics\*?\s*(?:\[([^\]]*)\])?\s*\{([^{}]*)\}/;
+/** What may stand between two pictures of a group. */
+const BETWEEN = /^(?:\s|\\hfill\b|\\par\b|\\medskip\b|\\smallskip\b|\\bigskip\b|\\quad\b|\\qquad\b|\\\\|%[^\n]*)*$/;
+
+/** Width in percent of the line said by the options of a picture, or null. */
+function lineWidth(options: string): number | null {
+  const w = /^width\s*=\s*([\d.]*)\s*\\(?:linewidth|textwidth|columnwidth)$/.exec(options.trim());
+  return w ? Math.round((w[1] ? Number(w[1]) : 1) * 100) : null;
+}
+
+/** The pictures side by side that the one at `at` belongs to: joined by `\\hfill`, nothing else between them. */
+function inlineGroup(text: string, at: number): FigureGroup | null {
+  const found: { from: number; to: number; options: string; path: string }[] = [];
+  const re = new RegExp(GRAPHICS.source, "g");
+  // A little before and after: a group is a few lines.
+  const start = Math.max(0, at - 4000);
+  re.lastIndex = start;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) && m.index < at + 4000) found.push({ from: m.index, to: m.index + m[0].length, options: (m[1] ?? "").trim(), path: m[2].trim() });
+  const mine = found.findIndex((f) => f.from === at);
+  if (mine < 0) return null;
+  const joined = (a: number, b: number) => {
+    const gap = text.slice(found[a].to, found[b].from);
+    return gap.includes("\\hfill") && BETWEEN.test(gap);
+  };
+  let first = mine;
+  let last = mine;
+  while (first > 0 && joined(first - 1, first)) first--;
+  while (last < found.length - 1 && joined(last, last + 1)) last++;
+  if (first === last) return null;
+  const run = found.slice(first, last + 1);
+  // One width for all, as the dialog writes them; else they are not its to rewrite.
+  if (run.some((f) => f.options !== run[0].options)) return null;
+  const width = lineWidth(run[0].options);
+  return {
+    from: run[0].from,
+    to: run[run.length - 1].to,
+    mode: "inline",
+    images: run.map((f) => ({ path: f.path, caption: "", label: "" })),
+    columns: Math.min(MAX_COLUMNS, run.length),
+    width,
+    options: width === null ? run[0].options : null,
+    placement: "htbp",
+    caption: "",
+    label: "",
+  };
+}
+
+/**
+ * The group of pictures the `\\includegraphics` starting at `at` belongs to,
+ * when the image dialog can rewrite it whole: a figure made of sub-figures
+ * of one picture each (with `\\centering`, a caption and a label, nothing
+ * else), or pictures joined by `\\hfill`. Null for a picture on its own.
+ */
+export function figureGroupAt(text: string, at: number): FigureGroup | null {
+  if (!text.startsWith("\\includegraphics", at)) return null;
+  const begin = text.lastIndexOf("\\begin{figure", at);
+  const inFigure = begin >= 0 && !text.slice(begin, at).includes("\\end{figure");
+  const head = inFigure ? /^\\begin\{figure\*?\}\s*(?:\[([^\]]*)\])?/.exec(text.slice(begin, begin + 80)) : null;
+  const end = inFigure ? text.indexOf("\\end{figure", at) : -1;
+  const close = end >= 0 ? /^\\end\{figure\*?\}/.exec(text.slice(end, end + 16)) : null;
+  if (!head || !close) return inlineGroup(text, at);
+  const bodyStart = begin + head[0].length;
+  const body = text.slice(bodyStart, end);
+  // The sub-figures, each with one picture and nothing but its caption and label.
+  const images: GroupImage[] = [];
+  const spans: { from: number; to: number; share: number }[] = [];
+  const sub = /\\begin\{subfigure\}\s*(?:\[[^\]]*\])?\s*\{([^{}]*)\}([\s\S]*?)\\end\{subfigure\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = sub.exec(body))) {
+    const inner = m[2];
+    const picture = GRAPHICS.exec(inner);
+    if (!picture) return inlineGroup(text, at);
+    const caption = commandArg(inner, "caption");
+    const label = commandArg(inner, "label");
+    let rest = inner.replace(picture[0], "");
+    if (caption) rest = rest.replace(caption.raw, "");
+    if (label) rest = rest.replace(label.raw, "");
+    if (rest.replace(/%.*$/gm, "").replace(/\\centering\b/, "").trim()) return inlineGroup(text, at);
+    images.push({ path: picture[2].trim(), caption: caption?.value ?? "", label: label?.value ?? "" });
+    const share = /^([\d.]*)\s*\\(?:linewidth|textwidth|columnwidth)$/.exec(m[1].trim());
+    spans.push({ from: m.index, to: m.index + m[0].length, share: share ? (share[1] ? Number(share[1]) : 1) : 0 });
+  }
+  if (images.length < 2) return inlineGroup(text, at);
+  // Around them: `\centering`, the caption and the label of the figure, and what separates two pictures.
+  let outside = "";
+  let from = 0;
+  let firstRow = 0;
+  spans.forEach((span, i) => {
+    const gap = body.slice(from, span.from);
+    if (i > 0 && !firstRow && /\\par\b|\\\\/.test(gap)) firstRow = i;
+    outside += i === 0 ? gap : BETWEEN.test(gap) ? "" : gap;
+    from = span.to;
+  });
+  outside += body.slice(from);
+  const caption = commandArg(outside, "caption");
+  const label = commandArg(outside, "label");
+  if (caption) outside = outside.replace(caption.raw, "");
+  if (label) outside = outside.replace(label.raw, "");
+  if (outside.replace(/%.*$/gm, "").replace(/\\centering\b/, "").trim()) return inlineGroup(text, at);
+  // Pictures per row: where the first row ends, else what their width allows.
+  const byWidth = spans[0].share > 0 ? Math.round(1 / (spans[0].share + 0.02)) : images.length;
+  const columns = Math.max(1, Math.min(MAX_COLUMNS, firstRow || Math.min(byWidth, images.length)));
+  return {
+    from: begin,
+    to: end + close[0].length,
+    mode: "figure",
+    images,
+    columns,
+    width: null,
+    options: null,
+    placement: head[1] ?? "htbp",
+    caption: caption?.value ?? "",
+    label: label?.value ?? "",
+  };
+}
+
+/** Where the first picture of a group starts (its chip stands for all of them). */
+export function firstPictureOf(text: string, group: FigureGroup): number {
+  const m = GRAPHICS.exec(text.slice(group.from, group.to));
+  return m ? group.from + m.index : group.from;
 }

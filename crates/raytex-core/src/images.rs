@@ -7,6 +7,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
+use serde::{Deserialize, Serialize};
 use svg2pdf::usvg;
 
 /// Formats read directly by pdfLaTeX, XeLaTeX and LuaLaTeX.
@@ -130,9 +131,255 @@ pub fn svg_to_pdf(data: &[u8]) -> Result<Vec<u8>, String> {
     .map_err(|e| e.to_string())
 }
 
+// ------------------------------------------------------------ compression
+
+/// How much an image is lightened: how large it may stay, and how finely a
+/// photograph is written.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Compression {
+    /// Its longest side at most, in pixels.
+    pub max_side: u32,
+    /// Quality of a photograph written as JPEG (1 to 100).
+    pub quality: u8,
+}
+
+impl Compression {
+    /// From the lightest touch to the heaviest: the steps tried to bring a
+    /// document under a size. 2400 pixels across 16 cm of paper are 380
+    /// dots per inch; 1600, 254.
+    pub const STEPS: [Compression; 8] = [
+        Compression::new(3200, 90),
+        Compression::new(2400, 84),
+        Compression::new(2000, 78),
+        Compression::new(1600, 72),
+        Compression::new(1280, 64),
+        Compression::new(1024, 56),
+        Compression::new(800, 48),
+        Compression::new(640, 40),
+    ];
+    /// Lighter with nothing to see of it, on paper too.
+    pub const BALANCED: Compression = Self::STEPS[1];
+    /// Much lighter: fine on a screen, a little soft printed large.
+    pub const LIGHT: Compression = Self::STEPS[3];
+
+    const fn new(max_side: u32, quality: u8) -> Self {
+        Self { max_side, quality }
+    }
+}
+
+/// The two compressions offered by name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CompressionLevel {
+    /// [`Compression::BALANCED`].
+    Balanced,
+    /// [`Compression::LIGHT`].
+    Light,
+}
+
+impl From<CompressionLevel> for Compression {
+    fn from(level: CompressionLevel) -> Self {
+        match level {
+            CompressionLevel::Balanced => Compression::BALANCED,
+            CompressionLevel::Light => Compression::LIGHT,
+        }
+    }
+}
+
+/// A lighter copy of an image.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Compressed {
+    /// The file.
+    pub data: Vec<u8>,
+    /// Its extension: `jpg` or `png`.
+    pub ext: &'static str,
+    /// Its size in pixels.
+    pub width: u32,
+    /// Its size in pixels.
+    pub height: u32,
+}
+
+/// Whether an image looks like a photograph rather than a drawing, a chart
+/// or a capture of a screen: its neighbouring pixels are rarely the same.
+/// Flat areas compress well without loss and show the defects of JPEG;
+/// photographs are the other way round.
+fn photographic(rgb: &image::RgbImage) -> bool {
+    let (w, h) = rgb.dimensions();
+    if w < 2 || h == 0 {
+        return false;
+    }
+    let step = (h / 256).max(1) as usize;
+    let (mut same, mut pairs) = (0u64, 0u64);
+    for row in rgb.rows().step_by(step) {
+        let mut before: Option<&image::Rgb<u8>> = None;
+        for px in row {
+            if let Some(b) = before {
+                pairs += 1;
+                same += u64::from(b == px);
+            }
+            before = Some(px);
+        }
+    }
+    pairs > 0 && same * 4 < pairs
+}
+
+fn encode_jpeg(image: &image::DynamicImage, quality: u8, icc: Option<&[u8]>) -> Option<Vec<u8>> {
+    use image::ImageEncoder;
+    let mut out = Vec::new();
+    let mut encoder =
+        image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, quality.clamp(1, 100));
+    if let Some(icc) = icc {
+        let _ = encoder.set_icc_profile(icc.to_vec());
+    }
+    // JPEG has greys and colours of 8 bits, and no transparency.
+    let flat = if image.color().has_color() {
+        image::DynamicImage::ImageRgb8(image.to_rgb8())
+    } else {
+        image::DynamicImage::ImageLuma8(image.to_luma8())
+    };
+    encoder
+        .write_image(
+            flat.as_bytes(),
+            flat.width(),
+            flat.height(),
+            flat.color().into(),
+        )
+        .ok()?;
+    Some(out)
+}
+
+fn encode_png(image: &image::DynamicImage, icc: Option<&[u8]>) -> Option<Vec<u8>> {
+    use image::ImageEncoder;
+    use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+    let mut out = Vec::new();
+    let mut encoder =
+        PngEncoder::new_with_quality(&mut out, CompressionType::Best, FilterType::Adaptive);
+    if let Some(icc) = icc {
+        let _ = encoder.set_icc_profile(icc.to_vec());
+    }
+    encoder
+        .write_image(
+            image.as_bytes(),
+            image.width(),
+            image.height(),
+            image.color().into(),
+        )
+        .ok()?;
+    Some(out)
+}
+
+/// A lighter copy of a PNG or JPEG image, or `None` when there is none to
+/// make: another format, an image that cannot be read, colours for print
+/// (CMYK, which would not come back the same), or a copy that would not
+/// be lighter than the image is.
+///
+/// The image is made smaller when its longest side is over `how.max_side`.
+/// A JPEG is written again as a JPEG. A PNG stays a PNG, without loss,
+/// unless it is a photograph without transparency: then it becomes a JPEG,
+/// many times lighter, when `keep_format` allows its extension to change.
+/// The colour profile of the image is kept, and its pixels are not turned
+/// (the engines of LaTeX do not read the orientation a camera notes either).
+pub fn compress(data: &[u8], how: Compression, keep_format: bool) -> Option<Compressed> {
+    use image::{ImageDecoder, ImageFormat};
+    let reader = image::ImageReader::new(std::io::Cursor::new(data))
+        .with_guessed_format()
+        .ok()?;
+    let format = reader.format()?;
+    if !matches!(format, ImageFormat::Png | ImageFormat::Jpeg) {
+        return None;
+    }
+    let mut decoder = reader.into_decoder().ok()?;
+    if matches!(
+        decoder.original_color_type(),
+        image::ExtendedColorType::Cmyk8
+    ) {
+        return None;
+    }
+    let icc = decoder.icc_profile().ok().flatten();
+    let mut image = image::DynamicImage::from_decoder(decoder).ok()?;
+    let longest = image.width().max(image.height());
+    if how.max_side > 0 && longest > how.max_side {
+        image = image.resize(
+            how.max_side,
+            how.max_side,
+            image::imageops::FilterType::Lanczos3,
+        );
+    }
+    let transparent = image.color().has_alpha() && image.to_rgba8().pixels().any(|p| p[3] != 255);
+    // A JPEG stays one; a PNG becomes one when it is a photograph that hides nothing.
+    let as_jpeg = format == ImageFormat::Jpeg
+        || (!transparent && !keep_format && photographic(&image.to_rgb8()));
+    let (out, ext) = if as_jpeg {
+        (encode_jpeg(&image, how.quality, icc.as_deref())?, "jpg")
+    } else {
+        // An alpha channel that hides nothing is so much weight for nothing.
+        if image.color().has_alpha() && !transparent {
+            image = match image {
+                image::DynamicImage::ImageRgba16(_) => {
+                    image::DynamicImage::ImageRgb16(image.to_rgb16())
+                }
+                image::DynamicImage::ImageLumaA16(_) => {
+                    image::DynamicImage::ImageLuma16(image.to_luma16())
+                }
+                image::DynamicImage::ImageLumaA8(_) => {
+                    image::DynamicImage::ImageLuma8(image.to_luma8())
+                }
+                other => image::DynamicImage::ImageRgb8(other.to_rgb8()),
+            };
+        }
+        (encode_png(&image, icc.as_deref())?, "png")
+    };
+    // Not worth a copy that is hardly lighter.
+    if out.len() as u64 * 100 >= data.len() as u64 * 95 {
+        return None;
+    }
+    Some(Compressed {
+        data: out,
+        ext,
+        width: image.width(),
+        height: image.height(),
+    })
+}
+
 /// Copies `source` into `dir` under a LaTeX-safe name (`name`, or the
 /// source's name), converting SVG to PDF. Returns the new file.
 pub fn import(source: &Path, dir: &Path, name: Option<&str>) -> Result<PathBuf, String> {
+    import_with(source, dir, name, None)
+}
+
+/// Writes an image given as data into `dir` under the LaTeX-safe form of
+/// `name` (with its extension), made lighter when `compression` says so and
+/// there is something to gain: a photograph kept as PNG then becomes a JPEG.
+/// Returns the new file.
+pub fn import_data(
+    data: &[u8],
+    dir: &Path,
+    name: &str,
+    compression: Option<Compression>,
+) -> Result<PathBuf, String> {
+    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    let wanted = latex_file_name(name);
+    let (stem, ext) = wanted.rsplit_once('.').unwrap_or((wanted.as_str(), "png"));
+    let lighter = compression.and_then(|how| compress(data, how, false));
+    let (bytes, ext) = match &lighter {
+        Some(c) => (c.data.as_slice(), c.ext),
+        None => (data, ext),
+    };
+    let target = unique_path(dir, &format!("{stem}.{ext}"));
+    std::fs::write(&target, bytes).map_err(|e| e.to_string())?;
+    Ok(target)
+}
+
+/// [`import`], with the image made lighter on the way when `compression`
+/// says so (see [`compress`]): what is written in the project is the lighter
+/// copy, the image the user chose is not touched.
+pub fn import_with(
+    source: &Path,
+    dir: &Path,
+    name: Option<&str>,
+    compression: Option<Compression>,
+) -> Result<PathBuf, String> {
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let original = source
         .file_name()
@@ -178,6 +425,15 @@ pub fn import(source: &Path, dir: &Path, name: Option<&str>) -> Result<PathBuf, 
             {
                 return Ok(source.to_path_buf());
             }
+            if let Some(how) = compression
+                && matches!(ext.as_str(), "png" | "jpg" | "jpeg")
+                && let Ok(data) = std::fs::read(source)
+                && let Some(lighter) = compress(&data, how, false)
+            {
+                let target = unique_path(dir, &format!("{stem}.{}", lighter.ext));
+                std::fs::write(&target, lighter.data).map_err(|e| e.to_string())?;
+                return Ok(target);
+            }
             let target = unique_path(dir, &file);
             std::fs::copy(source, &target).map_err(|e| e.to_string())?;
             Ok(target)
@@ -198,6 +454,173 @@ mod tests {
         assert_eq!(latex_file_name("Œuvre (finale).jpg"), "oeuvre-finale.jpg");
         assert_eq!(latex_file_name("???.png"), "image.png");
         assert_eq!(latex_file_name("schéma"), "schema");
+    }
+
+    /// A picture with the grain of a photograph: no two neighbours alike.
+    fn photo(width: u32, height: u32) -> image::RgbImage {
+        let mut seed = 0x2545_f491u32;
+        image::RgbImage::from_fn(width, height, |x, y| {
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            let noise = (seed % 24) as u8;
+            image::Rgb([
+                (x * 200 / width) as u8 + noise,
+                (y * 200 / height) as u8 + noise,
+                ((x + y) * 100 / (width + height)) as u8 + noise,
+            ])
+        })
+    }
+
+    /// A chart: flat areas of a few colours.
+    fn drawing(width: u32, height: u32) -> image::RgbaImage {
+        image::RgbaImage::from_fn(width, height, |x, y| {
+            if (x / 40 + y / 40) % 2 == 0 {
+                image::Rgba([255, 255, 255, 255])
+            } else {
+                image::Rgba([30, 90, 200, 255])
+            }
+        })
+    }
+
+    fn png(image: &image::DynamicImage) -> Vec<u8> {
+        let mut out = std::io::Cursor::new(Vec::new());
+        image.write_to(&mut out, image::ImageFormat::Png).unwrap();
+        out.into_inner()
+    }
+
+    fn size_of(data: &[u8]) -> (image::ImageFormat, u32, u32) {
+        let format = image::guess_format(data).unwrap();
+        let image = image::load_from_memory(data).unwrap();
+        (format, image.width(), image.height())
+    }
+
+    #[test]
+    fn a_photograph_is_made_smaller_and_written_as_jpeg() {
+        let original = png(&image::DynamicImage::ImageRgb8(photo(1200, 800)));
+        let how = Compression {
+            max_side: 600,
+            quality: 80,
+        };
+        let lighter = compress(&original, how, false).unwrap();
+        assert_eq!(
+            (lighter.ext, lighter.width, lighter.height),
+            ("jpg", 600, 400)
+        );
+        assert_eq!(size_of(&lighter.data), (image::ImageFormat::Jpeg, 600, 400));
+        assert!(
+            lighter.data.len() * 10 < original.len(),
+            "{} of {}",
+            lighter.data.len(),
+            original.len()
+        );
+        // Named with its extension in the document: it stays a PNG, only smaller.
+        let kept = compress(&original, how, true).unwrap();
+        assert_eq!((kept.ext, kept.width), ("png", 600));
+        assert_eq!(size_of(&kept.data).0, image::ImageFormat::Png);
+        // A JPEG is written again as a JPEG, lighter at a lower quality.
+        let fine = compress(
+            &original,
+            Compression {
+                max_side: 4000,
+                quality: 95,
+            },
+            false,
+        )
+        .unwrap();
+        assert_eq!((fine.ext, fine.width), ("jpg", 1200));
+        let coarse = compress(
+            &fine.data,
+            Compression {
+                max_side: 4000,
+                quality: 50,
+            },
+            true,
+        )
+        .unwrap();
+        assert_eq!((coarse.ext, coarse.width), ("jpg", 1200));
+        assert!(coarse.data.len() < fine.data.len());
+        // Nothing to gain: no copy is made.
+        assert_eq!(
+            compress(
+                &coarse.data,
+                Compression {
+                    max_side: 4000,
+                    quality: 95
+                },
+                false
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn a_drawing_stays_a_png_without_loss() {
+        let chart = drawing(1600, 800);
+        let original = png(&image::DynamicImage::ImageRgba8(chart.clone()));
+        // Larger than asked: made smaller, still a PNG, though its extension could change.
+        let lighter = compress(
+            &original,
+            Compression {
+                max_side: 800,
+                quality: 60,
+            },
+            false,
+        )
+        .unwrap();
+        assert_eq!(
+            (lighter.ext, lighter.width, lighter.height),
+            ("png", 800, 400)
+        );
+        // Transparency is kept, and with it the format, even for a photograph.
+        let mut glass = image::DynamicImage::ImageRgb8(photo(400, 300)).to_rgba8();
+        glass.pixels_mut().take(5000).for_each(|p| p[3] = 0);
+        let seen_through = compress(
+            &png(&image::DynamicImage::ImageRgba8(glass)),
+            Compression {
+                max_side: 200,
+                quality: 60,
+            },
+            false,
+        )
+        .unwrap();
+        assert_eq!(seen_through.ext, "png");
+        let back = image::load_from_memory(&seen_through.data).unwrap();
+        assert!(back.color().has_alpha() && back.to_rgba8().pixels().any(|p| p[3] == 0));
+        // What is not a PNG or a JPEG is left alone.
+        assert_eq!(
+            compress(b"%PDF-1.5 not an image", Compression::LIGHT, false),
+            None
+        );
+        assert_eq!(compress(b"", Compression::LIGHT, false), None);
+        assert_eq!(compress(&original[..200], Compression::LIGHT, false), None);
+    }
+
+    #[test]
+    fn an_image_is_made_lighter_on_its_way_into_the_project() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("Photo de l'expérience.PNG");
+        let original = png(&image::DynamicImage::ImageRgb8(photo(900, 600)));
+        std::fs::write(&src, &original).unwrap();
+        let figures = dir.path().join("figures");
+        let how = Some(Compression {
+            max_side: 450,
+            quality: 75,
+        });
+        // Lighter, and under the extension of what it has become.
+        let lighter = import_with(&src, &figures, None, how).unwrap();
+        assert_eq!(lighter.file_name().unwrap(), "photo-de-l-experience.jpg");
+        assert!(std::fs::metadata(&lighter).unwrap().len() * 5 < original.len() as u64);
+        // The image that was chosen is as it was; without compression it is copied whole.
+        assert_eq!(std::fs::read(&src).unwrap(), original);
+        let whole = import_with(&src, &figures, None, None).unwrap();
+        assert_eq!(whole.file_name().unwrap(), "photo-de-l-experience.png");
+        assert_eq!(std::fs::read(&whole).unwrap(), original);
+        // Pasted data: the same, a second file of the name gets a number.
+        let pasted = import_data(&original, &figures, "Photo de l'expérience.png", how).unwrap();
+        assert_eq!(pasted.file_name().unwrap(), "photo-de-l-experience-2.jpg");
+        let raw = import_data(b"GIF89a...", &figures, "anim.gif", how).unwrap();
+        assert_eq!(std::fs::read(&raw).unwrap(), b"GIF89a...");
     }
 
     #[test]

@@ -5,12 +5,14 @@
 import type { Range } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate, WidgetType } from "@codemirror/view";
 import { commented, envHead, gridKind } from "../grid";
+import { figureGroupAt, firstPictureOf } from "../images";
 
 export type ChipKind = "matrix" | "table" | "tikz" | "image";
 
 export interface ChipOptions {
-  label: (kind: ChipKind) => string;
-  title: (kind: ChipKind) => string;
+  /** `count`: pictures the chip stands for, when they are several written together. */
+  label: (kind: ChipKind, count: number) => string;
+  title: (kind: ChipKind, count: number) => string;
   /** Opens the editor on the code starting at `from` (`\begin` or `\includegraphics`). */
   open: (view: EditorView, kind: ChipKind, from: number) => void;
 }
@@ -22,27 +24,35 @@ const ICONS: Record<ChipKind, string> = {
   image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/>',
 };
 
+/** Several pictures written together. */
+const IMAGES = '<rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7 4h12a2 2 0 0 1 2 2v10"/><circle cx="8" cy="12" r="1.5"/><path d="M17 17l-4-4-7 7"/>';
+
 const TIKZ = /^(tikzpicture|tikzcd|circuitikz)$/;
+/** How far around a picture its group is looked for. */
+const GROUP_REACH = 4000;
 
 class Chip extends WidgetType {
   constructor(
     readonly kind: ChipKind,
     readonly options: ChipOptions,
+    /** Pictures it stands for (1: a picture on its own). */
+    readonly count = 1,
   ) {
     super();
   }
 
   eq(other: Chip) {
-    return other.kind === this.kind;
+    return other.kind === this.kind && other.count === this.count;
   }
 
   toDOM(view: EditorView) {
     const el = document.createElement("span");
     el.className = "cm-code-chip";
-    el.title = this.options.title(this.kind);
+    el.title = this.options.title(this.kind, this.count);
     el.setAttribute("role", "button");
-    el.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[this.kind]}</svg>`;
-    el.append(this.options.label(this.kind));
+    if (this.count > 1) el.dataset.count = String(this.count);
+    el.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${this.count > 1 ? IMAGES : ICONS[this.kind]}</svg>`;
+    el.append(this.options.label(this.kind, this.count));
     el.addEventListener("mousedown", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -84,9 +94,19 @@ function chips(view: EditorView, options: ChipOptions): DecorationSet {
       if (commented(text, m.index)) continue;
       let kind: ChipKind | null = null;
       let end = -1;
+      let count = 1;
       if (!m[1]) {
         kind = "image";
         end = graphicsEnd(text, m.index);
+        // Pictures written together have one chip, on the first of them.
+        const at = from + m.index;
+        const start = Math.max(0, at - GROUP_REACH);
+        const around = doc.sliceString(start, Math.min(doc.length, at + GROUP_REACH));
+        const group = end > 0 ? figureGroupAt(around, at - start) : null;
+        if (group) {
+          if (firstPictureOf(around, group) !== at - start) continue;
+          count = group.images.length;
+        }
       } else if (TIKZ.test(m[1])) {
         kind = "tikz";
         end = tikzEnd(text, m.index);
@@ -94,7 +114,7 @@ function chips(view: EditorView, options: ChipOptions): DecorationSet {
         kind = gridKind(m[1]);
         end = kind ? (envHead(text, m.index)?.argsEnd ?? -1) : -1;
       }
-      if (kind && end > 0) out.push(Decoration.widget({ widget: new Chip(kind, options), side: 1 }).range(from + end));
+      if (kind && end > 0) out.push(Decoration.widget({ widget: new Chip(kind, options, count), side: 1 }).range(from + end));
     }
   }
   return Decoration.set(out, true);

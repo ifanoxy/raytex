@@ -28,6 +28,7 @@ pulldown-cmark.workspace = true
 tracing.workspace = true
 ureq.workspace = true
 svg2pdf.workspace = true
+image.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 libc.workspace = true

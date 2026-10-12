@@ -560,6 +560,29 @@ function structure(): T.Structure {
   };
 }
 
+/** A small picture made on the spot, padded to the weight of a real one. */
+async function samplePicture(path: string): Promise<ArrayBuffer> {
+  const canvas = document.createElement("canvas");
+  canvas.width = 320;
+  canvas.height = 220;
+  const g = canvas.getContext("2d")!;
+  const hue = [...path].reduce((n, c) => n + c.charCodeAt(0), 0) % 360;
+  const sky = g.createLinearGradient(0, 0, 320, 220);
+  sky.addColorStop(0, `hsl(${hue} 70% 62%)`);
+  sky.addColorStop(1, `hsl(${(hue + 70) % 360} 60% 38%)`);
+  g.fillStyle = sky;
+  g.fillRect(0, 0, 320, 220);
+  g.fillStyle = "rgb(255 255 255 / 0.85)";
+  g.beginPath();
+  g.arc(230, 70, 34, 0, Math.PI * 2);
+  g.fill();
+  const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
+  const picture = new Uint8Array(await blob.arrayBuffer());
+  const weighed = new Uint8Array(/schema|diagram/i.test(path) ? 184_000 : 3_420_000);
+  weighed.set(picture);
+  return weighed.buffer;
+}
+
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -706,6 +729,8 @@ export function installMocks() {
           return Date.now();
         case "read_binary_file":
           if (String(a.path).endsWith(".pdf")) return pdfBytes();
+          // A picture from elsewhere on the computer (the image window): something to draw and to weigh.
+          if (/\.(png|jpe?g)$/i.test(String(a.path))) return samplePicture(String(a.path));
           throw new Error("not found");
         case "path_exists":
           return String(a.path) in files || String(a.path).endsWith(".pdf");
@@ -1014,7 +1039,17 @@ export function installMocks() {
             { id: "firasans", name: "Fira Sans", package: "FiraSans", options: "sfdefault", kind: "sans", math: false, fontspec: "Fira Sans", extra: "", description: "Humaniste.", code: "\\usepackage[sfdefault]{FiraSans}" },
           ];
         case "import_image":
-          return `${a.dir}/${String(a.name ?? "image.png")}`;
+          return `${a.dir}/${String(a.name ?? "image.png").replace(/\.png$/, a.level ? ".jpg" : ".png")}`;
+        case "import_image_data":
+          return p("figures/image-collee.jpg");
+        // A photograph becomes a JPEG many times lighter; a drawing has nothing to gain.
+        case "image_weight": {
+          const drawing = /schema|diagram/i.test(String(a.path));
+          const original = drawing ? 184_000 : 3_420_000;
+          return sleep(350).then(() => ({ original, compressed: drawing ? null : a.level === "light" ? 318_000 : 742_000, ext: drawing ? null : "jpg" }));
+        }
+        case "image_weight_data":
+          return sleep(350).then(() => ({ original: 1_260_000, compressed: 402_000, ext: "jpg" }));
         case "import_fonts":
           return a.sources;
         case "safe_file_name":
