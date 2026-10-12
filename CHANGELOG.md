@@ -4,6 +4,8 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- Fixed, TikZ studio: in a window that is not tall (a laptop screen, a window that is not maximized), the tools were squeezed and ran over the bottom bar, and the settings on the right were cut by the rendering. Version 0.5.0 added two tools, and their column no longer fitted even in the window RayTeX opens with. The tools take two columns when one does not fit (smaller buttons in a very low window), the settings of a shape keep the room they need before the rendering takes the rest, and the bottom bar and the shelf of the sets hold in a narrow window.
+
 ## [0.5.0] — 2026-10-11
 
 - **A spell checker of its own, in the language of the document**: the words the dictionary does not know are underlined in the prose, the same way on macOS, Windows and Linux (the checker of the system, which was given the language of the interface and every command of a LaTeX file to spell, is no longer used).

@@ -1072,6 +1072,14 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     document.querySelector<HTMLButtonElement>(".format-bar .text-btn.tikz")!.click();
     await until(() => !!document.querySelector(".studio .board svg"), 10_000, "whiteboard");
     await pause(500);
+    // Whatever the height of the window, the tools keep their shape and stay in their column.
+    const column = document.querySelector<HTMLElement>(".studio .tools")!.getBoundingClientRect();
+    const toolBoxes = [...document.querySelectorAll<HTMLElement>(".studio .tools .tool:not(.lock)")].map((b) => b.getBoundingClientRect());
+    check(
+      "whiteboard tools whole, in their column",
+      toolBoxes.length > 10 && toolBoxes.every((b) => Math.abs(b.width - b.height) < 1 && b.bottom <= column.bottom + 1 && b.right <= column.right + 1),
+      `${toolBoxes.length} tools, column ${Math.round(column.width)}x${Math.round(column.height)}, ${toolBoxes.map((b) => `${Math.round(b.width)}x${Math.round(b.height)}`).join(" ")}`,
+    );
     const svg = document.querySelector<SVGSVGElement>(".studio .board svg")!;
     const boardEl = document.querySelector<HTMLElement>(".studio .board")!;
     const r = svg.getBoundingClientRect();

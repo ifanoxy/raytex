@@ -37,6 +37,10 @@
     onexport: () => void;
   } = $props();
 
+  /** Width of the shelf: in a narrow one, the file buttons are their picture alone. */
+  let width = $state(0);
+  const narrow = $derived(width > 0 && width < 540);
+
   function named(e: Event, set: ShapeSet) {
     const name = (e.currentTarget as HTMLInputElement).value.trim();
     renaming = null;
@@ -50,7 +54,7 @@
   }
 </script>
 
-<section class="sets" class:closed={!open} aria-label={t("tikz.sets.title")}>
+<section class="sets" class:closed={!open} aria-label={t("tikz.sets.title")} bind:clientWidth={width}>
   <header>
     <button class="title" aria-expanded={open} onclick={() => (open = !open)}>
       <Icon name="star" size={14} />
@@ -62,8 +66,8 @@
       <Icon name="plus" size={13} />{t("tikz.sets.keep")}
     </button>
     <span class="spacer"></span>
-    <button class="file" onclick={onimport} title={t("tikz.sets.importHint")}><Icon name="download" size={13} />{t("tikz.sets.import")}</button>
-    <button class="file" disabled={!sets.length} onclick={onexport} title={t("tikz.sets.exportHint")}><Icon name="external" size={13} />{t("tikz.sets.export")}</button>
+    <button class="file" onclick={onimport} title={t("tikz.sets.importHint")} aria-label={t("tikz.sets.import")}><Icon name="download" size={13} />{#if !narrow}{t("tikz.sets.import")}{/if}</button>
+    <button class="file" disabled={!sets.length} onclick={onexport} title={t("tikz.sets.exportHint")} aria-label={t("tikz.sets.export")}><Icon name="external" size={13} />{#if !narrow}{t("tikz.sets.export")}{/if}</button>
   </header>
 
   {#if open}
@@ -112,6 +116,10 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    white-space: nowrap;
+  }
+  header button {
+    flex-shrink: 0;
   }
   .title {
     display: inline-flex;

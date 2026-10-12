@@ -99,6 +99,18 @@
     { id: "text", icon: "type", label: "tikz.tool.text", key: "T" },
     { id: "link", icon: "link-nodes", label: "tikz.tool.link", key: "K" },
   ];
+  /**
+   * Height the tool column takes: the tools and their pin, undo and redo,
+   * the zoom and the grid, in `columns` columns of buttons of `size` px.
+   */
+  function toolColumnHeight(columns: 1 | 2, size: number): number {
+    const gap = 3;
+    const separator = 9;
+    // In two columns the grid sits next to the zoom: one separator less.
+    const [rows, separators] = columns === 1 ? [TOOLS.length + 7, 3] : [Math.ceil((TOOLS.length + 1) / 2) + 3, 2];
+    const pin = columns === 1 ? 26 - size : 0;
+    return rows * size + pin + separators * separator + (rows + separators - 1) * gap + 16;
+  }
   const EMPTY = "\\begin{tikzpicture}\n\\end{tikzpicture}";
   const GRID_KEY = "raytex.tikz.grid";
   const STEPS = [0.1, 0.25, 0.5, 1];
@@ -130,6 +142,14 @@
   /** The height given to the LaTeX rendering by its upper edge (else its share of the panel). */
   let renderingHeight = $state<number | null>(typeof savedGrid.rendering === "number" ? savedGrid.rendering : null);
   let side = $state<HTMLElement | null>(null);
+  /** Height given to the tool column (0 while the drawing is not shown). */
+  let toolsHeight = $state(0);
+  /** One column when it fits, with slightly smaller buttons if need be; else two, tighter in a low window. */
+  const toolLayout = $derived.by(() => {
+    if (!toolsHeight || toolsHeight >= toolColumnHeight(1, 36)) return "one";
+    if (toolsHeight >= toolColumnHeight(1, 32)) return "one snug";
+    return toolsHeight >= toolColumnHeight(2, 36) ? "two" : "two tight";
+  });
   let rendering = $state<HTMLElement | null>(null);
   /** The code is one tikzpicture (the whiteboard can show it). */
   let drawable = $state(true);
@@ -691,7 +711,7 @@
       {/if}
 
       <div class="draw" class:hidden={mode !== "draw"}>
-        <div class="tools" role="toolbar" aria-label={t("tikz.tools")}>
+        <div class="tools {toolLayout}" role="toolbar" aria-label={t("tikz.tools")} bind:clientHeight={toolsHeight}>
           {#each TOOLS as tl (tl.id)}
             <button class="tool" class:active={tool === tl.id} title="{t(tl.label)} ({tl.key})" aria-label={t(tl.label)} aria-pressed={tool === tl.id} onclick={() => chooseTool(tl.id)}>
               <Icon name={tl.icon} size={18} />
@@ -705,7 +725,7 @@
           <button class="tool" title={t("viewer.zoomIn")} aria-label={t("viewer.zoomIn")} onclick={() => board?.zoom(1.25)}><Icon name="zoom-in" size={17} /></button>
           <button class="tool" title={t("viewer.zoomOut")} aria-label={t("viewer.zoomOut")} onclick={() => board?.zoom(0.8)}><Icon name="zoom-out" size={17} /></button>
           <button class="tool" title={t("tikz.fit")} aria-label={t("tikz.fit")} onclick={() => board?.fit()}><Icon name="fit-page" size={17} /></button>
-          <span class="tool-sep"></span>
+          <span class="tool-sep before-grid"></span>
           <button class="tool" class:active={gridOpen} title={t("tikz.gridTitle")} aria-label={t("tikz.gridTitle")} aria-expanded={gridOpen} onclick={() => (gridOpen = !gridOpen)}><Icon name="grid" size={17} /></button>
           {#if gridOpen}
             <!-- The grid: out of the way, one click from the tools. -->
@@ -912,6 +932,7 @@
     border-bottom: 1px solid var(--border);
   }
   .mode-tabs {
+    flex-shrink: 0;
     display: flex;
     gap: 2px;
     padding: 3px;
@@ -940,7 +961,11 @@
     color: var(--accent-contrast);
   }
   .modes .hint {
+    min-width: 0;
     font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .draw,
   .code-mode {
@@ -952,22 +977,36 @@
   .gallery {
     flex: 1;
   }
+  /* One column of tools, or two when the window is too low for one. */
   .tools {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    --tool: 36px;
+    display: grid;
+    grid-template-columns: var(--tool);
+    grid-auto-rows: max-content;
+    align-content: start;
+    justify-items: center;
     gap: 3px;
-    width: 48px;
-    padding: 8px 0;
+    padding: 8px 6px;
     border-right: 1px solid var(--border);
     background: var(--bg-elev);
     flex-shrink: 0;
   }
+  .tools.snug {
+    --tool: 32px;
+  }
+  .tools.two {
+    grid-template-columns: repeat(2, var(--tool));
+  }
+  .tools.tight {
+    --tool: 30px;
+    gap: 2px;
+    padding: 6px;
+  }
   .tool {
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
+    width: var(--tool);
+    height: var(--tool);
     border: none;
     border-radius: var(--radius);
     background: none;
@@ -987,10 +1026,18 @@
     cursor: default;
   }
   .tool-sep {
+    grid-column: 1 / -1;
     width: 24px;
     height: 1px;
     margin: 4px 0;
     background: var(--border);
+  }
+  .tools.two .tool-sep {
+    width: calc(100% - 12px);
+  }
+  /* In two columns the grid takes the place left next to the zoom. */
+  .tools.two .before-grid {
+    display: none;
   }
   .not-drawable {
     flex: 1;
@@ -1008,7 +1055,7 @@
     line-height: 1.5;
   }
   .side {
-    width: 340px;
+    width: clamp(272px, 30%, 340px);
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -1016,8 +1063,10 @@
     border-left: 1px solid var(--border);
     background: var(--bg-elev);
   }
+  /* The settings of a shape fit without scrolling when the window allows it;
+     what is left is shared with the rendering. */
   .side > :global(.props) {
-    flex: 1 1 0;
+    flex: 1 1 300px;
     min-height: 0;
   }
   /* The paper, and the shelf of the sets under it. */
@@ -1031,13 +1080,13 @@
   .tools {
     position: relative;
   }
-  .tool.lock {
+  .tools.one .tool.lock {
     height: 26px;
   }
   /* The settings of the grid, next to the button that shows them. */
   .grid-menu {
     position: absolute;
-    left: 52px;
+    left: calc(100% + 4px);
     bottom: 8px;
     z-index: 5;
     display: flex;
@@ -1080,7 +1129,7 @@
   }
   /* The LaTeX rendering: nearly half of the panel, more or less when its upper edge is dragged. */
   .mini {
-    flex: 0.85 1 0;
+    flex: 1.6 1 180px;
     min-height: 140px;
     display: flex;
     flex-direction: column;
@@ -1367,11 +1416,22 @@
     background: var(--accent-soft);
     color: var(--text);
   }
-  .file {
-    width: 200px;
+  /* The fields give way before the bar goes on two lines. */
+  .footer .input {
+    flex: 1 1 80px;
+    min-width: 0;
+    max-width: 170px;
   }
-  .label {
-    width: 130px;
+  .footer .file {
+    flex-basis: 110px;
+    max-width: 200px;
+  }
+  .footer .label {
+    max-width: 130px;
+  }
+  .segmented,
+  .footer .btn {
+    flex-shrink: 0;
   }
   .editing {
     display: flex;
