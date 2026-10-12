@@ -4,6 +4,8 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-10-12
+
 - **Code in the document** (*Insert code…* in *See all* and the command palette): a window with the code on the left and, on the right, its settings and the listing compiled by LaTeX. It writes the `listings` package, which works with every engine and every distribution and asks for no outside tool.
   - **The language**, among about forty. Those `listings` does not know (JavaScript, TypeScript, Rust, Go, Kotlin, Swift, Dart, Julia, JSON, YAML, TOML, CSS) come with their definition, written in the preamble when they are used.
   - **The indentation**: *2 spaces*, *4 spaces* or *Tabs* writes the code again level by level (an alignment keeps its spaces). Code pasted from the middle of a file comes back to the margin; tabs and spaces that are mixed are pointed out.
@@ -286,6 +288,7 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[0.5.1]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.1
 [0.5.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.0
 [0.4.2]: https://github.com/ifanoxy/raytex/releases/tag/v0.4.2
 [0.4.1]: https://github.com/ifanoxy/raytex/releases/tag/v0.4.1
