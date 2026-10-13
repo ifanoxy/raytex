@@ -413,6 +413,18 @@ fn preview_context(
     (root, text, engine.unwrap_or(Engine::Pdflatex))
 }
 
+/// The commands of the project a preview of `root` does not get from the
+/// preamble (`all`: every one, for a preview that leaves the preamble
+/// aside): a picture or a title that uses a command of a chapter is shown
+/// as the document shows it.
+fn project_commands(state: &AppState, root: &std::path::Path, all: bool) -> String {
+    state
+        .project()
+        .as_ref()
+        .map(|pr| raytex_core::custom::preview_definitions(&pr.ws, root, all))
+        .unwrap_or_default()
+}
+
 /// Compiles a small standalone document next to the project.
 #[tauri::command]
 pub async fn preview_snippet(app: AppHandle, request: SnippetRequest) -> CmdResult<PreviewOutcome> {
@@ -426,7 +438,7 @@ pub async fn preview_snippet(app: AppHandle, request: SnippetRequest) -> CmdResu
         } else {
             String::new()
         };
-        let preamble =
+        let mut preamble =
             if !request.libraries.is_empty() || request.packages.iter().any(|p| p == "tikz") {
                 tikz::preview_preamble(
                     &project,
@@ -442,6 +454,12 @@ pub async fn preview_snippet(app: AppHandle, request: SnippetRequest) -> CmdResu
                 p.push_str(&request.extra);
                 p
             };
+        // After what the preview itself defines (a command being tried):
+        // each of these gives way to what is defined already.
+        if !preamble.ends_with('\n') {
+            preamble.push('\n');
+        }
+        preamble.push_str(&project_commands(state, &root, !request.project_preamble));
         let workdir = root
             .parent()
             .map(PathBuf::from)
@@ -518,8 +536,19 @@ pub async fn preview_page(app: AppHandle, request: PageRequest) -> CmdResult<Pre
             .parent()
             .map(PathBuf::from)
             .unwrap_or_else(|| file.clone());
+        // The source carries the preamble of the project: what the project
+        // defines elsewhere is added at its end.
+        let commands = project_commands(state, &root, false);
+        let source = match request.source.find("\\begin{document}") {
+            Some(at) if !commands.is_empty() => format!(
+                "{}{commands}{}",
+                &request.source[..at],
+                &request.source[at..]
+            ),
+            _ => request.source.clone(),
+        };
         let mut hasher = DefaultHasher::new();
-        (&request.source, engine, &workdir).hash(&mut hasher);
+        (&source, engine, &workdir).hash(&mut hasher);
         let key = hasher.finish();
         let mut previews = state.previews.lock().map_err(|e| e.to_string())?;
         if let Some((k, outcome)) = previews.get(&request.job)
@@ -540,7 +569,7 @@ pub async fn preview_page(app: AppHandle, request: PageRequest) -> CmdResult<Pre
                 class_options: "",
                 preamble: "",
                 body: "",
-                document: Some(&request.source),
+                document: Some(&source),
                 engine,
                 workdir: &workdir,
                 out_dir: &state.paths.cache.join("previews"),

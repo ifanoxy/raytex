@@ -4,6 +4,9 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- Fixed, code window: its preview was a whole sheet of paper with the code in small at its top, in a narrow column: nothing could be read. The page of the preview is cut to the code (set as wide as a line of the document, so that lines wrap where they will), and it is shown under the code, as wide as the code. A long code shows its first 40 lines. In a presentation the preview stays a slide.
+- **Previews know the commands of the project wherever they are defined.** A preview (TikZ picture, trial of a command, sample of a font, code, title page, page layout) was built with the preamble of the main file: a command defined after `\begin{document}`, or at the top of a chapter, was unknown to it, and the picture that used it showed an error where the document compiled. These definitions are now given to every preview, each written so that it cannot break one: it is run only when the command that defines exists (`\DeclareMathOperator` needs amsmath), and when what it defines is not there yet (a file the preamble reads may have defined it), or, for a `\renewcommand`, already is. The formulas in the texts of the whiteboard use the commands of the project too, like the formulas of the document.
+
 ## [0.5.1] — 2026-10-12
 
 - **Code in the document** (*Insert code…* in *See all* and the command palette): a window with the code on the left and, on the right, its settings and the listing compiled by LaTeX. It writes the `listings` package, which works with every engine and every distribution and asks for no outside tool.

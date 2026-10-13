@@ -101,7 +101,7 @@ The **TikZ figure** template creates a `standalone` project, ideal to prepare a 
 
 ## Code in the document
 
-*Insert code…* (in *See all* or the command palette; with text selected, it becomes the code) opens a window with the code on the left and, on the right, its settings and the result compiled by LaTeX:
+*Insert code…* (in *See all* or the command palette; with text selected, it becomes the code) opens a window with the code and, right under it, that code compiled by LaTeX (cut to it, as wide as a line of your document); its settings are on the right:
 
 - **the language**, among about forty: Python, C, Java, JavaScript, TypeScript, Rust, Go, SQL, Bash, LaTeX… Those the `listings` package does not know (JavaScript, Rust, Go, JSON, YAML…) are defined in the preamble when you use them;
 - **the indentation**: *2 spaces*, *4 spaces* or *Tabs* writes the code again level by level. Code pasted from the middle of a file comes back to the margin, without the spaces at the end of its lines; tabs and spaces that are mixed are pointed out;

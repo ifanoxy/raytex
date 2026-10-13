@@ -26,6 +26,7 @@
     listingLabel,
     listingPreview,
     mixedIndentation,
+    PREVIEW_LINES,
     readCodeStyle,
     reindentCode,
     tidyCode,
@@ -202,6 +203,8 @@
   }
 
   const error = $derived(outcome?.diagnostics.find((d) => d.severity === "error") ?? null);
+  /** The code is longer than what its preview shows. */
+  const clipped = $derived(tidyCode(code).split("\n").length > PREVIEW_LINES);
   /** Columns a line of the document holds, as TeX measured them. */
   const columns = $derived(codeColumns(outcome?.measures, had && !styled ? had.style : style));
   const over = $derived(columns === null ? 0 : linesOver(tidyCode(code), columns, style.tab));
@@ -314,6 +317,19 @@
             </span>
           {/if}
         </div>
+        <div class="preview-box">
+          <div class="preview-bar">
+            <span class="section-title">{t("tikz.latexRendering")}</span>
+            <div class="spacer"></div>
+            {#if clipped}<span class="faint">{t("code.firstLines", { n: PREVIEW_LINES })}</span>{/if}
+            {#if compiling}<span class="spinner"></span>{:else if error}<span class="status err"><Icon name="alert-circle" size={13} />{error.message.split("\n")[0].slice(0, 60)}</span>{/if}
+          </div>
+          {#if ready && !failure}
+            <PdfPreview pdf={outcome?.pdf ?? null} {revision} maxScale={3} />
+          {:else}
+            <p class="faint empty">{failure ?? t("code.previewHint")}</p>
+          {/if}
+        </div>
       </section>
 
       <aside class="right">
@@ -375,19 +391,7 @@
           </label>
         {/if}
 
-        <div class="preview-box">
-          <div class="preview-bar">
-            <span class="section-title">{t("tikz.latexRendering")}</span>
-            <div class="spacer"></div>
-            {#if compiling}<span class="spinner"></span>{:else if error}<span class="status err"><Icon name="alert-circle" size={13} />{error.message.split("\n")[0].slice(0, 60)}</span>{/if}
-          </div>
-          {#if ready && !failure}
-            <PdfPreview pdf={outcome?.pdf ?? null} {revision} maxScale={3} />
-          {:else}
-            <p class="faint empty">{failure ?? t("code.previewHint")}</p>
-          {/if}
-        </div>
-
+        <div class="spacer"></div>
         <button class="btn primary large" disabled={!ready || busy} onclick={write}>
           {#if busy}<span class="spinner"></span>{:else}<Icon name="check" size={15} />{/if}
           {edit ? t("image.update") : t("code.insert")}
@@ -441,8 +445,8 @@
     font-size: 12px;
   }
   .source {
-    flex: 1;
-    min-height: 0;
+    flex: 1 1 0;
+    min-height: 110px;
     margin: 0;
     padding: 10px 12px;
     border: 1px solid var(--border);
@@ -608,9 +612,10 @@
     opacity: 0.45;
     cursor: default;
   }
+  /* The code as LaTeX sets it, under the code as it is typed: wide enough to read. */
   .preview-box {
-    flex: 1 0 200px;
-    min-height: 200px;
+    flex: 1.1 1 0;
+    min-height: 150px;
     display: flex;
     flex-direction: column;
     border: 1px solid var(--border);

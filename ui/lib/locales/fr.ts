@@ -1830,6 +1830,7 @@ const fr: Record<keyof typeof en, string> = {
   "code.inserted": "Code inséré",
   "code.updated": "Code mis à jour",
   "code.noDocument": "Ouvrez un fichier .tex pour y insérer du code.",
+  "code.firstLines": "les {n} premières lignes",
 };
 
 export default fr;

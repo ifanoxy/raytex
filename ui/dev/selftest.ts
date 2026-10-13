@@ -437,6 +437,11 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     await until(() => !!document.querySelector<HTMLTextAreaElement>(".code-studio textarea")?.value, 10_000, "code window");
     const tidy = document.querySelector<HTMLTextAreaElement>(".code-studio textarea")!.value.startsWith("def moyenne(notes):\n    # Moyenne");
     await drawn(".code-studio .preview-box canvas", log, "code preview");
+    // The page is cut to the code, and wide enough to read: not a sheet with three lines at its top.
+    const shown = document.querySelector<HTMLCanvasElement>(".code-studio .preview-box canvas");
+    const readable = !shown || !shown.clientHeight || (shown.clientWidth > 420 && shown.clientWidth / shown.clientHeight > 2.5);
+    log(`code: preview ${shown ? `${shown.clientWidth}x${shown.clientHeight}` : "not drawn (screen asleep or hidden?), continuing"}`);
+    ok = readable && ok;
     await until(() => !!document.querySelector(".code-studio .note"), 30_000, "lines measured");
     const told = document.querySelector(".code-studio .note")?.textContent?.replace(/\s+/g, " ").trim() ?? "";
     const caption = document.querySelector<HTMLInputElement>(".code-studio .right > .field input.input")!;
@@ -769,6 +774,15 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     const picture = await ipc.previewSnippet({ path: main, job: "tikz", classOptions: "tikz,border=6pt", projectPreamble: true, packages: ["tikz"], libraries: [], extra: "", body: "\\begin{tikzpicture}\\draw (0,0) -- (1,1);\\end{tikzpicture}" });
     const pictured = !!picture.pdf && !picture.diagnostics.some((d) => d.severity === "error");
     if (!pictured) log(`layout: picture ${JSON.stringify(picture.diagnostics.map((d) => d.message)).slice(0, 300)}`);
+    // A command a chapter defines for itself is known to the previews too:
+    // the picture that uses it compiles, as it does in the document.
+    await editor.rewrite(chapter, (text) => `\\newcommand{\\vecteurlocal}[1]{\\overrightarrow{#1}}\n${text}`);
+    await editor.flush();
+    await pause(600);
+    const withCommand = await ipc.previewSnippet({ path: main, job: "tikz", classOptions: "tikz,border=6pt", projectPreamble: true, packages: ["tikz"], libraries: [], extra: "", body: "\\begin{tikzpicture}\\node {$\\vecteurlocal{u}$};\\end{tikzpicture}" });
+    const commanded = !!withCommand.pdf && !withCommand.diagnostics.some((d) => d.severity === "error");
+    log(`layout: picture with a command of a chapter ${commanded} ${commanded ? "" : JSON.stringify(withCommand.diagnostics.map((d) => d.message)).slice(0, 300)}`);
+    ok = commanded && ok;
     // A preamble that changes the lengths of the page (a taller header) leaves
     // the picture in the middle of its page, not cut at the bottom.
     const framed = await ipc.previewSnippet({

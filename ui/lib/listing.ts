@@ -600,15 +600,39 @@ export function withFragileFrame(text: string, at: number): string {
  */
 const MEASURE = "\\makeatletter\\setbox0\\hbox{\\lst@basicstyle M}\\typeout{RTXMEASURE:\\the\\linewidth:\\the\\wd0:\\the\\dimexpr2em\\relax}\\makeatother";
 
-/** A document that shows the listing with the style, for the preview: the preamble of the project, then the code alone. */
+/** Lines of code a preview shows at most: enough to judge how it looks, and a page TeX can make. */
+export const PREVIEW_LINES = 40;
+
+/**
+ * The page of the preview, cut to the listing: the code is set in a box as
+ * wide as a line of the document, and that box alone is the page. A whole
+ * sheet with a few lines at its top is too small to read in a panel.
+ */
+const TIGHT_HEAD = "\\newsavebox\\RTXcode\n\\begin{lrbox}{\\RTXcode}\\begin{minipage}{\\linewidth}";
+const TIGHT_TAIL =
+  "\\end{minipage}\\end{lrbox}\n\\dimen0=\\dimexpr\\wd\\RTXcode+16pt\\relax \\dimen2=\\dimexpr\\ht\\RTXcode+\\dp\\RTXcode+16pt\\relax\n" +
+  "\\ifdefined\\pdfpagewidth \\pdfpagewidth=\\dimen0 \\pdfpageheight=\\dimen2 \\else \\pagewidth=\\dimen0 \\pageheight=\\dimen2 \\fi\n" +
+  "\\hoffset=-1in \\voffset=-1in\n\\shipout\\vbox{\\kern8pt\\hbox{\\kern8pt\\box\\RTXcode}}";
+
+/**
+ * A document that shows the listing with the style, for the preview: the
+ * preamble of the project, then the code alone, on a page cut to it (in a
+ * presentation: on a slide, which is small enough to read as it is). Only
+ * the first lines of a long code are shown.
+ */
 export function listingPreview(source: string, listing: Listing, style: CodeStyle | null): string {
   const language = languageOf(listing.language);
   const prepared = writeCodeStyle(source, style, language ? [language] : []);
   const end = preambleEnd(prepared);
   if (end >= prepared.length) return "";
   const beamer = /\\documentclass(?:\[[^\]]*\])?\{beamer\}/.test(prepared);
-  const body = `${MEASURE}\n${listingCode({ ...listing, label: "" })}`;
-  return `${prepared.slice(0, end)}\\begin{document}\n${beamer ? `\\begin{frame}[fragile]\n${body}\n\\end{frame}` : body}\n\\end{document}\n`;
+  const lines = listing.code.split("\n");
+  const shown: Listing = { ...listing, label: "", code: lines.slice(0, PREVIEW_LINES).join("\n") };
+  // A file is read by TeX itself: it is told where to stop.
+  if (listing.file !== null && !/\blastline\s*=/.test(listing.options)) shown.options = [listing.options.trim(), `lastline=${PREVIEW_LINES}`].filter(Boolean).join(", ");
+  const body = `${MEASURE}\n${listingCode(shown)}`;
+  const page = beamer ? `\\begin{frame}[fragile]\n${body}\n\\end{frame}` : `${TIGHT_HEAD}\n${body}\n${TIGHT_TAIL}`;
+  return `${prepared.slice(0, end)}\\begin{document}\n${page}\n\\end{document}\n`;
 }
 
 /**

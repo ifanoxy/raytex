@@ -115,11 +115,15 @@ async function katex() {
   return katexModule;
 }
 
-/** HTML of a small formula (snippet fields shown as boxes), for lists of symbols. */
-export async function mathHtml(latex: string): Promise<string> {
+/**
+ * HTML of a small formula (snippet fields shown as boxes), for lists of
+ * symbols; with the macros of the document `path` when one is given (a text
+ * of a drawing uses the commands of the project like any formula).
+ */
+export async function mathHtml(latex: string, path?: string | null): Promise<string> {
   const k = await katex();
   const tex = latex.replace(/\$\{\d+(?::[^}]*)?\}/g, "\\square").replace(/\\\\([{}])/g, "\\$1");
-  return k.renderToString(tex, { throwOnError: false, displayMode: false });
+  return k.renderToString(tex, { throwOnError: false, displayMode: false, ...(path ? { strict: "ignore" as const, macros: macrosOf(path) } : {}) });
 }
 
 /** HTML of a displayed formula (grid editor preview), with the macros of the document `path`. */

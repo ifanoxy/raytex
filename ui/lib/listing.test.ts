@@ -15,6 +15,7 @@ import {
   listingPreview,
   longestLine,
   mixedIndentation,
+  PREVIEW_LINES,
   readCodeStyle,
   reindentCode,
   styleBlock,
@@ -151,19 +152,27 @@ test("in a presentation, the frame of a listing is made fragile", () => {
   assert.equal(withFragileFrame(DOC, 60), DOC);
 });
 
-test("the preview is the preamble of the project and the code alone", () => {
+test("the preview is the preamble of the project and the code alone, on a page cut to it", () => {
   const listing = { language: "Go", code: "func main() {}", file: null, caption: "Le début", label: "lst:debut", options: "" };
   const preview = listingPreview(DOC, listing, DEFAULT_CODE_STYLE);
   assert.ok(preview.startsWith("\\documentclass{article}\n\\usepackage[french]{babel}"));
   assert.ok(preview.includes("\\lstdefinelanguage{Go}") && preview.includes("\\lstset{style=raytex}"));
-  assert.ok(preview.endsWith("\\makeatother\n\\begin{lstlisting}[language=Go, caption={Le début}]\nfunc main() {}\n\\end{lstlisting}\n\\end{document}\n"));
-  assert.ok(preview.includes("\\begin{document}\n\\makeatletter\\setbox0\\hbox{\\lst@basicstyle M}\\typeout{RTXMEASURE:"));
   assert.ok(!preview.includes("Texte."));
-  const slides = listingPreview(DOC.replace("{article}", "{beamer}"), listing, null);
-  assert.ok(slides.includes("\\begin{frame}[fragile]\n\\makeatletter") && slides.includes("\\makeatother\n\\begin{lstlisting}"));
-  assert.equal(listingPreview("sans préambule", listing, null), "");
+  // The code in a box as wide as a line, measured, then shipped as the page.
+  assert.ok(preview.includes("\\begin{document}\n\\newsavebox\\RTXcode\n\\begin{lrbox}{\\RTXcode}\\begin{minipage}{\\linewidth}\n\\makeatletter\\setbox0\\hbox{\\lst@basicstyle M}\\typeout{RTXMEASURE:"));
+  assert.ok(preview.includes("\\makeatother\n\\begin{lstlisting}[language=Go, caption={Le début}]\nfunc main() {}\n\\end{lstlisting}\n\\end{minipage}\\end{lrbox}\n"));
+  assert.ok(preview.endsWith("\\shipout\\vbox{\\kern8pt\\hbox{\\kern8pt\\box\\RTXcode}}\n\\end{document}\n"));
   // The block is what styleBlock says, to the letter.
   assert.ok(preview.includes(styleBlock(DEFAULT_CODE_STYLE)));
+  // In a presentation: a slide, fragile.
+  const slides = listingPreview(DOC.replace("{article}", "{beamer}"), listing, null);
+  assert.ok(slides.includes("\\begin{frame}[fragile]\n\\makeatletter") && slides.includes("\\makeatother\n\\begin{lstlisting}") && !slides.includes("\\shipout"));
+  assert.equal(listingPreview("sans préambule", listing, null), "");
+  // A long code shows its first lines; a file is told where to stop, unless it says so itself.
+  const long = listingPreview(DOC, { ...listing, code: Array.from({ length: 100 }, (_, i) => `l${i + 1}`).join("\n") }, null);
+  assert.ok(long.includes(`\nl${PREVIEW_LINES}\n\\end{lstlisting}`) && !long.includes(`l${PREVIEW_LINES + 1}\n`));
+  assert.ok(listingPreview(DOC, { ...listing, code: "", file: "a.go", options: "firstnumber=3" }, null).includes(`\\lstinputlisting[language=Go, caption={Le début}, firstnumber=3, lastline=${PREVIEW_LINES}]{a.go}`));
+  assert.ok(listingPreview(DOC, { ...listing, code: "", file: "a.go", options: "lastline=5" }, null).includes("caption={Le début}, lastline=5]{a.go}"));
 });
 
 test("what a line of the document holds, from what TeX measured", () => {

@@ -194,6 +194,77 @@ pub fn list(ws: &Workspace, root: &Path) -> Vec<CustomCommand> {
     out
 }
 
+/// Two macros a preview defines to take the definitions of a project
+/// without tripping on them: `\RTXprovide{name}{code}` runs the code when
+/// `\name` is not defined yet, `\RTXredefine{name}{code}` when it is.
+const PREVIEW_GUARDS: &str = "\\makeatletter\\def\\RTXprovide#1{\\@ifundefined{#1}{\\@firstofone}{\\@gobble}}\\def\\RTXredefine#1{\\@ifundefined{#1}{\\@gobble}{\\@firstofone}}\\makeatother\n";
+
+/// The definitions of the project a preview does not get from the preamble
+/// of the root document: the commands, the operators and the environments
+/// defined after `\begin{document}` or in another file (a chapter that
+/// starts with its own `\newcommand`). A picture, a formula or a title that
+/// uses them is previewed as the document shows it.
+///
+/// `all`: those of the preamble too, for a preview that does not reuse it.
+///
+/// Each one is written so that it cannot break a preview: it is run only
+/// when the command that defines exists (`\DeclareMathOperator` needs
+/// amsmath) and when what it defines is not defined yet (a file the
+/// preamble reads may have done it), or, for a `\renew…`, already is.
+/// Theorems are left out: their counters depend on the class.
+pub fn preview_definitions(ws: &Workspace, root: &Path, all: bool) -> String {
+    let docs = ws.project_documents(root);
+    let root = crate::log::normalize(root);
+    let mut out = String::new();
+    let mut add = |doc: &crate::workspace::Document, name: &str, span: &Span| {
+        if name.is_empty() || name.contains('@') {
+            return;
+        }
+        if !all && doc.path == root && span.start < crate::fixes::text::preamble_end(&doc.text) {
+            return;
+        }
+        let source = doc.text[statement(&doc.text, span)].trim();
+        let Some(definer) = source
+            .strip_prefix('\\')
+            .map(|rest| {
+                rest.chars()
+                    .take_while(char::is_ascii_alphabetic)
+                    .collect::<String>()
+            })
+            .filter(|d| !d.is_empty())
+        else {
+            return;
+        };
+        // What cannot stand in an argument, or opens more than it closes.
+        if source.contains("\\verb") || source.matches('{').count() != source.matches('}').count() {
+            return;
+        }
+        let guard = if definer.starts_with("renew") {
+            "RTXredefine"
+        } else {
+            "RTXprovide"
+        };
+        out.push_str(&format!(
+            "\\RTXredefine{{{definer}}}{{\\{guard}{{{name}}}{{{source}}}}}\n"
+        ));
+    };
+    for doc in &docs {
+        for def in &doc.index.command_defs {
+            add(doc, &def.name, &def.span);
+        }
+        for def in &doc.index.environment_defs {
+            if def.theorem_title.is_none() {
+                add(doc, &def.name, &def.span);
+            }
+        }
+    }
+    if out.is_empty() {
+        out
+    } else {
+        format!("{PREVIEW_GUARDS}{out}")
+    }
+}
+
 /// The whole definition whose name is at `name`: from the command that
 /// defines (`\newcommand`, `\def`…) to the end of its last argument.
 fn statement(text: &str, name: &Span) -> Span {
@@ -656,6 +727,124 @@ mod tests {
 
     const MAIN: &str = "\\documentclass{article}\n\\usepackage{amsmath,amssymb}\n\\newcommand{\\R}{\\mathbb{R}}\n\\newcommand{\\norme}[1]{\\left\\lVert #1 \\right\\rVert}\n\\newcommand{\\cadre}[2][noir]{\\fbox{#2}}\n\\DeclareMathOperator{\\argmax}{argmax}\n\\newenvironment{encadre}[1]{\\textbf{#1}}{}\n\\newtheorem{lemme}{Lemme}\n\\makeatletter\\newcommand{\\interne@x}{x}\\makeatother\n\\begin{document}\nSoit $x \\in \\R$ et $y \\in \\R$, de norme $\\norme{x}$. % \\R en commentaire\n\\input{partie}\n\\end{document}\n";
     const PART: &str = "\\newcommand{\\vect}[1]{\\overrightarrow{#1}}\n\\begin{lemme}\nOn a $\\vect{u} \\in \\R^2$ et \\cadre{un mot}.\n\\end{lemme}\n\\begin{lemme}\nEt $\\argmax f$.\n\\end{lemme}\n";
+
+    #[test]
+    fn a_preview_is_given_what_the_preamble_does_not_define() {
+        let (_dir, ws, root) = project(&[("main.tex", MAIN), ("partie.tex", PART)]);
+        // With the preamble of the project: only what is defined elsewhere.
+        let outside = preview_definitions(&ws, &root, false);
+        assert_eq!(
+            outside,
+            format!(
+                "{PREVIEW_GUARDS}\\RTXredefine{{newcommand}}{{\\RTXprovide{{vect}}{{\\newcommand{{\\vect}}[1]{{\\overrightarrow{{#1}}}}}}}}\n"
+            )
+        );
+        // Without it: every command, operator and environment; no theorem, nothing of the inside of a package.
+        let all = preview_definitions(&ws, &root, true);
+        for wanted in [
+            "\\RTXredefine{newcommand}{\\RTXprovide{R}{\\newcommand{\\R}{\\mathbb{R}}}}",
+            "\\RTXprovide{norme}{\\newcommand{\\norme}[1]{\\left\\lVert #1 \\right\\rVert}}",
+            "\\RTXredefine{DeclareMathOperator}{\\RTXprovide{argmax}{\\DeclareMathOperator{\\argmax}{argmax}}}",
+            "\\RTXredefine{newenvironment}{\\RTXprovide{encadre}{\\newenvironment{encadre}[1]{\\textbf{#1}}{}}}",
+            "\\RTXprovide{vect}{",
+        ] {
+            assert!(all.contains(wanted), "{wanted}\nin\n{all}");
+        }
+        assert!(!all.contains("lemme") && !all.contains("interne"), "{all}");
+        // A command made again is so only where it exists; a project without definitions adds nothing.
+        let (_d, ws, root) = project(&[(
+            "main.tex",
+            "\\documentclass{article}\n\\begin{document}\n\\renewcommand{\\vec}[1]{\\mathbf{#1}}\n$\\vec{u}$\n\\end{document}\n",
+        )]);
+        assert!(
+            preview_definitions(&ws, &root, false)
+                .ends_with("\\RTXredefine{renewcommand}{\\RTXredefine{vec}{\\renewcommand{\\vec}[1]{\\mathbf{#1}}}}\n")
+        );
+        let (_d, ws, root) = project(&[(
+            "main.tex",
+            "\\documentclass{article}\n\\begin{document}\nRien.\n\\end{document}\n",
+        )]);
+        assert_eq!(preview_definitions(&ws, &root, true), "");
+    }
+
+    /// A picture that uses a command of a chapter, an operator and a command
+    /// made again in the text: the preview has them all, and a command a file
+    /// of the preamble already defines is not defined twice.
+    #[test]
+    #[ignore = "needs a TeX distribution"]
+    fn a_preview_compiles_with_the_commands_of_the_project() {
+        use crate::preview::{self, PreviewRequest};
+        let Some(dist) = crate::tex::detect(&[]).into_iter().next() else {
+            println!("no TeX distribution: nothing checked");
+            return;
+        };
+        let main = "\\documentclass{article}\n\\usepackage{amsmath,amssymb}\n\\input{macros}\n\\newcommand{\\R}{\\mathbb{R}}\n\\begin{document}\n\\newcommand{\\dansletexte}{ici}\n\\renewcommand{\\vec}[1]{\\mathbf{#1}}\n\\input{chapitre}\n\\end{document}\n";
+        let (dir, ws, root) = project(&[
+            ("main.tex", main),
+            ("macros.tex", "\\newcommand{\\dejala}{d\\'ej\\`a}\n"),
+            (
+                "chapitre.tex",
+                "\\newcommand{\\vect}[1]{\\overrightarrow{#1}}\n\\DeclareMathOperator*{\\argmax}{arg\\,max}\n\\def\\norme#1{\\lVert #1\\rVert}\n\\newenvironment{encadre}{\\begin{center}}{\\end{center}}\nTexte.\n",
+            ),
+        ]);
+        let body = "\\begin{encadre}$\\vect{u} \\in \\R^2$, $\\argmax_x \\norme{\\vec{x}}$, \\dejala{} \\dansletexte\\end{encadre}";
+        for all in [false, true] {
+            let mut preamble = if all {
+                String::from("\\usepackage{amsmath,amssymb}\n")
+            } else {
+                preview::project_preamble(main)
+            };
+            preamble.push_str(&preview_definitions(&ws, &root, all));
+            let out = dir.path().join("previews");
+            let outcome = preview::compile(
+                &dist,
+                &PreviewRequest {
+                    class_options: "border=4pt,varwidth=12cm",
+                    preamble: &preamble,
+                    body,
+                    document: None,
+                    engine: crate::tex::Engine::Pdflatex,
+                    workdir: dir.path(),
+                    out_dir: &out,
+                    job: "commands-preview",
+                    timeout: std::time::Duration::from_secs(60),
+                    lang: Lang::En,
+                    install_missing: false,
+                },
+            );
+            let errors: Vec<_> = outcome
+                .diagnostics
+                .iter()
+                .filter(|d| d.severity == crate::diagnostics::Severity::Error)
+                .collect();
+            assert!(
+                errors.is_empty() && outcome.pdf.is_some(),
+                "all {all}: {errors:#?}\n{preamble}"
+            );
+        }
+        // Without them, the same picture does not compile: the test tells something.
+        let bare = preview::compile(
+            &dist,
+            &PreviewRequest {
+                class_options: "border=4pt,varwidth=12cm",
+                preamble: &preview::project_preamble(main),
+                body,
+                document: None,
+                engine: crate::tex::Engine::Pdflatex,
+                workdir: dir.path(),
+                out_dir: &dir.path().join("previews"),
+                job: "bare-preview",
+                timeout: std::time::Duration::from_secs(60),
+                lang: Lang::En,
+                install_missing: false,
+            },
+        );
+        assert!(
+            bare.diagnostics
+                .iter()
+                .any(|d| d.severity == crate::diagnostics::Severity::Error)
+        );
+    }
 
     #[test]
     fn the_definitions_of_a_project_are_listed_with_their_uses() {

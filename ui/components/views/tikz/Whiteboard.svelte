@@ -24,6 +24,7 @@
   import { expressionCss, BASE_COLORS, DVIPS_COLORS } from "$lib/colors";
   import { mathHtml } from "$lib/editor/math-preview";
   import { plural, t } from "$lib/i18n.svelte";
+  import { editor } from "$lib/state/editor.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import { alignment, bounds, type Box, copies, type Drawing, fitView, type Guide, linked, moved, newId, type Point, scaled, type Shape, shapeBounds, shapesCode, smoothCurve, snapPoint, type Style, tidy, touches, uniqueNames, WIDTH_PT, withoutLooseLinks } from "$lib/tikz/model";
   import Icon from "../../common/Icon.svelte";
@@ -827,7 +828,8 @@
       nodeHtml[key] = escapeHtml(key);
       if (key.includes("$")) {
         const parts = key.split("$");
-        void Promise.all(parts.map((part, i) => (i % 2 ? mathHtml(part) : Promise.resolve(escapeHtml(part.replace(/\\\\/g, " "))))))
+        // With the commands of the project, like the formulas of the document.
+        void Promise.all(parts.map((part, i) => (i % 2 ? mathHtml(part, editor.active) : Promise.resolve(escapeHtml(part.replace(/\\\\/g, " "))))))
           .then((html) => (nodeHtml[key] = html.join("")))
           .catch(() => {});
       }

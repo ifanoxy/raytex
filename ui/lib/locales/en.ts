@@ -1828,6 +1828,7 @@ const en = {
   "code.inserted": "Code inserted",
   "code.updated": "Code updated",
   "code.noDocument": "Open a .tex file to insert code in it.",
+  "code.firstLines": "the first {n} lines",
 };
 
 export default en;
