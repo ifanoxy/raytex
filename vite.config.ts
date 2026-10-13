@@ -33,6 +33,8 @@ export default defineConfig({
     target: "es2022",
     sourcemap: false,
     chunkSizeWarningLimit: 2000,
+    // Two pages: the application, and the window that follows an export.
+    rollupOptions: { input: { main: "index.html", export: "export.html" } },
   },
   resolve: {
     alias: { $lib: "/ui/lib" },

@@ -1740,7 +1740,6 @@ const en = {
   "pdfExport.leftSeconds": "about {n} s",
   "pdfExport.leftMinutes": "about {n} min",
   "pdfExport.almost": "nearly done",
-  "pdfExport.hide": "Hide (the export goes on)",
   "pdfExport.errorOne": "The build ended with {n} error.",
   "pdfExport.errorMany": "The build ended with {n} errors.",
   "pdfExport.noOutput": "The build made no PDF.",
@@ -1829,6 +1828,15 @@ const en = {
   "code.updated": "Code updated",
   "code.noDocument": "Open a .tex file to insert code in it.",
   "code.firstLines": "the first {n} lines",
+  "pdfExport.windowTitle": "Export of {file}",
+  "pdfExport.steps": "Steps of the export",
+  "pdfExport.elapsed": "Time elapsed",
+  "pdfExport.file": "File",
+  "pdfExport.pageLabel": "Page",
+  "pdfExport.output": "COMPILER OUTPUT",
+  "pdfExport.keepOpen": "Keep this window open at the end",
+  "pdfExport.lightening": "Making the images lighter",
+  "pdfExport.writing": "Writing the PDF",
 };
 
 export default en;

@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "export",
+  "description": "Permissions of the window that follows an export of the PDF: it listens to the build, talks to the main window, and closes itself.",
+  "windows": [
+    "export"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-title",
+    "core:window:allow-close",
+    "core:window:allow-destroy"
+  ]
+}

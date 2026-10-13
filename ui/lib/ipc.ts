@@ -2,9 +2,10 @@
 // (see crates/raytex-desktop/src/commands).
 
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { emitTo, listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type * as T from "./types";
 import type { BibDraft, BibField, Bibliography } from "./bibliography";
+import type { ExportWindowCommand, ExportWindowReport, ExportWindowState } from "./exportwindow";
 import type { PdfWeights } from "./pdfweight";
 import type { ExportOptions, ExportPlan } from "./export";
 import type { SpellStatus } from "./spelling";
@@ -86,6 +87,14 @@ export interface LighterPdf {
 /** Builds the document again with its pictures at `step` in a copy of the project, and writes the PDF at `dest`. */
 export const exportPdfLighter = (path: string, dest: string, step: number, limit: number | null) => call<LighterPdf>("export_pdf_lighter", { path, dest, step, limit });
 export const exportPdfCancel = () => call<void>("export_pdf_cancel");
+/** Opens the window of its own that follows an export (or brings it to the front). */
+export const exportWindowOpen = (title: string) => call<void>("export_window_open", { title });
+export const exportWindowClose = () => call<void>("export_window_close");
+export const exportWindowShown = () => call<boolean>("export_window_shown");
+/** Says something to one window of the application. */
+export function tell<K extends keyof Events>(window: string, event: K, payload: Events[K]): Promise<void> {
+  return emitTo(window, event, payload);
+}
 /** The spelling dictionaries on this computer and those that can be downloaded. */
 export const spellStatus = () => call<SpellStatus>("spell_status");
 /** Downloads the dictionary of a language: called only once the user agreed to it. */
@@ -235,6 +244,11 @@ export interface Events {
   "build:output": { lines: T.OutputLine[] };
   "build:finished": { outcome: T.BuildOutcome | null; error: T.Diagnostic | null; manual: boolean };
   "export:pictures": { done: number; total: number };
+  /** Between the main window and the window of an export (see `exportwindow.ts`). */
+  "export-window:state": ExportWindowState;
+  "export-window:command": ExportWindowCommand;
+  "export-window:ready": null;
+  "export-window:report": ExportWindowReport;
   "export:step": { name: string; command: string };
   "export:output": { lines: T.OutputLine[] };
   "tex:status": T.TexStatus;

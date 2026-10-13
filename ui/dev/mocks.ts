@@ -810,7 +810,11 @@ export function installMocks() {
           return sleep(1400).then(() => ({ pictures: 12, original: 40_300_000, steps: [16_200_000, 9_400_000, 7_100_000, 4_300_000, 2_900_000, 1_900_000, 1_250_000, 860_000], pdf: 42_100_000 }));
         case "pdf_weights_cancel":
         case "export_pdf_cancel":
+        case "export_window_open":
+        case "export_window_close":
           return null;
+        case "export_window_shown":
+          return false;
         case "export_pdf_lighter":
           return (async () => {
             for (let done = 1; done <= 12; done++) {
@@ -1087,4 +1091,55 @@ export function installMocks() {
     },
     { shouldMockEvents: true },
   );
+}
+
+/**
+ * Plays an export in the page of its window (`/export.html` opened in a
+ * browser): a build that has to be waited for, then the file written.
+ */
+export async function demoExport(theme: "light" | "dark" = "dark", failing = false) {
+  const state = {
+    dest: "/Users/demo/Desktop/memoire.pdf",
+    base: ROOT,
+    lighter: false,
+    errors: 0,
+    reason: null,
+    canForce: false,
+    reference: { steps: [{ name: "pdfLaTeX", durationMs: 2600 }, { name: "Biber", durationMs: 900 }, { name: "pdfLaTeX (2)", durationMs: 2600 }], pages: 12 },
+    seed: null,
+    result: null,
+    warning: false,
+    lang: "fr" as const,
+    theme,
+  };
+  await sleep(400);
+  await emit("export-window:state", { ...state, phase: "building" });
+  await emit("build:started", { plan: null as unknown as T.BuildPlan, manual: false });
+  for (const [name, command] of [
+    ["pdfLaTeX", "pdflatex -synctex=1 -interaction=nonstopmode -file-line-error -output-directory=build main.tex"],
+    ["Biber", "biber --input-directory=build main"],
+    ["pdfLaTeX (2)", "pdflatex -synctex=1 -interaction=nonstopmode -file-line-error -output-directory=build main.tex"],
+  ]) {
+    await emit("build:step", { name, command });
+    if (name === "Biber") {
+      await sleep(900);
+      await emit("build:output", { lines: [{ stream: "stdout", text: "INFO - This is Biber 2.20" }, { stream: "stdout", text: "INFO - Writing 'build/main.bbl' with encoding 'UTF-8'" }] });
+      continue;
+    }
+    await emit("build:output", { lines: [{ stream: "stdout", text: "This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025)" }, { stream: "stdout", text: `(${ROOT}/main.tex` }] });
+    for (let i = 0; i < 12; i++) {
+      await sleep(210);
+      const file = i === 0 ? ` (${ROOT}/chapitres/introduction.tex` : i === 5 ? `) (${ROOT}/chapitres/methodes.tex` : i === 9 ? `) (${ROOT}/chapitres/conclusion.tex` : "";
+      await emit("build:output", { lines: [{ stream: "stdout", text: `${file} [${i + 1}]` }] });
+    }
+    await emit("build:output", { lines: [{ stream: "stdout", text: ") )" }, { stream: "stdout", text: "Output written on build/main.pdf (12 pages, 284113 bytes)." }] });
+  }
+  await emit("build:finished", { outcome: null, error: null, manual: false });
+  if (failing) {
+    await emit("export-window:state", { ...state, phase: "failed", errors: 3, canForce: true });
+    return;
+  }
+  await emit("export-window:state", { ...state, phase: "copying" });
+  await sleep(500);
+  await emit("export-window:state", { ...state, phase: "done", result: "PDF exporté : memoire.pdf" });
 }

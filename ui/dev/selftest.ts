@@ -920,18 +920,26 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     );
     const during = `${root}-during-${stamp}.pdf`;
     const exporting = pdfExport.start(during);
-    await until(() => !!document.querySelector(".export-progress .bar"), 10_000, "export window");
-    const told = document.querySelector(".export-progress .step")?.textContent?.trim() ?? "";
+    // A window of its own opens, follows the build, tells what it showed and goes by itself.
+    await until(() => pdfExport.windowReady, 20_000, "export window");
+    const opened = await ipc.exportWindowShown();
     await scene("pdf-export");
     await exporting;
     await until(() => pdfExport.job === null, 120_000, "export during a build");
     const sizeDuring = await wholePdf(during);
-    const closed = !document.querySelector(".export-progress");
+    await until(() => pdfExport.report !== null, 10_000, "report of the export window");
+    const told = `${pdfExport.report?.steps} steps, ${pdfExport.report?.lines} lines`;
+    const followed = (pdfExport.report?.steps ?? 0) >= 1 && (pdfExport.report?.lines ?? 0) >= 1;
+    let closed = false;
+    for (let i = 0; i < 40 && !closed; i++) {
+      await pause(250);
+      closed = !(await ipc.exportWindowShown());
+    }
 
     const builds = build.startedAt;
     const again = `${root}-again-${stamp}.pdf`;
     await pdfExport.start(again);
-    const quiet = build.startedAt === builds && pdfExport.job === null && !document.querySelector(".export-progress");
+    const quiet = build.startedAt === builds && pdfExport.job === null && !(await ipc.exportWindowShown());
     const sizeAgain = await wholePdf(again);
 
     await editor.rewrite(main, (text) => `${text}\n% exported\n`);
@@ -941,9 +949,9 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     const rebuilt = build.startedAt !== builds;
     const sizeAfter = await wholePdf(after);
     log(
-      `pdf export: copy during a build «${refusal}», window «${told}» closed ${closed}, during ${sizeDuring} bytes, unchanged ${sizeAgain} bytes without a build ${quiet}, after a change ${sizeAfter} bytes rebuilt ${rebuilt}`,
+      `pdf export: copy during a build «${refusal}», window opened ${opened} «${told}» closed by itself ${closed}, during ${sizeDuring} bytes, unchanged ${sizeAgain} bytes without a build ${quiet}, after a change ${sizeAfter} bytes rebuilt ${rebuilt}`,
     );
-    ok = refusal.includes("building") && told.length > 0 && closed && sizeDuring > 0 && quiet && sizeAgain === sizeDuring && rebuilt && sizeAfter > 0 && ok;
+    ok = refusal.includes("building") && opened && followed && closed && sizeDuring > 0 && quiet && sizeAgain === sizeDuring && rebuilt && sizeAfter > 0 && ok;
   } catch (e) {
     log(`pdf export failed: ${e}, job ${JSON.stringify(pdfExport.job)}`);
     ok = false;
@@ -996,7 +1004,7 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     const light = `${root}-light-${stamp}.pdf`;
     const lightening = pdfExport.start(light, { kind: "step", step: 3 });
     await until(() => pdfExport.job?.phase === "pictures" || pdfExport.job?.phase === "lighter" || pdfExport.job === null, 30_000, "lighter export started");
-    const shown = !!document.querySelector(".export-progress") || pdfExport.job === null;
+    const shown = (await ipc.exportWindowShown()) || pdfExport.job === null;
     await lightening;
     await until(() => pdfExport.job === null, 180_000, "lighter export");
     const sizeLight = await pdfSize(light);

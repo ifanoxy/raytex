@@ -1742,7 +1742,6 @@ const fr: Record<keyof typeof en, string> = {
   "pdfExport.leftSeconds": "environ {n} s",
   "pdfExport.leftMinutes": "environ {n} min",
   "pdfExport.almost": "bientôt terminé",
-  "pdfExport.hide": "Masquer (l'export continue)",
   "pdfExport.errorOne": "La compilation s'est terminée avec {n} erreur.",
   "pdfExport.errorMany": "La compilation s'est terminée avec {n} erreurs.",
   "pdfExport.noOutput": "La compilation n'a pas produit de PDF.",
@@ -1831,6 +1830,15 @@ const fr: Record<keyof typeof en, string> = {
   "code.updated": "Code mis à jour",
   "code.noDocument": "Ouvrez un fichier .tex pour y insérer du code.",
   "code.firstLines": "les {n} premières lignes",
+  "pdfExport.windowTitle": "Export de {file}",
+  "pdfExport.steps": "Étapes de l'export",
+  "pdfExport.elapsed": "Temps écoulé",
+  "pdfExport.file": "Fichier",
+  "pdfExport.pageLabel": "Page",
+  "pdfExport.output": "SORTIE DU COMPILATEUR",
+  "pdfExport.keepOpen": "Laisser cette fenêtre ouverte à la fin",
+  "pdfExport.lightening": "Allègement des images",
+  "pdfExport.writing": "Écriture du PDF",
 };
 
 export default fr;

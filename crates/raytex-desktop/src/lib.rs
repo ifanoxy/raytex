@@ -66,14 +66,21 @@ pub fn run() {
                 .build(),
         )
         .manage(AppState::new())
-        // The last window is gone: the application quits (the unsaved files
-        // were dealt with when it was closed).
+        // The main window is gone: the application quits (the unsaved files
+        // were dealt with when it was closed), and the window of an export
+        // goes with it. That one may come and go: it decides nothing.
         .on_window_event(|window, event| {
-            if matches!(event, tauri::WindowEvent::Destroyed) {
+            if matches!(event, tauri::WindowEvent::Destroyed) && window.label() == "main" {
                 window
                     .state::<AppState>()
                     .quitting
                     .store(true, std::sync::atomic::Ordering::SeqCst);
+                if let Some(export) = window
+                    .app_handle()
+                    .get_webview_window(commands::export::EXPORT_WINDOW)
+                {
+                    let _ = export.destroy();
+                }
             }
         })
         .setup(|app| {
@@ -187,6 +194,9 @@ pub fn run() {
             commands::history::history_changes_cancel,
             commands::export::export_plan,
             commands::export::pdf_fresh,
+            commands::export::export_window_open,
+            commands::export::export_window_close,
+            commands::export::export_window_shown,
             commands::lighter::pdf_pictures,
             commands::lighter::pdf_weights,
             commands::lighter::pdf_weights_cancel,

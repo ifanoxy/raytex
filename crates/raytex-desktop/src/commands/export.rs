@@ -6,10 +6,71 @@ use std::path::{Path, PathBuf};
 
 use raytex_core::export::{self, ExportOptions, ExportPlan, Target};
 use raytex_core::log::normalize;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use super::{CmdResult, abs, blocking, err};
 use crate::state::AppState;
+
+/// Label of the window that follows an export of the PDF.
+pub const EXPORT_WINDOW: &str = "export";
+
+/// Opens the window that follows an export of the PDF: a window of its own,
+/// apart from the main one, which shows the build in detail. One that is
+/// open already is brought to the front with its new title.
+#[tauri::command]
+pub async fn export_window_open(app: AppHandle, title: String) -> CmdResult<()> {
+    if let Some(window) = app.get_webview_window(EXPORT_WINDOW) {
+        let _ = window.set_title(&title);
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+        return Ok(());
+    }
+    // The colour of the theme before the page is drawn, as for the main window.
+    let chosen = app.state::<AppState>().settings().general.theme.clone();
+    let dark = match chosen.as_str() {
+        "light" => false,
+        "dark" => true,
+        _ => app
+            .get_webview_window("main")
+            .and_then(|w| w.theme().ok())
+            .is_none_or(|t| t == tauri::Theme::Dark),
+    };
+    let colour = if dark {
+        tauri::window::Color(16, 13, 28, 255)
+    } else {
+        tauri::window::Color(245, 243, 251, 255)
+    };
+    tauri::WebviewWindowBuilder::new(
+        &app,
+        EXPORT_WINDOW,
+        tauri::WebviewUrl::App("export.html".into()),
+    )
+    .title(title)
+    .inner_size(620.0, 500.0)
+    .min_inner_size(460.0, 360.0)
+    .resizable(true)
+    .center()
+    .background_color(colour)
+    .build()
+    .map(|_| ())
+    .map_err(err)
+}
+
+/// Whether the window of the export is open.
+#[tauri::command]
+pub async fn export_window_shown(app: AppHandle) -> CmdResult<bool> {
+    Ok(app.get_webview_window(EXPORT_WINDOW).is_some())
+}
+
+/// Closes the window of the export, if it is open.
+#[tauri::command]
+pub async fn export_window_close(app: AppHandle) -> CmdResult<()> {
+    if let Some(window) = app.get_webview_window(EXPORT_WINDOW) {
+        let _ = window.close();
+    }
+    Ok(())
+}
 
 /// A document: its folder, its main file, where it is built, its `.bib` files.
 pub(crate) type Document = (PathBuf, PathBuf, PathBuf, Vec<PathBuf>);

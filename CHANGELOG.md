@@ -4,6 +4,13 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- **The export of the PDF has a window of its own**: a real window of the system, apart from the main one (it can be moved to another screen, and the work goes on in the editor), in place of the small card of 0.5.1. It shows the export in detail:
+  - its steps one after the other (each pass of the engine, the bibliography, the images made lighter, the writing of the file) with the time each took, and those still to come, known from the last build;
+  - the file the compiler is reading (followed in its output, where it opens and closes each file) and the page it is at;
+  - a progress bar with its percentage, an estimate of the time left and the time elapsed;
+  - everything the compiler writes, as it writes it.
+  - It closes by itself when the PDF is written, unless *Keep this window open at the end* is ticked; it then says where the PDF is and shows it in its folder. A build that ends with errors keeps it open, with the errors one click away in the main window. Opened in the middle of a build, it is told what that build did before.
+
 - Fixed, code window: its preview was a whole sheet of paper with the code in small at its top, in a narrow column: nothing could be read. The page of the preview is cut to the code (set as wide as a line of the document, so that lines wrap where they will), and it is shown under the code, as wide as the code. A long code shows its first 40 lines. In a presentation the preview stays a slide.
 - **Previews know the commands of the project wherever they are defined.** A preview (TikZ picture, trial of a command, sample of a font, code, title page, page layout) was built with the preamble of the main file: a command defined after `\begin{document}`, or at the top of a chapter, was unknown to it, and the picture that used it showed an error where the document compiled. These definitions are now given to every preview, each written so that it cannot break one: it is run only when the command that defines exists (`\DeclareMathOperator` needs amsmath), and when what it defines is not there yet (a file the preamble reads may have defined it), or, for a `\renewcommand`, already is. The formulas in the texts of the whiteboard use the commands of the project too, like the formulas of the document.
 

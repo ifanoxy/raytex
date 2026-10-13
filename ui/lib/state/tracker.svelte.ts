@@ -17,6 +17,8 @@ export class BuildTracker {
   lastLine = $state("");
   /** What the build before this one took. */
   reference = $state<BuildReference | null>(null);
+  /** The steps of this build so far: the last one runs (`ms` null) unless the build has ended. */
+  history = $state<{ name: string; startedAt: number; ms: number | null }[]>([]);
 
   start(reference: BuildReference | null) {
     this.reference = reference;
@@ -25,13 +27,22 @@ export class BuildTracker {
     this.startedAt = this.stepStartedAt = Date.now();
     this.pages = 0;
     this.lastLine = "";
+    this.history = [];
+  }
+
+  /** The build has ended: its last step too. */
+  ended() {
+    const last = this.history.at(-1);
+    if (last && last.ms === null) last.ms = Date.now() - last.startedAt;
   }
 
   stepStarted(name: string) {
+    this.ended();
     this.step = name;
     this.stepIndex++;
     this.stepStartedAt = Date.now();
     this.pages = 0;
+    this.history.push({ name, startedAt: this.stepStartedAt, ms: null });
   }
 
   output(lines: { stream: string; text: string }[]) {

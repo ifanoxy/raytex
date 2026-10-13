@@ -179,6 +179,7 @@ class BuildStore {
   private finished(outcome: BuildOutcome | null, error: Diagnostic | null, manual: boolean) {
     this.running = false;
     this.step = null;
+    this.tracker.ended();
     this.ended++;
     // A whole build that made its PDF is what the next one is measured with.
     if (outcome?.success && !outcome.cancelled && outcome.steps.length) {
