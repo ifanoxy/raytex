@@ -28,6 +28,7 @@
         "minHeight": 560,
         "center": true,
         "dragDropEnabled": true,
+        "acceptFirstMouse": true,
         "titleBarStyle": "Visible",
         "backgroundColor": "#100d1c",
         "backgroundThrottling": "disabled"

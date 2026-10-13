@@ -50,6 +50,7 @@ pub async fn export_window_open(app: AppHandle, title: String) -> CmdResult<()> 
     .inner_size(620.0, 500.0)
     .min_inner_size(460.0, 360.0)
     .resizable(true)
+    .accept_first_mouse(true)
     .center()
     .background_color(colour)
     .build()

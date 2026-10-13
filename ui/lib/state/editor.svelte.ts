@@ -49,6 +49,7 @@ import { enterKeymap, latexStructure } from "../editor/structure";
 import { spelling as spellingExtension } from "../editor/spelling";
 import { editorTheme } from "../editor/theme";
 import { fixLabel, runFix, suggestionOf } from "../fixes";
+import { gutterClicks } from "../editor/gutter";
 import { figureAt, figureGroupAt } from "../images";
 import { listingAt } from "../listing";
 import { i18n, type MessageKey, t } from "../i18n.svelte";
@@ -393,6 +394,7 @@ class EditorStore {
           e?.lineNumbers !== false ? [lineNumbers(), highlightActiveLineGutter()] : [],
           e?.folding !== false ? foldGutter({ openText: "▾", closedText: "▸" }) : [],
           lintGutter({ hoverTime: 250 }),
+          gutterClicks(),
         ],
       ],
       [c.wrap, e?.wordWrap !== false ? EditorView.lineWrapping : []],

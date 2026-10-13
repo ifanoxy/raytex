@@ -2092,6 +2092,67 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
   } catch (e) {
     results.failure = String(e);
   }
+  // ---------------------------------------------- the cursor where it is put
+  // Typing at the end of a long text, going back up, clicking somewhere and
+  // typing there: the cursor is where the click was, and the view stays
+  // there while the text is saved and compiled.
+  try {
+    const main = project.info!.main!;
+    await editor.open(main);
+    await until(() => !!editor.view && samePath(editor.active, main), 10_000, "main file shown");
+    const v = editor.view!;
+    const paragraphs = Array.from({ length: 260 }, (_, i) => `Paragraphe ${i + 1} : un texte assez long pour remplir la ligne et passer à la suivante, comme dans un vrai document, avec $x_{${i}}$ et une \\emph{nuance}.`).join("\n\n");
+    // The project of these scenes is empty: a whole document, long enough to scroll.
+    v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: `\\documentclass{article}\n\\begin{document}\n${paragraphs}\n\nFin du texte\n\\end{document}\n` }, userEvent: "input" });
+    const last = v.state.doc.toString().lastIndexOf("Fin du texte") + "Fin du texte".length;
+    v.dispatch({ selection: { anchor: last }, scrollIntoView: true });
+    v.focus();
+    await pause(500);
+    v.dispatch({ ...v.state.replaceSelection(" tapé en bas"), scrollIntoView: true, userEvent: "input.type" });
+    await pause(300);
+    const bottom = Math.round(v.scrollDOM.scrollTop);
+    // Back up, as a wheel does it.
+    for (let i = 0; i < 12; i++) {
+      v.scrollDOM.scrollTop -= 260;
+      await pause(16);
+    }
+    await pause(350);
+    const up = Math.round(v.scrollDOM.scrollTop);
+    // A click in the middle of a line that is in sight.
+    const box = v.scrollDOM.getBoundingClientRect();
+    const content = v.contentDOM.getBoundingClientRect();
+    const point = { x: content.left + 160, y: box.top + box.height * 0.4 };
+    const wanted = v.posAtCoords(point);
+    const target = document.elementFromPoint(point.x, point.y) ?? v.contentDOM;
+    for (const type of ["mousedown", "mouseup", "click"]) target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: point.x, clientY: point.y, button: 0, detail: 1 }));
+    await pause(150);
+    const clicked = v.state.selection.main.head;
+    v.dispatch({ ...v.state.replaceSelection("ICI"), scrollIntoView: true, userEvent: "input.type" });
+    const trace: number[] = [];
+    for (let i = 0; i < 28; i++) {
+      await pause(250);
+      trace.push(Math.round(v.scrollDOM.scrollTop));
+    }
+    const stayed = trace.every((top) => Math.abs(top - up) < 120);
+    const head = v.state.selection.main.head;
+    // A click in the margin (the line numbers): the cursor comes to that line, it does not stay below.
+    v.dispatch({ selection: { anchor: v.state.doc.toString().lastIndexOf("Fin du texte") } });
+    await pause(100);
+    const number = [...v.dom.querySelectorAll<HTMLElement>(".cm-lineNumbers .cm-gutterElement")].find((el) => {
+      const r = el.getBoundingClientRect();
+      return r.height > 0 && r.top > box.top + box.height * 0.3 && r.top < box.top + box.height * 0.7;
+    });
+    const at = number?.getBoundingClientRect();
+    if (number && at) number.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, clientX: at.left + at.width / 2, clientY: at.top + at.height / 2, button: 0 }));
+    await pause(120);
+    const marginLine = v.state.doc.lineAt(v.state.selection.main.head);
+    const inMargin = !!number && v.state.selection.main.head === marginLine.from && String(marginLine.number) === number.textContent?.trim() && Math.abs(v.scrollDOM.scrollTop - up) < 120;
+    check("a click in the margin puts the cursor on that line", inMargin, `line ${marginLine.number}, number ${number?.textContent}, head ${v.state.selection.main.head}`);
+    log(`cursor: bottom ${bottom}, up ${up}, click wanted ${wanted} got ${clicked}, after typing head ${head}, view ${Math.min(...trace)}..${Math.max(...trace)} stayed ${stayed}`);
+    check("the cursor is where the click was, and the view stays", wanted !== null && clicked === wanted && head === clicked + 3 && bottom - up > 1500 && stayed, `${clicked}/${wanted} ${trace.join(" ")}`);
+  } catch (e) {
+    results.cursor = `FAILED ${e}`;
+  }
   log(JSON.stringify(results, null, 2));
   const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));
   log(`files scenes ${ok ? "PASSED" : "FAILED"}`);

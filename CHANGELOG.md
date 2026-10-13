@@ -4,6 +4,8 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- Fixed, the editor going back down to where the cursor was: after typing at the bottom of a text, going back up and clicking somewhere to write there, the letters could go to the old place and the view jumped down to it. The click had not placed the cursor, in two cases. On macOS, a click in the window while another application or another window was in front only brought RayTeX back to the front (the text under it can be scrolled without that, which hides it); the click now also places the cursor, as in other editors. And a click in the margin of the editor (the line numbers, the columns of the folds and of the problems) was ignored; it puts the cursor at the start of that line, and Shift extends the selection to it. A click in the text itself was followed in the application through a save and a live build: the cursor and the view stay where the click was.
+
 - **The export of the PDF has a window of its own**: a real window of the system, apart from the main one (it can be moved to another screen, and the work goes on in the editor), in place of the small card of 0.5.1. It shows the export in detail:
   - its steps one after the other (each pass of the engine, the bibliography, the images made lighter, the writing of the file) with the time each took, and those still to come, known from the last build;
   - the file the compiler is reading (followed in its output, where it opens and closes each file) and the page it is at;
