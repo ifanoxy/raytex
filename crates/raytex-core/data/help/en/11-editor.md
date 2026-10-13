@@ -55,7 +55,7 @@ Under the top bar, like in a word processor (every button acts on the selection,
 | Image, Table, TikZ drawing | image window; a grid to choose the size of the table (empty cells, `booktabs` added); TikZ studio |
 | Link, footnote, reference, citation | `\href`, `\footnote`, `\ref`, `\cite` |
 | Macros | the list of @ shortcuts |
-| See all | every formatting and insertion command, grouped, with its shortcut |
+| See all | every formatting and insertion command, each with its shortcut: a field at the top finds a tool by its name (Enter runs the first one found), the families on the left (Text, Paragraphs and headings, Maths, Insert, Page, @ shortcuts) show one at a time |
 
 The **View** menu (top right) shows or hides this bar, the side panel, the PDF preview and the console; the preview and the console also close with their cross.
 

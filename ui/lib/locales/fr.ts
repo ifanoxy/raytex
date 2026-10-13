@@ -1841,6 +1841,9 @@ const fr: Record<keyof typeof en, string> = {
   "pdfExport.writing": "Écriture du PDF",
   "image.copied": "{file} copié dans {folder}/",
   "image.notCopied": "{file} n'a pas pu être copié dans le projet : il est utilisé là où il est.",
+  "format.search": "Rechercher un outil…",
+  "format.everything": "Tout",
+  "format.nothing": "Aucun outil de ce nom.",
 };
 
 export default fr;

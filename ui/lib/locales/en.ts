@@ -1839,6 +1839,9 @@ const en = {
   "pdfExport.writing": "Writing the PDF",
   "image.copied": "{file} copied into {folder}/",
   "image.notCopied": "{file} could not be copied into the project: it is used where it is.",
+  "format.search": "Find a tool…",
+  "format.everything": "Everything",
+  "format.nothing": "No tool of that name.",
 };
 
 export default en;

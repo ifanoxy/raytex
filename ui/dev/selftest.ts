@@ -1243,6 +1243,23 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     document.querySelector<HTMLButtonElement>(".format-bar .all")!.click();
     await until(() => !!document.querySelector(".all-tools .at-item .katex"), 10_000, "all tools");
     await scene("all-tools");
+    // Every tool is there, a family shows its own, and the field finds a tool by its name (without its accents).
+    const tools = () => [...document.querySelectorAll<HTMLElement>(".all-tools .item .label")].map((l) => l.textContent?.trim() ?? "");
+    const everything = tools().length;
+    const families = document.querySelectorAll(".all-tools .family").length;
+    document.querySelector<HTMLButtonElement>('.all-tools .family[data-family="format.groupPage"]')!.click();
+    await pause(200);
+    const ofPage = tools().length;
+    const finder = document.querySelector<HTMLInputElement>(".all-tools .search")!;
+    type(finder, "equation");
+    await pause(200);
+    const found = tools();
+    check(
+      "see all: every tool, by family, by name",
+      everything >= 45 && families === 7 && ofPage === 5 && found.length >= 2 && found.every((name) => /[eé]quation/i.test(name)),
+      `${everything} tools, ${families} families, page ${ofPage}, «equation» ${found.join(" | ")}`,
+    );
+    type(finder, "");
     document.querySelector<HTMLButtonElement>(".format-bar .all")!.click();
 
     // ------------------------------------------ completion with @ hint

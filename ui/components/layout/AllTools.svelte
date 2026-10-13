@@ -1,6 +1,8 @@
 <script lang="ts">
-  // "See all": every formatting and insertion command, grouped, with its
-  // shortcut, and the @ shortcuts to type symbols faster.
+  // "See all": every formatting and insertion command, with its shortcut,
+  // and the @ shortcuts to type symbols faster. A field finds a tool by its
+  // name, a rail shows one family at a time, and each tool is a tile large
+  // enough to aim at: the picture of what it does, its name, its keys.
   import { getAction, keyFor, runAction } from "$lib/actions";
   import { BASE_COLORS, type NamedColor } from "$lib/colors";
   import { COLORS, HEADINGS, type Heading, setHeading, setSize, type Size } from "$lib/editor/format";
@@ -19,10 +21,35 @@
   interface Item {
     label: string;
     icon?: string;
+    /** A formula shown in place of the icon (what the tool writes). */
+    glyph?: string;
     keys?: string;
     disabled?: boolean;
     run: () => unknown;
   }
+
+  type Family = "format.groupText" | "format.groupParagraph" | "format.groupMath" | "format.groupInsert" | "format.groupPage" | "format.groupShortcuts";
+  /** The families of the rail, with their pictures; `null` shows them all. */
+  const FAMILIES: [Family | null, string][] = [
+    [null, "grid"],
+    ["format.groupText", "type"],
+    ["format.groupParagraph", "heading"],
+    ["format.groupMath", "sigma"],
+    ["format.groupInsert", "plus"],
+    ["format.groupPage", "page-style"],
+    ["format.groupShortcuts", "at"],
+  ];
+  let family = $state<Family | null>(null);
+  let query = $state("");
+  let field = $state<HTMLInputElement | null>(null);
+
+  /** A text as it is searched: lower case, without accents. */
+  const plain = (text: string) =>
+    text
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  const wanted = $derived(plain(query.trim()));
 
   const canEdit = $derived(!!editor.activeTab && editor.activeTab.kind === "tex" && !editor.activeTab.readOnly);
 
@@ -48,9 +75,9 @@
     };
   }
 
-  function snippet(label: MessageKey, icon: string, body: string, math = false): Item {
+  function snippet(label: MessageKey, icon: string, body: string, math = false, glyph?: string): Item {
     const block = body.endsWith("\n") || body.startsWith("\\begin");
-    return { label: t(label), icon, disabled: !canEdit, run: () => (math ? editor.insertMath(body) : editor.insertSnippet(body, editor.view, { block })) };
+    return { label: t(label), icon, glyph, disabled: !canEdit, run: () => (math ? editor.insertMath(body) : editor.insertSnippet(body, editor.view, { block })) };
   }
 
   const HEADING_LABEL: Record<Heading, MessageKey> = {
@@ -70,7 +97,7 @@
     ["huge", "format.size.huge"],
   ];
 
-  const groups = $derived.by((): { title: MessageKey; items: Item[] }[] => [
+  const groups = $derived.by((): { title: Family; items: Item[] }[] => [
     {
       title: "format.groupText",
       items: [
@@ -104,10 +131,10 @@
         action("edit.math", "formula"),
         action("insert.equation", "equation"),
         action("insert.align", "equation"),
-        snippet("format.fraction", "formula", "\\frac{${1}}{${2}}", true),
-        snippet("format.sqrt", "formula", "\\sqrt{${1}}", true),
-        snippet("format.sum", "sigma", "\\sum_{${1}}^{${2}}", true),
-        snippet("format.integral", "formula", "\\int_{${1}}^{${2}} ${3} \\,\\mathrm{d}${4}", true),
+        snippet("format.fraction", "formula", "\\frac{${1}}{${2}}", true, "\\tfrac{a}{b}"),
+        snippet("format.sqrt", "formula", "\\sqrt{${1}}", true, "\\sqrt{x}"),
+        snippet("format.sum", "sigma", "\\sum_{${1}}^{${2}}", true, "\\textstyle\\sum"),
+        snippet("format.integral", "formula", "\\int_{${1}}^{${2}} ${3} \\,\\mathrm{d}${4}", true, "\\textstyle\\int"),
         action("insert.matrix", "matrix"),
         action("view.symbols"),
       ],
@@ -139,6 +166,37 @@
       ],
     },
   ]);
+
+  /** The families in sight: the one of the rail, or those that hold what is searched. */
+  const shown = $derived(
+    groups
+      .filter((g) => wanted || family === null || g.title === family)
+      .map((g) => ({ ...g, items: wanted ? g.items.filter((i) => plain(i.label).includes(wanted)) : g.items }))
+      .filter((g) => g.items.length),
+  );
+  /** The @ shortcuts in sight: all the favourites, or those whose key or command is searched. */
+  const keys = $derived(wanted ? shortcuts.filter(([key, cmd]) => `@${key}`.includes(wanted) || plain(cmd).includes(wanted.replace(/^\\/, ""))) : family === null || family === "format.groupShortcuts" ? shortcuts : []);
+  /** The size and the colour of the text, with the tools of the text. */
+  const extras = $derived(!wanted && (family === null || family === "format.groupText"));
+
+  function key(e: KeyboardEvent) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      onclose();
+      editor.focus();
+    } else if (e.key === "Enter" && wanted) {
+      // The first tool found is the one meant.
+      e.preventDefault();
+      const first = shown[0]?.items.find((i) => !i.disabled);
+      if (first) void choose(first);
+      else if (keys.length) insertShortcut(keys[0][1]);
+    }
+  }
+
+  $effect(() => {
+    field?.focus();
+  });
 
   async function choose(item: Item) {
     if (item.disabled) return;
@@ -179,58 +237,94 @@
   <ColorMenu x={colorMenu.x} y={colorMenu.y} onclose={() => ((colorMenu = null), onclose())} />
 {/if}
 
-<div class="all-tools" role="dialog" aria-label={t("format.all")}>
-  <div class="columns">
-    {#each groups as g (g.title)}
-      <section>
-        <h3 class="section-title">{t(g.title)}</h3>
-        {#each g.items as item (item.label)}
-          <button class="item" disabled={item.disabled} onmousedown={(e) => e.preventDefault()} onclick={() => choose(item)}>
-            <span class="icon-box">{#if item.icon}<Icon name={item.icon} size={15} />{/if}</span>
-            <span class="label ellipsis">{item.label}</span>
-            {#if item.keys}<kbd>{prettyKey(item.keys)}</kbd>{/if}
-          </button>
-        {/each}
-        {#if g.title === "format.groupText"}
-          <div class="row-title faint">{t("format.size")}</div>
-          <div class="chips">
-            {#each SIZES_SHOWN as [s, label] (s)}
-              <button class="chip" disabled={!canEdit} onmousedown={(e) => e.preventDefault()} onclick={() => size(s)}>{t(label)}</button>
+<div class="all-tools" role="dialog" tabindex="-1" aria-label={t("format.all")} onkeydown={key}>
+  <header>
+    <Icon name="search" size={15} />
+    <input class="search" bind:this={field} bind:value={query} placeholder={t("format.search")} aria-label={t("format.search")} spellcheck="false" />
+    <kbd>{prettyKey("Escape")}</kbd>
+  </header>
+
+  <div class="body">
+    <nav class="rail" aria-label={t("format.all")}>
+      {#each FAMILIES as [id, icon] (id ?? "all")}
+        <button class="family" class:active={!wanted && family === id} aria-pressed={!wanted && family === id} data-family={id ?? "all"} onmousedown={(e) => e.preventDefault()} onclick={() => ((family = id), (query = ""))}>
+          <Icon name={icon} size={15} />
+          <span class="ellipsis">{id ? t(id) : t("format.everything")}</span>
+        </button>
+      {/each}
+    </nav>
+
+    <div class="content">
+      {#each shown as g (g.title)}
+        <section data-family={g.title}>
+          <h3 class="section-title">{t(g.title)}</h3>
+          <div class="tiles">
+            {#each g.items as item (item.label)}
+              <button class="item" disabled={item.disabled} onmousedown={(e) => e.preventDefault()} onclick={() => choose(item)}>
+                <span class="icon-box" class:glyph={!!item.glyph}>
+                  {#if item.glyph}<MathGlyph latex={item.glyph} />{:else if item.icon}<Icon name={item.icon} size={16} />{/if}
+                </span>
+                <span class="label ellipsis" title={item.label}>{item.label}</span>
+                {#if item.keys}<kbd>{prettyKey(item.keys)}</kbd>{/if}
+              </button>
             {/each}
           </div>
-          <div class="row-title faint">{t("format.color")}</div>
-          <div class="swatches">
-            {#each swatches as c (c.name)}
-              <button class="swatch" disabled={!canEdit} style:background={c.css} title={label(c)} aria-label={label(c)} onmousedown={(e) => e.preventDefault()} onclick={() => color(c)}></button>
+          {#if g.title === "format.groupText" && extras}
+            <div class="extras">
+              <div class="extra">
+                <span class="row-title faint">{t("format.size")}</span>
+                <div class="sizes">
+                  {#each SIZES_SHOWN as [s, label], i (s)}
+                    <button class="size" disabled={!canEdit} title={t(label)} aria-label={t(label)} style:font-size="{10.5 + i * 1.7}px" onmousedown={(e) => e.preventDefault()} onclick={() => size(s)}>A</button>
+                  {/each}
+                </div>
+              </div>
+              <div class="extra">
+                <span class="row-title faint">{t("format.color")}</span>
+                <div class="swatches">
+                  {#each swatches as c (c.name)}
+                    <button class="swatch" disabled={!canEdit} style:background={c.css} title={label(c)} aria-label={label(c)} onmousedown={(e) => e.preventDefault()} onclick={() => color(c)}></button>
+                  {/each}
+                  <button
+                    class="chip more-colors"
+                    disabled={!canEdit}
+                    onmousedown={(e) => e.preventDefault()}
+                    onclick={(e) => {
+                      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      colorMenu = { x: r.left, y: r.bottom + 4 };
+                    }}>{t("colors.more")}</button>
+                </div>
+              </div>
+            </div>
+          {/if}
+        </section>
+      {/each}
+
+      {#if keys.length}
+        <section class="at" data-family="format.groupShortcuts">
+          <h3 class="section-title">{t("format.groupShortcuts")}</h3>
+          {#if !wanted}<p class="faint">{t("format.shortcutsIntro")}</p>{/if}
+          <div class="at-grid">
+            {#each keys as [k, cmd] (k)}
+              <button class="at-item" disabled={!canEdit} title={cmd} onmousedown={(e) => e.preventDefault()} onclick={() => insertShortcut(cmd)}>
+                <span class="key mono">@{k}</span>
+                <MathGlyph latex={cmd} />
+              </button>
             {/each}
           </div>
-          <button
-            class="chip more-colors"
-            disabled={!canEdit}
-            onmousedown={(e) => e.preventDefault()}
-            onclick={(e) => {
-              const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-              colorMenu = { x: r.left, y: r.bottom + 4 };
-            }}>{t("colors.more")}</button>
-        {/if}
-      </section>
-    {/each}
-    <section class="at">
-      <h3 class="section-title"><Icon name="at" size={13} /> {t("format.groupShortcuts")}</h3>
-      <p class="faint">{t("format.shortcutsIntro")}</p>
-      <div class="at-grid">
-        {#each shortcuts as [key, cmd] (key)}
-          <button class="at-item" disabled={!canEdit} title={cmd} onmousedown={(e) => e.preventDefault()} onclick={() => insertShortcut(cmd)}>
-            <span class="key mono">@{key}</span>
-            <MathGlyph latex={cmd} />
-          </button>
-        {/each}
-      </div>
-      <button class="btn small more" onclick={() => { onclose(); ui.showSidebar("snippets"); }}>
-        {t("format.allShortcuts")}
-        <Icon name="chevron-right" size={12} />
-      </button>
-    </section>
+          {#if !wanted}
+            <button class="btn small more" onclick={() => { onclose(); ui.showSidebar("snippets"); }}>
+              {t("format.allShortcuts")}
+              <Icon name="chevron-right" size={12} />
+            </button>
+          {/if}
+        </section>
+      {/if}
+
+      {#if !shown.length && !keys.length}
+        <p class="nothing faint">{t("format.nothing")}</p>
+      {/if}
+    </div>
   </div>
 </div>
 
@@ -240,14 +334,15 @@
     z-index: 390;
     top: calc(var(--toolbar-height) + 40px);
     right: 12px;
-    left: max(12px, calc(100vw - 1180px));
-    max-height: calc(100vh - var(--toolbar-height) - 80px);
-    overflow: auto;
-    padding: 14px 16px 16px;
+    width: min(940px, calc(100vw - 24px));
+    height: min(640px, calc(100vh - var(--toolbar-height) - 64px));
+    display: flex;
+    flex-direction: column;
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-lg);
     background: var(--bg-elev-2);
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
     animation: drop 0.12s ease-out;
   }
   @keyframes drop {
@@ -256,64 +351,179 @@
       transform: translateY(-4px);
     }
   }
-  .columns {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 8px 18px;
-  }
-  h3 {
+  /* The field that finds a tool by its name. */
+  header {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 5px;
-    margin: 0 0 6px 6px;
+    gap: 10px;
+    height: 46px;
+    padding: 0 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .search {
+    flex: 1;
+    min-width: 0;
+    height: 30px;
+    border: none;
+    outline: none;
+    background: none;
+    color: var(--text);
+    font-size: 14px;
+  }
+  .search::placeholder {
+    color: var(--text-faint);
+  }
+  .body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+  }
+  /* The families, one at a time or all together. */
+  .rail {
+    flex-shrink: 0;
+    width: 196px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 8px;
+    border-right: 1px solid var(--border);
+    background: var(--bg-elev);
+    overflow: auto;
+  }
+  .family {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    height: 32px;
+    padding: 0 10px;
+    border: none;
+    border-radius: var(--radius);
+    background: none;
+    color: var(--text-muted);
+    font-size: 12.5px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .family:hover {
+    background: var(--bg-hover);
+    color: var(--text);
+  }
+  .family.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 14px 16px 18px;
+    overflow: auto;
+  }
+  h3 {
+    margin: 0 0 8px 2px;
+  }
+  /* A tool: the picture of what it does, its name, its keys. */
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(206px, 1fr));
+    gap: 6px;
   }
   .item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    width: 100%;
-    height: 28px;
-    padding: 0 6px;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: none;
+    gap: 10px;
+    min-width: 0;
+    height: 42px;
+    padding: 0 10px 0 7px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-input);
     color: var(--text);
     font-size: 12.5px;
     text-align: left;
     cursor: pointer;
   }
   .item:hover:not(:disabled) {
-    background: var(--bg-hover);
+    border-color: var(--accent);
+    background: var(--accent-soft);
   }
   .item:disabled {
     opacity: 0.45;
     cursor: default;
   }
   .icon-box {
-    width: 18px;
+    flex-shrink: 0;
     display: grid;
     place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    background: var(--bg-hover);
     color: var(--text-muted);
+    overflow: hidden;
+  }
+  .item:hover:not(:disabled) .icon-box {
+    color: var(--accent);
+  }
+  .icon-box.glyph {
+    font-size: 11px;
+    color: var(--text);
   }
   .label {
     flex: 1;
+    min-width: 0;
   }
   kbd {
+    flex-shrink: 0;
     font-size: 10.5px;
   }
-  .row-title {
-    margin: 10px 6px 4px;
-    font-size: 11px;
-  }
-  .chips {
+  /* The size and the colour of the text. */
+  .extras {
     display: flex;
     flex-wrap: wrap;
+    gap: 10px 28px;
+    margin-top: 12px;
+  }
+  .extra {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .row-title {
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+  .sizes {
+    display: flex;
+    align-items: center;
     gap: 4px;
-    padding: 0 6px;
+  }
+  .size {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    color: var(--text);
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .size:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
   }
   .chip {
     height: 24px;
-    padding: 0 8px;
+    padding: 0 9px;
     border: 1px solid var(--border);
     border-radius: 12px;
     background: none;
@@ -325,19 +535,16 @@
     color: var(--text);
     border-color: var(--border-strong);
   }
-  .more-colors {
-    margin: 6px 6px 0;
-  }
   .swatches {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 5px;
-    padding: 0 6px;
   }
   .swatch {
     width: 20px;
     height: 20px;
-    border-radius: 5px;
+    border-radius: 50%;
     border: 1px solid var(--border-strong);
     cursor: pointer;
   }
@@ -345,35 +552,34 @@
     outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
-  .at {
-    grid-column: span 2;
-    min-width: 0;
+  .more-colors {
+    margin-left: 4px;
   }
   .at p {
-    margin: 0 6px 8px;
+    margin: 0 2px 8px;
     font-size: 11.5px;
     line-height: 1.45;
   }
   .at-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
-    gap: 5px;
-    padding: 0 6px;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 6px;
   }
   .at-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 6px;
-    height: 32px;
-    padding: 0 8px;
+    height: 34px;
+    padding: 0 9px;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     background: var(--bg-input);
     cursor: pointer;
   }
   .at-item:hover:not(:disabled) {
     border-color: var(--accent);
+    background: var(--accent-soft);
   }
   .key {
     font-variant-ligatures: none;
@@ -382,11 +588,27 @@
     color: var(--accent);
   }
   .more {
-    margin: 10px 6px 0;
+    margin-top: 10px;
   }
-  @media (max-width: 900px) {
-    .at {
-      grid-column: auto;
+  .nothing {
+    margin: 24px 0;
+    text-align: center;
+    font-size: 12.5px;
+  }
+  /* A narrow window: the families go above the tools, on one line. */
+  @media (max-width: 760px) {
+    .body {
+      flex-direction: column;
+    }
+    .rail {
+      width: auto;
+      flex-direction: row;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      padding: 6px 8px;
+    }
+    .family {
+      flex-shrink: 0;
     }
   }
 </style>
