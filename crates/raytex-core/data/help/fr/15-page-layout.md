@@ -35,7 +35,7 @@ Un **style de page** est ce qui se répète sur les pages. L'onglet **Styles de 
 | **Filigrane** | Un texte et son intensité, ou une image et son opacité | Couleur, taille, angle, position sur la page, devant le texte, image pleine page (un fond) |
 | **Titres, base, code** | | Comment le titre du chapitre et de la section est repris, le style dont celui-ci part, du LaTeX en plus, le code du style |
 
-Le **`+`** au bout de chaque champ y écrit ce qu'un champ peut contenir : numéro de page, « page 2 / 9 », titre du chapitre ou de la section, date, **image** (un logo, choisi dans vos fichiers), gras, italique, couleur, retour à la ligne, et pour aller plus loin le nombre de pages, le premier ou le dernier titre de la page, un contenu absent des pages de figures.
+Le **`+`** au bout de chaque champ y écrit ce qu'un champ peut contenir : numéro de page, « page 2 / 9 », titre du chapitre ou de la section, date, **image** (un logo, choisi dans vos fichiers : une image qui n'est pas dans le projet est copiée dans son dossier d'images, `figures/` par défaut, comme l'image d'un filigrane ou le logo d'une page de titre), gras, italique, couleur, retour à la ligne, et pour aller plus loin le nombre de pages, le premier ou le dernier titre de la page, un contenu absent des pages de figures.
 
 Quand le texte d'un champ dépasse sa case, une double flèche apparaît à côté du `+` : elle ouvre le champ dans une zone plus grande, sous les trois cases (<kbd>Échap</kbd> la referme).
 

@@ -1839,6 +1839,8 @@ const fr: Record<keyof typeof en, string> = {
   "pdfExport.keepOpen": "Laisser cette fenêtre ouverte à la fin",
   "pdfExport.lightening": "Allègement des images",
   "pdfExport.writing": "Écriture du PDF",
+  "image.copied": "{file} copié dans {folder}/",
+  "image.notCopied": "{file} n'a pas pu être copié dans le projet : il est utilisé là où il est.",
 };
 
 export default fr;

@@ -23,6 +23,7 @@ import { causeOf, fixable, quickFix } from "../lib/fixes";
 import { fileSelection } from "../lib/state/selection.svelte";
 import { media } from "../lib/state/media.svelte";
 import { pdfExport } from "../lib/state/pdfexport.svelte";
+import { bringPicture } from "../lib/state/pictures";
 import { colors } from "../lib/state/colors.svelte";
 import { fonts } from "../lib/state/fonts.svelte";
 import { history } from "../lib/state/history.svelte";
@@ -802,6 +803,13 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     uses()[3].click();
     await until(() => ui.overlay === null, 5_000, "studio closed");
     const here = !!editor.textOf(chapter)?.includes(`\\thispagestyle{${name}}`);
+    // A picture chosen for a page style from elsewhere on the computer is copied
+    // into the folder of pictures of the project; one of the project is named where it is.
+    const outside = await bringPicture(`${assets}/Photo de l'expérience.png`, main, editor.textOf(main) ?? "");
+    const copied = /^figures\/photo-de-l-experience(-\d+)?\.png$/.test(outside) && (await ipc.pathExists(`${project.info!.root}/${outside}`));
+    const inside = await bringPicture(`${project.info!.root}/${outside}`, main, editor.textOf(main) ?? "");
+    log(`layout: picture from outside «${outside}» copied ${copied}, picture of the project «${inside}»`);
+    ok = copied && inside === outside && ok;
     log(`layout: style ${name}, picture with a page style ${pictured}, larger field ${widened}, read ${read}, gathered ${gathered}, header asked ${asked}, previewed ${previewed}, defined ${defined}, packages ${packages}, here ${here}`);
     ok = read === "2.5 2.5 2.5 2.5" && pictured && centred && widened && gathered && asked && previewed && defined && packages && here && (await buildOk(log, "layout")) && ok;
   } catch (e) {

@@ -10,6 +10,7 @@
   import { i18n, t } from "$lib/i18n.svelte";
   import { ACCEPTED, extensionOf, figureCode, MAX_COLUMNS, mimeOf, safeStem, stemOf, targetExtension, timestamp, toPng, TO_PNG } from "$lib/images";
   import * as ipc from "$lib/ipc";
+  import { pictureFolder } from "$lib/pictures";
   import { addPackages, graphicsPaths } from "$lib/preamble";
   import { editor } from "$lib/state/editor.svelte";
   import { type ImageEdit, type ImageGroupEdit, media } from "$lib/state/media.svelte";
@@ -53,7 +54,6 @@
   const WEIGHT_KEY = "raytex.image.weight";
   const lang = i18n.lang === "fr" ? "fr" : "en";
 
-  const FOLDERS = ["figures", "images", "img", "figs", "graphics", "pictures", "fig"];
   /** Stands for an empty caption until the code becomes a snippet. */
   const CAPTION_FIELD = "\u0001caption\u0001";
 
@@ -103,9 +103,7 @@
       rootDir = dirname(root);
       rootText = editor.textOf(root) ?? (await ipc.readTextFile(root).then((f) => f.text).catch(() => ""));
     }
-    const existing = folders().find((f) => FOLDERS.includes(f.toLowerCase()));
-    const fromGraphicsPath = graphicsPaths(rootText)[0]?.replace(/\/$/, "");
-    folder = existing ?? fromGraphicsPath ?? "figures";
+    folder = pictureFolder(folders(), graphicsPaths(rootText));
     window.addEventListener("paste", onPaste);
     rootReady();
   });

@@ -4,6 +4,8 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- **The images of a page style come into the project**: the image of a watermark, a logo in a header or a footer, and the logo of a title page were named where they were on the computer (`../../Pictures/logo.png`), so that a project moved or sent to someone lost them. An image chosen outside the project is now copied into its folder of images (the one it has, whatever its name, else `figures/`), under a name LaTeX accepts everywhere, and the copy is what the document names; a notice says where it went. An image of the project is named where it is.
+
 - Fixed, the editor going back down to where the cursor was: after typing at the bottom of a text, going back up and clicking somewhere to write there, the letters could go to the old place and the view jumped down to it. The click had not placed the cursor, in two cases. On macOS, a click in the window while another application or another window was in front only brought RayTeX back to the front (the text under it can be scrolled without that, which hides it); the click now also places the cursor, as in other editors. And a click in the margin of the editor (the line numbers, the columns of the folds and of the problems) was ignored; it puts the cursor at the start of that line, and Shift extends the selection to it. A click in the text itself was followed in the application through a save and a live build: the cursor and the view stay where the click was.
 
 - **The export of the PDF has a window of its own**: a real window of the system, apart from the main one (it can be moved to another screen, and the work goes on in the editor), in place of the small card of 0.5.1. It shows the export in detail:

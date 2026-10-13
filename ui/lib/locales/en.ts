@@ -1837,6 +1837,8 @@ const en = {
   "pdfExport.keepOpen": "Keep this window open at the end",
   "pdfExport.lightening": "Making the images lighter",
   "pdfExport.writing": "Writing the PDF",
+  "image.copied": "{file} copied into {folder}/",
+  "image.notCopied": "{file} could not be copied into the project: it is used where it is.",
 };
 
 export default en;

@@ -64,9 +64,10 @@
   } from "$lib/layout";
   import { preambleEnd } from "$lib/preamble";
   import { editor } from "$lib/state/editor.svelte";
+  import { bringPicture } from "$lib/state/pictures";
   import { project } from "$lib/state/project.svelte";
   import { type MenuItem, ui } from "$lib/state/ui.svelte";
-  import { basename, debounce, dirname, relative } from "$lib/utils";
+  import { basename, debounce } from "$lib/utils";
   import FoldSection from "../common/FoldSection.svelte";
   import Icon from "../common/Icon.svelte";
   import LengthField from "../common/LengthField.svelte";
@@ -215,11 +216,11 @@
     editor.focus();
   }
 
-  /** A file of the project, as the document names it. */
+  /** A picture, as the document names it: one from elsewhere on the computer is copied into the project first. */
   async function pickImage(): Promise<string | null> {
     if (!root) return null;
     const file = await openDialog({ filters: [{ name: t("layout.markImage"), extensions: ["png", "jpg", "jpeg", "pdf"] }] }).catch(() => null);
-    return typeof file === "string" ? relative(dirname(root), file) : null;
+    return typeof file === "string" ? bringPicture(file, root, source ?? "") : null;
   }
 
   // ----------------------------------------------------------------- margins

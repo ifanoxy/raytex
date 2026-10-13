@@ -9,10 +9,11 @@
   import { type PagePreview, readClass } from "$lib/layout";
   import { preambleEnd } from "$lib/preamble";
   import { editor } from "$lib/state/editor.svelte";
+  import { bringPicture } from "$lib/state/pictures";
   import { project } from "$lib/state/project.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import { emptyTitlePage, isBeamer, readTitlePage, TITLE_STYLES, titleCode, type TitleKind, type TitlePage, titlePreview, type TitleStyle, TODAY, writeTitlePage } from "$lib/titlepage";
-  import { basename, debounce, dirname, relative } from "$lib/utils";
+  import { basename, debounce } from "$lib/utils";
   import FoldSection from "../common/FoldSection.svelte";
   import Icon from "../common/Icon.svelte";
   import LengthField from "../common/LengthField.svelte";
@@ -123,7 +124,8 @@
   async function pickLogo() {
     if (!root) return;
     const file = await openDialog({ filters: [{ name: t("title.logo"), extensions: ["png", "jpg", "jpeg", "pdf"] }] }).catch(() => null);
-    if (typeof file === "string") page.logo = relative(dirname(root), file).replace(/\\/g, "/");
+    // A logo from elsewhere on the computer is copied into the project first.
+    if (typeof file === "string") page.logo = await bringPicture(file, root, source ?? "");
   }
 
   /** Colours xcolor knows by name, as they look. */

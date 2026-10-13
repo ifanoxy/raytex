@@ -35,7 +35,7 @@ A **page style** is what repeats on the pages. The **Page styles** tab lists tho
 | **Watermark** | A text and its strength, or an image and its opacity | Colour, size, angle, place on the page, over the text, an image over the whole page (a background) |
 | **Titles, base, code** | | How the title of the chapter and of the section is repeated, the style this one starts from, more LaTeX, the code of the style |
 
-The **`+`** at the end of each field writes what a field can hold: page number, "page 2 / 9", title of the chapter or of the section, date, **image** (a logo, picked in your files), bold, italic, colour, new line, and further on the number of pages, the first or the last title of the page, something left out on pages of figures.
+The **`+`** at the end of each field writes what a field can hold: page number, "page 2 / 9", title of the chapter or of the section, date, **image** (a logo, picked in your files: an image that is not in the project is copied into its folder of images, `figures/` by default, like the image of a watermark or the logo of a title page), bold, italic, colour, new line, and further on the number of pages, the first or the last title of the page, something left out on pages of figures.
 
 When the text of a field is longer than its box, a double arrow shows next to the `+`: it opens the field in a larger area, under the three boxes (<kbd>Esc</kbd> closes it).
 
