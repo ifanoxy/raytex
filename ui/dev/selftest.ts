@@ -221,6 +221,11 @@ async function scenes(log: (msg: string) => void) {
 
 
 /** Waits for a PDF preview to be drawn; drawing needs a visible screen (logged, not fatal, when asleep). */
+/** Whether the window draws: one that is hidden, or a screen asleep, gets no frame, and nothing is laid out. */
+function draws(): Promise<boolean> {
+  return Promise.race([new Promise<boolean>((resolve) => requestAnimationFrame(() => resolve(true))), pause(1500).then(() => false)]);
+}
+
 async function drawn(selector: string, log: (msg: string) => void, what: string) {
   try {
     await until(() => !!document.querySelector(selector), 45_000, what);
@@ -759,7 +764,7 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
       await until(() => !idle(), 10_000, "style compiling again");
       await until(idle, 120_000, "style previewed again");
     }
-    const previewed = !!document.querySelector(".studio .ok-line") && !!document.querySelector(".studio .preview-box canvas");
+    const previewed = !!document.querySelector(".studio .ok-line") && (!!document.querySelector(".studio .preview-box canvas") || !(await draws()));
     await scene("page-style");
     const uses = () => [...document.querySelectorAll<HTMLButtonElement>(".studio .uses .btn")];
     uses()[0].click();
@@ -848,7 +853,11 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     typeIn(institution[2], "Mémoire de master");
     typeIn(group("institution").querySelector("textarea")!, "Pr. Ada Lovelace");
     await pause(900);
-    await until(() => !!document.querySelector(".title-studio .preview-box canvas") && !document.querySelector(".title-studio .busy"), 180_000, "title page previewed");
+    if (await draws()) await until(() => !!document.querySelector(".title-studio .preview-box canvas") && !document.querySelector(".title-studio .busy"), 180_000, "title page previewed");
+    else {
+      await until(() => !document.querySelector(".title-studio .busy"), 180_000, "title page compiled");
+      log("title page: preview not drawn (screen asleep or hidden?), continuing");
+    }
     const said = document.querySelector(".title-studio .error-box")?.textContent?.replace(/\s+/g, " ").trim() ?? "";
     await scene("title-page");
     document.querySelector<HTMLButtonElement>(".title-studio .buttons .primary")!.click();
@@ -1586,7 +1595,7 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     check("second project", await project.createEmpty(`${projectsDir}/td`, "TD de maths"));
     await project.close();
     await until(() => document.querySelectorAll(".browser .card").length >= 2, 10_000, "projects on the start screen");
-    await until(() => !!document.querySelector(".browser .card .page img"), 15_000, "project preview");
+    await drawn(".browser .card .page img", log, "project preview");
     results.cards = document.querySelectorAll(".browser .card").length;
     await scene("projects-home");
 
@@ -1965,7 +1974,7 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
       // distribution without latexdiff says so and offers to install it.
       [...document.querySelectorAll<HTMLButtonElement>(".history .actions .btn")].at(-1)!.click();
       await until(() => !history.pdfBusy && history.pdfShown, 180_000, "PDF of the changes");
-      if (history.pdf) await until(() => !!document.querySelector(".history .changes canvas"), 20_000, "PDF of the changes shown");
+      if (history.pdf) await drawn(".history .changes canvas", log, "PDF of the changes shown");
       const leftBehind = (await ipc.pathExists(`${root}/raytex-changes.tex`)) || (await ipc.pathExists(`${root}/build/raytex-changes`));
       log(`history: PDF of the changes ${history.pdf ? `built (${history.pdf.errors} errors)` : `not built: ${history.pdfProblem?.kind} ${history.pdfProblem?.detail ?? ""}`}`);
       check(
@@ -2126,6 +2135,7 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     await editor.open(main);
     await until(() => !!editor.view && samePath(editor.active, main), 10_000, "main file shown");
     const v = editor.view!;
+    const visible = await draws();
     const paragraphs = Array.from({ length: 260 }, (_, i) => `Paragraphe ${i + 1} : un texte assez long pour remplir la ligne et passer à la suivante, comme dans un vrai document, sans rien qui se casse quand on écrit au milieu.`).join("\n\n");
     // The project of these scenes is empty: a whole document, long enough to scroll.
     v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: `\\documentclass{article}\n\\begin{document}\n\\tableofcontents\n\\section{Début}\\label{debut}\n${paragraphs}\n\n\\section{Fin}\\label{fin}\nVoir la page~\\pageref{fin}.\n\nFin du texte\n\\end{document}\n` }, userEvent: "input" });
@@ -2172,9 +2182,11 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     await pause(120);
     const marginLine = v.state.doc.lineAt(v.state.selection.main.head);
     const inMargin = !!number && v.state.selection.main.head === marginLine.from && String(marginLine.number) === number.textContent?.trim() && Math.abs(v.scrollDOM.scrollTop - up) < 120;
-    check("a click in the margin puts the cursor on that line", inMargin, `line ${marginLine.number}, number ${number?.textContent}, head ${v.state.selection.main.head}`);
+    if (visible) check("a click in the margin puts the cursor on that line", inMargin, `line ${marginLine.number}, number ${number?.textContent}, head ${v.state.selection.main.head}`);
     log(`cursor: bottom ${bottom}, up ${up}, click wanted ${wanted} got ${clicked}, after typing head ${head}, view ${Math.min(...trace)}..${Math.max(...trace)} stayed ${stayed}`);
-    check("the cursor is where the click was, and the view stays", wanted !== null && clicked === wanted && head === clicked + 3 && bottom - up > 1500 && stayed, `${clicked}/${wanted} ${trace.join(" ")}`);
+    // A window that is not drawn lays nothing out: where a click lands there says nothing of the editor.
+    if (!visible) log("cursor: not drawn (screen asleep or hidden?), continuing");
+    else check("the cursor is where the click was, and the view stays", wanted !== null && clicked === wanted && head === clicked + 3 && bottom - up > 1500 && stayed, `${clicked}/${wanted} ${trace.join(" ")}`);
   } catch (e) {
     results.cursor = `FAILED ${e}`;
   }
@@ -2183,9 +2195,15 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
   // still to settle; the build that completes it comes by itself once the
   // text is left alone. A live build asked for while another one runs takes
   // its place, and the auxiliary files of the one that was stopped are whole.
+  // The scene asks for its builds itself: the one the editor starts once the
+  // text is left alone would come between them (it did on a slower machine).
+  const idleBuild = build.idleDelay(app.settings?.build.autoBuildDelayMs ?? 0);
+  await app.update((x) => (x.build.autoBuild = "off"));
   try {
     const main = project.info!.main!;
     const v = editor.view!;
+    // The one that an earlier scene left to come is let through first.
+    await pause(idleBuild + 300);
     await build.idle();
     await build.runToEnd();
     const whole = build.outcome;
@@ -2227,6 +2245,7 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
   } catch (e) {
     results.live = `FAILED ${e}`;
   }
+  await app.update((x) => (x.build.autoBuild = "onIdle"));
   log(JSON.stringify(results, null, 2));
   const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));
   log(`files scenes ${ok ? "PASSED" : "FAILED"}`);
