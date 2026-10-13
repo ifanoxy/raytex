@@ -390,6 +390,11 @@ pub fn pdf_fresh(t: &Target<'_>) -> bool {
     if !pdf_complete(&pdf) {
         return false;
     }
+    // A live build shows the text but may have left the references of the
+    // build before: not yet the document to hand over.
+    if crate::build::rerun_pending(t.out_dir) {
+        return false;
+    }
     let Some((read, at)) = recorded(t) else {
         return false;
     };
@@ -1053,6 +1058,7 @@ mod tests {
             source: &source,
             packages: None,
             background: false,
+            live: false,
         };
         let outcome = build::run(&plan, &ctx, &mut |_: BuildEvent| {});
         assert!(outcome.success, "{:#?}", outcome.diagnostics);

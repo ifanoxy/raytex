@@ -167,7 +167,11 @@ export const rootOf = (path: string) => call<string | null>("root_of", { path })
 
 // --------------------------------------------------------------- build
 /** Starts (or queues) a build; `manual`: asked for by the user (not live or on save). */
-export const build = (path: string, manual: boolean) => call<void>("build", { path, manual });
+/**
+ * Asks for a build. `live`: one made while the text is typed, which is one
+ * pass of the engine and gives way to a newer text (see the engine).
+ */
+export const build = (path: string, manual: boolean, live = false) => call<void>("build", { path, manual, live });
 export const cancelBuild = () => call<void>("cancel_build");
 export const buildPlan = (path: string) => call<{ Ok?: T.BuildPlan; Err?: T.Diagnostic }>("build_plan", { path });
 export const cleanBuild = (path: string) => call<number>("clean_build", { path });
@@ -242,7 +246,8 @@ export interface Events {
   "build:started": { plan: T.BuildPlan; manual: boolean };
   "build:step": { name: string; command: string };
   "build:output": { lines: T.OutputLine[] };
-  "build:finished": { outcome: T.BuildOutcome | null; error: T.Diagnostic | null; manual: boolean };
+  /** `superseded`: the build was given up for a newer text, which is being built. */
+  "build:finished": { outcome: T.BuildOutcome | null; error: T.Diagnostic | null; manual: boolean; superseded?: boolean };
   "export:pictures": { done: number; total: number };
   /** Between the main window and the window of an export (see `exportwindow.ts`). */
   "export-window:state": ExportWindowState;

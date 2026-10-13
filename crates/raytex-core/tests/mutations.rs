@@ -1576,6 +1576,7 @@ fn compile(dist: &Distribution, analyzer: &Arc<PackageAnalyzer>, main: &Path) ->
         source: &source,
         packages: Some(&packages),
         background: false,
+        live: false,
     };
     let outcome = build::run(&plan, &ctx, &mut |_: BuildEvent| {});
     // The part of RayTeX in that time: the log read again, and the causes

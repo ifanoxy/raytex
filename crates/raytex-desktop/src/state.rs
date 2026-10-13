@@ -176,11 +176,40 @@ pub struct Project {
 pub struct BuildControl {
     /// Cancellation flag of the running build.
     pub running: Option<Arc<AtomicBool>>,
-    /// A build requested while another was running (coalesced), and
-    /// whether one of the coalesced requests came from the user.
-    pub queued: Option<(PathBuf, bool)>,
+    /// A build requested while another was running (coalesced), whether
+    /// one of the coalesced requests came from the user, and whether it is
+    /// a live build (all of them were).
+    pub queued: Option<(PathBuf, bool, bool)>,
     /// The PDF the running build writes, once its plan is known.
     pub writing: Option<PathBuf>,
+    /// The running build is a live one (see `RunContext::live`).
+    pub running_live: bool,
+    /// When the running build started, and how long the last one that was
+    /// let to its end took: a build nearly done is not given up.
+    pub started: Option<Instant>,
+    /// See [`Self::started`].
+    pub last_duration: Option<std::time::Duration>,
+    /// The running build was stopped because a newer text is waiting.
+    pub superseding: bool,
+    /// Live builds given up in a row for a newer text: after two, the next
+    /// one is let to its end, so that the page moves even under steady
+    /// typing.
+    pub superseded: u32,
+}
+
+impl BuildControl {
+    /// Whether the running live build is to give way to a newer text: it
+    /// has a good part of its work ahead, and builds were not given up
+    /// twice in a row already.
+    pub fn gives_way(&self) -> bool {
+        let nearly_done = match (self.started, self.last_duration) {
+            (Some(started), Some(last)) => {
+                started.elapsed().as_secs_f64() > last.as_secs_f64() * 0.7
+            }
+            _ => false,
+        };
+        self.running_live && self.superseded < 2 && !nearly_done
+    }
 }
 
 /// Cached SyncTeX data of a PDF.

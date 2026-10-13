@@ -323,6 +323,7 @@ pub async fn history_changes_pdf(
             source: &source,
             packages: None,
             background: false,
+            live: false,
         };
         let outcome = build::run(&plan, &ctx, &mut |_: BuildEvent| {});
         if outcome.cancelled {

@@ -695,6 +695,7 @@ mod tests {
                     source: &source,
                     packages: None,
                     background: false,
+                    live: false,
                 };
                 let outcome = crate::build::run(&plan, &ctx, &mut |_| {});
                 let errors: Vec<String> = outcome

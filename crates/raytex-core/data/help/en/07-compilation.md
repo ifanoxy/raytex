@@ -6,6 +6,7 @@ Building turns your `.tex` files into a PDF. RayTeX does it fast, at the right t
 
 - <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd>, or the **Build** button.
 - **Live** (default): after each pause in typing. The *Live* badge of the top bar shows it and, during an automatic build, spins without touching the **Build** button. Click it, or use the menu of the **Build** button, to build on each save instead; *Settings › Compilation › Build automatically* also offers *Never* and the length of the pause.
+- **On a long document** (a pass of the compiler of more than a second and a half), live builds lighten by themselves. A live build is first **one pass**: the page shows what you just wrote twice as fast when your lines move the pages that follow; references, the table of contents and the bibliography are set right by a build that completes it, started by itself as soon as you leave the text alone for a moment (and at once by **Build** or by an export). If you go on typing during a build, it is given up for the new text instead of being run to its end for nothing, unless it was about to finish. And the pause waited for before building gets a little longer with the time a pass takes.
 - <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>.</kbd> stops a running build.
 
 Modified files are saved before each build. If you build from a chapter included with `\input`, the main document is built.

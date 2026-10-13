@@ -15,6 +15,16 @@ import { BuildTracker } from "./tracker.svelte";
 import { ui } from "./ui.svelte";
 import { viewer } from "./viewer.svelte";
 
+declare module "../types" {
+  interface BuildOutcome {
+    /** A live build left work for a later one: the references of the page may be those of the build before. */
+    rerunPending?: boolean;
+  }
+}
+
+/** A pass of the engine longer than this makes a document a long one: its live builds are one pass each. */
+const LONG_PASS_MS = 1500;
+
 export interface ConsoleLine {
   stream: "stdout" | "stderr" | "cmd";
   text: string;
@@ -42,6 +52,8 @@ class BuildStore {
   /** Builds that ended, and those waiting for the end of the running one. */
   private ended = 0;
   private waiters: (() => void)[] = [];
+  /** The build that will complete a live one, once the text is left alone for a moment. */
+  private completion: ReturnType<typeof setTimeout> | null = null;
 
   get status(): "idle" | "running" | "success" | "failed" | "cancelled" {
     if (this.running) return "running";
@@ -53,6 +65,7 @@ class BuildStore {
 
   async init() {
     await ipc.on("build:started", ({ plan, manual }) => {
+      this.forgetCompletion();
       // The engine tells which builds the user asked for (queued requests are coalesced).
       this.manual = manual;
       editor.buildStarted();
@@ -74,7 +87,7 @@ class BuildStore {
       this.tracker.output(lines);
       this.push(lines);
     });
-    await ipc.on("build:finished", ({ outcome, error, manual }) => this.finished(outcome, error, manual));
+    await ipc.on("build:finished", ({ outcome, error, manual, superseded }) => this.finished(outcome, error, manual, !!superseded));
   }
 
   private push(lines: ConsoleLine[]) {
@@ -90,8 +103,41 @@ class BuildStore {
     return project.info?.main ?? null;
   }
 
-  /** Asks for a build; false when none was asked (nothing to build, no TeX…). */
-  async run(opts: { auto?: boolean } = {}): Promise<boolean> {
+  /** How long a pass of the engine takes on this document, from its last whole build; null when none was made. */
+  get passMs(): number | null {
+    return this.reference?.steps[0]?.durationMs ?? null;
+  }
+
+  /**
+   * How long the text is left alone before a live build starts: the delay
+   * of the settings, and longer for a document whose passes are long (a
+   * build of several seconds is not worth starting at each breath).
+   */
+  idleDelay(setting: number): number {
+    const pass = this.passMs ?? 0;
+    return Math.max(400, setting, Math.min(2500, Math.round(pass * 0.3)));
+  }
+
+  /** The text changed: the build that was to complete the page waits for it to settle again. */
+  textChanged() {
+    this.forgetCompletion();
+  }
+
+  private forgetCompletion() {
+    if (this.completion) clearTimeout(this.completion);
+    this.completion = null;
+  }
+
+  /**
+   * Asks for a build; false when none was asked (nothing to build, no TeX…).
+   *
+   * `auto`: not asked for by the user (the text was left alone, or saved).
+   * On a long document such a build is a live one: one pass of the engine,
+   * which gives way to a newer text. `complete`: a whole build all the
+   * same (the one that completes a live build, or the one an export needs).
+   * `live`: a live build whatever the length of the document (the self-test).
+   */
+  async run(opts: { auto?: boolean; complete?: boolean; live?: boolean } = {}): Promise<boolean> {
     const target = this.target();
     if (!target) {
       if (!opts.auto) ui.toast("info", t("build.nothingToBuild"));
@@ -113,7 +159,8 @@ class BuildStore {
     await editor.saveAll({ auto: true, silent: true });
     await editor.flush();
     try {
-      await ipc.build(target, !opts.auto);
+      const live = !!opts.auto && !opts.complete && (opts.live || (this.passMs ?? 0) > LONG_PASS_MS);
+      await ipc.build(target, !opts.auto, live);
       return true;
     } catch (e) {
       ui.toast("error", t("build.failedToStart"), { detail: String(e) });
@@ -137,7 +184,7 @@ class BuildStore {
   }
 
   /** Compiles and waits for the end; false when no build was asked. */
-  async runToEnd(opts: { auto?: boolean } = {}): Promise<boolean> {
+  async runToEnd(opts: { auto?: boolean; complete?: boolean; live?: boolean } = {}): Promise<boolean> {
     const before = this.ended;
     if (!(await this.run(opts))) return false;
     // The engine says it started a moment after it was asked.
@@ -176,11 +223,16 @@ class BuildStore {
     diagnostics.setBuild([]);
   }
 
-  private finished(outcome: BuildOutcome | null, error: Diagnostic | null, manual: boolean) {
+  private finished(outcome: BuildOutcome | null, error: Diagnostic | null, manual: boolean, superseded = false) {
     this.running = false;
     this.step = null;
     this.tracker.ended();
     this.ended++;
+    // Given up for a newer text, which is being built: the page, the problems and the console stay as they were.
+    if (superseded) {
+      for (const done of this.waiters.splice(0)) done();
+      return;
+    }
     // A whole build that made its PDF is what the next one is measured with.
     if (outcome?.success && !outcome.cancelled && outcome.steps.length) {
       this.references.set(outcome.plan.root, { steps: outcome.steps.map((st) => ({ name: st.name, durationMs: st.durationMs })), pages: outcome.pages ?? null });
@@ -222,6 +274,12 @@ class BuildStore {
     }
     if (outcome.success && app.settings?.viewer.syncAfterBuild && !auto) void editor.syncForward(true);
     void project.refreshStructure();
+    // A live build showed the text; what it left (references that moved, the
+    // bibliography) is done once the text has been left alone a little longer.
+    if (outcome.rerunPending && auto) {
+      this.forgetCompletion();
+      this.completion = setTimeout(() => void this.run({ auto: true, complete: true }), Math.max(1200, Math.min(4000, Math.round(outcome.durationMs * 0.5))));
+    }
   }
 }
 

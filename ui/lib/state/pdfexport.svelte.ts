@@ -76,7 +76,7 @@ class PdfExportStore {
       if (!build.running) await this.ready();
       if (!current()) return;
       // Its own window tells how this build goes and ends: it is asked for quietly.
-      const asked = build.running ? (await build.idle(), true) : await build.runToEnd({ auto: true });
+      const asked = build.running ? (await build.idle(), true) : await build.runToEnd({ auto: true, complete: true });
       if (!current()) return;
       const outcome = build.outcome;
       const errors = outcome?.diagnostics.filter((d) => d.severity === "error").length ?? 0;

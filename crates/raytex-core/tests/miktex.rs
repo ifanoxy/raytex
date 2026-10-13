@@ -62,6 +62,7 @@ fn compile_with(dist: &Distribution, main: &Path, install: bool) -> (bool, Vec<D
         source: &source,
         packages: None,
         background: false,
+        live: false,
     };
     let outcome = build::run(&plan, &ctx, &mut |_: BuildEvent| {});
     (outcome.success, outcome.diagnostics)

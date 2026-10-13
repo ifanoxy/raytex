@@ -356,6 +356,10 @@ pub struct BuildOutcome {
     pub engine: Engine,
     /// The plan.
     pub plan: BuildPlan,
+    /// A live build left work for a later one (see [`RunContext::live`]):
+    /// the PDF shows the text, its references may be those of the build
+    /// before.
+    pub rerun_pending: bool,
 }
 
 /// Gives the analyzer of the installed packages (`None` when the files of
@@ -382,6 +386,13 @@ pub struct RunContext<'a> {
     /// Long-lived caller (the application): work useful to the next builds
     /// may continue in the background (precompiled preambles).
     pub background: bool,
+    /// A build made while the text is being typed: one pass of the engine
+    /// shows the text as it is, and what would complete it (the
+    /// bibliography, an index, the passes LaTeX asks for when references
+    /// moved) is left to a later build ([`BuildOutcome::rerun_pending`]).
+    /// On a long document that is half the time, or less, before the page
+    /// shows what was typed.
+    pub live: bool,
 }
 
 struct Runner<'a, 'b> {
@@ -391,6 +402,8 @@ struct Runner<'a, 'b> {
     steps: Vec<StepSummary>,
     cancelled: bool,
     ran_bib: Option<BibTool>,
+    /// A live build left work for a later one.
+    rerun_pending: bool,
     deadline: Instant,
     /// Precompiled preamble in use (format without extension, its key).
     format: Option<(PathBuf, u64)>,
@@ -443,6 +456,7 @@ pub fn run(
         steps: Vec::new(),
         cancelled: false,
         ran_bib: None,
+        rerun_pending: false,
         deadline: start + Duration::from_secs(ctx.settings.timeout_s.max(10) as u64),
         format: preamble_key.and_then(|k| preamble::ready(plan, k).map(|f| (f, k))),
         last_output: Vec::new(),
@@ -523,6 +537,7 @@ pub fn run(
         missing_files: report.missing_files,
         engine: plan.engine,
         plan: plan.clone(),
+        rerun_pending: r.rerun_pending && !r.cancelled,
     }
 }
 
@@ -678,7 +693,17 @@ impl Runner<'_, '_> {
         } else {
             self.plan.engine.label().to_owned()
         };
+        // A pass that is stopped (by the user, or for a newer text) leaves
+        // its auxiliary files cut short: the next pass would read half of
+        // the labels and of the table of contents. They are put back as
+        // they were.
+        let kept = auxiliary_files(&self.plan.out_dir);
         let code = self.step(name.clone(), self.engine_cmd());
+        if self.cancelled() {
+            for (path, data) in &kept {
+                let _ = std::fs::write(path, data);
+            }
+        }
         let mut report = self.read_log();
         self.explain_silent_failure(code, &mut report);
         // A pass that stops with a precompiled preamble is redone without it;
@@ -770,6 +795,19 @@ impl Runner<'_, '_> {
         {
             report.rerun_needed = true;
         }
+        // A live build stops here: the page shows the text. Whether the
+        // bibliography, an index or another pass is due is written down for
+        // the build that will complete it.
+        if self.ctx.live {
+            state.pending = report.rerun_needed || self.tools_due(&state, &report);
+            self.rerun_pending = state.pending;
+            let _ = std::fs::write(
+                &state_path,
+                serde_json::to_string(&state).unwrap_or_default(),
+            );
+            return report;
+        }
+        state.pending = false;
         let mut auxiliary_ran = false;
 
         // Bibliography.
@@ -927,6 +965,51 @@ impl Runner<'_, '_> {
         report
     }
 
+    /// Whether a tool of the bibliography, the index or the glossaries has
+    /// something new to read since it last ran (what the smart builder
+    /// checks before running each of them).
+    fn tools_due(&self, state: &BuildState, report: &LogReport) -> bool {
+        let plan = self.plan;
+        let file = |ext: &str| plan.out_dir.join(format!("{}.{ext}", plan.job));
+        let bbl = file("bbl");
+        let bibliography = match plan.bib_tool {
+            Some(BibTool::Biber) => {
+                let bcf = file("bcf");
+                bcf.exists()
+                    && (report.biber_needed
+                        || hash_file(&bcf) != state.bcf
+                        || !bbl.exists()
+                        || report.undefined_citations && state.bcf.is_none())
+            }
+            Some(BibTool::Bibtex) => {
+                let text = std::fs::read_to_string(file("aux")).unwrap_or_default();
+                let relevant: String = text
+                    .lines()
+                    .filter(|l| {
+                        l.starts_with("\\citation")
+                            || l.starts_with("\\bibdata")
+                            || l.starts_with("\\bibstyle")
+                    })
+                    .collect();
+                text.contains("\\bibdata")
+                    && (Some(hash_str(&relevant)) != state.citations || !bbl.exists())
+            }
+            _ => false,
+        };
+        let changed = |ext: &str, last: Option<u64>| {
+            let now = hash_file(&file(ext));
+            now.is_some() && now != last
+        };
+        let (glo, acn) = (file("glo"), file("acn"));
+        let glossaries = (glo.exists() || acn.exists())
+            && Some(hash_str(&format!(
+                "{:?}{:?}",
+                hash_file(&glo),
+                hash_file(&acn)
+            ))) != state.glossaries;
+        bibliography || changed("idx", state.idx) || glossaries || changed("nlo", state.nomencl)
+    }
+
     fn latexmk(&mut self) -> LogReport {
         let plan = self.plan;
         let s = self.ctx.settings;
@@ -1043,6 +1126,45 @@ impl Runner<'_, '_> {
     }
 }
 
+/// What an engine reads back at its next pass and writes again as it goes
+/// (labels, table of contents, bookmarks, citations asked for).
+const READ_BACK: &[&str] = &[
+    "aux", "toc", "lof", "lot", "out", "bcf", "idx", "glo", "acn", "nlo", "nav", "snm", "loa",
+    "lol",
+];
+
+/// The files of [`READ_BACK`] under `out_dir` (those of the included
+/// chapters too), with what they hold now.
+fn auxiliary_files(out_dir: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    fn walk(dir: &Path, depth: usize, out: &mut Vec<(PathBuf, Vec<u8>)>) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let Ok(kind) = entry.file_type() else {
+                continue;
+            };
+            if kind.is_dir() {
+                if depth < 4 && !name.starts_with('.') && !name.starts_with("raytex-") {
+                    walk(&path, depth + 1, out);
+                }
+            } else if path
+                .extension()
+                .is_some_and(|e| READ_BACK.iter().any(|kept| e.eq_ignore_ascii_case(kept)))
+                && entry.metadata().is_ok_and(|m| m.len() < 8 * 1024 * 1024)
+                && let Ok(data) = std::fs::read(&path)
+            {
+                out.push((path, data));
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(out_dir, 0, &mut out);
+    out
+}
+
 /// Hashes of the inputs of auxiliary tools at their last run.
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct BuildState {
@@ -1051,6 +1173,18 @@ struct BuildState {
     idx: Option<u64>,
     glossaries: Option<u64>,
     nomencl: Option<u64>,
+    /// The last build was a live one that left work for a later one.
+    #[serde(default)]
+    pending: bool,
+}
+
+/// Whether the last build in `out_dir` was a live one that left
+/// work to do: its PDF is not yet the document as an export wants it.
+pub fn rerun_pending(out_dir: &Path) -> bool {
+    std::fs::read_to_string(out_dir.join(".raytex-build.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str::<BuildState>(&s).ok())
+        .is_some_and(|state| state.pending)
 }
 
 fn hash_str(s: &str) -> u64 {
@@ -1405,6 +1539,124 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn the_files_an_engine_reads_back_are_found_with_their_text() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("build");
+        for sub in ["chapitres", ".raytex-fmt", "raytex-changes"] {
+            std::fs::create_dir_all(out.join(sub)).unwrap();
+        }
+        for (name, text) in [
+            ("main.aux", "\\relax"),
+            ("main.toc", "toc"),
+            ("main.out", "out"),
+            ("chapitres/un.aux", "un"),
+            ("main.pdf", "%PDF"),
+            ("main.log", "log"),
+            (".raytex-fmt/pre.aux", "format"),
+            ("raytex-changes/x.aux", "changes"),
+        ] {
+            std::fs::write(out.join(name), text).unwrap();
+        }
+        let mut found: Vec<(String, String)> = auxiliary_files(&out)
+            .into_iter()
+            .map(|(p, d)| {
+                (
+                    p.strip_prefix(&out)
+                        .unwrap()
+                        .to_string_lossy()
+                        .replace('\\', "/"),
+                    String::from_utf8(d).unwrap(),
+                )
+            })
+            .collect();
+        found.sort();
+        let names: Vec<&str> = found.iter().map(|(n, _)| n.as_str()).collect();
+        assert_eq!(
+            names,
+            ["chapitres/un.aux", "main.aux", "main.out", "main.toc"]
+        );
+        assert_eq!(found[1].1, "\\relax");
+        assert!(auxiliary_files(&dir.path().join("nowhere")).is_empty());
+    }
+
+    /// A live build is one pass: the page shows the text at once, and what
+    /// would complete it (references that moved, a new citation) is written
+    /// down for the next whole build, which does it.
+    #[test]
+    #[ignore = "depends on the local TeX installation"]
+    fn a_live_build_is_one_pass_and_says_what_is_left() {
+        let Some(dist) = crate::tex::detect(&[]).into_iter().next() else {
+            println!("no TeX distribution: nothing checked");
+            return;
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let root =
+            crate::log::normalize(&dunce::canonicalize(dir.path()).unwrap().join("long.tex"));
+        let text = |pages: usize| {
+            let filler = "Un paragraphe de texte. ".repeat(60);
+            format!(
+                "\\documentclass{{article}}\n\\begin{{document}}\n\\tableofcontents\n{}\n\\section{{Fin}}\\label{{fin}}\nVoir la page~\\pageref{{fin}}.\n\\end{{document}}\n",
+                (0..pages)
+                    .map(|i| format!("\\section{{Partie {i}}}\n{filler}\n\\newpage"))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )
+        };
+        std::fs::write(&root, text(3)).unwrap();
+        let settings = BuildSettings {
+            out_dir: "build".to_owned(),
+            precompile_preamble: false,
+            ..BuildSettings::default()
+        };
+        let facts = DocumentFacts::default();
+        let cancel = AtomicBool::new(false);
+        let source = |p: &Path| std::fs::read_to_string(p).ok();
+        let run = |live: bool| {
+            let plan = plan(&root, &settings, Some(&dist), &facts, Lang::En).unwrap();
+            let ctx = RunContext {
+                dist: &dist,
+                settings: &settings,
+                cancel: &cancel,
+                lang: Lang::En,
+                source: &source,
+                packages: None,
+                background: false,
+                live,
+            };
+            (run(&plan, &ctx, &mut |_: BuildEvent| {}), plan)
+        };
+        // A whole build: as many passes as it takes, nothing left.
+        let (whole, plan) = run(false);
+        assert!(whole.success && whole.steps.len() >= 2, "{:?}", whole.steps);
+        assert!(!whole.rerun_pending && !rerun_pending(&plan.out_dir));
+        // Nothing changed: one pass is the whole of it, live or not.
+        let (same, _) = run(true);
+        assert!(
+            same.success && same.steps.len() == 1 && !same.rerun_pending,
+            "{:?}",
+            same.steps
+        );
+        // Two pages more: the references moved. Live, one pass, and it is said…
+        std::fs::write(&root, text(5)).unwrap();
+        let (live, _) = run(true);
+        assert!(
+            live.pdf_updated && live.steps.len() == 1,
+            "{:?}",
+            live.steps
+        );
+        assert!(live.rerun_pending && rerun_pending(&plan.out_dir));
+        assert_eq!(live.pages, Some(6));
+        // …and the next whole build completes it.
+        let (complete, _) = run(false);
+        assert!(complete.success && !complete.rerun_pending && !rerun_pending(&plan.out_dir));
+        let log = std::fs::read_to_string(&plan.log).unwrap();
+        assert!(
+            !log.contains("Rerun to get") && !log.contains("may have changed"),
+            "still to rerun"
+        );
+    }
+
     /// Full compilation with the local TeX installation.
     #[test]
     #[ignore = "depends on the local TeX installation"]
@@ -1442,6 +1694,7 @@ mod tests {
             source: &source,
             packages: None,
             background: false,
+            live: false,
         };
         let mut lines = 0;
         let outcome = run(&plan, &ctx, &mut |e| {
@@ -1542,6 +1795,7 @@ mod tests {
             source: &source,
             packages: None,
             background: false,
+            live: false,
         };
         for (engine, text) in [(Engine::Pdflatex, &pdf_text), (Engine::Lualatex, &lua_text)] {
             std::fs::write(&root, text).unwrap();

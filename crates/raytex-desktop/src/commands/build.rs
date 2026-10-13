@@ -59,50 +59,75 @@ struct Finished {
     outcome: Option<BuildOutcome>,
     error: Option<Diagnostic>,
     manual: bool,
+    /// The build was given up for a newer text, which is being built now:
+    /// nothing to say of it.
+    superseded: bool,
 }
 
 /// Starts (or queues) the compilation of the document containing `path`.
+///
+/// `live`: a build made while the text is typed. It is one pass of the
+/// engine (what would complete it is left to a later build, see
+/// `RunContext::live`), and it gives way to a newer text: a live build
+/// asked for while another one runs stops that one, unless it is nearly
+/// done, so that the engine does not finish a page nobody will look at.
 #[tauri::command]
 pub async fn build(
     app: AppHandle,
     state: State<'_, AppState>,
     path: String,
     manual: Option<bool>,
+    live: Option<bool>,
 ) -> CmdResult<()> {
     let file = abs(&path);
     let manual = manual.unwrap_or(false);
+    let live = live.unwrap_or(false) && !manual;
     let flag = {
         let mut b = state.build();
-        if b.running.is_some() {
-            let was_manual = b.queued.as_ref().is_some_and(|(_, m)| *m);
-            b.queued = Some((file, manual || was_manual));
+        if let Some(running) = b.running.clone() {
+            let (was_manual, was_live) = b
+                .queued
+                .as_ref()
+                .map_or((false, true), |(_, m, l)| (*m, *l));
+            b.queued = Some((file, manual || was_manual, live && was_live));
+            if live && b.gives_way() {
+                b.superseding = true;
+                b.superseded += 1;
+                running.store(true, Ordering::Relaxed);
+            }
             return Ok(());
         }
         let flag = Arc::new(AtomicBool::new(false));
         b.running = Some(flag.clone());
+        b.running_live = live;
+        b.started = Some(std::time::Instant::now());
         flag
     };
     std::thread::spawn(move || {
         let state = app.state::<AppState>();
-        run_one(&app, &state, &file, &flag, manual);
+        run_one(&app, &state, &file, &flag, manual, live);
         loop {
             let next = {
                 let mut b = state.build();
                 match b.queued.take() {
-                    Some((f, m)) => {
+                    Some((f, m, l)) => {
                         let fl = Arc::new(AtomicBool::new(false));
                         b.running = Some(fl.clone());
-                        Some((f, fl, m))
+                        b.running_live = l;
+                        b.started = Some(std::time::Instant::now());
+                        Some((f, fl, m, l))
                     }
                     None => {
                         b.running = None;
                         b.writing = None;
+                        b.running_live = false;
+                        b.started = None;
                         None
                     }
                 }
             };
             match next {
-                Some((f, fl, m)) => run_one(&app, &state, &f, &fl, m),
+                Some((f, fl, m, l)) => run_one(&app, &state, &f, &fl, m, l),
                 None => break,
             }
         }
@@ -186,7 +211,14 @@ pub(crate) fn prepare(state: &AppState, file: &Path) -> Option<Prepared> {
     })
 }
 
-fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBool>, manual: bool) {
+fn run_one(
+    app: &AppHandle,
+    state: &AppState,
+    file: &Path,
+    cancel: &Arc<AtomicBool>,
+    manual: bool,
+    live: bool,
+) {
     let lang = state.lang();
     let Some(prep) = prepare(state, file) else {
         let _ = app.emit(
@@ -195,6 +227,7 @@ fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBo
                 outcome: None,
                 error: None,
                 manual,
+                superseded: false,
             },
         );
         return;
@@ -209,6 +242,7 @@ fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBo
                     outcome: None,
                     error: Some(e.to_diagnostic(lang)),
                     manual,
+                    superseded: false,
                 },
             );
             return;
@@ -244,6 +278,7 @@ fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBo
         packages: Some(&packages),
         // The app lives on: formats of preambles are prepared for the next builds.
         background: true,
+        live,
     };
     let outcome = build::run(&plan, &ctx, &mut |ev| match ev {
         BuildEvent::Step { name, command } => {
@@ -267,12 +302,24 @@ fn run_one(app: &AppHandle, state: &AppState, file: &Path, cancel: &Arc<AtomicBo
     if let Some(pdf) = &outcome.pdf {
         let _ = app.asset_protocol_scope().allow_file(pdf);
     }
+    // Given up for a newer text, or let to its end: the next live build is
+    // judged from there.
+    let superseded = {
+        let mut b = state.build();
+        let superseded = std::mem::take(&mut b.superseding) && outcome.cancelled;
+        if !outcome.cancelled {
+            b.superseded = 0;
+            b.last_duration = Some(Duration::from_millis(outcome.duration_ms));
+        }
+        superseded
+    };
     let _ = app.emit(
         "build:finished",
         Finished {
             outcome: Some(outcome),
             error: None,
             manual,
+            superseded,
         },
     );
 }

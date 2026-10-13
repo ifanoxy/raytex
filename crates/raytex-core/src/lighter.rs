@@ -685,6 +685,7 @@ mod tests {
                     source: &source,
                     packages: None,
                     background: false,
+                    live: false,
                 };
                 build::run(&plan, &ctx, &mut |_: BuildEvent| {})
             };

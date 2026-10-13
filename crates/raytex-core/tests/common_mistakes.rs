@@ -274,6 +274,7 @@ fn compile(dist: &Distribution, index: &TexmfIndex, main: &Path, badboxes: bool)
         source: &source,
         packages: Some(&packages),
         background: false,
+        live: false,
     };
     let outcome = build::run(&plan, &ctx, &mut |_: BuildEvent| {});
     let mut diagnostics = outcome.diagnostics;

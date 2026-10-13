@@ -2126,9 +2126,9 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     await editor.open(main);
     await until(() => !!editor.view && samePath(editor.active, main), 10_000, "main file shown");
     const v = editor.view!;
-    const paragraphs = Array.from({ length: 260 }, (_, i) => `Paragraphe ${i + 1} : un texte assez long pour remplir la ligne et passer à la suivante, comme dans un vrai document, avec $x_{${i}}$ et une \\emph{nuance}.`).join("\n\n");
+    const paragraphs = Array.from({ length: 260 }, (_, i) => `Paragraphe ${i + 1} : un texte assez long pour remplir la ligne et passer à la suivante, comme dans un vrai document, sans rien qui se casse quand on écrit au milieu.`).join("\n\n");
     // The project of these scenes is empty: a whole document, long enough to scroll.
-    v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: `\\documentclass{article}\n\\begin{document}\n${paragraphs}\n\nFin du texte\n\\end{document}\n` }, userEvent: "input" });
+    v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: `\\documentclass{article}\n\\begin{document}\n\\tableofcontents\n\\section{Début}\\label{debut}\n${paragraphs}\n\n\\section{Fin}\\label{fin}\nVoir la page~\\pageref{fin}.\n\nFin du texte\n\\end{document}\n` }, userEvent: "input" });
     const last = v.state.doc.toString().lastIndexOf("Fin du texte") + "Fin du texte".length;
     v.dispatch({ selection: { anchor: last }, scrollIntoView: true });
     v.focus();
@@ -2177,6 +2177,55 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     check("the cursor is where the click was, and the view stays", wanted !== null && clicked === wanted && head === clicked + 3 && bottom - up > 1500 && stayed, `${clicked}/${wanted} ${trace.join(" ")}`);
   } catch (e) {
     results.cursor = `FAILED ${e}`;
+  }
+  // ------------------------------------------------- live builds of a long text
+  // A live build is one pass of the engine, and says that references are
+  // still to settle; the build that completes it comes by itself once the
+  // text is left alone. A live build asked for while another one runs takes
+  // its place, and the auxiliary files of the one that was stopped are whole.
+  try {
+    const main = project.info!.main!;
+    const v = editor.view!;
+    await build.idle();
+    await build.runToEnd();
+    const whole = build.outcome;
+    // Three pages more before the last section: its page number moves.
+    const at = v.state.doc.toString().indexOf("\\section{Fin}");
+    v.dispatch({ changes: { from: at, insert: `${"Un paragraphe de plus, pour décaler la suite du texte. ".repeat(260)}\n\n` }, userEvent: "input" });
+    await editor.saveAll({ silent: true });
+    await build.idle();
+    const finished: { superseded: boolean; steps: number; pending: boolean; cancelled: boolean }[] = [];
+    const stop = await ipc.on("build:finished", ({ outcome, superseded }) => finished.push({ superseded: !!superseded, steps: outcome?.steps.length ?? 0, pending: !!outcome?.rerunPending, cancelled: !!outcome?.cancelled }));
+    await build.runToEnd({ auto: true, live: true });
+    const live = build.outcome;
+    const liveOne = !!live && live.steps.length === 1 && live.rerunPending === true && live.pdfUpdated;
+    const freshYet = await ipc.pdfFresh(main);
+    // Left alone, the text gets the build that completes its page.
+    await until(() => finished.length >= 2 && !build.running, 30_000, "build that completes the live one");
+    const completed = !!build.outcome && !build.outcome.rerunPending && build.outcome.success && !build.outcome.diagnostics.some((d) => /undefined|may have changed/i.test(d.message));
+    const freshThen = await ipc.pdfFresh(main);
+    // Two live builds on each other's heels: the first gives way.
+    finished.length = 0;
+    v.dispatch({ changes: { from: v.state.doc.toString().indexOf("\\section{Fin}"), insert: "Encore une phrase.\n\n" }, userEvent: "input" });
+    await editor.saveAll({ silent: true });
+    await editor.flush();
+    void ipc.build(main, false, true);
+    await pause(60);
+    await ipc.build(main, false, true);
+    await until(() => finished.some((f) => !f.superseded), 60_000, "second live build");
+    await build.idle();
+    stop();
+    const gaveWay = finished.some((f) => f.superseded && f.cancelled);
+    await build.runToEnd();
+    const sound = !!build.outcome?.success && !build.outcome.diagnostics.some((d) => /undefined|multiply/i.test(d.message)) && build.outcome.pages === live?.pages;
+    if (!sound || !completed) log(`live build: at the end success ${build.outcome?.success}, pages ${build.outcome?.pages} (live ${live?.pages}), steps ${build.outcome?.steps.map((st) => `${st.name}:${st.exitCode}`).join(" ")}, problems ${JSON.stringify(build.outcome?.diagnostics.map((d) => `${d.severity} ${d.message.slice(0, 90)}`))}`);
+    log(
+      `live build: whole ${whole?.steps.map((st) => st.name).join(" + ")}, live ${live?.steps.length} pass pending ${live?.rerunPending}, fresh before ${freshYet} after ${freshThen}, completed ${completed}, gave way ${gaveWay} (${finished.map((f) => (f.superseded ? "given up" : `${f.steps} pass`)).join(", ")}), sound afterwards ${sound}`,
+    );
+    check("a live build is one pass, completed once the text settles", liveOne && !freshYet && completed && freshThen, `${live?.steps.length} ${live?.rerunPending} ${freshYet} ${completed} ${freshThen}`);
+    check("a live build gives way to a newer text, and nothing is broken", gaveWay && sound, finished.map((f) => JSON.stringify(f)).join(" "));
+  } catch (e) {
+    results.live = `FAILED ${e}`;
   }
   log(JSON.stringify(results, null, 2));
   const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));

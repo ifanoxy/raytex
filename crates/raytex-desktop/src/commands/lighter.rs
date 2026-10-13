@@ -222,6 +222,7 @@ pub async fn export_pdf_lighter(
                 source: &source,
                 packages: None,
                 background: false,
+                live: false,
             };
             let outcome = build::run(&plan, &ctx, &mut |ev| match ev {
                 BuildEvent::Step { name, command } => {

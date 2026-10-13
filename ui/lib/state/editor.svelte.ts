@@ -123,6 +123,13 @@ const c = {
 let vimModule: typeof import("@replit/codemirror-vim") | null = null;
 
 const SYNC_DELAY = 250;
+/** From this size on, a file is told to the engine less often while it is typed in. */
+const LONG_FILE = 200_000;
+
+/** How long after a change a file of `length` characters is told to the engine. */
+export function syncDelay(length: number): number {
+  return length < LONG_FILE ? SYNC_DELAY : Math.min(1200, SYNC_DELAY + Math.round((length - LONG_FILE) / 600));
+}
 const MAX_UNDO_BATCH = 500;
 
 // ------------------------------------------------------------ helpers
@@ -611,9 +618,10 @@ class EditorStore {
       if (this.autoSaveTimer) clearTimeout(this.autoSaveTimer);
       this.autoSaveTimer = setTimeout(() => void this.saveAll({ silent: true, auto: true }), Math.max(300, s.editor.autoSaveDelayMs));
     }
+    if (m.kind === "tex" || m.kind === "bib") build.textChanged();
     if (s?.build.autoBuild === "onIdle" && (m.kind === "tex" || m.kind === "bib")) {
       if (this.idleBuildTimer) clearTimeout(this.idleBuildTimer);
-      this.idleBuildTimer = setTimeout(() => void build.run({ auto: true }), Math.max(400, s.build.autoBuildDelayMs));
+      this.idleBuildTimer = setTimeout(() => void build.run({ auto: true }), build.idleDelay(s.build.autoBuildDelayMs));
     }
     this.wordsSoon();
   }
@@ -680,12 +688,17 @@ class EditorStore {
   private syncSoon(key: string) {
     const timer = this.syncTimers.get(key);
     if (timer) clearTimeout(timer);
+    // The engine reads the whole file again at each change it is told: a
+    // long file is told less often while it is typed in (a request that
+    // needs the text as it is sends it at once, see `flush`).
+    const m = this.models.get(key);
+    const length = (m && this.stateOf(m.path)?.doc.length) || 0;
     this.syncTimers.set(
       key,
       setTimeout(() => {
         this.syncTimers.delete(key);
         void this.sync(key);
-      }, SYNC_DELAY),
+      }, syncDelay(length)),
     );
   }
 

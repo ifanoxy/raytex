@@ -412,6 +412,7 @@ mod tests {
             source: &source,
             packages: None,
             background: false,
+            live: false,
         };
         for t in crate::templates::list(None) {
             let root = dir.path().join(&t.id);
