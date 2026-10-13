@@ -27,7 +27,7 @@
   import { project } from "$lib/state/project.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import type { PreviewOutcome, TikzTemplate } from "$lib/types";
-  import { basename, debounce, dirname, escapeSnippet, join, prettyKey, relative } from "$lib/utils";
+  import { basename, debounce, dirname, escapeSnippet, formatDuration, join, prettyKey, relative } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
   import Modal from "../common/Modal.svelte";
   import PdfPreview from "../common/PdfPreview.svelte";
@@ -797,7 +797,8 @@
               {:else if outcome && errors.length}
                 <span class="status err"><Icon name="alert-circle" size={13} />{t("tikz.errors", { n: errors.length })}</span>
               {:else if outcome}
-                <span class="status ok"><Icon name="check" size={13} />{t("tikz.upToDate", { ms: outcome.durationMs })}</span>
+                <!-- A narrow bar: the time alone, the sentence would take a second line from the rendering. -->
+                <span class="status ok" title={t("tikz.upToDate", { ms: outcome.durationMs })}><Icon name="check" size={13} />{formatDuration(outcome.durationMs)}</span>
               {/if}
             </div>
             {#if hasContent}
@@ -1131,7 +1132,7 @@
      size, the settings scroll first; more or less when its upper edge is dragged. */
   .mini {
     flex: 1.6 1 220px;
-    min-height: 200px;
+    min-height: 208px;
     display: flex;
     flex-direction: column;
     border-top: 1px solid var(--border);
@@ -1140,11 +1141,20 @@
     flex: 0 1 auto;
     min-height: 140px;
   }
+  /* One height whatever it says: the rendering does not move when a compilation ends. */
   .mini-bar {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 10px;
+    flex-shrink: 0;
+    height: 30px;
+    padding: 0 10px;
+  }
+  .mini-bar .section-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .mini :global(.preview) {
     flex: 1;
@@ -1344,6 +1354,8 @@
     display: flex;
     align-items: center;
     gap: 5px;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
   .status.ok {
     color: var(--success);
