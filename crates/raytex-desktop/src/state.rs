@@ -176,10 +176,11 @@ pub struct Project {
 pub struct BuildControl {
     /// Cancellation flag of the running build.
     pub running: Option<Arc<AtomicBool>>,
-    /// A build requested while another was running (coalesced), whether
-    /// one of the coalesced requests came from the user, and whether it is
-    /// a live build (all of them were).
-    pub queued: Option<(PathBuf, bool, bool)>,
+    /// A build requested while another was running (coalesced): the file,
+    /// whether one of the coalesced requests came from the user, whether it
+    /// is a live build (all of them were), and whether the file is shown
+    /// on its own (as the last request asked).
+    pub queued: Option<BuildRequest>,
     /// The PDF the running build writes, once its plan is known.
     pub writing: Option<PathBuf>,
     /// The running build is a live one (see `RunContext::live`).
@@ -195,6 +196,20 @@ pub struct BuildControl {
     /// one is let to its end, so that the page moves even under steady
     /// typing.
     pub superseded: u32,
+}
+
+/// A build asked for.
+#[derive(Debug, Clone)]
+pub struct BuildRequest {
+    /// The file the build is for (its document is built).
+    pub file: PathBuf,
+    /// Asked for by the user.
+    pub manual: bool,
+    /// A live build (see `RunContext::live`).
+    pub live: bool,
+    /// The file is a part of its document and is shown on its own (see
+    /// `raytex_core::build::only`).
+    pub only: bool,
 }
 
 impl BuildControl {

@@ -171,12 +171,18 @@ export const rootOf = (path: string) => call<string | null>("root_of", { path })
  * Asks for a build. `live`: one made while the text is typed, which is one
  * pass of the engine and gives way to a newer text (see the engine).
  */
-export const build = (path: string, manual: boolean, live = false) => call<void>("build", { path, manual, live });
+export const build = (path: string, manual: boolean, live = false, only = false) => call<void>("build", { path, manual, live, only });
+/** A file that is a part of its document and can be compiled on its own. */
+export interface DocumentPart {
+  root: string;
+  file: string;
+}
+export const documentPart = (path: string) => call<DocumentPart | null>("document_part", { path });
 export const cancelBuild = () => call<void>("cancel_build");
 export const buildPlan = (path: string) => call<{ Ok?: T.BuildPlan; Err?: T.Diagnostic }>("build_plan", { path });
 export const cleanBuild = (path: string) => call<number>("clean_build", { path });
 export const pdfPath = (path: string) => call<string | null>("pdf_path", { path });
-export const synctexForward = (path: string, line: number) => call<T.ForwardView | null>("synctex_forward", { path, line });
+export const synctexForward = (path: string, line: number, pdf: string | null = null) => call<T.ForwardView | null>("synctex_forward", { path, line, pdf });
 export const synctexInverse = (pdf: string, page: number, x: number, y: number) =>
   call<T.InverseResult | null>("synctex_inverse", { pdf, page, x, y });
 

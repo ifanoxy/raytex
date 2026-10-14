@@ -30,13 +30,24 @@ fn synctex_for_pdf(pdf: &Path) -> Option<PathBuf> {
 
 /// Source → PDF: where `line` (one-based) of `path` appears.
 #[tauri::command]
+///
+/// `pdf`: the PDF on screen, looked into first (a file of the document
+/// shown on its own has a PDF of its own).
 pub async fn synctex_forward(
     app: AppHandle,
     path: String,
     line: u32,
+    pdf: Option<String>,
 ) -> CmdResult<Option<ForwardView>> {
     let file = abs(&path);
+    let shown = pdf.map(|p| abs(&p));
     blocking(&app, move |_, state| {
+        if let Some(pdf) = shown
+            && let Some(data) = synctex_for_pdf(&pdf).and_then(|s| state.synctex(&s))
+            && let Some(result) = data.forward(&file, line)
+        {
+            return Some(ForwardView { pdf, result });
+        }
         let (root, out_dir) = {
             let base = state.settings().build.clone();
             let project = state.project();

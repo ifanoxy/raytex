@@ -649,7 +649,9 @@ fn locate(line: &str, before: &str) -> Option<usize> {
 }
 
 fn trim_span(text: &str, span: Span) -> Span {
-    let s = &text[span.clone()];
+    let Some(s) = text.get(span.clone()) else {
+        return span;
+    };
     let start = span.start + (s.len() - s.trim_start().len());
     let end = span.end - (s.len() - s.trim_end().len());
     if end > start { start..end } else { span }

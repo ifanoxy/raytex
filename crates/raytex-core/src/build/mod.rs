@@ -13,6 +13,7 @@
 //! * **latexmk**, **single pass** (fastest preview), **Tectonic**, and
 //!   **custom** step lists.
 
+pub mod only;
 pub mod preamble;
 pub mod refine;
 
@@ -106,6 +107,9 @@ pub struct BuildPlan {
     pub log: PathBuf,
     /// SyncTeX file.
     pub synctex: PathBuf,
+    /// The build shows one file of the document (see [`only`]).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub only: Option<only::OnlyFile>,
 }
 
 /// Why a build cannot start.
@@ -197,6 +201,7 @@ pub fn plan(
         engine_reason,
         tool,
         bib_tool,
+        only: None,
     })
 }
 
@@ -488,6 +493,9 @@ pub fn run(
             .diagnostics
             .retain(|d| !matches!(d.code.as_deref(), Some("overfull-box" | "underfull-box")));
     }
+    if let Some(o) = &plan.only {
+        place_in_root(&mut report.diagnostics, plan, o, ctx);
+    }
     refine::refine_all(
         &mut report.diagnostics,
         &plan.root,
@@ -502,7 +510,11 @@ pub fn run(
         .and_then(|m| m.modified().ok())
         .is_some_and(|t| t >= started_at);
     let pdf = pdf_meta.map(|_| plan.pdf.clone());
-    if pdf_updated && ctx.settings.copy_pdf_to_root && plan.out_dir != plan.root_dir {
+    if pdf_updated
+        && ctx.settings.copy_pdf_to_root
+        && plan.out_dir != plan.root_dir
+        && plan.only.is_none()
+    {
         let _ = std::fs::copy(&plan.pdf, plan.root_dir.join(format!("{}.pdf", plan.job)));
     }
     // A failed step counts unless a later run of the same tool succeeded
@@ -542,6 +554,20 @@ pub fn run(
 }
 
 impl BuildPlan {
+    /// What the engine is given: the root, or the document written for a
+    /// build of one file (from the folder of the root, with `/`).
+    fn engine_input(&self) -> String {
+        match &self.only {
+            Some(o) => only::relative(&self.root_dir, &o.source)
+                .unwrap_or_else(|| o.source.to_string_lossy().into_owned()),
+            None => self
+                .root
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+        }
+    }
+
     /// Environment variables for TeX tools.
     fn env(&self, dist: &Distribution) -> Vec<(String, String)> {
         let sep = if cfg!(windows) { ";" } else { ":" };
@@ -677,13 +703,7 @@ impl Runner<'_, '_> {
             cmd = cmd.arg(format!("-fmt={}", format.display()));
         }
         cmd = cmd.args(s.extra_args.iter().cloned());
-        cmd.arg(
-            plan.root
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .into_owned(),
-        )
+        cmd.arg(plan.engine_input())
     }
 
     /// One engine run; returns its exit code and parsed log.
@@ -716,7 +736,7 @@ impl Runner<'_, '_> {
             self.format = None;
             let code = self.step(name, self.engine_cmd());
             let report = self.read_log();
-            if !report.fatal {
+            if !report.fatal && self.plan.only.is_none() {
                 preamble::abandon(self.plan, key);
             }
             return (code, report);
@@ -1123,6 +1143,42 @@ impl Runner<'_, '_> {
             }
         }
         self.read_log()
+    }
+}
+
+/// The problems of a build of one file: those the engine found in the
+/// document written for it are in the preamble of the root (same lines);
+/// the links to the rest of the document, which is not in this PDF, are
+/// not problems.
+fn place_in_root(
+    diagnostics: &mut Vec<Diagnostic>,
+    plan: &BuildPlan,
+    o: &only::OnlyFile,
+    ctx: &RunContext<'_>,
+) {
+    let source = crate::log::normalize(&o.source);
+    let preamble = (ctx.source)(&plan.root)
+        .as_deref()
+        .and_then(only::preamble_lines)
+        .unwrap_or(1);
+    diagnostics.retain(|d| !d.message.contains("has been referenced but does not exist"));
+    for d in diagnostics.iter_mut() {
+        if d.file.as_deref().map(crate::log::normalize).as_ref() != Some(&source) {
+            continue;
+        }
+        d.file = Some(plan.root.clone());
+        // The line of `\begin{document}` holds what was added to it, and
+        // the lines after it, for a file alone, are not those of the root:
+        // the line of `\begin{document}` is all that is said.
+        if d.line
+            .is_some_and(|l| l == preamble || !o.record && l > preamble)
+        {
+            d.line = Some(preamble);
+            d.end_line = None;
+            d.range = None;
+            d.context_before = None;
+            d.context_after = None;
+        }
     }
 }
 

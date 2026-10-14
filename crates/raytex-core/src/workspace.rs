@@ -614,6 +614,56 @@ impl Workspace {
         out
     }
 
+    /// The files `file` brings into the document of `root` (itself first).
+    pub fn files_under(&self, root: &Path, file: &Path) -> Vec<PathBuf> {
+        let mut out = Vec::new();
+        let mut seen = HashSet::new();
+        self.collect_includes(&normalize(root), &normalize(file), &mut out, &mut seen, 0);
+        out
+    }
+
+    /// How `file` comes into the document of `root`: each include from the
+    /// root down to it, with the file it is written in. `None` when the
+    /// root does not bring it in.
+    pub fn inclusion_chain(
+        &self,
+        root: &Path,
+        file: &Path,
+    ) -> Option<Vec<(PathBuf, syntax::Include)>> {
+        fn walk(
+            ws: &Workspace,
+            root: &Path,
+            from: &Path,
+            target: &Path,
+            chain: &mut Vec<(PathBuf, syntax::Include)>,
+            seen: &mut HashSet<PathBuf>,
+        ) -> bool {
+            if chain.len() > 32 || !seen.insert(from.to_path_buf()) {
+                return false;
+            }
+            let Some(doc) = ws.docs.get(from) else {
+                return false;
+            };
+            for inc in &doc.index.includes {
+                if !inc.kind.is_source() {
+                    continue;
+                }
+                let Some(next) = ws.resolve_include(root, from, inc) else {
+                    continue;
+                };
+                chain.push((from.to_path_buf(), inc.clone()));
+                if next == target || walk(ws, root, &next, target, chain, seen) {
+                    return true;
+                }
+                chain.pop();
+            }
+            false
+        }
+        let (root, file) = (normalize(root), normalize(file));
+        let mut chain = Vec::new();
+        walk(self, &root, &root, &file, &mut chain, &mut HashSet::new()).then_some(chain)
+    }
+
     fn collect_includes(
         &self,
         root: &Path,

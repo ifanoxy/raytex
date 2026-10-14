@@ -213,7 +213,22 @@ const PREVIEW_GUARDS: &str = "\\makeatletter\\def\\RTXprovide#1{\\@ifundefined{#
 /// preamble reads may have done it), or, for a `\renew…`, already is.
 /// Theorems are left out: their counters depend on the class.
 pub fn preview_definitions(ws: &Workspace, root: &Path, all: bool) -> String {
-    let docs = ws.project_documents(root);
+    definitions(ws, root, all, &[])
+}
+
+/// The definitions of the project outside the preamble of the root and
+/// outside the files `left`: what a file compiled on its own (see
+/// [`crate::build::only`]) gets from the files that are not compiled with it.
+pub fn definitions_outside(ws: &Workspace, root: &Path, left: &[std::path::PathBuf]) -> String {
+    definitions(ws, root, false, left)
+}
+
+fn definitions(ws: &Workspace, root: &Path, all: bool, left: &[std::path::PathBuf]) -> String {
+    let docs: Vec<_> = ws
+        .project_documents(root)
+        .into_iter()
+        .filter(|d| !left.contains(&d.path))
+        .collect();
     let root = crate::log::normalize(root);
     let mut out = String::new();
     let mut add = |doc: &crate::workspace::Document, name: &str, span: &Span| {

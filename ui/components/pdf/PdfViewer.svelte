@@ -423,6 +423,12 @@
       },
     ]);
   }
+
+  /** The file shown on its own, when the PDF on screen is the one of a part of the document. */
+  const alone = $derived.by(() => {
+    const plan = build.outcome?.plan;
+    return plan?.only && !plan.only.record && samePath(viewer.pdf, plan.pdf) ? plan.only.file : null;
+  });
 </script>
 
 <div class="pdf-viewer" class:invert>
@@ -459,6 +465,15 @@
     <div class="bar-sep"></div>
     <button class="icon-btn" onclick={() => ui.setVisible("pdf", false)} title={t("viewer.hide")} aria-label={t("viewer.hide")}><Icon name="x" /></button>
   </div>
+
+  {#if alone}
+    <!-- A part of the document compiled on its own: said, with the way back to the whole. -->
+    <div class="alone" title={t("part.aloneHint")}>
+      <Icon name="file-tex" size={13} />
+      <span class="ellipsis">{t("part.alone", { file: basename(alone) })}</span>
+      <button class="whole" onclick={() => build.setPartChoice("document")}>{t("part.showWhole")}</button>
+    </div>
+  {/if}
 
   <!-- A scrollable region must be focusable to be scrolled with the keyboard. -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
@@ -514,6 +529,36 @@
 </div>
 
 <style>
+  .alone {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 28px;
+    padding: 0 8px 0 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 12px;
+  }
+  .alone span {
+    flex: 1;
+    min-width: 0;
+    color: var(--text);
+  }
+  .alone .whole {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .alone .whole:hover {
+    background: var(--bg-hover);
+  }
   .pdf-viewer {
     position: relative;
     flex: 1;

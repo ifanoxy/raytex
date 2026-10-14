@@ -3560,7 +3560,9 @@ fn overfull(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
         return Vec::new();
     }
     let region = src.line(first).0.start..src.line(last).0.end;
-    let text = &src.text[region.clone()];
+    let Some(text) = src.text.get(region.clone()) else {
+        return Vec::new();
+    };
     if text.contains("\\includegraphics") {
         let mut list = resize_images(&src, region.clone(), "width=\\linewidth");
         // At the start of a paragraph, the indent would still push it out.

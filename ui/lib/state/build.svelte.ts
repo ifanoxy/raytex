@@ -20,7 +20,17 @@ declare module "../types" {
     /** A live build left work for a later one: the references of the page may be those of the build before. */
     rerunPending?: boolean;
   }
+  interface BuildPlan {
+    /** The build shows one file of the document on its own (`record`: the whole document, noted for it). */
+    only?: { file: string; record: boolean };
+  }
 }
+
+/** What is compiled while a part of a document is written: it alone, or the whole document. */
+export type PartChoice = "file" | "document";
+
+/** Where the choice of each project is kept (on this computer, nothing in the project). */
+const PART_CHOICE_KEY = "raytex.partBuild.";
 
 /** A pass of the engine longer than this makes a document a long one: its live builds are one pass each. */
 const LONG_PASS_MS = 1500;
@@ -54,6 +64,15 @@ class BuildStore {
   private waiters: (() => void)[] = [];
   /** The build that will complete a live one, once the text is left alone for a moment. */
   private completion: ReturnType<typeof setTimeout> | null = null;
+  /** The active file, when it is a part of its document that can be compiled on its own. */
+  part = $state<ipc.DocumentPart | null>(null);
+  /** What this project compiles while a part is written (null: not asked yet). */
+  partChoice = $state<PartChoice | null>(null);
+  /** The question is on screen. */
+  asking = $state(false);
+  /** Projects whose question was put off, in this session. */
+  private askLaterFor = new Set<string>();
+  private following = 0;
 
   get status(): "idle" | "running" | "success" | "failed" | "cancelled" {
     if (this.running) return "running";
@@ -76,7 +95,7 @@ class BuildStore {
       this.startedAt = Date.now();
       this.output = [];
       this.outputRevision++;
-      this.tracker.start(this.references.get(plan.root) ?? null);
+      this.tracker.start(this.references.get(plan.pdf) ?? null);
     });
     await ipc.on("build:step", ({ name, command }) => {
       this.step = name;
@@ -101,6 +120,78 @@ class BuildStore {
     const active = editor.active;
     if (active && fileKind(active) === "tex" && !editor.activeTab?.readOnly) return active;
     return project.info?.main ?? null;
+  }
+
+  /** The project the choice of parts is kept for. */
+  private choiceKey(): string | null {
+    const info = project.info;
+    return info ? PART_CHOICE_KEY + (info.light ? info.main : info.root) : null;
+  }
+
+  private readChoice(): PartChoice | null {
+    const key = this.choiceKey();
+    try {
+      const v = key ? localStorage.getItem(key) : null;
+      return v === "file" || v === "document" ? v : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** The PDF of the build `only` says would be on screen. */
+  private shows(onlyFile: string | null): boolean {
+    const plan = this.outcome?.plan;
+    if (!plan) return true;
+    const alone = plan.only && !plan.only.record ? plan.only.file : null;
+    return onlyFile ? samePath(alone, onlyFile) : !alone;
+  }
+
+  /** Whether a build of `target` shows it on its own. */
+  private alone(target: string): boolean {
+    return this.partChoice === "file" && !!this.part && samePath(this.part.file, target);
+  }
+
+  /**
+   * The active file changed: whether it is a part of its document (then the
+   * question is asked once per project), and the PDF that goes with it: the
+   * file alone, or the whole document.
+   */
+  async follow(path: string | null) {
+    const token = ++this.following;
+    const part = path && fileKind(path) === "tex" ? await ipc.documentPart(path).catch(() => null) : null;
+    if (token !== this.following) return;
+    this.part = part;
+    this.partChoice = this.readChoice();
+    const key = this.choiceKey();
+    this.asking = !!part && this.partChoice === null && !!key && !this.askLaterFor.has(key);
+    const alone = part && this.partChoice === "file" ? part.file : null;
+    if (this.shows(alone) || !path) return;
+    if (!alone) {
+      const whole = await ipc.pdfPath(path).catch(() => null);
+      if (token !== this.following) return;
+      if (whole && (await ipc.pathExists(whole).catch(() => false))) viewer.load(whole);
+    }
+    if (app.settings?.build.autoBuild !== "off") void this.run({ auto: true });
+  }
+
+  /** The answer to the question, or a change in the menu: kept for the project, and the PDF follows. */
+  setPartChoice(choice: PartChoice) {
+    const key = this.choiceKey();
+    this.partChoice = choice;
+    this.asking = false;
+    try {
+      if (key) localStorage.setItem(key, choice);
+    } catch {
+      /* kept for this session only */
+    }
+    if (this.part && !this.shows(choice === "file" ? this.part.file : null) && app.settings?.build.autoBuild !== "off") void this.run({ auto: true });
+  }
+
+  /** The question put off: asked again at the next start. */
+  askLater() {
+    const key = this.choiceKey();
+    if (key) this.askLaterFor.add(key);
+    this.asking = false;
   }
 
   /** How long a pass of the engine takes on this document, from its last whole build; null when none was made. */
@@ -136,8 +227,10 @@ class BuildStore {
    * which gives way to a newer text. `complete`: a whole build all the
    * same (the one that completes a live build, or the one an export needs).
    * `live`: a live build whatever the length of the document (the self-test).
+   * `whole`: the whole document, even from a part of it shown on its own
+   * (an export).
    */
-  async run(opts: { auto?: boolean; complete?: boolean; live?: boolean } = {}): Promise<boolean> {
+  async run(opts: { auto?: boolean; complete?: boolean; live?: boolean; whole?: boolean } = {}): Promise<boolean> {
     const target = this.target();
     if (!target) {
       if (!opts.auto) ui.toast("info", t("build.nothingToBuild"));
@@ -160,7 +253,7 @@ class BuildStore {
     await editor.flush();
     try {
       const live = !!opts.auto && !opts.complete && (opts.live || (this.passMs ?? 0) > LONG_PASS_MS);
-      await ipc.build(target, !opts.auto, live);
+      await ipc.build(target, !opts.auto, live, !opts.whole && this.alone(target));
       return true;
     } catch (e) {
       ui.toast("error", t("build.failedToStart"), { detail: String(e) });
@@ -168,10 +261,10 @@ class BuildStore {
     }
   }
 
-  /** What the last whole build of the document took: the measure of a build of the same document. */
+  /** What the last whole build of the document took (or of the file shown on its own): the measure of the next one. */
   get reference(): BuildReference | null {
-    const root = this.outcome?.plan.root ?? this.plan?.root;
-    return (root && this.references.get(root)) || null;
+    const pdf = this.outcome?.plan.pdf ?? this.plan?.pdf;
+    return (pdf && this.references.get(pdf)) || null;
   }
 
   /** Resolves once no build runs, one that was queued behind it included. */
@@ -184,7 +277,7 @@ class BuildStore {
   }
 
   /** Compiles and waits for the end; false when no build was asked. */
-  async runToEnd(opts: { auto?: boolean; complete?: boolean; live?: boolean } = {}): Promise<boolean> {
+  async runToEnd(opts: { auto?: boolean; complete?: boolean; live?: boolean; whole?: boolean } = {}): Promise<boolean> {
     const before = this.ended;
     if (!(await this.run(opts))) return false;
     // The engine says it started a moment after it was asked.
@@ -235,7 +328,7 @@ class BuildStore {
     }
     // A whole build that made its PDF is what the next one is measured with.
     if (outcome?.success && !outcome.cancelled && outcome.steps.length) {
-      this.references.set(outcome.plan.root, { steps: outcome.steps.map((st) => ({ name: st.name, durationMs: st.durationMs })), pages: outcome.pages ?? null });
+      this.references.set(outcome.plan.pdf, { steps: outcome.steps.map((st) => ({ name: st.name, durationMs: st.durationMs })), pages: outcome.pages ?? null });
     }
     for (const done of this.waiters.splice(0)) done();
     const auto = !manual;

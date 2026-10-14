@@ -232,6 +232,7 @@ pub fn run() {
             commands::build::build,
             commands::build::cancel_build,
             commands::build::build_plan,
+            commands::build::document_part,
             commands::build::clean_build,
             commands::build::pdf_path,
             commands::synctex::synctex_forward,

@@ -75,8 +75,15 @@ class PdfExportStore {
       // The window hears the build from its first step.
       if (!build.running) await this.ready();
       if (!current()) return;
-      // Its own window tells how this build goes and ends: it is asked for quietly.
-      const asked = build.running ? (await build.idle(), true) : await build.runToEnd({ auto: true, complete: true });
+      // A build under way ends first: the whole document, or a file shown
+      // on its own (then the whole document is built after it).
+      let asked = true;
+      if (build.running) await build.idle();
+      if (!current()) return;
+      if (build.outcome?.plan.only || !build.outcome || !(await ipc.pdfFresh(target!).catch(() => false))) {
+        // Its own window tells how this build goes and ends: it is asked for quietly.
+        asked = await build.runToEnd({ auto: true, complete: true, whole: true });
+      }
       if (!current()) return;
       const outcome = build.outcome;
       const errors = outcome?.diagnostics.filter((d) => d.severity === "error").length ?? 0;

@@ -41,9 +41,19 @@
   }
 
   function buildMenu(e: MouseEvent) {
+    // A part of the document: compiled alone or with the whole document.
+    const part: MenuItem[] =
+      build.part || build.partChoice
+        ? [
+            { label: t("part.menuFile"), icon: "file-tex", checked: build.partChoice === "file", run: () => build.setPartChoice("file") },
+            { label: t("part.menuDocument"), icon: "book", checked: build.partChoice === "document", run: () => build.setPartChoice("document") },
+            { separator: true },
+          ]
+        : [];
     ui.openMenuBelow(e.currentTarget as HTMLElement, [
       { label: t("toolbar.liveBuild"), icon: "bolt", checked: app.settings?.build.autoBuild === "onIdle", run: () => runAction("build.live") },
       { separator: true },
+      ...part,
       actionItem("build.run"),
       actionItem("build.clean"),
       actionItem("build.log"),

@@ -9,7 +9,18 @@ Building turns your `.tex` files into a PDF. RayTeX does it fast, at the right t
 - **On a long document** (a pass of the compiler of more than a second and a half), live builds lighten by themselves. A live build is first **one pass**: the page shows what you just wrote twice as fast when your lines move the pages that follow; references, the table of contents and the bibliography are set right by a build that completes it, started by itself as soon as you leave the text alone for a moment (and at once by **Build** or by an export). If you go on typing during a build, it is given up for the new text instead of being run to its end for nothing, unless it was about to finish. And the pause waited for before building gets a little longer with the time a pass takes.
 - <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>.</kbd> stops a running build.
 
-Modified files are saved before each build. If you build from a chapter included with `\input`, the main document is built.
+Modified files are saved before each build.
+
+## A chapter alone or the whole document
+
+When you open a part of a document, a chapter brought in by `\input`, `\include` or `\subfile`, RayTeX asks you once per project what to build while you write it:
+
+- **This file only**: the PDF shows that file alone, with the preamble of the document. It is much faster on a long document, and the chapter stays what it is in the document: its number, those of its sections, figures and equations, its page numbers, its references to the other files and its citations. A line above the PDF says so, with a button to go back to **The whole document**.
+- **The whole document**: the main document is built, as from the main file.
+
+The choice is changed in the menu of the **Build** button (*Part of a document: this file only* or *the whole document*). Going back to the main file shows the whole document again, and an export of the PDF always builds the whole document.
+
+To know those numbers, RayTeX first builds the whole document once, in a folder of its own, then only the file as long as nothing else changes: when another file changes, this record is made again at the next build. The PDF of the whole document is never touched. The commands defined in the other files are known too, so a command the chapter uses but another file defines works. This does not apply to files read by the preamble, nor to those brought in by `\import`, which are always built with the whole document.
 
 ## Which file is built?
 

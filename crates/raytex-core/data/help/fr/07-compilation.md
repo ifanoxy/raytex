@@ -9,7 +9,18 @@ Compiler, c'est transformer vos fichiers `.tex` en PDF. RayTeX le fait vite, au 
 - **Sur un long document** (une passe du compilateur de plus d'une seconde et demie), la compilation en direct s'allège d'elle-même. Elle ne fait d'abord qu'**une passe** : la page montre ce que vous venez d'écrire deux fois plus vite quand vos lignes décalent les pages suivantes ; les renvois, la table des matières et la bibliographie sont remis d'aplomb par une compilation complémentaire, lancée seule dès que vous laissez le texte tranquille un instant (et tout de suite par **Compiler** ou par un export). Si vous reprenez la frappe pendant une compilation, elle est abandonnée au profit du nouveau texte au lieu d'être menée au bout pour rien, sauf si elle allait finir. Et la pause attendue avant de compiler s'allonge un peu avec la durée d'une passe.
 - <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>.</kbd> arrête une compilation en cours.
 
-Les fichiers modifiés sont enregistrés avant chaque compilation. Si vous compilez depuis un chapitre inclus par `\input`, c'est le document principal qui est compilé.
+Les fichiers modifiés sont enregistrés avant chaque compilation.
+
+## Un chapitre seul ou tout le document
+
+Quand vous ouvrez un fichier annexe, un chapitre inclus par `\input`, `\include` ou `\subfile`, RayTeX vous demande une fois par projet ce qu'il faut compiler pendant que vous l'écrivez :
+
+- **Ce fichier seul** : le PDF ne montre que ce fichier, avec le préambule du document. C'est bien plus rapide sur un long document, et le chapitre reste tel qu'il est dans le document : son numéro, ceux de ses sections, figures et équations, ses numéros de page, ses renvois vers les autres fichiers et ses citations. Une ligne au-dessus du PDF le rappelle, avec un bouton pour revenir à **Tout le document**.
+- **Tout le document** : le document principal est compilé, comme pour le fichier principal.
+
+Le choix se change dans le menu du bouton **Compiler** (*Fichier annexe : ce fichier seul* ou *tout le document*). Revenir au fichier principal montre de nouveau tout le document, et un export du PDF compile toujours le document entier.
+
+Pour connaître ces numéros, RayTeX compile d'abord le document entier une fois, dans un dossier à part, puis seulement le fichier tant que vous n'y touchez pas ailleurs : quand un autre fichier change, ce relevé est refait à la compilation suivante. Le PDF du document entier n'est jamais touché. Les commandes définies dans les autres fichiers sont connues aussi ; une commande que le chapitre utilise mais qu'il ne définit pas, et qui vient d'un autre fichier, fonctionne donc. Cela ne concerne pas les fichiers lus par le préambule, ni ceux inclus par `\import`, qui sont toujours compilés avec tout le document.
 
 ## Quel fichier est compilé ?
 

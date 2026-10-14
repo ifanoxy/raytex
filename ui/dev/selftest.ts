@@ -2245,6 +2245,83 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
   } catch (e) {
     results.live = `FAILED ${e}`;
   }
+  // ------------------------------------------------- a part of the document alone
+  // A chapter opened asks, once, what is compiled while it is written. On
+  // its own, it keeps its number, its page and its references to the rest;
+  // the main file brings the whole document back.
+  const partKey = `raytex.partBuild.${project.info?.root}`;
+  try {
+    const root = project.info!.root;
+    const main = project.info!.main!;
+    const chapter = `${root}/chapitres/deux.tex`;
+    try {
+      localStorage.removeItem(partKey);
+    } catch {
+      /* nothing kept */
+    }
+    await ipc.createDir(`${root}/chapitres`).catch(() => {});
+    await ipc.createFile(`${root}/chapitres/un.tex`, "\\chapter{Un}\\label{chap:un}\nTexte.\n\\section{Premier}\\label{sec:premier}\n\\clearpage\nSuite.\n\\clearpage\nFin.\n");
+    await ipc.createFile(chapter, "\\chapter{Deux}\\label{chap:deux}\nVoir la section~\\ref{sec:premier}, page~\\pageref{sec:premier}.\n\\section{Second}\\label{sec:second}\n");
+    await editor.open(main);
+    await until(() => !!editor.view && samePath(editor.active, main), 10_000, "main file shown");
+    const v = editor.view!;
+    v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: "\\documentclass{report}\n\\usepackage[T1]{fontenc}\n\\usepackage[french]{babel}\n\\usepackage{hyperref}\n\\begin{document}\n\\tableofcontents\n\\input{chapitres/un}\n\\include{chapitres/deux}\n\\end{document}\n" }, userEvent: "input" });
+    await editor.saveAll({ silent: true });
+    await editor.flush();
+    let part: ipc.DocumentPart | null = null;
+    for (let i = 0; i < 50 && !part; i++) {
+      part = await ipc.documentPart(chapter).catch(() => null);
+      if (!part) await pause(200);
+    }
+    await build.idle();
+    await build.runToEnd();
+    const whole = build.outcome;
+    const steps: string[] = [];
+    const stop = await ipc.on("build:step", ({ name }) => steps.push(name));
+    await editor.open(chapter);
+    await until(() => build.asking && !!document.querySelector(".part-question .choice"), 10_000, "question for a part of the document");
+    const question = document.querySelector(".part-question .title")?.textContent?.trim() ?? "";
+    await scene("part-question");
+    document.querySelector<HTMLButtonElement>(".part-question .choice")!.click();
+    await until(() => build.partChoice === "file" && !document.querySelector(".part-question"), 5_000, "choice kept");
+    await build.idle();
+    await build.runToEnd();
+    const alone = build.outcome;
+    const first = [...steps];
+    const aux = (await ipc.readTextFile(`${root}/build/.raytex-only/main.aux`).catch(() => null))?.text ?? "";
+    const numbered = /\\newlabel\{chap:deux\}\{\{2\}/.test(aux);
+    const problems = alone?.diagnostics.filter((d) => d.severity === "error" || /undefined|non d[ée]fini/i.test(d.message)).map((d) => d.message) ?? [];
+    await until(() => !!document.querySelector(".pdf-viewer .alone"), 5_000, "note above the PDF");
+    const note = document.querySelector(".pdf-viewer .alone")?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    await scene("part-alone");
+    // Typed again: the record serves, the file alone is all that is compiled.
+    steps.length = 0;
+    v.dispatch({ changes: { from: v.state.doc.length, insert: "\nUne phrase de plus.\n" }, userEvent: "input" });
+    await build.runToEnd();
+    const again = [...steps];
+    stop();
+    log(`part: «${question}», whole ${whole?.pages} pages, alone ${alone?.pages} pages (${first.join(" + ")}), then ${again.join(" + ")}, numbered ${numbered}, problems ${JSON.stringify(problems)}, note «${note}»`);
+    check("a part of the document asks, once, what is compiled", !!part && question.includes("deux.tex"), `${JSON.stringify(part)} ${question}`);
+    check(
+      "a part alone keeps its number and its references",
+      !!alone?.success && samePath(alone.plan.only?.file, chapter) && numbered && !problems.length && (alone.pages ?? 99) < (whole?.pages ?? 0) && note.includes("deux.tex"),
+      `${alone?.success} ${alone?.plan.only?.file} ${numbered} ${problems.join(" | ")} ${alone?.pages}/${whole?.pages} ${note}`,
+    );
+    check("the record serves the next builds", first.some((n) => n.includes(" · ")) && again.length > 0 && !again.some((n) => n.includes(" · ")), `${first.join(" + ")} / ${again.join(" + ")}`);
+    // The main file: the whole document again.
+    await editor.saveAll({ silent: true });
+    await editor.open(main);
+    await until(() => !document.querySelector(".pdf-viewer .alone"), 5_000, "whole document shown");
+    await build.runToEnd();
+    check("the main file shows the whole document", !!build.outcome?.success && !build.outcome.plan.only && (build.outcome.pages ?? 0) === (whole?.pages ?? -1), `${build.outcome?.plan.only?.file} ${build.outcome?.pages}`);
+  } catch (e) {
+    results.part = `FAILED ${e}`;
+  }
+  try {
+    localStorage.removeItem(partKey);
+  } catch {
+    /* nothing kept */
+  }
   await app.update((x) => (x.build.autoBuild = "onIdle"));
   log(JSON.stringify(results, null, 2));
   const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));

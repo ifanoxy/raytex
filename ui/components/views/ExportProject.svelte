@@ -56,7 +56,7 @@
     if (building) return;
     building = true;
     try {
-      await build.run();
+      await build.run({ whole: true });
       for (let i = 0; i < 50 && !build.running; i++) await new Promise((r) => setTimeout(r, 100));
       while (build.running) await new Promise((r) => setTimeout(r, 200));
       await read();

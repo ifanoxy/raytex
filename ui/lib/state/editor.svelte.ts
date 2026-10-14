@@ -848,6 +848,7 @@ class EditorStore {
     }
     if (view) this.refreshFlags(view.state);
     this.revision++;
+    void build.follow(tab.path);
     this.sessionSoon();
     this.wordsSoon();
   }

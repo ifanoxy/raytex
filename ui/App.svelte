@@ -31,6 +31,7 @@
   import { spelling } from "$lib/state/spelling.svelte";
   import { whatsNew } from "$lib/state/whatsnew.svelte";
   import Toasts from "./components/dialogs/Toasts.svelte";
+  import PartQuestion from "./components/layout/PartQuestion.svelte";
   import EditorArea from "./components/editor/EditorArea.svelte";
   import ActivityBar from "./components/layout/ActivityBar.svelte";
   import FormatBar from "./components/layout/FormatBar.svelte";
@@ -296,6 +297,7 @@
 <WhatsNew />
 <UpdateDialog />
 <Toasts />
+{#if hasProject}<PartQuestion />{/if}
 
 <style>
   .app {

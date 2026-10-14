@@ -53,7 +53,7 @@ class ViewerStore {
 
   /** Source → PDF: shows where `line` of `path` is. */
   async forward(path: string, line: number, quiet = false) {
-    const r = await ipc.synctexForward(path, line).catch(() => null);
+    const r = await ipc.synctexForward(path, line, this.pdf).catch(() => null);
     if (!r || !r.rects.length) {
       if (!quiet) ui.toast("info", t("viewer.noSync"));
       return;

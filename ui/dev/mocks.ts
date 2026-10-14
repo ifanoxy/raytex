@@ -587,19 +587,22 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function simulateBuild() {
+/** A build of the whole document, or of `only` (a part of it) on its own. */
+async function simulateBuild(only: string | null = null) {
+  const out = only ? p("build/.raytex-only") : p("build");
   const plan: T.BuildPlan = {
     root: p("main.tex"),
     job: "main",
     rootDir: ROOT,
-    outDir: p("build"),
+    outDir: out,
     engine: "pdflatex",
     engineReason: "% !TEX program",
     tool: "auto",
     bibTool: "biber",
-    pdf: p("build/main.pdf"),
-    log: p("build/main.log"),
-    synctex: p("build/main.synctex.gz"),
+    pdf: `${out}/main.pdf`,
+    log: `${out}/main.log`,
+    synctex: `${out}/main.synctex.gz`,
+    ...(only ? { only: { file: only, record: false } } : {}),
   };
   await emit("build:started", { plan, manual: true });
   for (const [name, command] of [
@@ -918,12 +921,14 @@ export function installMocks() {
         case "root_of":
           return p("main.tex");
         case "build":
-          void simulateBuild();
+          void simulateBuild(a.only ? String(a.path) : null);
           return null;
+        case "document_part":
+          return String(a.path).endsWith(".tex") && !String(a.path).endsWith("/main.tex") ? { root: p("main.tex"), file: String(a.path) } : null;
         case "pdf_path":
           return p("build/main.pdf");
         case "synctex_forward":
-          return { pdf: p("build/main.pdf"), page: 2, rects: [{ x: 70, y: 60, width: 420, height: 16 }] };
+          return { pdf: a.pdf ? String(a.pdf) : p("build/main.pdf"), page: 2, rects: [{ x: 70, y: 60, width: 420, height: 16 }] };
         case "synctex_inverse":
           return { file: p("chapitres/introduction.tex"), line: 4 };
         case "tex_status":

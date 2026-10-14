@@ -221,9 +221,13 @@ pub fn key(plan: &BuildPlan, settings: &BuildSettings, dist: &Distribution, prea
     h.finish()
 }
 
-/// Folder of the formats of a build.
+/// Folder of the formats of a build (those of the whole document serve
+/// the builds of one of its files: same preamble).
 fn folder(plan: &BuildPlan) -> PathBuf {
-    plan.out_dir.join(".raytex-fmt")
+    plan.only
+        .as_ref()
+        .map_or(&plan.out_dir, |o| &o.whole_out_dir)
+        .join(".raytex-fmt")
 }
 
 /// The format of a preamble (without its `.fmt` extension: `-fmt=` takes it so).
