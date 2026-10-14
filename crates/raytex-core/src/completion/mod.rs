@@ -1328,7 +1328,11 @@ impl Completer<'_> {
                     item
                 }),
         );
-        CompletionList::new(&format!("@{partial}"), items).valid_for(r"^@[^\s\\@{}$]{0,12}$")
+        // A closing bracket is not part of a key: it is the one the editor
+        // added after `@[` or `@(`, and taken as typed it would leave
+        // nothing in the list (`@[]` matches no shortcut).
+        CompletionList::new(&format!("@{partial}"), items)
+            .valid_for(r"^@(?:\{|[^\s\\@{}$\])]{0,12})$")
     }
 
     fn words(&self, partial: &str, in_math: bool) -> CompletionList {
@@ -1915,6 +1919,41 @@ mod tests {
         let mut r = req(&main, "$ @", "", &off);
         r.macros = &macros;
         assert!(complete(&ws, &r).is_none());
+    }
+
+    #[test]
+    fn bracket_shortcuts_are_offered_as_they_are_typed() {
+        let (_d, ws, main) = ws();
+        let s = CompletionSettings::default();
+        for (typed, key) in [("$x = @[", "@["), ("$x = @{", "@{"), ("$x = @(", "@(")] {
+            let closing = &typed[typed.len() - 1..]
+                .replace('[', "]")
+                .replace('{', "}")
+                .replace('(', ")");
+            let list = complete(&ws, &req(&main, typed, &format!("{closing}$"), &s)).unwrap();
+            assert!(list.items.iter().any(|i| i.label == key), "{typed}");
+            // The list stays while a key is typed; the bracket the editor
+            // closed after it is not taken for a part of the key.
+            let valid = regex::Regex::new(list.valid_for.as_deref().unwrap()).unwrap();
+            assert!(valid.is_match(key), "{key}");
+            assert!(
+                !valid.is_match(&format!("{key}{closing}")),
+                "{key}{closing}"
+            );
+        }
+        assert!(valid_at("@ab"));
+        // Not in the columns of a table.
+        let list = complete(&ws, &req(&main, "\\begin{tabular}{@{", "}l}", &s));
+        assert!(list.is_none_or(|l| !l.items.iter().any(|i| i.label == "@{")));
+    }
+
+    fn valid_at(text: &str) -> bool {
+        let (_d, ws, main) = ws();
+        let s = CompletionSettings::default();
+        let list = complete(&ws, &req(&main, "$@a", "$", &s)).unwrap();
+        regex::Regex::new(list.valid_for.as_deref().unwrap())
+            .unwrap()
+            .is_match(text)
     }
 
     #[test]

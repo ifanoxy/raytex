@@ -328,7 +328,7 @@ export function setList(view: EditorView, env: ListEnv, unit: string): boolean {
 
 /**
  * Snippet of a `rows × cols` table (booktabs rules, first row as header):
- * every cell is an empty field, then the caption.
+ * every cell is an empty field, then the caption, under the table.
  */
 export function tableSnippet(rows: number, cols: number): string {
   let field = 1;
@@ -340,14 +340,14 @@ export function tableSnippet(rows: number, cols: number): string {
   return [
     "\\begin{table}[htbp]",
     "\t\\centering",
-    `\t\\caption{${caption}}`,
-    `\t\\label{tab:\${${field++}}}`,
     `\t\\begin{tabular}{${"l".repeat(cols)}}`,
     "\t\t\\toprule",
     `\t\t${head}`,
     ...(body.length ? ["\t\t\\midrule", ...body.map((r) => `\t\t${r}`)] : []),
     "\t\t\\bottomrule",
     "\t\\end{tabular}",
+    `\t\\caption{${caption}}`,
+    `\t\\label{tab:\${${field++}}}`,
     "\\end{table}",
   ].join("\n");
 }

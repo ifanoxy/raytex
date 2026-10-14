@@ -2090,19 +2090,37 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
     await editor.open(project.info!.main!);
     await pause(500);
 
-    // @[ typed: the editor closes the bracket; the shortcut replaces both.
+    // @[ and @{ typed as a person types them: the editor closes the
+    // bracket, the list opens by itself, the shortcut replaces both.
     const view = editor.view!;
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "$@[]$" }, selection: { anchor: 3 } });
     view.focus();
-    startCompletion(view);
-    await until(() => currentCompletions(view.state).some((c) => c.label === "@["), 5_000, "@[ completion");
-    const option = currentCompletions(view.state).findIndex((c) => c.label === "@[");
-    view.dispatch({ effects: setSelectedCompletion(option) });
-    // CodeMirror ignores an acceptance right after the list opens.
-    await pause(200);
-    acceptCompletion(view);
-    await pause(200);
-    check("@[ not doubled", view.state.doc.toString() === "$\\left[  \\right]$", view.state.doc.toString());
+    const typeKeys = (text: string) => {
+      for (const ch of text) {
+        const { from, to } = view.state.selection.main;
+        const handled = view.state.facet(EditorView.inputHandler).some((h) => h(view, from, to, ch, () => view.state.update({ changes: { from, to, insert: ch } })));
+        if (!handled) view.dispatch({ changes: { from, to, insert: ch }, selection: { anchor: from + ch.length }, userEvent: "input.type" });
+      }
+    };
+    for (const [key, written] of [
+      ["[", "$x = \\left[  \\right]$"],
+      ["{", "$x = \\left\\{  \\right\\}$"],
+    ] as const) {
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "$x = $" }, selection: { anchor: 5 } });
+      typeKeys("@");
+      await pause(150);
+      typeKeys(key);
+      const opened = await until(() => currentCompletions(view.state).some((c) => c.label === `@${key}`), 5_000, `@${key} completion`).then(
+        () => true,
+        () => false,
+      );
+      const option = currentCompletions(view.state).findIndex((c) => c.label === `@${key}`);
+      if (option >= 0) view.dispatch({ effects: setSelectedCompletion(option) });
+      // CodeMirror ignores an acceptance right after the list opens.
+      await pause(200);
+      acceptCompletion(view);
+      await pause(200);
+      check(`@${key} typed gives its brackets`, opened && view.state.doc.toString() === written, `${opened} ${view.state.doc.toString()}`);
+    }
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } });
     const shown = (sel: string) => [...document.querySelectorAll<HTMLElement>(sel)].filter((e) => e.offsetWidth > 0).map((e) => e.textContent?.trim());
     const texts = shown(".format-bar .text-btn span");

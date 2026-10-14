@@ -99,5 +99,7 @@ test("tables have empty cells", () => {
   assert.match(s, /\\begin\{tabular\}\{lll\}/);
   assert.match(s, /\$\{1\} & \$\{2\} & \$\{3\} \\\\/);
   assert.match(s, /\\caption\{\$\{7\}\}/);
+  // The caption under the table.
+  assert.ok(s.indexOf("\\caption") > s.indexOf("\\end{tabular}"), s);
   assert.ok(!/\$\{\d+:/.test(s), "no default text");
 });

@@ -55,8 +55,6 @@ The code produced looks like this:
 
 \begin{table}[htbp]
   \centering
-  \caption{Measurements.}
-  \label{tab:measurements}
   \begin{tabular}{lcr}
     \toprule
     Sample & Mass (g) & Time (s) \\
@@ -65,6 +63,8 @@ The code produced looks like this:
     B & 15.0 & 2.8 \\
     \bottomrule
   \end{tabular}
+  \caption{Measurements.}
+  \label{tab:measurements}
 \end{table}
 ```
 
@@ -77,7 +77,7 @@ The `tab` snippet inserts a complete table.
 
 ## Captions and references
 
-A figure caption goes **below** the image, a table caption **above** it. Always put `\label` **after** `\caption`, otherwise the number is wrong.
+RayTeX puts the caption **below** the image or the table (some styles want it above a table: move those two lines then). Always put `\label` **after** `\caption`, otherwise the number is wrong.
 
 ```latex
 Figure~\ref{fig:curve} and table~\ref{tab:measurements} show…

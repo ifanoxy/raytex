@@ -55,8 +55,6 @@ Le code produit ressemble à ceci :
 
 \begin{table}[htbp]
   \centering
-  \caption{Résultats des mesures.}
-  \label{tab:mesures}
   \begin{tabular}{lcr}
     \toprule
     Échantillon & Masse (g) & Durée (s) \\
@@ -65,6 +63,8 @@ Le code produit ressemble à ceci :
     B & 15,0 & 2,8 \\
     \bottomrule
   \end{tabular}
+  \caption{Résultats des mesures.}
+  \label{tab:mesures}
 \end{table}
 ```
 
@@ -77,7 +77,7 @@ Le raccourci `tab` (extrait) insère un tableau complet.
 
 ## Légendes et renvois
 
-La légende d'une figure se place **sous** l'image, celle d'un tableau **au-dessus**. Mettez toujours `\label` **après** `\caption`, sinon le numéro est faux.
+RayTeX place la légende **sous** l'image ou le tableau (certaines normes la veulent au-dessus d'un tableau : déplacez alors ces deux lignes). Mettez toujours `\label` **après** `\caption`, sinon le numéro est faux.
 
 ```latex
 La figure~\ref{fig:courbe} et le tableau~\ref{tab:mesures} montrent…

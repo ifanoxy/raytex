@@ -191,12 +191,13 @@
       let body = escapeSnippet(gridToLatex(out, "", "\t"));
       if (out.kind === "matrix" && !request.inMath) body = `\\[\n${indented(body)}\n\\]`;
       if (out.kind === "table" && float) {
+        // The caption under the table.
         body = [
           "\\begin{table}[htbp]",
           "\t\\centering",
+          indented(body),
           `\t\\caption{${field(1, caption.trim())}}`,
           `\t\\label{tab:${field(2, label.trim())}}`,
-          indented(body),
           "\\end{table}",
         ].join("\n");
       }

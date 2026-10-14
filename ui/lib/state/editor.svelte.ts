@@ -54,6 +54,7 @@ import { figureAt, figureGroupAt } from "../images";
 import { listingAt } from "../listing";
 import { i18n, type MessageKey, t } from "../i18n.svelte";
 import * as ipc from "../ipc";
+import { oneEach } from "../problems";
 import { diskChange, remember, type Written } from "../disk";
 import { matchesKey, typingKey } from "../keys";
 import { addDefinition, addPackages, graphicsPaths, hasPackage, insertionPoint } from "../preamble";
@@ -739,7 +740,7 @@ class EditorStore {
     if (!m) return;
     const { lint, build } = diagnostics.forFile(m.path);
     const state = this.stateOf(m.path)!;
-    this.applyTo(m, setDiagnostics(state, toCmDiagnostics(state.doc, [...build, ...lint])));
+    this.applyTo(m, setDiagnostics(state, toCmDiagnostics(state.doc, oneEach([...build, ...lint]))));
   }
 
   private async refreshWords() {

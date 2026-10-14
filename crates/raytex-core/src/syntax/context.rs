@@ -136,8 +136,11 @@ pub fn cursor_context(before: &str, after: &str) -> CursorContext {
     if let Some(at) = line.rfind('@') {
         let partial = &line[at + 1..];
         let prev = line[..at].chars().last();
+        // `@{` (`\left\{ … \right\}`): a brace, in a formula or after a
+        // space; not the `@{}` of the columns of a table.
+        let brace = partial == "{" && (in_math(before) || prev.is_none_or(char::is_whitespace));
         if partial.chars().count() <= AT_SHORTCUT_MAX
-            && !partial.contains(|c: char| c.is_whitespace() || "\\@{}$".contains(c))
+            && (brace || !partial.contains(|c: char| c.is_whitespace() || "\\@{}$".contains(c)))
             && prev.is_none_or(|c| !c.is_alphanumeric() && c != '\\')
         {
             return CursorContext::AtShortcut {
@@ -637,6 +640,27 @@ mod tests {
             cursor_context("$ @unmotbientroplongpourunraccourci", ""),
             CursorContext::AtShortcut { .. }
         ));
+        // `@{` and `@[`: a brace or a bracket in a formula (the editor has
+        // closed it after the cursor); not the `@{}` of a table.
+        for typed in ["$x = @{", "$x = @[", "Soit @{"] {
+            assert!(
+                matches!(
+                    cursor_context(typed, "}$"),
+                    CursorContext::AtShortcut { .. }
+                ),
+                "{typed}"
+            );
+        }
+        for typed in [
+            "\\begin{tabular}{@{",
+            "\\begin{tabular}{l@{",
+            "\\begin{tabular}{@{}l@{",
+        ] {
+            assert!(
+                !matches!(cursor_context(typed, "}"), CursorContext::AtShortcut { .. }),
+                "{typed}"
+            );
+        }
         assert_eq!(
             cursor_context("mail@ex", ""),
             CursorContext::Word {

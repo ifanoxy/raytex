@@ -1,6 +1,7 @@
 // Diagnostics from the linter (live, per file) and from the last build.
 
 import type { Diagnostic, Position, Range } from "../types";
+import { oneEach } from "../problems";
 import { comparablePath } from "../utils";
 
 /** Key of a file in maps and comparisons (see `comparablePath`). */
@@ -165,7 +166,8 @@ class DiagnosticsStore {
     const rank = { error: 0, warning: 1, info: 2, hint: 3 } as const;
     const out: { file: string | null; items: Diagnostic[] }[] = [];
     if (general.length) out.push({ file: null, items: general });
-    for (const [file, items] of [...groups.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [file, all] of [...groups.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+      const items = oneEach(all);
       items.sort((a, b) => rank[a.severity] - rank[b.severity] || (a.line ?? 0) - (b.line ?? 0));
       out.push({ file, items });
     }
