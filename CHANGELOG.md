@@ -4,6 +4,8 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-10-14
+
 - Fixed, the same problem shown two or three times with the same fix when the mouse is over it: a mistake is often seen by several checks, each with its fix (a citation key mistyped by LaTeX, by Biber and by the live checks; a brace never closed by the compiler and by the live syntax check; a missing image or file by both). Of the problems at the same place that offer a same fix, only the most serious is shown, in the text and in the *Problems* panel. Two places mended by a same fix (two commands of one package) are still two problems.
 - Fixed, the `@{` and `@[` shortcuts (`\left\{ … \right\}`, `\left[ … \right]`): `@{` was never offered (a brace was not taken for the key of a shortcut), and the bracket the editor closes by itself is replaced with the shortcut. `@{` is offered in a formula or after a space, not in the `@{}` of the columns of a table.
 - **Tables have their caption under them**: the table window, the table of the formatting bar, the `tab` snippet, the *Article* and *Lab report* templates and the help put `\caption` and `\label` after the `tabular`, as for a figure.
@@ -324,6 +326,7 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[0.5.2]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.2
 [0.5.1]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.1
 [0.5.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.0
 [0.4.2]: https://github.com/ifanoxy/raytex/releases/tag/v0.4.2

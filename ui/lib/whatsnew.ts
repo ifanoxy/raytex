@@ -34,6 +34,118 @@ export interface VersionNotes {
 
 export const NOTES: VersionNotes[] = [
   {
+    version: "0.5.2",
+    date: "2026-10-14",
+    en: {
+      points: [
+        "A chapter can be compiled on its own: a fraction of the time on a long document, with the numbers, pages and references it has in the document.",
+        "Live compilation of long documents takes less time: one pass first, the rest once the text settles.",
+        "Exporting the PDF opens a window of its own that follows the build in detail.",
+        "See all is redone: a field that finds a tool by its name, the families on a rail, the tools as tiles.",
+        "Previews know the commands of the project, and the preview of code is cut to the code.",
+        "Fixes: the cursor stays where a click puts it, a problem is shown once, `@{` and `@[` work, table captions go under the table.",
+      ],
+      details: [
+        {
+          title: "A chapter on its own",
+          items: [
+            "When a part of a document is opened (a file brought in by `\\input`, `\\include` or `\\subfile`), RayTeX asks once per project what to compile while it is written: This file only, or The whole document. The choice is changed in the menu of the Build button.",
+            "This file only compiles the file with the preamble of the document: on a thesis of 230 pages, a chapter takes half a second where a pass of the whole took two.",
+            "The chapter keeps its numbers (chapter, sections, figures, equations), its pages, its references to the other files, its citations and the commands defined elsewhere. To know them, the whole document is compiled once, apart, and again when another file changes.",
+            "A line above the PDF says which file is shown alone. The main file shows the whole document again, and an export always compiles the whole document.",
+          ],
+        },
+        {
+          title: "Live compilation of long documents",
+          items: [
+            "On a long document, a live build is first one pass: the page shows what was typed sooner, and the references, the table of contents and the bibliography are set right by a build that follows once the text settles.",
+            "Typing again during a live build stops it for the newer text, unless it was about to finish.",
+            "The pause before a live build grows a little with the time a pass takes, and the engine reads a long file less often while it is typed in.",
+          ],
+        },
+        {
+          title: "Exporting the PDF",
+          items: [
+            "Export PDF… opens a window of its own, apart from the main one: the steps of the build, the file the compiler reads, the page it is at, a progress bar, the time left and everything the compiler writes.",
+            "It closes by itself when the PDF is written, unless Keep this window open at the end is ticked.",
+          ],
+        },
+        {
+          title: "See all and previews",
+          items: [
+            "See all shows the same tools another way: a field at the top finds a tool by its name as it is typed, the families are on a rail, the tools are tiles with their icon.",
+            "Every preview (TikZ picture, trial of a command, sample of a font, code, title page, page layout) knows the commands of the project, wherever they are defined.",
+            "The preview of the code window is a page cut to the code, under it, instead of a whole sheet with the code in small at its top.",
+          ],
+        },
+        {
+          title: "Fixes",
+          items: [
+            "After typing at the bottom of a text, going back up and clicking somewhere could send the letters and the view back down: a click now places the cursor where it lands, also in a window that was not in front (macOS) and in the margin.",
+            "A mistake seen by several checks (a citation key by LaTeX and by Biber, a brace by the compiler and by the live checks) was shown two or three times with the same fix: it is shown once.",
+            "The `@{` and `@[` shortcuts work: `@{` was never offered, and the bracket the editor closes by itself emptied the list.",
+            "Tables have their caption under them: the table window, the formatting bar, the `tab` snippet and the templates.",
+            "An image chosen outside the project for a page style or a title page is copied into its folder of images.",
+          ],
+        },
+      ],
+    },
+    fr: {
+      points: [
+        "Un chapitre peut se compiler seul : une fraction du temps sur un long document, avec les numéros, les pages et les renvois qu'il a dans le document.",
+        "La compilation en direct des longs documents prend moins de temps : une passe d'abord, le reste quand le texte se pose.",
+        "L'export du PDF ouvre une fenêtre à part qui suit la compilation en détail.",
+        "Tout voir est refait : un champ qui trouve un outil par son nom, les familles sur un rail, les outils en tuiles.",
+        "Les aperçus connaissent les commandes du projet, et l'aperçu du code est coupé au code.",
+        "Corrections : le curseur reste où un clic le place, un problème n'est montré qu'une fois, `@{` et `@[` fonctionnent, la légende des tableaux passe dessous.",
+      ],
+      details: [
+        {
+          title: "Un chapitre seul",
+          items: [
+            "Quand un fichier annexe est ouvert (un fichier inclus par `\\input`, `\\include` ou `\\subfile`), RayTeX demande une fois par projet ce qu'il faut compiler pendant qu'il est écrit : Ce fichier seul, ou Tout le document. Le choix se change dans le menu du bouton Compiler.",
+            "Ce fichier seul compile le fichier avec le préambule du document : sur une thèse de 230 pages, un chapitre prend une demi-seconde quand une passe du tout en prenait deux.",
+            "Le chapitre garde ses numéros (chapitre, sections, figures, équations), ses pages, ses renvois vers les autres fichiers, ses citations et les commandes définies ailleurs. Pour les connaître, le document entier est compilé une fois, à part, puis de nouveau quand un autre fichier change.",
+            "Une ligne au-dessus du PDF dit quel fichier est montré seul. Le fichier principal montre de nouveau tout le document, et un export compile toujours le document entier.",
+          ],
+        },
+        {
+          title: "La compilation en direct des longs documents",
+          items: [
+            "Sur un long document, une compilation en direct ne fait d'abord qu'une passe : la page montre plus tôt ce qui vient d'être écrit, et les renvois, la table des matières et la bibliographie sont remis d'aplomb par une compilation qui suit quand le texte se pose.",
+            "Reprendre la frappe pendant une compilation en direct l'arrête au profit du nouveau texte, sauf si elle allait finir.",
+            "La pause avant une compilation en direct s'allonge un peu avec la durée d'une passe, et le moteur relit moins souvent un long fichier pendant la frappe.",
+          ],
+        },
+        {
+          title: "L'export du PDF",
+          items: [
+            "Exporter le PDF… ouvre une fenêtre à part, distincte de la fenêtre principale : les étapes de la compilation, le fichier lu par le compilateur, la page où il en est, une barre de progression, le temps restant et tout ce que le compilateur écrit.",
+            "Elle se ferme seule quand le PDF est écrit, sauf si Laisser cette fenêtre ouverte à la fin est coché.",
+          ],
+        },
+        {
+          title: "Tout voir et les aperçus",
+          items: [
+            "Tout voir montre les mêmes outils autrement : un champ en haut trouve un outil par son nom pendant la frappe, les familles sont sur un rail, les outils sont des tuiles avec leur icône.",
+            "Chaque aperçu (dessin TikZ, essai d'une commande, échantillon d'une police, code, page de titre, mise en page) connaît les commandes du projet, où qu'elles soient définies.",
+            "L'aperçu de la fenêtre de code est une page coupée au code, sous celui-ci, au lieu d'une feuille entière avec le code en petit en haut.",
+          ],
+        },
+        {
+          title: "Corrections",
+          items: [
+            "Après avoir écrit en bas d'un texte, remonter et cliquer pour écrire ailleurs pouvait renvoyer les lettres et la vue tout en bas : un clic place désormais le curseur là où il tombe, aussi dans une fenêtre qui n'était pas au premier plan (macOS) et dans la marge.",
+            "Une erreur vue par plusieurs vérifications (une clé de citation par LaTeX et par Biber, une accolade par le compilateur et par les vérifications en direct) était montrée deux ou trois fois avec la même solution : elle ne l'est plus qu'une fois.",
+            "Les raccourcis `@{` et `@[` fonctionnent : `@{` n'était jamais proposé, et le crochet que l'éditeur ferme de lui-même vidait la liste.",
+            "Les tableaux ont leur légende dessous : la fenêtre des tableaux, la barre de mise en forme, l'extrait `tab` et les modèles.",
+            "Une image choisie hors du projet pour un style de page ou une page de titre est copiée dans son dossier d'images.",
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: "0.5.1",
     date: "2026-10-12",
     en: {
