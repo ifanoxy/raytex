@@ -158,14 +158,19 @@ class BuildStore {
    */
   async follow(path: string | null) {
     const token = ++this.following;
-    const part = path && fileKind(path) === "tex" ? await ipc.documentPart(path).catch(() => null) : null;
+    // A picture, a bibliography, a PDF: the page on screen stays.
+    if (!path || fileKind(path) !== "tex") {
+      this.asking = false;
+      return;
+    }
+    const part = await ipc.documentPart(path).catch(() => null);
     if (token !== this.following) return;
     this.part = part;
     this.partChoice = this.readChoice();
     const key = this.choiceKey();
     this.asking = !!part && this.partChoice === null && !!key && !this.askLaterFor.has(key);
     const alone = part && this.partChoice === "file" ? part.file : null;
-    if (this.shows(alone) || !path) return;
+    if (this.shows(alone)) return;
     if (!alone) {
       const whole = await ipc.pdfPath(path).catch(() => null);
       if (token !== this.following) return;

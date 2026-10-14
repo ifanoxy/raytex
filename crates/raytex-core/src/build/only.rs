@@ -697,13 +697,12 @@ mod tests {
             if format {
                 // A whole build, after which the format of its preamble is made.
                 assert!(super::super::run(&whole, &cx(true), &mut |_: BuildEvent| {}).success);
-                let fmt = whole.out_dir.join(".raytex-fmt");
-                let made = (0..120).any(|_| {
+                // Ready: written under a temporary name first, then renamed.
+                let preamble = crate::build::preamble::preamble_of(MAIN).unwrap();
+                let key = crate::build::preamble::key(&whole, &settings, &dist, &preamble);
+                let made = (0..240).any(|_| {
                     std::thread::sleep(std::time::Duration::from_millis(500));
-                    std::fs::read_dir(&fmt).is_ok_and(|rd| {
-                        rd.flatten()
-                            .any(|e| e.path().extension().is_some_and(|x| x == "fmt"))
-                    })
+                    crate::build::preamble::ready(&whole, key).is_some()
                 });
                 assert!(made, "the format of the preamble was made");
             }
