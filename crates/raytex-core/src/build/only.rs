@@ -764,10 +764,17 @@ mod tests {
                 .unwrap();
                 std::fs::write(&only_plan.only.as_ref().unwrap().source, &text).unwrap();
                 let o = super::super::run(&only_plan, &cx(false), &mut |_: BuildEvent| {});
+                // Errors, and what the rest of the document was to give (the
+                // notices of a package about itself are not this test's).
                 let problems: Vec<_> = o
                     .diagnostics
                     .iter()
-                    .filter(|d| d.severity != crate::diagnostics::Severity::Info)
+                    .filter(|d| {
+                        d.severity == crate::diagnostics::Severity::Error
+                            || ["undefined", "Undefined", "may have changed", "multiply"]
+                                .iter()
+                                .any(|w| d.message.contains(w))
+                    })
                     .map(|d| (d.file.clone(), d.line, d.message.clone()))
                     .collect();
                 assert!(
