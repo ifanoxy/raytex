@@ -190,6 +190,7 @@ pub async fn export_pdf_lighter(
         let mut settings = prep.settings.clone();
         settings.synctex = false;
         settings.precompile_preamble = false;
+        settings.figure_cache = false;
         settings.halt_on_error = false;
         settings.copy_pdf_to_root = false;
         // Built outside its folder (a file opened on its own): the copy too.

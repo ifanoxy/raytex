@@ -235,9 +235,10 @@ class BuildStore {
    * same (the one that completes a live build, or the one an export needs).
    * `live`: a live build whatever the length of the document (the self-test).
    * `whole`: the whole document, even from a part of it shown on its own
-   * (an export).
+   * (an export). `exact`: every TikZ picture drawn, none put back from its
+   * drawing (the document an export hands over).
    */
-  async run(opts: { auto?: boolean; complete?: boolean; live?: boolean; whole?: boolean } = {}): Promise<boolean> {
+  async run(opts: { auto?: boolean; complete?: boolean; live?: boolean; whole?: boolean; exact?: boolean } = {}): Promise<boolean> {
     const target = this.target();
     if (!target) {
       if (!opts.auto) ui.toast("info", t("build.nothingToBuild"));
@@ -260,7 +261,7 @@ class BuildStore {
     await editor.flush();
     try {
       const live = !!opts.auto && !opts.complete && (opts.live || (this.passMs ?? 0) > LONG_PASS_MS);
-      await ipc.build(target, !opts.auto, live, !opts.whole && this.alone(target));
+      await ipc.build(target, !opts.auto, live, !opts.whole && this.alone(target), !!opts.exact);
       return true;
     } catch (e) {
       ui.toast("error", t("build.failedToStart"), { detail: String(e) });
@@ -284,7 +285,7 @@ class BuildStore {
   }
 
   /** Compiles and waits for the end; false when no build was asked. */
-  async runToEnd(opts: { auto?: boolean; complete?: boolean; live?: boolean; whole?: boolean } = {}): Promise<boolean> {
+  async runToEnd(opts: { auto?: boolean; complete?: boolean; live?: boolean; whole?: boolean; exact?: boolean } = {}): Promise<boolean> {
     const before = this.ended;
     if (!(await this.run(opts))) return false;
     // The engine says it started a moment after it was asked.

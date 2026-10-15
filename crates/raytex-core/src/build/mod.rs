@@ -13,6 +13,7 @@
 //! * **latexmk**, **single pass** (fastest preview), **Tectonic**, and
 //!   **custom** step lists.
 
+pub mod figures;
 pub mod only;
 pub mod preamble;
 pub mod refine;
@@ -419,6 +420,11 @@ struct Runner<'a, 'b> {
     draft: bool,
     /// Auxiliary files the engine could not read were put aside once.
     healed: bool,
+    /// Pictures already drawn are put back (see [`figures`]).
+    figures: bool,
+    /// The PDF holds pictures put back and this build draws them all: it
+    /// is made again, even when nothing changed.
+    redraw: bool,
 }
 
 /// Runs a build.
@@ -459,6 +465,11 @@ pub fn run(
     } else {
         None
     };
+    // Pictures already drawn: the map of those put back; a pass of drawings
+    // of the build before gives way.
+    let put_back = figures::in_pdf(&plan.out_dir);
+    figures::stop(plan);
+    let pictures = figures::prepare(plan, ctx.settings, ctx.dist, ctx.source);
     let mut r = Runner {
         ctx,
         plan,
@@ -472,6 +483,8 @@ pub fn run(
         last_output: Vec::new(),
         draft: false,
         healed: false,
+        figures: pictures.is_some(),
+        redraw: put_back && pictures.is_none(),
     };
     let mut report = match (plan.engine, plan.tool) {
         (Engine::Tectonic, _) => r.tectonic(),
@@ -543,6 +556,20 @@ pub fn run(
         && !report.fatal
     {
         preamble::prepare_in_background(plan, ctx.dist, plan.env(ctx.dist), key);
+    }
+    // New pictures drawn on pages of their own, for the next builds.
+    if let Some(pictures) = pictures.filter(|_| r.figures && !r.cancelled) {
+        let due = figures::after(plan, &pictures);
+        if !due.is_empty() && ctx.background && pdf_updated && errors == 0 && !report.fatal {
+            figures::draw_in_background(
+                plan,
+                ctx.settings,
+                ctx.dist,
+                r.format.as_ref().map(|(f, _)| f.clone()),
+                pictures,
+                due,
+            );
+        }
     }
     BuildOutcome {
         success: !r.cancelled && errors == 0 && !failed_step && pdf.is_some(),
@@ -726,6 +753,9 @@ impl Runner<'_, '_> {
         // its auxiliary files cut short: the next pass would read half of
         // the labels and of the table of contents. They are put back as
         // they were.
+        if self.figures {
+            figures::link(self.plan);
+        }
         let kept = auxiliary_files(&self.plan.out_dir);
         let code = self.step(name.clone(), self.engine_cmd());
         if self.cancelled() {
@@ -742,6 +772,12 @@ impl Runner<'_, '_> {
             for (path, _) in auxiliary_files(&self.plan.out_dir) {
                 let _ = std::fs::remove_file(path);
             }
+            return self.engine_pass(pass);
+        }
+        // The map of pictures put back does not go with this document: the
+        // pass is done again without it, and the next builds draw them.
+        if self.figures && !self.cancelled() && figures::broke(self.plan, &report) {
+            self.figures = false;
             return self.engine_pass(pass);
         }
         self.explain_silent_failure(code, &mut report);
@@ -845,6 +881,7 @@ impl Runner<'_, '_> {
         // read it: that pass is not done again, its auxiliary files are
         // those of this very text.
         let resumed = !self.ctx.live
+            && !self.redraw
             && state.pending
             && state.inputs.is_some()
             && state.inputs == self.inputs_hash();
@@ -1124,45 +1161,7 @@ impl Runner<'_, '_> {
     /// when it cannot be told (no record, or the root not in it).
     fn inputs_hash(&self) -> Option<u64> {
         let plan = self.plan;
-        let fls = std::fs::read_to_string(plan.out_dir.join(format!("{}.fls", plan.job))).ok()?;
-        let roots: Vec<PathBuf> = [
-            Some(plan.root_dir.clone()),
-            dunce::canonicalize(&plan.root_dir).ok(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
-        let outs: Vec<PathBuf> = [
-            Some(plan.out_dir.clone()),
-            dunce::canonicalize(&plan.out_dir).ok(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
-        let mut pwd = plan.root_dir.clone();
-        let mut files = std::collections::BTreeSet::new();
-        for line in fls.lines() {
-            if let Some(dir) = line.strip_prefix("PWD ") {
-                pwd = PathBuf::from(dir.trim());
-            } else if let Some(file) = line.strip_prefix("INPUT ") {
-                let file = Path::new(file.trim());
-                let path = log::normalize(&if file.is_absolute() {
-                    file.to_path_buf()
-                } else {
-                    pwd.join(file)
-                });
-                if roots.iter().any(|r| path.starts_with(r))
-                    && !outs.iter().any(|o| path.starts_with(o))
-                {
-                    // The form of the root (its folder may be read by another name).
-                    let path = roots
-                        .iter()
-                        .find_map(|r| path.strip_prefix(r).ok())
-                        .map_or(path.clone(), |rel| plan.root_dir.join(rel));
-                    files.insert(path);
-                }
-            }
-        }
+        let files = project_inputs(plan)?;
         let root = log::normalize(&plan.root);
         if !files.iter().any(|f| log::normalize(f) == root) {
             return None;
@@ -1260,10 +1259,17 @@ impl Runner<'_, '_> {
         if plan.bib_tool.is_none() {
             cmd = cmd.arg("-bibtex-");
         }
+        // Up to date for latexmk, but with pictures put back.
+        if self.redraw {
+            cmd = cmd.arg("-g");
+        }
         cmd = cmd.arg(format!("-outdir={}", plan.out_dir.display()));
         cmd = cmd.args(s.extra_args.iter().cloned());
         // The root, or the document written for a file shown on its own.
         cmd = cmd.arg(plan.engine_input());
+        if self.figures {
+            figures::link(plan);
+        }
         self.step("latexmk".into(), cmd);
         self.ran_bib = plan.bib_tool;
         self.read_log()
@@ -1378,6 +1384,51 @@ fn place_in_root(
             d.context_after = None;
         }
     }
+}
+
+/// The files of the project the last pass of `plan` read, by its record
+/// (`.fls`), in the form of the root folder; not those of the output folder.
+fn project_inputs(plan: &BuildPlan) -> Option<std::collections::BTreeSet<PathBuf>> {
+    let fls = std::fs::read_to_string(plan.out_dir.join(format!("{}.fls", plan.job))).ok()?;
+    let roots: Vec<PathBuf> = [
+        Some(plan.root_dir.clone()),
+        dunce::canonicalize(&plan.root_dir).ok(),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    let outs: Vec<PathBuf> = [
+        Some(plan.out_dir.clone()),
+        dunce::canonicalize(&plan.out_dir).ok(),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    let mut pwd = plan.root_dir.clone();
+    let mut files = std::collections::BTreeSet::new();
+    for line in fls.lines() {
+        if let Some(dir) = line.strip_prefix("PWD ") {
+            pwd = PathBuf::from(dir.trim());
+        } else if let Some(file) = line.strip_prefix("INPUT ") {
+            let file = Path::new(file.trim());
+            let path = log::normalize(&if file.is_absolute() {
+                file.to_path_buf()
+            } else {
+                pwd.join(file)
+            });
+            if roots.iter().any(|r| path.starts_with(r))
+                && !outs.iter().any(|o| path.starts_with(o))
+            {
+                // The form of the root (its folder may be read by another name).
+                let path = roots
+                    .iter()
+                    .find_map(|r| path.strip_prefix(r).ok())
+                    .map_or(path.clone(), |rel| plan.root_dir.join(rel));
+                files.insert(path);
+            }
+        }
+    }
+    Some(files)
 }
 
 /// What an engine reads back at its next pass and writes again as it goes

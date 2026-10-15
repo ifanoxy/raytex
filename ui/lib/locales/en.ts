@@ -1150,6 +1150,8 @@ const en = {
   "tikz.axes": "Axes",
   "settings.precompilePreamble": "Precompile the preamble (faster)",
   "settings.precompilePreambleHint": "pdfLaTeX: the packages of the preamble are prepared once, in the background; the next compilations start at \\begin{document} (often twice as fast). Documents that write files in their preamble are compiled normally.",
+  "settings.figureCache": "Keep TikZ pictures already drawn (faster)",
+  "settings.figureCacheHint": "Each new picture is drawn once, in the background; the next compilations put it back as it is while its text does not change. An export draws them all.",
   "light.badge": "Light mode",
   "light.badgeHint": "This file is open on its own: nothing is created next to it. Click to make a project from it.",
   "light.title": "File opened on its own",

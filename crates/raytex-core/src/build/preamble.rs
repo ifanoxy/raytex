@@ -147,7 +147,7 @@ pub fn unsafe_reason(preamble: &str) -> Option<String> {
 
 /// Files of the project the preamble may read: local classes and packages,
 /// and the files given to `\input` / `\include`.
-fn local_inputs(root_dir: &Path, preamble: &str) -> Vec<PathBuf> {
+pub(crate) fn local_inputs(root_dir: &Path, preamble: &str) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = Vec::new();
     if let Ok(rd) = std::fs::read_dir(root_dir) {
         for entry in rd.flatten() {

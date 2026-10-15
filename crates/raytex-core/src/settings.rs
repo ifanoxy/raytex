@@ -357,6 +357,8 @@ pub struct BuildSettings {
     /// Precompile the preamble of pdfLaTeX documents (faster passes, see
     /// [`crate::build::preamble`]).
     pub precompile_preamble: bool,
+    /// Put back the TikZ pictures already drawn (see [`crate::build::figures`]).
+    pub figure_cache: bool,
 }
 
 impl Default for BuildSettings {
@@ -380,6 +382,7 @@ impl Default for BuildSettings {
             miktex_auto_install: true,
             copy_pdf_to_root: false,
             precompile_preamble: true,
+            figure_cache: true,
         }
     }
 }

@@ -54,6 +54,8 @@
   const ENGINES: EngineChoice[] = ["auto", "pdflatex", "xelatex", "lualatex", "latex", "tectonic"];
   const TOOLS: BuildTool[] = ["auto", "latexmk", "single", "custom"];
   const BIBTOOLS: BibTool[] = ["auto", "biber", "bibtex", "none"];
+  /** Settings of builds newer than their type: TikZ pictures put back once drawn. */
+  type BuildMore = Settings["build"] & { figureCache?: boolean };
 
   let rules = $state<[string, Severity][]>([]);
   let recording = $state<string | null>(null);
@@ -423,6 +425,7 @@
         {@render toggle(t("settings.synctex"), t("settings.synctexHint"), s.build.synctex, (v) => set((x) => (x.build.synctex = v)))}
         {@render toggle(t("settings.haltOnError"), t("settings.haltOnErrorHint"), s.build.haltOnError, (v) => set((x) => (x.build.haltOnError = v)))}
         {@render toggle(t("settings.precompilePreamble"), t("settings.precompilePreambleHint"), s.build.precompilePreamble, (v) => set((x) => (x.build.precompilePreamble = v)))}
+        {@render toggle(t("settings.figureCache"), t("settings.figureCacheHint"), (s.build as BuildMore).figureCache !== false, (v) => set((x) => ((x.build as BuildMore).figureCache = v)))}
         {@render toggle(t("settings.shellEscape"), t("settings.shellEscapeHint"), s.build.shellEscape, (v) => set((x) => (x.build.shellEscape = v)))}
         {@render toggle(t("settings.badboxes"), t("settings.badboxesHint"), s.build.showBadboxes, (v) => set((x) => (x.build.showBadboxes = v)))}
         {#snippet argsControl()}

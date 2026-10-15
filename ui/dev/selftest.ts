@@ -2468,6 +2468,50 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
   } catch {
     /* nothing kept */
   }
+  // ------------------------------------------------- TikZ pictures drawn once
+  // After a build, each new picture is drawn in the background on a page of
+  // its own; the next builds put it back. An export draws them all.
+  try {
+    const root = project.info!.root;
+    const main = project.info!.main!;
+    await editor.open(main);
+    await until(() => !!editor.view && samePath(editor.active, main), 10_000, "main file shown");
+    const v = editor.view!;
+    const before = v.state.doc.toString();
+    const figure = (samples: number) =>
+      `\\documentclass{article}\n\\usepackage[T1]{fontenc}\n\\usepackage[french]{babel}\n\\usepackage{pgfplots}\n\\pgfplotsset{compat=1.18}\n\\begin{document}\nUne courbe.\n\n\\begin{tikzpicture}\n\\begin{axis}[width=0.8\\linewidth, height=5cm]\n\\addplot[domain=0:10, samples=${samples}] {sin(deg(x))*exp(-x/5)};\n\\addplot[domain=0:10, samples=${samples}] {cos(deg(x))*exp(-x/4)};\n\\end{axis}\n\\end{tikzpicture}\n\n\\begin{tikzpicture}\n\\draw[->] (0,0) -- (3,1) node[right] {Fin : ici};\n\\end{tikzpicture}\n\\end{document}\n`;
+    v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: figure(400) }, userEvent: "input" });
+    await editor.saveAll({ silent: true });
+    await editor.flush();
+    await build.idle();
+    // The first build has no .aux to read the map from; the second one draws.
+    await build.runToEnd();
+    await build.runToEnd();
+    const drawn = build.outcome;
+    const pass = (o: typeof drawn) => o?.steps.find((st) => !/bib/i.test(st.name))?.durationMs ?? 0;
+    const index = `${root}/build/.raytex-figures/index.json`;
+    const drawings = async () => Object.keys(JSON.parse((await ipc.readTextFile(index).catch(() => null))?.text ?? "{}").drawings ?? {}).length;
+    for (let i = 0; i < 200 && (await drawings()) < 2; i++) await pause(200);
+    if ((await drawings()) < 2) throw new Error("pictures not drawn in the background");
+    const hits = async () => ((await ipc.readTextFile(`${root}/build/main.log`).catch(() => null))?.text ?? "").split("\n").filter((l) => l.startsWith("RTXfig-hit ")).length;
+    await build.runToEnd();
+    const putBack = build.outcome;
+    const back = await hits();
+    const fresh = await ipc.pdfFresh(main);
+    // The export window builds the document with every picture drawn.
+    await build.runToEnd({ auto: true, complete: true, whole: true, exact: true });
+    const exact = build.outcome;
+    const drawnAll = (await hits()) === 0;
+    const freshThen = await ipc.pdfFresh(main);
+    log(`pictures: pass ${pass(drawn)} ms drawn, ${pass(putBack)} ms put back (${back} put back), fresh ${fresh} then ${freshThen} after a build that draws all (${pass(exact)} ms)`);
+    check("pictures drawn once are put back", !!putBack?.success && back === 2 && putBack.pages === drawn?.pages, `${putBack?.success} ${back} ${putBack?.pages}/${drawn?.pages}`);
+    check("an export draws every picture", !fresh && !!exact?.success && drawnAll && freshThen, `${fresh} ${exact?.success} ${drawnAll} ${freshThen}`);
+    v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: before }, userEvent: "input" });
+    await editor.saveAll({ silent: true });
+    await editor.flush();
+  } catch (e) {
+    results.pictures = `FAILED ${e}`;
+  }
   await app.update((x) => (x.build.autoBuild = "onIdle"));
   log(JSON.stringify(results, null, 2));
   const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));

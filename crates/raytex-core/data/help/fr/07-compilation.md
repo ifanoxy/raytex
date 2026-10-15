@@ -58,6 +58,8 @@ Les fichiers auxiliaires (`.aux`, `.log`, `.toc`…) sont rangés dans le dossie
 
 **Préambule précompilé** (pdfLaTeX) : après une première compilation, RayTeX prépare en arrière-plan une version « précompilée » du préambule (avec `mylatexformat`). Les compilations suivantes commencent directement à `\begin{document}` : souvent deux fois plus rapides (0,6 s au lieu de 1,3 s avec TikZ et pgfplots), le PDF est identique. Le préambule est préparé à nouveau dès qu'il change. Les documents qui écrivent des fichiers dans leur préambule (index, glossaires, `minted`…) sont compilés normalement. Réglage : *Réglages › Compilation › Précompiler le préambule*.
 
+**Figures TikZ déjà dessinées** (pdfLaTeX, XeLaTeX, LuaLaTeX) : une figure TikZ ou pgfplots est dessinée à chaque compilation, même quand vous écrivez ailleurs. Après une compilation, RayTeX dessine en arrière-plan chaque nouvelle figure sur une page à part ; les compilations suivantes la reprennent telle quelle, au pixel près (0,54 s au lieu de 0,92 s pour un article avec une courbe pgfplots et quatre dessins). Une figure est redessinée dès que son texte change, ou un fichier qu'elle lit (données, image), le préambule, une définition du document (`\newcommand`, `\tikzset`…), ou ce qui l'entoure (largeur, police, couleur, langue). Les figures qui dépendent de la page ou du reste du document (renvois, citations, compteurs, `remember picture`, `overlay`, nombres aléatoires) sont toujours dessinées. **L'export du PDF redessine toutes les figures.** Réglage : *Réglages › Compilation › Garder les figures TikZ déjà dessinées*.
+
 Autres méthodes : **latexmk**, **une seule passe**, ou vos **étapes personnalisées** (avec les variables `%DOC%`, `%DOCFILE%`, `%OUTDIR%`, `%DIR%`, `%ENGINE%`).
 
 ## Lire les erreurs

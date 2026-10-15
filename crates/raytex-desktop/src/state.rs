@@ -210,6 +210,9 @@ pub struct BuildRequest {
     /// The file is a part of its document and is shown on its own (see
     /// `raytex_core::build::only`).
     pub only: bool,
+    /// Every TikZ picture drawn, none put back from its drawing (the
+    /// document an export hands over, see `raytex_core::build::figures`).
+    pub exact: bool,
 }
 
 impl BuildControl {

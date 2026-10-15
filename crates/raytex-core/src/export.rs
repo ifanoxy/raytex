@@ -403,6 +403,11 @@ pub fn pdf_fresh(t: &Target<'_>) -> bool {
     if crate::build::rerun_pending(t.out_dir) {
         return false;
     }
+    // Pictures put back from their drawings: the document handed over has
+    // each of them drawn.
+    if crate::build::figures::in_pdf(t.out_dir) {
+        return false;
+    }
     let Some((read, at)) = recorded(t) else {
         return false;
     };

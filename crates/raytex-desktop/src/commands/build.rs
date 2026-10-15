@@ -78,6 +78,9 @@ struct Finished {
 ///
 /// `only`: a file that is a part of its document is compiled on its own
 /// (see `raytex_core::build::only`); the whole document otherwise.
+///
+/// `exact`: every TikZ picture is drawn, none is put back from its drawing
+/// (the document an export hands over).
 #[tauri::command]
 pub async fn build(
     app: AppHandle,
@@ -86,23 +89,26 @@ pub async fn build(
     manual: Option<bool>,
     live: Option<bool>,
     only: Option<bool>,
+    exact: Option<bool>,
 ) -> CmdResult<()> {
     let file = abs(&path);
     let manual = manual.unwrap_or(false);
     let live = live.unwrap_or(false) && !manual;
     let only = only.unwrap_or(false);
+    let exact = exact.unwrap_or(false);
     let flag = {
         let mut b = state.build();
         if let Some(running) = b.running.clone() {
-            let (was_manual, was_live) = b
+            let (was_manual, was_live, was_exact) = b
                 .queued
                 .as_ref()
-                .map_or((false, true), |q| (q.manual, q.live));
+                .map_or((false, true, false), |q| (q.manual, q.live, q.exact));
             b.queued = Some(BuildRequest {
                 file,
                 manual: manual || was_manual,
                 live: live && was_live,
                 only,
+                exact: exact || was_exact,
             });
             if live && b.gives_way() {
                 b.superseding = true;
@@ -127,6 +133,7 @@ pub async fn build(
                 manual,
                 live,
                 only,
+                exact,
             },
             &flag,
         );
@@ -249,10 +256,13 @@ fn run_one(app: &AppHandle, state: &AppState, req: &BuildRequest, cancel: &Arc<A
             },
         );
     };
-    let Some(prep) = prepare(state, file) else {
+    let Some(mut prep) = prepare(state, file) else {
         finish(None, None, false);
         return;
     };
+    if req.exact {
+        prep.settings.figure_cache = false;
+    }
     let dist = state.active_distribution();
     let whole = match build::plan(&prep.root, &prep.settings, dist.as_ref(), &prep.facts, lang) {
         Ok(p) => p,

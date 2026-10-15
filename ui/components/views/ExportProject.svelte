@@ -51,12 +51,12 @@
     void read();
   }
 
-  /** Compiles the document, which is what tells the files it reads. */
+  /** Compiles the document, which is what tells the files it reads (every picture drawn when its PDF goes with it). */
   async function compile() {
     if (building) return;
     building = true;
     try {
-      await build.run({ whole: true });
+      await build.run({ whole: true, exact: options.includePdf });
       for (let i = 0; i < 50 && !build.running; i++) await new Promise((r) => setTimeout(r, 100));
       while (build.running) await new Promise((r) => setTimeout(r, 200));
       await read();

@@ -171,7 +171,7 @@ export const rootOf = (path: string) => call<string | null>("root_of", { path })
  * Asks for a build. `live`: one made while the text is typed, which is one
  * pass of the engine and gives way to a newer text (see the engine).
  */
-export const build = (path: string, manual: boolean, live = false, only = false) => call<void>("build", { path, manual, live, only });
+export const build = (path: string, manual: boolean, live = false, only = false, exact = false) => call<void>("build", { path, manual, live, only, exact });
 /** A file that is a part of its document and can be compiled on its own. */
 export interface DocumentPart {
   root: string;

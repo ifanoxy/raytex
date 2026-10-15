@@ -82,7 +82,7 @@ class PdfExportStore {
       if (!current()) return;
       if (build.outcome?.plan.only || !build.outcome || !(await ipc.pdfFresh(target!).catch(() => false))) {
         // Its own window tells how this build goes and ends: it is asked for quietly.
-        asked = await build.runToEnd({ auto: true, complete: true, whole: true });
+        asked = await build.runToEnd({ auto: true, complete: true, whole: true, exact: true });
       }
       if (!current()) return;
       const outcome = build.outcome;

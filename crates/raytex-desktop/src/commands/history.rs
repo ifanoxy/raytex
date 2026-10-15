@@ -309,6 +309,7 @@ pub async fn history_changes_pdf(
         };
         settings.synctex = false;
         settings.precompile_preamble = false;
+        settings.figure_cache = false;
         settings.halt_on_error = false;
         settings.copy_pdf_to_root = false;
         let plan = build::plan(&tex, &settings, Some(&dist), &prep.facts, lang)

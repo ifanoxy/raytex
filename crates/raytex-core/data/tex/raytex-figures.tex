@@ -1,0 +1,154 @@
+\ifx\RTXfigloaded\undefined\else\expandafter\endinput\fi
+\gdef\RTXfigloaded{}%
+\edef\RTXfigatcatcode{\the\catcode`\@}\catcode`\@=11\relax
+% RayTeX: TikZ pictures already drawn, put back as they were drawn.
+%
+% A pass of RayTeX of its own draws each new picture on a page of its own
+% (\RTXfig@exporting). The next passes put that page in place of the
+% picture when it is the same text at the same place of the same file, and
+% the width, font, colour and language around it are those it was drawn
+% with; anything else is drawn as usual. The text of the picture is read up
+% to its end first: when it does not end on the line written down, it is
+% not that picture, and it is drawn from what was read.
+\gdef\RTXfig@name{tikzpicture}%
+\gdef\RTXfig@margin{72.27pt}%
+\global\let\RTXfig@inside\@empty
+\global\let\RTXfig@last\@empty
+\gdef\RTXfig@count{0}%
+% \RTXfig{<n>}{<file>@<line>}{<context>}{<last line>}{<pdf>}{<page>}{<wd>}{<ht>}{<dp>}{<pictures>}
+\long\gdef\RTXfig#1#2#3{%
+  \expandafter\xdef\csname RTXfig@c@\detokenize{#2}\endcsname{\detokenize{#3}}%
+  \expandafter\xdef\csname RTXfig@i@\detokenize{#2}\endcsname{#1}%
+  \xdef\RTXfig@key{\detokenize{#2}}%
+  \RTXfig@define}%
+\long\gdef\RTXfig@define#1#2#3#4#5#6#7{%
+  \expandafter\gdef\csname RTXfig@g@\RTXfig@key\endcsname{\RTXfig@graphic{#1}{#2}{#3}{#4}{#5}{#6}{#7}}}%
+% Read back with the .aux at the end of the pass that draws the pictures.
+\long\gdef\RTXfigout#1#2#3#4#5#6#7#8{}%
+\gdef\RTXfig@here{\detokenize\expandafter{\CurrentFilePath}/\detokenize\expandafter{\CurrentFile}}%
+\gdef\RTXfig@ctx{{\the\linewidth}{\the\textwidth}{\the\columnwidth}{\the\hsize}%
+  {\f@encoding}{\f@family}{\f@series}{\f@shape}{\f@size}{\f@baselineskip}{\math@version}%
+  {\ifdefined\languagename\languagename\fi}{\ifdefined\current@color\current@color\fi}}%
+\gdef\RTXfig@install{%
+  \newbox\RTXfig@box \newtoks\RTXfig@toks \newcount\RTXfig@page
+  \global\let\RTXfig@begin\tikzpicture
+  \global\let\RTXfig@end\endtikzpicture
+  \global\let\RTXfig@after\relax
+  \gdef\tikzpicture{%
+    \ifx\RTXfig@inside\@empty
+      \def\RTXfig@inside{x}\expandafter\RTXfig@outer
+    \else
+      \let\RTXfig@after\relax\expandafter\RTXfig@begin
+    \fi}%
+  \gdef\endtikzpicture{\RTXfig@end\RTXfig@after}%
+  \ifdefined\RTXfig@exporting
+    \AddToHook{shipout/before}{\DiscardShipoutBox}%
+  \fi}%
+% The first tikzpicture environment of a line (not \tikz, not a picture
+% inside another one).
+\gdef\RTXfig@outer{%
+  \let\RTXfig@after\relax
+  \let\RTXfig@next\RTXfig@begin
+  \ifx\@currenvir\RTXfig@name
+    \edef\RTXfig@at{\RTXfig@here @\the\inputlineno}%
+    \ifx\RTXfig@at\RTXfig@last
+      \xdef\RTXfig@count{\the\numexpr\RTXfig@count+1}%
+    \else
+      \global\let\RTXfig@last\RTXfig@at\gdef\RTXfig@count{1}%
+    \fi
+    \ifnum\RTXfig@count=1
+      \edef\RTXfig@now{\detokenize\expandafter{\expanded{\RTXfig@ctx}}}%
+      \expandafter\ifx\csname RTXfig@c@\RTXfig@at\endcsname\relax
+        \ifdefined\RTXfig@exporting\let\RTXfig@next\RTXfig@draw\fi
+      \else
+        \expandafter\ifx\csname RTXfig@c@\RTXfig@at\endcsname\RTXfig@now
+          \let\RTXfig@next\RTXfig@take
+        \else
+          \wlog{RTXfig-miss \csname RTXfig@i@\RTXfig@at\endcsname}%
+          \ifdefined\RTXfig@exporting\let\RTXfig@next\RTXfig@draw\fi
+        \fi
+      \fi
+    \fi
+  \fi
+  \RTXfig@next}%
+% Drawn on a page of its own (the pass that prepares the pictures), and in
+% its place as usual.
+\gdef\RTXfig@draw{%
+  \edef\RTXfig@from{\the\inputlineno}%
+  \edef\RTXfig@serial{\the\pgf@picture@serial@count}%
+  \leavevmode
+  \global\setbox\RTXfig@box\hbox\bgroup
+    \let\RTXfig@after\RTXfig@ship
+    \RTXfig@begin}%
+\gdef\RTXfig@ship{%
+  \egroup
+  \ifnum\inputlineno>\RTXfig@from\relax\if@filesw
+    \global\advance\RTXfig@page\@ne
+    \immediate\write\@mainaux{\string\RTXfigout{\RTXfig@at}{\RTXfig@now}{\the\inputlineno}%
+      {\the\RTXfig@page}{\the\wd\RTXfig@box}{\the\ht\RTXfig@box}{\the\dp\RTXfig@box}%
+      {\the\numexpr\pgf@picture@serial@count-\RTXfig@serial\relax}}%
+    \begingroup
+      % What pgf puts at the start of each page (the resources of
+      % transparency and shadings with XeTeX), where pgf puts it.
+      \setbox\z@\vbox{\offinterlineskip
+        \ifdefined\pgfutil@abe
+          \vbox to\z@{\kern\dimexpr1in-\voffset\relax
+            \hbox to\z@{\kern\dimexpr\hoffset-1in\relax
+              \pgfutil@abe\unhbox\pgfutil@abb\pgfutil@abc
+              \global\let\pgfutil@abc\pgfutil@empty\hss}\vss}%
+        \fi
+        \kern\RTXfig@margin
+        \hbox{\kern\RTXfig@margin\copy\RTXfig@box\kern\RTXfig@margin}%
+        \kern\RTXfig@margin}%
+      \hoffset-1in\voffset-1in
+      \ifdefined\pagewidth
+        \pagewidth\wd\z@ \pageheight\ht\z@
+      \else
+        \pdfpagewidth\wd\z@ \pdfpageheight\ht\z@
+      \fi
+      \RawShipout\box\z@
+    \endgroup
+  \fi\fi
+  \box\RTXfig@box}%
+% Put back: the text of the picture is read up to its end.
+\gdef\RTXfig@take{\RTXfig@toks{}\RTXfig@collect}%
+\long\gdef\RTXfig@collect#1\end#2{%
+  \RTXfig@toks\expandafter{\the\RTXfig@toks#1}%
+  \def\RTXfig@tmp{#2}%
+  \ifx\RTXfig@tmp\RTXfig@name
+    \expandafter\RTXfig@taken
+  \else
+    \RTXfig@toks\expandafter{\the\RTXfig@toks\end{#2}}%
+    \expandafter\RTXfig@collect
+  \fi}%
+\gdef\RTXfig@taken{\csname RTXfig@g@\RTXfig@at\endcsname}%
+\gdef\RTXfig@graphic#1#2#3#4#5#6#7{%
+  \ifnum\inputlineno=#1\relax
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+  {\leavevmode
+   \setbox\RTXfig@box\hbox{\kern-\RTXfig@margin
+     \lower\dimexpr#6+\RTXfig@margin\relax\hbox{\RTXfig@include{#2}{#3}}}%
+   \wd\RTXfig@box#4\relax\ht\RTXfig@box#5\relax\dp\RTXfig@box#6\relax
+   \box\RTXfig@box
+   \wlog{RTXfig-hit \csname RTXfig@i@\RTXfig@at\endcsname}%
+   \global\advance\pgf@picture@serial@count#7\relax
+   \let\endtikzpicture\relax
+   \end{tikzpicture}}%
+  {\expandafter\RTXfig@begin\the\RTXfig@toks\end{tikzpicture}}}%
+\gdef\RTXfig@include#1#2{%
+  \ifdefined\saveimageresource
+    \saveimageresource page #2 {#1}\useimageresource\lastsavedimageresourceindex
+  \else\ifdefined\XeTeXpdffile
+    \XeTeXpdffile "#1" page #2 media\relax
+  \else
+    \pdfximage page #2 mediabox {#1}\pdfrefximage\pdflastximage
+  \fi\fi}%
+\ifdefined\AddToHook\ifdefined\RawShipout\ifdefined\CurrentFile
+  \AddToHook{begindocument/end}{%
+    \if@filesw\immediate\write\@mainaux{\string\InputIfFileExists{\RTXfig@self}{}{}}\fi
+    \ifdefined\tikzpicture\ifdefined\pgf@picture@serial@count \RTXfig@install \fi\fi}%
+\fi\fi\fi
+\catcode`\@=\RTXfigatcatcode\relax

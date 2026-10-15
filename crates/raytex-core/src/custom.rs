@@ -824,7 +824,9 @@ mod tests {
                     job: "commands-preview",
                     timeout: std::time::Duration::from_secs(60),
                     lang: Lang::En,
-                    install_missing: false,
+                    // As in the application: MiKTeX installs what it lacks
+                    // (`varwidth`, for the class of the preview).
+                    install_missing: true,
                 },
             );
             let errors: Vec<_> = outcome

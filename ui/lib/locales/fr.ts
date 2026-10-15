@@ -1152,6 +1152,8 @@ const fr: Record<keyof typeof en, string> = {
   "tikz.axes": "Repère",
   "settings.precompilePreamble": "Précompiler le préambule (plus rapide)",
   "settings.precompilePreambleHint": "pdfLaTeX : les packages du préambule sont préparés une fois, en arrière-plan ; les compilations suivantes commencent à \\begin{document} (souvent deux fois plus vite). Les documents qui écrivent des fichiers dans leur préambule sont compilés normalement.",
+  "settings.figureCache": "Garder les figures TikZ déjà dessinées (plus rapide)",
+  "settings.figureCacheHint": "Chaque nouvelle figure est dessinée une fois, en arrière-plan ; les compilations suivantes la reprennent telle quelle tant que son texte ne change pas. L'export les redessine toutes.",
   "light.badge": "Mode léger",
   "light.badgeHint": "Ce fichier est ouvert seul : rien n'est créé à côté. Cliquez pour en faire un projet.",
   "light.title": "Fichier ouvert seul",

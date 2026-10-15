@@ -58,6 +58,8 @@ Auxiliary files (`.aux`, `.log`, `.toc`…) go to the `build/` folder: your proj
 
 **Precompiled preamble** (pdfLaTeX): after a first build, RayTeX prepares in the background a “precompiled” version of the preamble (with `mylatexformat`). The next builds start directly at `\begin{document}`: often twice as fast (0.6 s instead of 1.3 s with TikZ and pgfplots), with the same PDF. The preamble is prepared again as soon as it changes. Documents that write files in their preamble (indexes, glossaries, `minted`…) are built normally. Setting: *Settings › Compilation › Precompile the preamble*.
 
+**TikZ pictures already drawn** (pdfLaTeX, XeLaTeX, LuaLaTeX): a TikZ or pgfplots picture is drawn at every build, even when you write elsewhere. After a build, RayTeX draws each new picture in the background on a page of its own; the next builds put it back as it is, to the pixel (0.54 s instead of 0.92 s for an article with a pgfplots curve and four drawings). A picture is drawn again as soon as its text changes, or a file it reads (data, image), the preamble, a definition of the document (`\newcommand`, `\tikzset`…), or what surrounds it (width, font, colour, language). Pictures that depend on the page or on the rest of the document (references, citations, counters, `remember picture`, `overlay`, random numbers) are always drawn. **Exporting the PDF draws every picture again.** Setting: *Settings › Compilation › Keep TikZ pictures already drawn*.
+
 Other methods: **latexmk**, **a single pass**, or your **custom steps** (with the placeholders `%DOC%`, `%DOCFILE%`, `%OUTDIR%`, `%DIR%`, `%ENGINE%`).
 
 ## Reading errors
