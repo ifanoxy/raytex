@@ -1262,13 +1262,8 @@ impl Runner<'_, '_> {
         }
         cmd = cmd.arg(format!("-outdir={}", plan.out_dir.display()));
         cmd = cmd.args(s.extra_args.iter().cloned());
-        cmd = cmd.arg(
-            plan.root
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .into_owned(),
-        );
+        // The root, or the document written for a file shown on its own.
+        cmd = cmd.arg(plan.engine_input());
         self.step("latexmk".into(), cmd);
         self.ran_bib = plan.bib_tool;
         self.read_log()

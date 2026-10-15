@@ -653,12 +653,16 @@ mod tests {
                 "\\chapter{Données}\\label{chap:annexe}\nVoir la section~\\ref{sec:deux}.\n\\section{Tableau}\\label{sec:tableau}\n",
             ),
         ];
-        for (engine, format) in [
-            (EngineChoice::Pdflatex, false),
-            (EngineChoice::Pdflatex, true),
-            (EngineChoice::Xelatex, false),
-            (EngineChoice::Lualatex, false),
+        for (engine, format, latexmk) in [
+            (EngineChoice::Pdflatex, false, false),
+            (EngineChoice::Pdflatex, true, false),
+            (EngineChoice::Xelatex, false, false),
+            (EngineChoice::Lualatex, false, false),
+            (EngineChoice::Pdflatex, false, true),
         ] {
+            if latexmk && dist.tool("latexmk").is_none() {
+                continue;
+            }
             let dir = tempfile::tempdir().unwrap();
             let root_dir = crate::log::normalize(&dunce::canonicalize(dir.path()).unwrap());
             for (name, text) in files {
@@ -672,6 +676,11 @@ mod tests {
                 engine,
                 out_dir: "build".to_owned(),
                 precompile_preamble: format,
+                tool: if latexmk {
+                    crate::settings::BuildTool::Latexmk
+                } else {
+                    crate::settings::BuildTool::Auto
+                },
                 ..BuildSettings::default()
             };
             let whole = super::super::plan(

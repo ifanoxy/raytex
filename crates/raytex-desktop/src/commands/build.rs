@@ -262,10 +262,13 @@ fn run_one(app: &AppHandle, state: &AppState, req: &BuildRequest, cancel: &Arc<A
         }
     };
     let dist = dist.expect("plan checked the distribution");
-    // A part of the document shown on its own: our own driver only (the
-    // others compile what they are given, whole).
+    // A part of the document shown on its own: our own driver and latexmk
+    // (Tectonic and steps of one's own compile what they are given, whole).
     let shown = (req.only
-        && matches!(whole.tool, BuildTool::Auto | BuildTool::Single)
+        && matches!(
+            whole.tool,
+            BuildTool::Auto | BuildTool::Single | BuildTool::Latexmk
+        )
         && whole.engine != Engine::Tectonic)
         .then(|| {
             state
