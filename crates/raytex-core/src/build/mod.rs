@@ -414,6 +414,9 @@ struct Runner<'a, 'b> {
     format: Option<(PathBuf, u64)>,
     /// Last lines printed by the last step (to explain a silent failure).
     last_output: Vec<String>,
+    /// The next pass of the engine writes no PDF and reads no image (a
+    /// pass that another one will follow for certain).
+    draft: bool,
 }
 
 /// Runs a build.
@@ -465,6 +468,7 @@ pub fn run(
         deadline: start + Duration::from_secs(ctx.settings.timeout_s.max(10) as u64),
         format: preamble_key.and_then(|k| preamble::ready(plan, k).map(|f| (f, k))),
         last_output: Vec::new(),
+        draft: false,
     };
     let mut report = match (plan.engine, plan.tool) {
         (Engine::Tectonic, _) => r.tectonic(),
@@ -692,6 +696,14 @@ impl Runner<'_, '_> {
         if plan.engine == Engine::Latex {
             cmd = cmd.arg("-output-format=dvi");
         }
+        if self.draft {
+            match plan.engine {
+                Engine::Pdflatex => cmd = cmd.arg("-draftmode"),
+                Engine::Lualatex => cmd = cmd.arg("--draftmode"),
+                Engine::Xelatex => cmd = cmd.arg("-no-pdf"),
+                _ => {}
+            }
+        }
         cmd = cmd.arg(format!("-output-directory={}", plan.out_dir.display()));
         if let Some((format, _)) = &self.format {
             // The engine takes the name of the format for its own, and
@@ -800,7 +812,23 @@ impl Runner<'_, '_> {
             .unwrap_or_default();
         let aux_path = plan.out_dir.join(format!("{}.aux", plan.job));
         let aux_initial = hash_file(&aux_path);
-        let (code, mut report) = self.engine_pass(1);
+        // The build that completes a live one, the text as the live pass
+        // read it: that pass is not done again, its auxiliary files are
+        // those of this very text.
+        let resumed = !self.ctx.live
+            && state.pending
+            && state.inputs.is_some()
+            && state.inputs == self.inputs_hash();
+        let (code, mut report) = if resumed {
+            (Some(0), self.read_log())
+        } else {
+            // Nothing read back yet and references or citations to set: a
+            // second pass will come, the first one need not write the PDF.
+            self.draft = !self.ctx.live && !aux_path.exists() && self.second_pass_certain();
+            self.engine_pass(1)
+        };
+        let mut drafted = self.draft;
+        self.draft = false;
         if self.cancelled() || (code != Some(0) && report.fatal && !plan.pdf.exists()) {
             return report;
         }
@@ -820,6 +848,11 @@ impl Runner<'_, '_> {
         // the build that will complete it.
         if self.ctx.live {
             state.pending = report.rerun_needed || self.tools_due(&state, &report);
+            state.inputs = if state.pending {
+                self.inputs_hash()
+            } else {
+                None
+            };
             self.rerun_pending = state.pending;
             let _ = std::fs::write(
                 &state_path,
@@ -828,6 +861,7 @@ impl Runner<'_, '_> {
             return report;
         }
         state.pending = false;
+        state.inputs = None;
         let mut auxiliary_ran = false;
 
         // Bibliography.
@@ -865,9 +899,11 @@ impl Runner<'_, '_> {
                             .cwd(&plan.root_dir)
                             .arg(format!("--output-directory={}", plan.out_dir.display()))
                             .arg(&plan.job);
-                        self.step("Biber".into(), cmd);
+                        let code = self.step("Biber".into(), cmd);
                         self.ran_bib = Some(BibTool::Biber);
-                        state.bcf = h;
+                        // Done only when it went through: otherwise the
+                        // next build runs it again.
+                        state.bcf = if code == Some(0) { h } else { None };
                         auxiliary_ran = true;
                     }
                 }
@@ -895,9 +931,9 @@ impl Runner<'_, '_> {
                     for (k, v) in plan.env(self.ctx.dist) {
                         cmd = cmd.env(k, v);
                     }
-                    self.step("BibTeX".into(), cmd);
+                    let code = self.step("BibTeX".into(), cmd);
                     self.ran_bib = Some(BibTool::Bibtex);
-                    state.citations = h;
+                    state.citations = if code == Some(0) { h } else { None };
                     auxiliary_ran = true;
                 }
             }
@@ -965,12 +1001,18 @@ impl Runner<'_, '_> {
             auxiliary_ran = false;
             pass += 1;
             let (_, r) = self.engine_pass(pass);
+            drafted = false;
             report = r;
             let new_aux = hash_file(&plan.out_dir.join(format!("{}.aux", plan.job)));
             if new_aux == aux && pass > 2 {
                 break; // Stable: further runs would not change anything.
             }
             aux = new_aux;
+        }
+        // A first pass in draft that nothing followed: the PDF is written.
+        if drafted && !self.cancelled() {
+            let (_, r) = self.engine_pass(pass + 1);
+            report = r;
         }
 
         if plan.engine == Engine::Latex && !self.cancelled() {
@@ -983,6 +1025,133 @@ impl Runner<'_, '_> {
             self.step("dvipdfmx".into(), cmd);
         }
         report
+    }
+
+    /// Whether a second pass is certain for a document built for the first
+    /// time: it has a table of contents, labels, bookmarks, or citations to
+    /// give to its bibliography tool (the root and the files it brings in).
+    fn second_pass_certain(&self) -> bool {
+        let plan = self.plan;
+        let Some(root) = (self.ctx.source)(&plan.root) else {
+            return false;
+        };
+        let mut texts = vec![root];
+        for cmd in ["\\input{", "\\include{", "\\subfile{"] {
+            let mut rest = texts[0].clone();
+            while let Some(i) = rest.find(cmd) {
+                rest = rest[i + cmd.len()..].to_owned();
+                let name: String = rest
+                    .chars()
+                    .take_while(|c| *c != '}' && *c != '\n')
+                    .collect();
+                let path = plan.root_dir.join(name.trim());
+                let path = if path.extension().is_some() {
+                    path
+                } else {
+                    path.with_extension("tex")
+                };
+                if let Some(text) = (self.ctx.source)(&path) {
+                    texts.push(text);
+                }
+                if texts.len() > 60 {
+                    break;
+                }
+            }
+        }
+        const REFERENCES: &[&str] = &[
+            "\\tableofcontents",
+            "\\listoffigures",
+            "\\listoftables",
+            "\\ref{",
+            "\\pageref{",
+            "\\eqref{",
+            "\\autoref{",
+            "\\cref{",
+            "\\Cref{",
+            "\\nameref{",
+            // A label read back: LaTeX asks for a pass to see it settle.
+            "\\label{",
+        ];
+        let cites = plan.bib_tool.is_some();
+        // Bookmarks of hyperref: written at the first pass, read at the next.
+        let bookmarks = texts[0].contains("hyperref")
+            && texts
+                .iter()
+                .any(|t| t.contains("\\section") || t.contains("\\chapter"));
+        bookmarks
+            || texts.iter().any(|t| {
+                REFERENCES.iter().any(|r| t.contains(r))
+                    || cites && (t.contains("\\cite") || t.contains("\\nocite"))
+            })
+    }
+
+    /// What the last pass read of the project, by its record (`.fls`): the
+    /// text of each source, the size and date of the other files. `None`
+    /// when it cannot be told (no record, or the root not in it).
+    fn inputs_hash(&self) -> Option<u64> {
+        let plan = self.plan;
+        let fls = std::fs::read_to_string(plan.out_dir.join(format!("{}.fls", plan.job))).ok()?;
+        let roots: Vec<PathBuf> = [
+            Some(plan.root_dir.clone()),
+            dunce::canonicalize(&plan.root_dir).ok(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        let outs: Vec<PathBuf> = [
+            Some(plan.out_dir.clone()),
+            dunce::canonicalize(&plan.out_dir).ok(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        let mut pwd = plan.root_dir.clone();
+        let mut files = std::collections::BTreeSet::new();
+        for line in fls.lines() {
+            if let Some(dir) = line.strip_prefix("PWD ") {
+                pwd = PathBuf::from(dir.trim());
+            } else if let Some(file) = line.strip_prefix("INPUT ") {
+                let file = Path::new(file.trim());
+                let path = log::normalize(&if file.is_absolute() {
+                    file.to_path_buf()
+                } else {
+                    pwd.join(file)
+                });
+                if roots.iter().any(|r| path.starts_with(r))
+                    && !outs.iter().any(|o| path.starts_with(o))
+                {
+                    // The form of the root (its folder may be read by another name).
+                    let path = roots
+                        .iter()
+                        .find_map(|r| path.strip_prefix(r).ok())
+                        .map_or(path.clone(), |rel| plan.root_dir.join(rel));
+                    files.insert(path);
+                }
+            }
+        }
+        let root = log::normalize(&plan.root);
+        if !files.iter().any(|f| log::normalize(f) == root) {
+            return None;
+        }
+        let mut h = DefaultHasher::new();
+        for file in &files {
+            file.hash(&mut h);
+            let ext = file
+                .extension()
+                .map(|e| e.to_string_lossy().to_ascii_lowercase())
+                .unwrap_or_default();
+            if [
+                "tex", "bib", "sty", "cls", "cfg", "def", "ltx", "clo", "bst", "bbx", "cbx", "lbx",
+            ]
+            .contains(&ext.as_str())
+            {
+                (self.ctx.source)(file).hash(&mut h);
+            } else if let Ok(meta) = std::fs::metadata(file) {
+                meta.len().hash(&mut h);
+                meta.modified().ok().hash(&mut h);
+            }
+        }
+        Some(h.finish())
     }
 
     /// Whether a tool of the bibliography, the index or the glossaries has
@@ -1232,7 +1401,17 @@ struct BuildState {
     /// The last build was a live one that left work for a later one.
     #[serde(default)]
     pending: bool,
+    /// What that live pass read (see `Runner::inputs_hash`): the same, and
+    /// the build that completes it starts from its auxiliary files.
+    #[serde(default)]
+    inputs: Option<u64>,
 }
+
+/// Tests that run Biber take turns: two of them started at the same moment
+/// (Biber unpacks itself in a shared folder at its first run) can make
+/// one of them fail.
+#[cfg(test)]
+pub(crate) static BIBER_TESTS: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// Whether the last build in `out_dir` was a live one that left
 /// work to do: its PDF is not yet the document as an export wants it.
@@ -1703,20 +1882,134 @@ mod tests {
         );
         assert!(live.rerun_pending && rerun_pending(&plan.out_dir));
         assert_eq!(live.pages, Some(6));
-        // …and the next whole build completes it.
+        // …and the next whole build completes it, from where the live pass
+        // left the text: that pass is not done again.
         let (complete, _) = run(false);
         assert!(complete.success && !complete.rerun_pending && !rerun_pending(&plan.out_dir));
+        assert_eq!(complete.steps.len(), 1, "{:?}", complete.steps);
         let log = std::fs::read_to_string(&plan.log).unwrap();
         assert!(
             !log.contains("Rerun to get") && !log.contains("may have changed"),
             "still to rerun"
         );
+        // Changed after the live pass: the whole build starts over.
+        std::fs::write(&root, text(5).replace("Fin", "Fin du texte")).unwrap();
+        let (live, _) = run(true);
+        assert!(live.rerun_pending || live.steps.len() == 1);
+        std::fs::write(&root, text(4)).unwrap();
+        let (complete, _) = run(false);
+        assert!(
+            complete.success && complete.steps.len() >= 2,
+            "{:?}",
+            complete.steps
+        );
+        assert_eq!(complete.pages, Some(5));
+    }
+
+    /// A document built for the first time, with a table of contents and
+    /// pictures: its first pass writes no PDF and reads no picture (the
+    /// second one does), and a document that needs one pass is not made
+    /// to wait for a draft.
+    #[test]
+    #[ignore = "depends on the local TeX installation"]
+    fn a_first_pass_that_another_follows_is_a_draft() {
+        let Some(dist) = crate::tex::detect(&[]).into_iter().next() else {
+            println!("no TeX distribution: nothing checked");
+            return;
+        };
+        let picture = std::process::Command::new(dist.bin_dir.join("kpsewhich"))
+            .arg("example-image-a.png")
+            .output()
+            .ok()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+            .filter(|p| !p.is_empty());
+        for engine in [
+            crate::settings::EngineChoice::Pdflatex,
+            crate::settings::EngineChoice::Xelatex,
+            crate::settings::EngineChoice::Lualatex,
+        ] {
+            for (toc, passes) in [(true, 2), (false, 1)] {
+                let dir = tempfile::tempdir().unwrap();
+                let root = crate::log::normalize(
+                    &dunce::canonicalize(dir.path()).unwrap().join("doc.tex"),
+                );
+                let image = match &picture {
+                    Some(p) => {
+                        std::fs::copy(p, dir.path().join("photo.png")).unwrap();
+                        "\\includegraphics[width=5cm]{photo.png}\n"
+                    }
+                    None => "",
+                };
+                std::fs::write(
+                    &root,
+                    format!(
+                        "\\documentclass{{article}}\n\\usepackage{{graphicx}}\n\\begin{{document}}\n{}\\section{{Un}}\n{image}Texte.\n\\end{{document}}\n",
+                        if toc { "\\tableofcontents\n" } else { "" }
+                    ),
+                )
+                .unwrap();
+                let settings = BuildSettings {
+                    engine,
+                    out_dir: "build".to_owned(),
+                    precompile_preamble: false,
+                    ..BuildSettings::default()
+                };
+                let plan = plan(
+                    &root,
+                    &settings,
+                    Some(&dist),
+                    &DocumentFacts::default(),
+                    Lang::En,
+                )
+                .unwrap();
+                let cancel = AtomicBool::new(false);
+                let source = |p: &Path| std::fs::read_to_string(p).ok();
+                let ctx = RunContext {
+                    dist: &dist,
+                    settings: &settings,
+                    cancel: &cancel,
+                    lang: Lang::En,
+                    source: &source,
+                    packages: None,
+                    background: false,
+                    live: false,
+                };
+                let mut commands = Vec::new();
+                let outcome = run(&plan, &ctx, &mut |e: BuildEvent| {
+                    if let BuildEvent::Step { command, .. } = e {
+                        commands.push(command);
+                    }
+                });
+                assert!(
+                    outcome.success && outcome.pdf_updated,
+                    "{engine:?} {toc}: {:?}",
+                    outcome.diagnostics
+                );
+                assert_eq!(
+                    outcome.steps.len(),
+                    passes,
+                    "{engine:?} {toc}: {:?}",
+                    outcome.steps
+                );
+                let draft = |c: &String| c.contains("draftmode") || c.contains("-no-pdf");
+                assert_eq!(
+                    commands.first().is_some_and(draft),
+                    toc,
+                    "{engine:?} {toc}: {commands:?}"
+                );
+                assert!(
+                    !commands.last().is_some_and(draft),
+                    "{engine:?}: the last pass writes the PDF"
+                );
+            }
+        }
     }
 
     /// Full compilation with the local TeX installation.
     #[test]
     #[ignore = "depends on the local TeX installation"]
     fn compiles_real_documents() {
+        let _turn = BIBER_TESTS.lock().unwrap_or_else(|e| e.into_inner());
         let dist = crate::tex::detect(&[]).into_iter().next().expect("no TeX");
         let dir = tempfile::tempdir().unwrap();
         let p = dir.path();

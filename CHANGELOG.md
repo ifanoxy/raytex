@@ -4,6 +4,11 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- **Fewer passes, lighter passes.**
+  - The build that completes a live one starts from where the live pass left the text, when nothing changed in between: that pass is not done again (one pass less each time the text is left alone on a long document, and before an export that follows a live build).
+  - A document built for the first time, with a table of contents, labels, bookmarks or citations, has a first pass that writes no PDF and reads no picture: a second one comes for certain. With screenshots (pictures with transparency), such a pass takes a fifth of the time (1.3 s → 0.25 s for eight of them). A document that needs one pass is not made to wait.
+  - A Biber or BibTeX run that fails is done again at the next build (its input was taken for done).
+
 ## [0.5.2] — 2026-10-14
 
 - Fixed, the same problem shown two or three times with the same fix when the mouse is over it: a mistake is often seen by several checks, each with its fix (a citation key mistyped by LaTeX, by Biber and by the live checks; a brace never closed by the compiler and by the live syntax check; a missing image or file by both). Of the problems at the same place that offer a same fix, only the most serious is shown, in the text and in the *Problems* panel. Two places mended by a same fix (two commands of one package) are still two problems.

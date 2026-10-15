@@ -201,7 +201,9 @@ class BuildStore {
 
   /** How long a pass of the engine takes on this document, from its last whole build; null when none was made. */
   get passMs(): number | null {
-    return this.reference?.steps[0]?.durationMs ?? null;
+    // The first pass of the engine (a build that completes a live one may start with Biber).
+    const pass = this.reference?.steps.find((st) => /latex|tectonic/i.test(st.name) && !/^bib/i.test(st.name));
+    return pass?.durationMs ?? null;
   }
 
   /**

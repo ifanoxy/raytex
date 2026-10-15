@@ -831,6 +831,9 @@ mod tests {
     #[test]
     #[ignore = "depends on the local TeX installation"]
     fn citations_keep_their_numbers_alone() {
+        let _turn = crate::build::BIBER_TESTS
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         use crate::build::{BuildEvent, DocumentFacts, RunContext};
         use crate::i18n::Lang;
         use crate::settings::BuildSettings;
