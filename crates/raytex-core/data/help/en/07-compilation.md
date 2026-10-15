@@ -20,7 +20,7 @@ When you open a part of a document, a chapter brought in by `\input`, `\include`
 
 The choice is changed in the menu of the **Build** button (*Part of a document: this file only* or *the whole document*). Going back to the main file shows the whole document again, and an export of the PDF always builds the whole document.
 
-To know those numbers, RayTeX first builds the whole document once, in a folder of its own, then only the file as long as nothing else changes: when another file changes, this record is made again at the next build. The PDF of the whole document is never touched. The commands defined in the other files are known too, so a command the chapter uses but another file defines works. This does not apply to files read by the preamble, nor to those brought in by `\import`, which are always built with the whole document.
+To know those numbers, RayTeX first builds the whole document once, in a folder of its own, then only the file as long as nothing else changes: when another file changes, this record is made again at the next build. The PDF of the whole document is never touched. The commands defined in the other files are known too, so a command the chapter uses but another file defines works. A file brought in by `\import` is read from its own folder, as in the document. This does not apply to files read by the preamble, which are always built with the whole document.
 
 ## Which file is built?
 

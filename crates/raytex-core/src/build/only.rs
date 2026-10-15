@@ -33,8 +33,13 @@ use crate::workspace::Workspace;
 /// the files of a project and its exports leave it out).
 pub const FOLDER: &str = ".raytex-only";
 
-/// What the record says, next to the builds.
-const RECORD: &str = ".raytex-record.json";
+/// What the record says, next to the builds (a record of an older RayTeX,
+/// which did not note whether a page was begun, is made again).
+const RECORD: &str = ".raytex-record-2.json";
+
+/// Noted with the counters where a file starts when the page there already
+/// holds text of the document.
+const PAGE_FULL: &str = "RTXpagefull";
 
 /// What makes a build show one file of its document.
 #[derive(Debug, Clone, Serialize)]
@@ -78,6 +83,9 @@ pub enum Brought {
     Input,
     /// `\subfile` (a document of its own, its preamble skipped).
     Subfile,
+    /// `\import`, `\subimport`…: read with `\import` from its own folder,
+    /// whose files and pictures it names from there.
+    Import,
 }
 
 /// Where `\begin{document}` is written in `text` (bytes), a comment left aside.
@@ -116,7 +124,7 @@ pub fn begin_document(text: &str) -> Option<Range<usize>> {
 const RECORD_HOOK: &str = "\\immediate\\write\\csname @mainaux\\endcsname{\\string\\providecommand\\string\\RTXckpt[2]{}}\
 \\ifdefined\\AddToHook\
 \\gdef\\RTXrecord{{\\expandafter\\def\\csname @elt\\endcsname##1{##1=\\the\\csname c@##1\\endcsname,}\
-\\xdef\\RTXcounters{\\csname cl@@ckpt\\endcsname}}\
+\\xdef\\RTXcounters{\\csname cl@@ckpt\\endcsname\\ifdim\\pagegoal<\\maxdimen RTXpagefull=1,\\fi}}\
 {\\escapechar=92 \\immediate\\write\\csname @mainaux\\endcsname{\\string\\RTXckpt{\\CurrentFilePath/\\CurrentFile}{\\RTXcounters}}}}\
 \\AddToHook{file/before}{\\RTXrecord}\
 \\fi ";
@@ -193,18 +201,29 @@ pub fn only_source(root_text: &str, cx: &Context<'_>) -> Option<String> {
         out.push('\n');
     }
     if let Some(counters) = cx.record.and_then(|r| r.counters_at(cx.file)) {
-        for (name, value) in counters {
+        for (name, value) in counters.iter().filter(|(n, _)| n != PAGE_FULL) {
             out.push_str(&format!("\\RTX@set{{{name}}}{{{value}}}"));
         }
         out.push('\n');
+        // The page where the file starts held text of the document: its
+        // first `\clearpage` (that of a `\chapter`) turns a page there, not
+        // on the empty page here.
+        if counters.iter().any(|(n, v)| n == PAGE_FULL && *v == 1) {
+            out.push_str("\\ifdefined\\AddToHookNext\\AddToHookNext{cmd/clearpage/before}{\\ifdim\\pagegoal=\\maxdimen\\global\\advance\\c@page\\@ne\\fi}\\fi\n");
+        }
     }
     out.push_str("\\catcode`\\@=\\RTXatcat\\relax\n");
     out.push_str(cx.definitions);
-    let command = match cx.brought {
-        Some(Brought::Subfile) => "subfile",
-        _ => "input",
-    };
-    out.push_str(&format!("\\{command}{{{}}}\n\\end{{document}}\n", cx.file));
+    match cx.brought {
+        Some(Brought::Subfile) => out.push_str(&format!("\\subfile{{{}}}\n", cx.file)),
+        // From its folder: what it reads is named from there.
+        Some(Brought::Import) => {
+            let (dir, name) = cx.file.rsplit_once('/').unwrap_or((".", cx.file));
+            out.push_str(&format!("\\import{{{dir}/}}{{{name}}}\n"));
+        }
+        _ => out.push_str(&format!("\\input{{{}}}\n", cx.file)),
+    }
+    out.push_str("\\end{document}\n");
     Some(out)
 }
 
@@ -444,8 +463,7 @@ pub struct Shown {
 }
 
 /// How `file` would be shown on its own in the document of `root`; `None`
-/// when it is the root, is not in the document, is read by the preamble,
-/// or comes through `\import` (its paths are those of another folder).
+/// when it is the root, is not in the document, or is read by the preamble.
 pub fn shown(ws: &Workspace, root: &Path, file: &Path) -> Option<Shown> {
     let root = crate::log::normalize(root);
     let file = crate::log::normalize(file);
@@ -495,11 +513,13 @@ pub fn part_of(
     let body = begin_document(&ws.document(&root)?.text)?.end;
     let (first_parent, first) = chain.first()?;
     let in_preamble = *first_parent == root && first.span.start < body;
-    if in_preamble || chain.iter().any(|(_, inc)| inc.kind == IncludeKind::Import) {
+    if in_preamble {
         return None;
     }
     let brought = if chain.last()?.1.kind == IncludeKind::Subfile {
         Brought::Subfile
+    } else if chain.iter().any(|(_, inc)| inc.kind == IncludeKind::Import) {
+        Brought::Import
     } else {
         Brought::Input
     };
@@ -533,6 +553,27 @@ mod tests {
     use super::*;
 
     const ROOT: &str = "\\documentclass{report}\n% \\begin{document} in a comment\n\\usepackage{hyperref}\n\\begin{document}\n\\tableofcontents\n\\input{chapters/a}\n\\appendix\n\\include{chapters/b}\n\\end{document}\n";
+
+    #[test]
+    fn a_file_brought_by_import_is_read_from_its_folder() {
+        let mut record = Record::default();
+        record.counters.insert(
+            "chapitres/donnees/mesures.tex".to_owned(),
+            vec![("page".to_owned(), 6), (PAGE_FULL.to_owned(), 1)],
+        );
+        let cx = Context {
+            file: "chapitres/donnees/mesures.tex",
+            brought: Some(Brought::Import),
+            record: Some(&record),
+            ..Context::default()
+        };
+        let source = only_source(ROOT, &cx).unwrap();
+        assert!(source.ends_with("\\import{chapitres/donnees/}{mesures.tex}\n\\end{document}\n"));
+        // The page held text: the first page turned is counted.
+        assert!(source.contains("\\RTX@set{page}{6}\n"));
+        assert!(source.contains("{cmd/clearpage/before}"));
+        assert!(!source.contains(PAGE_FULL));
+    }
 
     #[test]
     fn the_document_starts_where_it_is_written() {
@@ -637,7 +678,7 @@ mod tests {
             println!("no TeX distribution: nothing checked");
             return;
         };
-        const MAIN: &str = "\\documentclass{report}\n\\usepackage{iftex}\n\\ifPDFTeX\\usepackage[T1]{fontenc}\\fi\n\\usepackage[french]{babel}\n\\usepackage{amsmath,amssymb}\n\\usepackage{hyperref}\n\\begin{document}\n\\tableofcontents\n\\input{chapitres/intro}\n\\include{chapitres/methode}\n\\appendix\n\\input{chapitres/annexe}\n\\end{document}\n";
+        const MAIN: &str = "\\documentclass{report}\n\\usepackage{iftex}\n\\ifPDFTeX\\usepackage[T1]{fontenc}\\fi\n\\usepackage[french]{babel}\n\\usepackage{amsmath,amssymb}\n\\usepackage{import}\n\\usepackage{hyperref}\n\\begin{document}\n\\tableofcontents\n\\input{chapitres/intro}\n\\include{chapitres/methode}\n\\appendix\n\\input{chapitres/annexe}\n\\import{chapitres/donnees/}{mesures}\n\\end{document}\n";
         let files = [
             ("main.tex", MAIN),
             (
@@ -651,6 +692,15 @@ mod tests {
             (
                 "chapitres/annexe.tex",
                 "\\chapter{Données}\\label{chap:annexe}\nVoir la section~\\ref{sec:deux}.\n\\section{Tableau}\\label{sec:tableau}\n",
+            ),
+            // Brought by `\import`: it names its files from its own folder.
+            (
+                "chapitres/donnees/mesures.tex",
+                "\\chapter{Mesures}\\label{chap:mesures}\nVoir l'annexe~\\ref{chap:annexe}.\n\\input{ligne}\n",
+            ),
+            (
+                "chapitres/donnees/ligne.tex",
+                "Une ligne lue dans son dossier.\n",
             ),
         ];
         for (engine, format, latexmk) in [
@@ -718,6 +768,7 @@ mod tests {
             for (name, chapter) in [
                 ("chapitres/methode.tex", "2"),
                 ("chapitres/annexe.tex", "A"),
+                ("chapitres/donnees/mesures.tex", "B"),
             ] {
                 let file = root_dir.join(name);
                 let shown = shown(&ws, &root, &file).expect("a part of the document");
@@ -734,8 +785,12 @@ mod tests {
                 // Every pass went through, with the precompiled preamble when there is one.
                 assert!(
                     r.steps.iter().all(|s| s.exit_code == Some(0)),
-                    "{engine:?} format {format}: {:?}",
-                    r.steps
+                    "{engine:?} format {format}: {:?} {:?}",
+                    r.steps,
+                    r.diagnostics
+                        .iter()
+                        .map(|d| (&d.file, d.line, &d.message))
+                        .collect::<Vec<_>>()
                 );
                 if format {
                     let log = std::fs::read_to_string(&record_plan.log).unwrap_or_default();
@@ -791,10 +846,10 @@ mod tests {
                     "{engine:?} {name}: {problems:?}\n{text}"
                 );
                 let aux = std::fs::read_to_string(only_plan.out_dir.join("main.aux")).unwrap();
-                let label = if chapter == "2" {
-                    "chap:methode"
-                } else {
-                    "chap:annexe"
+                let label = match chapter {
+                    "2" => "chap:methode",
+                    "A" => "chap:annexe",
+                    _ => "chap:mesures",
                 };
                 let numbered = format!("\\newlabel{{{label}}}{{{{{chapter}}}");
                 assert!(

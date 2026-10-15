@@ -20,7 +20,7 @@ Quand vous ouvrez un fichier annexe, un chapitre inclus par `\input`, `\include`
 
 Le choix se change dans le menu du bouton **Compiler** (*Fichier annexe : ce fichier seul* ou *tout le document*). Revenir au fichier principal montre de nouveau tout le document, et un export du PDF compile toujours le document entier.
 
-Pour connaître ces numéros, RayTeX compile d'abord le document entier une fois, dans un dossier à part, puis seulement le fichier tant que vous n'y touchez pas ailleurs : quand un autre fichier change, ce relevé est refait à la compilation suivante. Le PDF du document entier n'est jamais touché. Les commandes définies dans les autres fichiers sont connues aussi ; une commande que le chapitre utilise mais qu'il ne définit pas, et qui vient d'un autre fichier, fonctionne donc. Cela ne concerne pas les fichiers lus par le préambule, ni ceux inclus par `\import`, qui sont toujours compilés avec tout le document.
+Pour connaître ces numéros, RayTeX compile d'abord le document entier une fois, dans un dossier à part, puis seulement le fichier tant que vous n'y touchez pas ailleurs : quand un autre fichier change, ce relevé est refait à la compilation suivante. Le PDF du document entier n'est jamais touché. Les commandes définies dans les autres fichiers sont connues aussi ; une commande que le chapitre utilise mais qu'il ne définit pas, et qui vient d'un autre fichier, fonctionne donc. Un fichier inclus par `\import` est lu depuis son propre dossier, comme dans le document. Cela ne concerne pas les fichiers lus par le préambule, qui sont toujours compilés avec tout le document.
 
 ## Quel fichier est compilé ?
 
