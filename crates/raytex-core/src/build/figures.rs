@@ -530,7 +530,19 @@ pub fn prepare(
             line.trim().hash(&mut identity);
             hash_files(&named_files(line, &dirs), &mut identity);
         }
-        found.extend(pictures.into_iter().map(|p| (file.clone(), p)));
+        // A picture written in the preamble (in a command) is not drawn
+        // where it is written.
+        let body_from = if file == plan.root {
+            only::preamble_lines(&text).unwrap_or(u32::MAX)
+        } else {
+            0
+        };
+        found.extend(
+            pictures
+                .into_iter()
+                .filter(|p| p.line >= body_from)
+                .map(|p| (file.clone(), p)),
+        );
     }
     let identity = identity.finish();
     let pictures: Vec<Picture> = found
