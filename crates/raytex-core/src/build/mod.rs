@@ -435,6 +435,8 @@ pub fn run(
 ) -> BuildOutcome {
     let start = Instant::now();
     let started_at = SystemTime::now();
+    // A pass drawing the pictures of the build before gives way.
+    figures::stop(plan);
     let _ = std::fs::create_dir_all(&plan.out_dir);
     if plan.out_dir.starts_with(&plan.root_dir) {
         mirror_directories(&plan.root_dir, &plan.out_dir);
@@ -465,10 +467,8 @@ pub fn run(
     } else {
         None
     };
-    // Pictures already drawn: the map of those put back; a pass of drawings
-    // of the build before gives way.
+    // Pictures already drawn: the map of those put back.
     let put_back = figures::in_pdf(&plan.out_dir);
-    figures::stop(plan);
     let pictures = figures::prepare(plan, ctx.settings, ctx.dist, ctx.source);
     let mut r = Runner {
         ctx,
@@ -1616,6 +1616,11 @@ pub const AUX_EXTENSIONS: &[&str] = &[
 /// Only files with a known auxiliary extension are touched; the PDF is kept.
 pub fn clean(out_dir: &Path, job: &str) -> usize {
     let mut removed = 0;
+    // TikZ pictures drawn (see [`figures`]).
+    let drawings = out_dir.join(figures::FOLDER);
+    if drawings.is_dir() && std::fs::remove_dir_all(&drawings).is_ok() {
+        removed += 1;
+    }
     // Precompiled preambles.
     let formats = out_dir.join(".raytex-fmt");
     if let Ok(rd) = std::fs::read_dir(&formats) {
