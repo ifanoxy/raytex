@@ -164,10 +164,11 @@
       doc = next;
       docId++;
       missing = false;
-      // Same size for every page until each one is measured when rendered.
+      // A page keeps the size it had (a page more or less does not move the
+      // others); a new one takes the size of the first until it is measured.
       const count = next.numPages;
       const same = sizes.length === count;
-      sizes = same ? sizes : Array.from({ length: count }, () => ({ w: first.width, h: first.height }));
+      sizes = same ? sizes : Array.from({ length: count }, (_, i) => sizes[i] ?? { w: first.width, h: first.height });
       viewer.pages = count;
       updateScale(false);
       await tick();

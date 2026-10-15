@@ -318,7 +318,15 @@ fn plan_submission(t: &Target<'_>, opts: &ExportOptions) -> ExportPlan {
             }
             continue;
         }
-        if !path.starts_with(&root) || (built_apart && path.starts_with(&out)) || is_aux(&name) {
+        // RayTeX's own folders (precompiled preambles, a file built on its own).
+        let ours = path
+            .components()
+            .any(|c| c.as_os_str().to_string_lossy().starts_with(".raytex-"));
+        if !path.starts_with(&root)
+            || (built_apart && path.starts_with(&out))
+            || is_aux(&name)
+            || ours
+        {
             continue;
         }
         let role = if *path == main {

@@ -706,13 +706,7 @@ impl Runner<'_, '_> {
         }
         cmd = cmd.arg(format!("-output-directory={}", plan.out_dir.display()));
         if let Some((format, _)) = &self.format {
-            // The engine takes the name of the format for its own, and
-            // names the file of the recorder after it: with the path of a
-            // format, that is a file in a folder that does not exist, and
-            // the pass stops ("…/main-1a2b3c1234.fls: No such file or
-            // directory"). Its own name is said.
-            cmd = cmd.arg(format!("-progname={}", plan.engine.program()));
-            cmd = cmd.arg(format!("-fmt={}", format.display()));
+            cmd = cmd.args(preamble::use_format(self.ctx.dist, format));
         }
         cmd = cmd.args(s.extra_args.iter().cloned());
         cmd.arg(plan.engine_input())

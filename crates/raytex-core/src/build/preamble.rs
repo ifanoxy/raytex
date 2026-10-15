@@ -187,13 +187,35 @@ fn local_inputs(root_dir: &Path, preamble: &str) -> Vec<PathBuf> {
 }
 
 /// Whether the build of `plan` may use a precompiled preamble: pdfLaTeX,
-/// our own driver, a TeX Live-like distribution, the setting on.
+/// our own driver, TeX Live or MiKTeX, the setting on.
 pub fn applies(plan: &BuildPlan, settings: &BuildSettings, dist: &Distribution) -> bool {
     settings.precompile_preamble
         && plan.engine == Engine::Pdflatex
         && matches!(plan.tool, BuildTool::Auto | BuildTool::Single)
-        && !matches!(dist.kind, DistroKind::MikTex | DistroKind::Tectonic)
+        && dist.kind != DistroKind::Tectonic
         && dist.has_engine(Engine::Pdflatex)
+}
+
+/// `mylatexformat`, which dumps a preamble (LPPL, by Florent Chervet),
+/// given with RayTeX: a distribution that lacks it (MiKTeX installs its
+/// packages when they are asked for) precompiles all the same.
+const MYLATEXFORMAT: &str = include_str!("../../data/tex/mylatexformat.ltx");
+
+/// The arguments that make the engine start from the format `base`.
+pub fn use_format(dist: &Distribution, base: &Path) -> Vec<String> {
+    if dist.kind == DistroKind::MikTex {
+        vec![format!("--undump={}", base.display())]
+    } else {
+        // The engine takes the name of the format for its own, and names
+        // the file of the recorder after it: with the path of a format,
+        // that is a file in a folder that does not exist, and the pass
+        // stops ("…/main-1a2b3c1234.fls: No such file or directory"). Its
+        // own name is said.
+        vec![
+            format!("-progname={}", Engine::Pdflatex.program()),
+            format!("-fmt={}", base.display()),
+        ]
+    }
 }
 
 /// Key of the format of a preamble: its text, the local files it reads, the
@@ -205,12 +227,17 @@ pub fn key(plan: &BuildPlan, settings: &BuildSettings, dist: &Distribution, prea
     dist.version.hash(&mut h);
     settings.shell_escape.hash(&mut h);
     settings.extra_args.hash(&mut h);
-    // A distribution update rewrites its file index.
-    for ls_r in [
+    // A distribution update rewrites its file index (TeX Live), or the
+    // list of its packages (MiKTeX).
+    let mut indexes = vec![
         dist.bin_dir.join("../../texmf-dist/ls-R"),
         dist.bin_dir.join("../../../texmf-dist/ls-R"),
-    ] {
-        if let Ok(m) = std::fs::metadata(&ls_r).and_then(|m| m.modified()) {
+    ];
+    if dist.kind == DistroKind::MikTex {
+        indexes.extend(crate::tex::miktex::manifest_files(dist));
+    }
+    for index in indexes {
+        if let Ok(m) = std::fs::metadata(&index).and_then(|m| m.modified()) {
             m.hash(&mut h);
         }
     }
@@ -307,25 +334,37 @@ pub fn build_format(
         .unwrap_or_default();
     // Written under a temporary name, renamed once complete.
     let tmp = format!("{name}-tmp");
+    let miktex = dist.kind == DistroKind::MikTex;
+    // Our own `mylatexformat`, next to the formats, named from the folder of
+    // the root (the first line of TeX takes a name without spaces nor
+    // backslashes); the one of the distribution when the formats are kept
+    // elsewhere (a file opened on its own).
+    let own = dir.join("mylatexformat.ltx");
+    if std::fs::read_to_string(&own).ok().as_deref() != Some(MYLATEXFORMAT) {
+        let _ = std::fs::write(&own, MYLATEXFORMAT);
+    }
+    let dumper = crate::build::only::relative(&plan.root_dir, &own)
+        .filter(|r| !r.contains(' '))
+        .unwrap_or_else(|| "mylatexformat.ltx".to_owned());
     let mut cmd = dist
         .engine_cmd(Engine::Pdflatex, false)
         .cwd(&plan.root_dir)
         // `-recorder`: what the preamble reads is not read again by the
         // passes that use the format; an export finds it in this record.
-        .args([
-            "-ini",
-            "-interaction=nonstopmode",
-            "-halt-on-error",
-            "-recorder",
-        ])
-        .arg(format!("-jobname={tmp}"))
+        .arg(if miktex { "--initialize" } else { "-ini" })
+        .args(["-interaction=nonstopmode", "-halt-on-error", "-recorder"])
+        .arg(if miktex {
+            format!("--job-name={tmp}")
+        } else {
+            format!("-jobname={tmp}")
+        })
         .arg(format!("-output-directory={}", dir.display()));
     for (k, v) in env {
         cmd = cmd.env(k.clone(), v.clone());
     }
     let cmd = cmd.stopping_with_app().args([
         "&pdflatex".to_owned(),
-        "mylatexformat.ltx".to_owned(),
+        dumper,
         plan.root
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
