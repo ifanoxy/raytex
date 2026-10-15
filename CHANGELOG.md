@@ -4,6 +4,8 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.5.3] — 2026-10-15
+
 - **Fewer passes, lighter passes.**
   - The build that completes a live one starts from where the live pass left the text, when nothing changed in between: that pass is not done again (one pass less each time the text is left alone on a long document, and before an export that follows a live build).
   - A document built for the first time, with a table of contents, labels, bookmarks or citations, has a first pass that writes no PDF and reads no picture: a second one comes for certain. With screenshots (pictures with transparency), such a pass takes a fifth of the time (1.3 s → 0.25 s for eight of them). A document that needs one pass is not made to wait.
@@ -343,6 +345,7 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[0.5.3]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.3
 [0.5.2]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.2
 [0.5.1]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.1
 [0.5.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.0

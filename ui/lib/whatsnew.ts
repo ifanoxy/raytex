@@ -34,6 +34,134 @@ export interface VersionNotes {
 
 export const NOTES: VersionNotes[] = [
   {
+    version: "0.5.3",
+    date: "2026-10-15",
+    en: {
+      points: [
+        "TikZ and pgfplots pictures are drawn once: the next compilations put them back as they were drawn, to the pixel, and a pass takes about half the time on a document with plots.",
+        "Pasting writes LaTeX: formatted text from Word, Google Docs or a web page, formulas (those of Word too) and tables.",
+        "Writing faster: `&`, `_`, `#` and `%` escaped as they are typed, and an `@` shortcut offered for a command typed in full again and again. Each aid can be turned off.",
+        "Find and replace redone: a card over the editor (Ctrl+F, Ctrl+R) and a panel for the whole project (Ctrl+Shift+F, Ctrl+Shift+R).",
+        "Lighter compilations: a first pass without PDF when a second one follows, precompiled preambles with MiKTeX, a chapter on its own with latexmk and `\\import` too.",
+        "A smaller application (14 MB instead of 17), and fixes.",
+      ],
+      details: [
+        {
+          title: "TikZ pictures drawn once",
+          items: [
+            "After a compilation, each new TikZ or pgfplots picture is drawn in the background on a page of its own. The next compilations put that page in its place: the same picture, to the pixel, with pdfLaTeX, XeLaTeX, LuaLaTeX and latexmk.",
+            "A picture is drawn again as soon as its text changes, or a file it reads (data, image), the preamble, a definition of the document (`\\newcommand`, `\\tikzset`…), or what surrounds it (width, font, colour, language).",
+            "Pictures that depend on the page or on the rest of the document (references, citations, counters, `remember picture`, `overlay`, random numbers) are always drawn.",
+            "Exporting the PDF draws every picture. The setting is in Settings › Compilation › Keep TikZ pictures already drawn.",
+          ],
+        },
+        {
+          title: "Pasting",
+          items: [
+            "Text copied from Word, Google Docs, LibreOffice or a web page is pasted as LaTeX: bold, italic, underline, headings, lists, links, superscripts and subscripts. A notice offers Plain text at once.",
+            "Formulas are pasted as formulas: those of a web page (MathML, or the TeX it carries, as on Wikipedia) and the equations of Word.",
+            "A table (Excel, Calc, Word, a page) opens in the table window; inside a formula, it becomes a matrix. LaTeX code and code from an editor are pasted as they are.",
+          ],
+        },
+        {
+          title: "Writing faster",
+          items: [
+            "`&`, `_` and `#` typed in text, and `%` after a number, are written `\\&`, `\\_`, `\\#`, `\\%`. Never in a formula, a table, the name of a label or of a file, a definition, a comment, the preamble, TikZ or code. One undo puts the character back.",
+            "A command typed in full again and again (`\\mathbb`, `\\varepsilon`…) gets one offer: the `@` shortcut that writes it, or a new one in a click. Never twice for a command.",
+            "Each aid is a setting of the editor (Settings › Editor). A selection is wrapped by typing `(`, `[`, `{` or `$`.",
+          ],
+        },
+        {
+          title: "Find and replace",
+          items: [
+            "In the file, a card at the top right of the editor: Ctrl+F to find, Ctrl+R with its row of replacement. The matches are counted (2 of 5), with match case, whole word and regular expression; Enter for the next, Shift+Enter for the previous, Alt+Enter to select them all.",
+            "In the project, Ctrl+Shift+F and Ctrl+Shift+R open the Search panel, redone: results by file, each line showing what it will become, replaced alone, with its file or all.",
+          ],
+        },
+        {
+          title: "Compilations",
+          items: [
+            "A document compiled for the first time, with a table of contents, references or citations, has a first pass that writes no PDF and reads no image: a second one follows for certain.",
+            "The compilation that completes a live one starts from the pass already made when nothing changed in between.",
+            "Precompiled preambles work with MiKTeX too: each pass of a pdfLaTeX document is 35 to 55 % faster.",
+            "A chapter compiled on its own works with latexmk, and for a file brought in by `\\import`.",
+          ],
+        },
+        {
+          title: "Size and fixes",
+          items: [
+            "The application weighs 14 MB instead of 17 on macOS; what works while you type and compile is still built for speed.",
+            "A file left by an older compilation that the compiler cannot read (`.aux`, `.toc`…) no longer stops the build with a false error: it is put aside and the pass done again.",
+            "A chapter compiled on its own had one page less than in the document when the file before it ended on a page of text.",
+            "In the PDF, a page keeps its size when the document gains or loses a page.",
+          ],
+        },
+      ],
+    },
+    fr: {
+      points: [
+        "Les figures TikZ et pgfplots ne sont dessinées qu'une fois : les compilations suivantes les reprennent telles quelles, au pixel près, et une passe prend environ deux fois moins de temps sur un document avec des courbes.",
+        "Coller écrit du LaTeX : texte mis en forme depuis Word, Google Docs ou une page web, formules (celles de Word aussi) et tableaux.",
+        "Écrire plus vite : `&`, `_`, `#` et `%` échappés à la frappe, et un raccourci `@` proposé pour une commande tapée en entier encore et encore. Chaque aide se désactive.",
+        "Rechercher et remplacer refait : une carte sur l'éditeur (Ctrl+F, Ctrl+R) et un panneau pour tout le projet (Ctrl+Maj+F, Ctrl+Maj+R).",
+        "Des compilations plus légères : une première passe sans PDF quand une deuxième suit, le préambule précompilé avec MiKTeX, un chapitre seul avec latexmk et `\\import` aussi.",
+        "Une application plus légère (14 Mo au lieu de 17), et des corrections.",
+      ],
+      details: [
+        {
+          title: "Les figures TikZ dessinées une fois",
+          items: [
+            "Après une compilation, chaque nouvelle figure TikZ ou pgfplots est dessinée en arrière-plan sur une page à part. Les compilations suivantes mettent cette page à sa place : la même figure, au pixel près, avec pdfLaTeX, XeLaTeX, LuaLaTeX et latexmk.",
+            "Une figure est redessinée dès que son texte change, ou un fichier qu'elle lit (données, image), le préambule, une définition du document (`\\newcommand`, `\\tikzset`…), ou ce qui l'entoure (largeur, police, couleur, langue).",
+            "Les figures qui dépendent de la page ou du reste du document (renvois, citations, compteurs, `remember picture`, `overlay`, nombres aléatoires) sont toujours dessinées.",
+            "L'export du PDF redessine toutes les figures. Le réglage est dans Réglages › Compilation › Garder les figures TikZ déjà dessinées.",
+          ],
+        },
+        {
+          title: "Coller",
+          items: [
+            "Un texte copié depuis Word, Google Docs, LibreOffice ou une page web est collé en LaTeX : gras, italique, souligné, titres, listes, liens, exposants et indices. Une notification propose aussitôt Texte brut.",
+            "Les formules sont collées en formules : celles d'une page web (MathML, ou le TeX qu'elle porte, comme sur Wikipédia) et les équations de Word.",
+            "Un tableau (Excel, Calc, Word, une page) s'ouvre dans la fenêtre des tableaux ; dans une formule, il devient une matrice. Le code LaTeX et le code copié d'un éditeur sont collés tels quels.",
+          ],
+        },
+        {
+          title: "Écrire plus vite",
+          items: [
+            "`&`, `_` et `#` tapés dans le texte, et `%` après un nombre, s'écrivent `\\&`, `\\_`, `\\#`, `\\%`. Jamais dans une formule, un tableau, le nom d'un label ou d'un fichier, une définition, un commentaire, le préambule, TikZ ou du code. Une seule annulation remet le caractère.",
+            "Une commande tapée en entier encore et encore (`\\mathbb`, `\\varepsilon`…) donne lieu à une proposition : le raccourci `@` qui l'écrit, ou un nouveau en un clic. Jamais deux fois pour une commande.",
+            "Chaque aide est un réglage de l'éditeur (Réglages › Éditeur). Une sélection s'entoure en tapant `(`, `[`, `{` ou `$`.",
+          ],
+        },
+        {
+          title: "Rechercher et remplacer",
+          items: [
+            "Dans le fichier, une carte en haut à droite de l'éditeur : Ctrl+F pour chercher, Ctrl+R avec sa ligne de remplacement. Les résultats sont comptés (2 sur 5), avec respect de la casse, mot entier et expression régulière ; Entrée pour le suivant, Maj+Entrée pour le précédent, Alt+Entrée pour tous les sélectionner.",
+            "Dans le projet, Ctrl+Maj+F et Ctrl+Maj+R ouvrent le panneau Rechercher, refait : les résultats par fichier, chaque ligne montrant ce qu'elle va devenir, remplacée seule, avec son fichier ou toutes.",
+          ],
+        },
+        {
+          title: "Les compilations",
+          items: [
+            "Un document compilé pour la première fois, avec une table des matières, des renvois ou des citations, a une première passe qui n'écrit pas de PDF et ne lit pas les images : une deuxième suit à coup sûr.",
+            "La compilation qui complète une compilation en direct repart de la passe déjà faite quand rien n'a changé entre-temps.",
+            "Le préambule précompilé fonctionne aussi avec MiKTeX : chaque passe d'un document pdfLaTeX est 35 à 55 % plus rapide.",
+            "Un chapitre compilé seul fonctionne avec latexmk, et pour un fichier inclus par `\\import`.",
+          ],
+        },
+        {
+          title: "Taille et corrections",
+          items: [
+            "L'application pèse 14 Mo au lieu de 17 sur macOS ; ce qui travaille pendant la frappe et la compilation reste optimisé pour la vitesse.",
+            "Un fichier laissé par une ancienne compilation que le compilateur ne sait pas lire (`.aux`, `.toc`…) n'arrête plus la compilation avec une fausse erreur : il est mis de côté et la passe refaite.",
+            "Un chapitre compilé seul avait une page de moins que dans le document quand le fichier d'avant finissait sur une page de texte.",
+            "Dans le PDF, une page garde sa taille quand le document gagne ou perd une page.",
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: "0.5.2",
     date: "2026-10-14",
     en: {
