@@ -417,6 +417,8 @@ struct Runner<'a, 'b> {
     /// The next pass of the engine writes no PDF and reads no image (a
     /// pass that another one will follow for certain).
     draft: bool,
+    /// Auxiliary files the engine could not read were put aside once.
+    healed: bool,
 }
 
 /// Runs a build.
@@ -469,6 +471,7 @@ pub fn run(
         format: preamble_key.and_then(|k| preamble::ready(plan, k).map(|f| (f, k))),
         last_output: Vec::new(),
         draft: false,
+        healed: false,
     };
     let mut report = match (plan.engine, plan.tool) {
         (Engine::Tectonic, _) => r.tectonic(),
@@ -731,6 +734,16 @@ impl Runner<'_, '_> {
             }
         }
         let mut report = self.read_log();
+        // Auxiliary files the engine cannot read (written by an older
+        // build, with a package removed since, or cut short): put aside,
+        // and the pass done again from nothing, once.
+        if !self.healed && !self.cancelled() && self.read_back_broken(&report) {
+            self.healed = true;
+            for (path, _) in auxiliary_files(&self.plan.out_dir) {
+                let _ = std::fs::remove_file(path);
+            }
+            return self.engine_pass(pass);
+        }
         self.explain_silent_failure(code, &mut report);
         // A pass that stops with a precompiled preamble is redone without it;
         // when that works, the format is abandoned for this preamble.
@@ -748,6 +761,28 @@ impl Runner<'_, '_> {
             return (code, report);
         }
         (code, report)
+    }
+
+    /// Whether an error of the pass is in a file the engine read back from
+    /// the build before (`.aux`, `.toc`…), not in the document. Not the
+    /// `.bbl`: its errors come from the document (a style that does not go
+    /// with natbib…) and are to be seen.
+    fn read_back_broken(&self, report: &LogReport) -> bool {
+        let out = log::normalize(&self.plan.out_dir);
+        let real = dunce::canonicalize(&self.plan.out_dir).ok();
+        report.diagnostics.iter().any(|d| {
+            d.severity == Severity::Error
+                && d.file.as_deref().is_some_and(|f| {
+                    let f = log::normalize(f);
+                    let under =
+                        f.starts_with(&out) || real.as_ref().is_some_and(|r| f.starts_with(r));
+                    let ext = f
+                        .extension()
+                        .map(|e| e.to_string_lossy().to_ascii_lowercase())
+                        .unwrap_or_default();
+                    under && READ_BACK.contains(&ext.as_str())
+                })
+        })
     }
 
     /// An engine that stops without a word in its log (it did not even read
@@ -927,7 +962,12 @@ impl Runner<'_, '_> {
                     }
                     let code = self.step("BibTeX".into(), cmd);
                     self.ran_bib = Some(BibTool::Bibtex);
-                    state.citations = if code == Some(0) { h } else { None };
+                    // BibTeX says 1 for warnings (an empty field…): done all the same.
+                    state.citations = if code.is_some_and(|c| c <= 1) {
+                        h
+                    } else {
+                        None
+                    };
                     auxiliary_ran = true;
                 }
             }
@@ -1898,6 +1938,73 @@ mod tests {
             complete.steps
         );
         assert_eq!(complete.pages, Some(5));
+    }
+
+    /// Auxiliary files the engine cannot read (a package removed since the
+    /// build that wrote them, a line that lost its backslash) are put aside
+    /// and the pass done again: the build goes through, without a word of
+    /// the document changed.
+    #[test]
+    #[ignore = "depends on the local TeX installation"]
+    fn unreadable_auxiliary_files_are_put_aside() {
+        let Some(dist) = crate::tex::detect(&[]).into_iter().next() else {
+            println!("no TeX distribution: nothing checked");
+            return;
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let root = crate::log::normalize(&dunce::canonicalize(dir.path()).unwrap().join("doc.tex"));
+        std::fs::write(&root, "\\documentclass{article}\n\\begin{document}\n\\tableofcontents\n\\section{Un}\\label{un}\nVoir~\\ref{un}.\n\\end{document}\n").unwrap();
+        let settings = BuildSettings {
+            out_dir: "build".to_owned(),
+            precompile_preamble: false,
+            ..BuildSettings::default()
+        };
+        let plan = plan(
+            &root,
+            &settings,
+            Some(&dist),
+            &DocumentFacts::default(),
+            Lang::En,
+        )
+        .unwrap();
+        let cancel = AtomicBool::new(false);
+        let source = |p: &Path| std::fs::read_to_string(p).ok();
+        let ctx = RunContext {
+            dist: &dist,
+            settings: &settings,
+            cancel: &cancel,
+            lang: Lang::En,
+            source: &source,
+            packages: None,
+            background: false,
+            live: false,
+        };
+        assert!(run(&plan, &ctx, &mut |_: BuildEvent| {}).success);
+        let aux = plan.out_dir.join("doc.aux");
+        for broken in [
+            "\\HyperFirstAtBeginDocument{\\ifx\\hyper@anchor\\@undefined}\n\\undefinedmacrofromapackage{x}\n",
+            "newlabel{un}{{1}{1}}\n",
+        ] {
+            let text = std::fs::read_to_string(&aux).unwrap();
+            std::fs::write(&aux, format!("{text}{broken}")).unwrap();
+            let outcome = run(&plan, &ctx, &mut |_: BuildEvent| {});
+            let errors: Vec<_> = outcome
+                .diagnostics
+                .iter()
+                .filter(|d| d.severity == Severity::Error)
+                .map(|d| &d.message)
+                .collect();
+            assert!(
+                outcome.success && errors.is_empty(),
+                "{broken}: {errors:?} {:?}",
+                outcome.steps
+            );
+            assert!(
+                !std::fs::read_to_string(&aux)
+                    .unwrap()
+                    .contains("undefinedmacro")
+            );
+        }
     }
 
     /// A document built for the first time, with a table of contents and
