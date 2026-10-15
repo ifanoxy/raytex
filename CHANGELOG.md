@@ -10,6 +10,10 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
   - A Biber or BibTeX run that fails is done again at the next build (its input was taken for done).
 - **Precompiled preambles with MiKTeX too**: the preamble of a pdfLaTeX document is read once and kept, which makes each pass 35 to 55 % faster; it was kept for TeX Live. RayTeX now gives its own copy of `mylatexformat` (the file that writes such a preamble), so a basic MiKTeX does not have to download it, and a MiKTeX update of its packages makes the preamble be precompiled again.
 - PDF viewer: a page keeps its size when the document gains or loses a page (documents with pages of other sizes no longer move at each build).
+- **Pasting writes LaTeX.** Formatted text from Word, Google Docs, LibreOffice or a web page is pasted as LaTeX: bold, italic, underline, headings, lists (those of Word too, nested), links (`hyperref` added), superscripts and subscripts; a notice offers *Plain text* at once. Formulas come as formulas: MathML, the TeX a page carries with its formulas (Wikipedia), and the equations of Word (OMML: fractions, scripts, roots, sums and integrals with their limits, brackets, matrices, accents, functions). A table (Excel, Calc, Word, a page) opens in the table window; inside a formula, as a matrix. LaTeX code, plain text and code from an editor are pasted as they are.
+- **Special characters escaped as they are typed**: `&`, `_`, `#` in text, and `%` after a number, are written `\&`, `\_`, `\#`, `\%`, never in a formula, a table or an alignment, the name of a label, a file or a link, a definition, a comment, the preamble, TikZ or code. One undo puts the character back; the first time, a notice says so, with a button to turn it off.
+- **Shortcuts learned**: a command typed in full again and again (six times, letter by letter) gets one offer: the `@` shortcut of RayTeX that writes it, or a new one in a click. Never twice for a command, at most one offer in ten minutes.
+- These three aids are settings of the editor, on by default. A selection was already wrapped by `(`, `[`, `{` and `$`: it is now tested.
 
 ## [0.5.2] — 2026-10-14
 

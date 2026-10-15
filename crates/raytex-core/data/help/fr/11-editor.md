@@ -73,6 +73,17 @@ Le menu **Affichage** (en haut à droite) montre ou masque cette barre, le panne
 - Correcteur orthographique du système (*Réglages › Éditeur*).
 - Mode Vim (*Réglages › Éditeur*) : `:w` enregistre.
 
+## Coller et écrire plus vite
+
+- **Coller du texte mis en forme** (Word, Google Docs, LibreOffice, une page web) l'écrit en LaTeX : gras, italique, souligné, titres, listes, liens (`hyperref` est ajouté), exposants. Une notice propose aussitôt **Texte brut** pour coller le texte tel quel. Du code LaTeX copié sur une page, ou du code copié dans un éditeur, est collé tel quel.
+- **Les formules** d'une page web (MathML, ou le TeX qu'elles portent, comme sur Wikipédia) et les **équations de Word** deviennent une formule LaTeX, entre `$…$` dans le texte, telle quelle dans une formule.
+- **Un tableau** collé (Excel, LibreOffice Calc, un tableau de Word ou d'une page) s'ouvre dans la fenêtre des tableaux, cellule par cellule ; dans une formule, il devient une matrice.
+- **`&`, `_` et `#` tapés dans du texte**, et `%` après un nombre (`50 %`), s'écrivent `\&`, `\_`, `\#`, `\%`. Jamais dans une formule, un tableau ou un alignement (pour `&`), le nom d'une étiquette, d'un fichier ou d'un lien, une définition de commande, un commentaire, le préambule, du TikZ ou du code. **Annuler** une fois remet le caractère tel quel.
+- **Une sélection** s'entoure en tapant `(`, `[`, `{` ou `$`.
+- **Une commande tapée souvent en entier** (`\mathbb`, `\varepsilon`…) : RayTeX propose une fois un raccourci `@` qui l'écrit, ou en crée un d'un clic.
+
+Ces aides se désactivent une à une dans *Réglages › Éditeur*.
+
 ## Enregistrement
 
 L'enregistrement automatique est activé par défaut. Un point dans l'onglet signale des modifications non enregistrées ; à la fermeture, RayTeX propose d'enregistrer. Les fichiers qui ne sont pas en UTF-8 sont convertis à l'enregistrement.

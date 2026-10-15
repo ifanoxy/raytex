@@ -175,6 +175,14 @@ pub struct EditorSettings {
     pub folding: bool,
     /// Show indentation guides and visible whitespace.
     pub show_whitespace: bool,
+    /// Formatted text pasted (Word, Google Docs, a web page) is written in
+    /// LaTeX; a table opens in the table window, a formula is a formula.
+    pub smart_paste: bool,
+    /// `&`, `_`, `#` typed in text, and `%` after a number, are written
+    /// `\&`, `\_`, `\#`, `\%` (one undo brings the character back).
+    pub escape_specials: bool,
+    /// A command typed in full again and again: an `@` shortcut is offered.
+    pub learned_shortcuts: bool,
 }
 
 impl Default for EditorSettings {
@@ -199,6 +207,9 @@ impl Default for EditorSettings {
             auto_save_delay_ms: 1000,
             folding: true,
             show_whitespace: false,
+            smart_paste: true,
+            escape_specials: true,
+            learned_shortcuts: true,
         }
     }
 }

@@ -73,6 +73,17 @@ The **View** menu (top right) shows or hides this bar, the side panel, the PDF p
 - System spell checker (*Settings › Editor*).
 - Vim mode (*Settings › Editor*): `:w` saves.
 
+## Pasting and writing faster
+
+- **Pasting formatted text** (Word, Google Docs, LibreOffice, a web page) writes it in LaTeX: bold, italic, underline, headings, lists, links (`hyperref` is added), superscripts. A notice offers **Plain text** at once to paste the text as it is. LaTeX code copied from a page, or code copied from an editor, is pasted as it is.
+- **The formulas** of a web page (MathML, or the TeX they carry, as on Wikipedia) and **Word's equations** become a LaTeX formula, between `$…$` in text, as it is inside a formula.
+- **A table** pasted (Excel, LibreOffice Calc, a table of Word or of a page) opens in the table window, cell by cell; inside a formula it becomes a matrix.
+- **`&`, `_` and `#` typed in text**, and `%` after a number (`50 %`), are written `\&`, `\_`, `\#`, `\%`. Never in a formula, a table or an alignment (for `&`), the name of a label, a file or a link, the definition of a command, a comment, the preamble, TikZ or code. **Undo** once puts the character back as it was.
+- **A selection** is wrapped by typing `(`, `[`, `{` or `$`.
+- **A command often typed in full** (`\mathbb`, `\varepsilon`…): RayTeX offers once an `@` shortcut that writes it, or creates one in a click.
+
+Each of these aids can be turned off in *Settings › Editor*.
+
 ## Saving
 
 Auto-save is on by default. A dot on a tab marks unsaved changes; when closing, RayTeX offers to save. Files that are not UTF-8 are converted when saved.

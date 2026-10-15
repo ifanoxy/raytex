@@ -9,6 +9,7 @@
   import { sizeLabel } from "$lib/history";
   import { i18n } from "$lib/i18n.svelte";
   import { languageName, spelling } from "$lib/state/spelling.svelte";
+  import { setTyping, typingSettings } from "$lib/state/typing";
   import { type MessageKey, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { app } from "$lib/state/app.svelte";
@@ -327,6 +328,9 @@
         {@render toggle(t("settings.closeEnvironments"), t("settings.closeEnvironmentsHint"), s.editor.autoCloseEnvironments, (v) => set((x) => (x.editor.autoCloseEnvironments = v)))}
         {@render toggle(t("settings.mathPreview"), t("settings.mathPreviewHint"), s.editor.mathPreview, (v) => set((x) => (x.editor.mathPreview = v)))}
         {@render toggle(t("settings.hoverDocs"), t("settings.hoverDocsHint"), s.editor.hoverDocs, (v) => set((x) => (x.editor.hoverDocs = v)))}
+        {@render toggle(t("settings.smartPaste"), t("settings.smartPasteHint"), typingSettings(s).smartPaste, (v) => void setTyping("smartPaste", v))}
+        {@render toggle(t("settings.escapeSpecials"), t("settings.escapeSpecialsHint"), typingSettings(s).escapeSpecials, (v) => void setTyping("escapeSpecials", v))}
+        {@render toggle(t("settings.learnedShortcuts"), t("settings.learnedShortcutsHint"), typingSettings(s).learnedShortcuts, (v) => void setTyping("learnedShortcuts", v))}
         {@render toggle(t("settings.spellcheck"), t("settings.spellcheckHint"), s.editor.spellcheck, (v) => void (v ? spelling.enable() : spelling.disable()))}
         {#if s.editor.spellcheck && spelling.status}
           {#snippet dictionariesControl()}

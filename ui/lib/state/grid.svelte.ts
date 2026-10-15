@@ -28,6 +28,15 @@ class GridStore {
     ui.openOverlay("grid");
   }
 
+  /** A grid of pasted cells (a spreadsheet, a table of a page): a matrix in a formula, a table elsewhere. */
+  openWithCells(view: EditorView, cells: string[][], inMath: boolean) {
+    const cols = Math.max(1, ...cells.map((r) => r.length));
+    const grid = newGrid(inMath ? "matrix" : "table", cells.length, cols);
+    grid.cells = cells.map((r) => [...r, ...Array(cols - r.length).fill("")]);
+    this.request = { grid, inMath, unit: view.state.facet(indentUnit) };
+    ui.openOverlay("grid");
+  }
+
   /** `\begin` of the matrix or table (of `kind`, when given) around the cursor. */
   at(view: EditorView, kind?: GridKind): number | null {
     const doc = view.state.doc;

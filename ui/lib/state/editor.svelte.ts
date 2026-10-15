@@ -68,6 +68,7 @@ import { media, type TikzRequest } from "./media.svelte";
 import { project } from "./project.svelte";
 import { spelling } from "./spelling.svelte";
 import { searchStore } from "./search.svelte";
+import { pasteInto, typingAids } from "./typing";
 import { ui } from "./ui.svelte";
 import { viewer } from "./viewer.svelte";
 
@@ -446,6 +447,7 @@ class EditorStore {
                 }),
             EditorView.inputHandler.of((view, from, to, text) => handleDollar(view, from, to, text)),
             Prec.high(keymap.of([{ key: "Backspace", run: deleteDollarPair }])),
+            readOnly ? [] : typingAids(),
           ]
         : kind === "bib"
           ? [bibtex()]
@@ -1568,8 +1570,9 @@ class EditorStore {
   }
 
   private onPaste(e: ClipboardEvent, view: EditorView): boolean {
+    if (fileKind(view.state.facet(docPath)) !== "tex") return false;
     const files = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith("image/"));
-    if (!files.length || fileKind(view.state.facet(docPath)) !== "tex") return false;
+    if (!files.length) return pasteInto(view, e, (name) => void this.addPackage(name, view, true));
     e.preventDefault();
     void this.pasteImage(view, files[0]);
     return true;

@@ -8,6 +8,7 @@
 
 import { refused } from "$lib/policy";
 import { acceptCompletion, currentCompletions, setSelectedCompletion, startCompletion } from "@codemirror/autocomplete";
+import { undo } from "@codemirror/commands";
 import { EditorView } from "@codemirror/view";
 import { invoke } from "@tauri-apps/api/core";
 import { i18n } from "../lib/i18n.svelte";
@@ -2120,6 +2121,86 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
       acceptCompletion(view);
       await pause(200);
       check(`@${key} typed gives its brackets`, opened && view.state.doc.toString() === written, `${opened} ${view.state.doc.toString()}`);
+    }
+    // Writing aids. Special characters typed in text are escaped (one
+    // undo brings the character back); in a table, a label or a formula
+    // they stay. A selection is wrapped by what is typed around it.
+    {
+      const body = "\\documentclass{article}\n\\begin{document}\n\n\\end{document}\n";
+      const at = body.indexOf("\n\n") + 1;
+      const reset = (text = "") => view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: body.slice(0, at) + text + body.slice(at) }, selection: { anchor: at + text.length } });
+      // What the body holds (a package added to the preamble moves it).
+      const written = () => {
+        const text = view.state.doc.toString();
+        const start = text.indexOf("\\begin{document}\n") + "\\begin{document}\n".length;
+        return text.slice(start, text.lastIndexOf("\n\\end{document}"));
+      };
+      reset();
+      typeKeys("R&D mon_fichier 50 % #1 ");
+      const escaped = written();
+      typeKeys("&");
+      undo(view);
+      const undone = written();
+      reset("\\begin{tabular}{ll}\n");
+      typeKeys("a & b \\label{fig_a} $x_1$");
+      const kept = written();
+      reset("mot");
+      view.dispatch({ selection: { anchor: at, head: at + 3 } });
+      typeKeys("(");
+      const wrapped = written();
+      reset("mot");
+      view.dispatch({ selection: { anchor: at, head: at + 3 } });
+      typeKeys("$");
+      const inMath = written();
+      log(`typing: «${escaped}» then undo «${undone}», kept «${kept}», wrapped «${wrapped}» «${inMath}»`);
+      check("special characters typed in text are escaped", escaped === "R\\&D mon\\_fichier 50 \\% \\#1 " && undone.endsWith(" &"), `${escaped} / ${undone}`);
+      check("in a table, a label, a formula they stay", kept === "\\begin{tabular}{ll}\na & b \\label{fig_a} $x_1$", kept);
+      check("a selection is wrapped by a bracket or a dollar", wrapped === "(mot)" && inMath === "$mot$", `${wrapped} ${inMath}`);
+      // Pasting: formatted text as LaTeX, a formula as a formula, a
+      // spreadsheet in the table window.
+      const paste = (html: string, plain: string) => {
+        const data = new DataTransfer();
+        if (html) data.setData("text/html", html);
+        data.setData("text/plain", plain);
+        view.contentDOM.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+      };
+      reset();
+      paste("<p>Un <b>mot</b> en <i>italique</i>, voir <a href='https://example.org'>le site</a>.</p>", "Un mot en italique, voir le site.");
+      await pause(300);
+      const rich = written();
+      const linked = /\\usepackage\{hyperref\}/.test(view.state.doc.toString());
+      reset();
+      paste(`<math><mfrac><mi>a</mi><mi>b</mi></mfrac><mo>≤</mo><msqrt><mi>x</mi></msqrt></math>`, "a/b ≤ √x");
+      const formula = written();
+      reset();
+      paste("", "Nom\tNote\nAlice\t12\n");
+      await until(() => ui.overlay === "grid", 5_000, "table window for a spreadsheet").catch(() => {});
+      const table = ui.overlay === "grid";
+      ui.closeOverlay();
+      reset();
+      paste("<pre><code>\\section{Titre}</code></pre>", "\\section{Titre}");
+      const code = written();
+      log(`paste: «${rich}» «${formula}» table ${table} code «${code}»`);
+      check("formatted text is pasted as LaTeX", rich === "Un \\textbf{mot} en \\emph{italique}, voir \\href{https://example.org}{le site}." && linked, `${rich} ${linked}`);
+      check("a formula is pasted as a formula, a spreadsheet as a table, code as it is", formula === "$\\frac{a}{b}\\leq\\sqrt{x}$" && table && code === "\\section{Titre}", `${formula} ${table} ${code}`);
+      // A command typed in full again and again: one offer of a shortcut.
+      try {
+        localStorage.removeItem("raytex.learned");
+      } catch {
+        /* nothing kept */
+      }
+      reset("$");
+      const toasts = ui.toasts.length;
+      for (let i = 0; i < 6; i++) typeKeys("\\mathbb{R} ");
+      await until(() => ui.toasts.slice(toasts).some((x) => /mathbb/.test(x.message)), 5_000, "offer of a shortcut").catch(() => {});
+      const offer = ui.toasts.slice(toasts).find((x) => /mathbb/.test(x.message));
+      log(`learned: ${offer?.message} [${offer?.action?.label}]`);
+      check("a command typed again and again gets an offer of a shortcut", !!offer && /@bb/.test(offer.action?.label ?? ""), offer?.message);
+      try {
+        localStorage.removeItem("raytex.learned");
+      } catch {
+        /* nothing kept */
+      }
     }
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } });
     const shown = (sel: string) => [...document.querySelectorAll<HTMLElement>(sel)].filter((e) => e.offsetWidth > 0).map((e) => e.textContent?.trim());
