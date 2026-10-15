@@ -112,8 +112,9 @@ export function editorTheme(fontFamily: string, fontSize: number, lineHeight: nu
       outline: "1px solid color-mix(in srgb, var(--warning) 60%, transparent)",
     },
     ".cm-searchMatch.cm-searchMatch-selected": { backgroundColor: "color-mix(in srgb, var(--warning) 45%, transparent)" },
-    ".cm-panels": { backgroundColor: "var(--bg-elev)", color: "var(--text)", borderColor: "var(--border)" },
-    ".cm-panels.cm-panels-top": { borderBottom: "1px solid var(--border)" },
+    ".cm-panels": { backgroundColor: "var(--bg-elev)", color: "var(--text)", borderColor: "var(--border)", zIndex: "20" },
+    // The card of find and replace floats over the text: its panel takes no room.
+    ".cm-panels.cm-panels-top": { height: "0", overflow: "visible", border: "none", background: "transparent" },
     ".cm-panel.cm-search": { padding: "8px 10px", fontFamily: "var(--font-ui)", fontSize: "12px" },
     ".cm-panel.cm-search input, .cm-panel.cm-search button, .cm-textfield": {
       fontFamily: "var(--font-ui)",

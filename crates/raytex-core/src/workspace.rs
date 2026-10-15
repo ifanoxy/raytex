@@ -990,6 +990,7 @@ impl Workspace {
         query: &str,
         regex: bool,
         case_sensitive: bool,
+        whole_word: bool,
         max: usize,
     ) -> Result<Vec<SearchMatch>, String> {
         if query.is_empty() {
@@ -999,6 +1000,12 @@ impl Workspace {
             query.to_owned()
         } else {
             regex::escape(query)
+        };
+        // A whole word: not inside a longer one.
+        let pattern = if whole_word {
+            format!(r"\b(?:{pattern})\b")
+        } else {
+            pattern
         };
         let re = regex::RegexBuilder::new(&pattern)
             .case_insensitive(!case_sensitive)
@@ -1168,7 +1175,7 @@ mod tests {
         let (class, pkgs) = ws.loaded_packages(&root);
         assert_eq!(class.as_deref(), Some("report"));
         assert_eq!(pkgs, ["amsmath", "mymacros"]);
-        let found = ws.search("\\ref{", false, true, 10).unwrap();
+        let found = ws.search("\\ref{", false, true, false, 10).unwrap();
         assert_eq!(found.len(), 1);
         assert_eq!(ws.key_uses(&root, "ch:intro", false).len(), 1);
     }

@@ -6,7 +6,8 @@
 // receive the view.
 
 import { toggleComment } from "@codemirror/commands";
-import { gotoLine, openSearchPanel } from "@codemirror/search";
+import { gotoLine } from "@codemirror/search";
+import { openFind } from "./editor/find.svelte";
 import { EditorView, type KeyBinding } from "@codemirror/view";
 import { specFromSelection } from "./commands";
 import { REPOSITORY_URL } from "./constants";
@@ -142,7 +143,8 @@ export const actions: Action[] = [
   { id: "view.pdf", title: "action.togglePdf", category: "view", keys: "Mod-Alt-p", icon: "panel-right", run: () => togglePdf() },
   { id: "view.files", title: "action.showFiles", category: "view", keys: "Mod-Shift-e", icon: "files", run: () => ui.showSidebar("files") },
   { id: "view.outline", title: "action.showOutline", category: "view", keys: "Mod-Shift-o", icon: "outline", run: () => ui.showSidebar("outline") },
-  { id: "view.search", title: "action.searchProject", category: "view", keys: "Mod-Shift-f", icon: "search", when: hasProject, run: () => searchStore.focus() },
+  { id: "view.search", title: "action.searchProject", category: "view", keys: "Mod-Shift-f", icon: "search", when: hasProject, run: () => searchStore.focus(false) },
+  { id: "view.replaceProject", title: "action.replaceProject", category: "view", keys: "Mod-Shift-r", icon: "edit", when: hasProject, run: () => searchStore.focus(true) },
   { id: "view.symbols", title: "action.showSymbols", category: "view", icon: "sigma", run: () => ui.showSidebar("symbols") },
   { id: "view.snippets", title: "action.showSnippets", category: "view", icon: "snippets", run: () => ui.showSidebar("snippets") },
   { id: "view.commands", title: "action.showCommands", category: "view", icon: "macro", run: () => ui.showSidebar("commands") },
@@ -166,7 +168,8 @@ export const actions: Action[] = [
   { id: "nav.references", title: "action.findReferences", category: "navigate", keys: "Shift-F12", editor: true, when: hasTex, run: withView((v) => editor.findReferences(v)) },
   { id: "nav.rename", title: "action.rename", category: "navigate", keys: "F2", editor: true, when: hasTex, run: withView((v) => editor.rename(v)) },
   { id: "nav.syncForward", title: "action.syncForward", category: "navigate", keys: "Mod-Alt-j", icon: "sync", when: hasTex, run: () => editor.syncForward() },
-  { id: "nav.find", title: "action.find", category: "navigate", editor: true, when: hasText, run: withView((v) => openSearchPanel(v)) },
+  { id: "nav.find", title: "action.find", category: "navigate", keys: "Mod-f", editor: true, when: hasText, run: withView((v) => openFind(v, false)) },
+  { id: "nav.replace", title: "action.replace", category: "navigate", keys: "Mod-r", editor: true, icon: "edit", when: hasText, run: withView((v) => openFind(v, true)) },
   { id: "nav.goToLine", title: "action.goToLine", category: "navigate", keys: "Mod-l", editor: true, when: hasText, run: withView((v) => gotoLine(v)) },
 
   // ------------------------------------------------------------- edit
@@ -354,6 +357,16 @@ export function handleGlobalKey(e: KeyboardEvent): boolean {
     e.preventDefault();
     e.stopPropagation();
     void runAction(a.id);
+    return true;
+  }
+  // Find and replace from outside the editor (the file tree, the PDF): in
+  // the file shown. Ctrl+R would otherwise reload the window.
+  const inEditor = e.target instanceof Element && !!e.target.closest(".cm-editor");
+  const view = editor.view;
+  if (!inEditor && (matches(e, "Mod-f") || matches(e, "Mod-r"))) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (view && editor.active) openFind(view, matches(e, "Mod-r"));
     return true;
   }
   return false;

@@ -12,7 +12,8 @@ import { acceptCompletion, closeBrackets, closeBracketsKeymap, snippet } from "@
 import { defaultKeymap, history, historyKeymap, indentWithTab, redo, redoDepth, undo, undoDepth } from "@codemirror/commands";
 import { bracketMatching, foldGutter, foldKeymap, indentOnInput, indentUnit } from "@codemirror/language";
 import { type Diagnostic as CmDiagnostic, lintGutter, lintKeymap, setDiagnostics } from "@codemirror/lint";
-import { highlightSelectionMatches, search, searchKeymap } from "@codemirror/search";
+import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
+import { findExtension } from "../editor/find.svelte";
 import { ChangeSet, Compartment, EditorSelection, EditorState, type Extension, Prec, type StateEffect, type Text, type TransactionSpec } from "@codemirror/state";
 import {
   crosshairCursor,
@@ -467,7 +468,7 @@ class EditorStore {
       rectangularSelection({ eventFilter: (e) => e.altKey && e.shiftKey }),
       crosshairCursor({ key: "Alt" }),
       highlightSelectionMatches({ minSelectionLength: 2, maxMatches: 400 }),
-      search({ top: true }),
+      findExtension(),
       EditorView.clickAddsSelectionRange.of((e) => e.altKey && !e.shiftKey),
       readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(true)] : [],
       Prec.high(keymap.of(enterKeymap({ closeEnvironments: () => hooks.settings().autoCloseEnvironments }))),

@@ -160,8 +160,8 @@ export const exportWrite = (path: string, options: ExportOptions, dest: string) 
 /** A new definition, written and checked against the project of `path`. */
 export const draftCommand = (path: string, spec: CommandSpec) => call<CommandDraft>("draft_command", { path, spec });
 export const structure = (path: string) => call<T.Structure | null>("structure", { path });
-export const search = (query: string, regex: boolean, caseSensitive: boolean) =>
-  call<T.SearchMatch[]>("search", { query, regex, caseSensitive });
+export const search = (query: string, regex: boolean, caseSensitive: boolean, wholeWord = false) =>
+  call<T.SearchMatch[]>("search", { query, regex, caseSensitive, wholeWord });
 export const wordCount = (path: string) => call<{ file: T.WordCount; project: T.WordCount } | null>("word_count", { path });
 export const rootOf = (path: string) => call<string | null>("root_of", { path });
 

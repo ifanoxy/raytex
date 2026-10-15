@@ -28,6 +28,7 @@ import { bringPicture } from "../lib/state/pictures";
 import { colors } from "../lib/state/colors.svelte";
 import { fonts } from "../lib/state/fonts.svelte";
 import { history } from "../lib/state/history.svelte";
+import { searchStore } from "../lib/state/search.svelte";
 import { spelling } from "../lib/state/spelling.svelte";
 import { templates } from "../lib/state/templates.svelte";
 import { ui } from "../lib/state/ui.svelte";
@@ -2201,6 +2202,52 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
       } catch {
         /* nothing kept */
       }
+    }
+    // Find and replace: in the file with its card (Ctrl+R), in the project
+    // with the panel (Ctrl+Shift+R), each match replaced alone or all.
+    {
+      const mod = { metaKey: mac, ctrlKey: !mac, bubbles: true, cancelable: true };
+      const type = (input: HTMLInputElement, value: string) => {
+        input.value = value;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      };
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "Un chat, deux chats, trois chatons.\n" }, selection: { anchor: 0 } });
+      view.focus();
+      view.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key: "r", code: "KeyR", ...mod }));
+      await until(() => document.querySelectorAll(".lbt-find input").length === 2, 3_000, "card of find and replace");
+      const card = document.querySelector<HTMLElement>(".lbt-find")!;
+      const [searchField, replaceField] = card.querySelectorAll<HTMLInputElement>("input");
+      type(searchField, "chat");
+      await pause(150);
+      const all = card.querySelector(".count")?.textContent?.trim();
+      card.querySelector<HTMLButtonElement>(".opt.word")!.click();
+      await pause(150);
+      const words = card.querySelector(".count")?.textContent?.trim();
+      type(replaceField, "chien");
+      card.querySelector<HTMLButtonElement>("button.text.strong")!.click();
+      await pause(150);
+      const replaced = view.state.doc.toString();
+      searchField.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      await pause(100);
+      const closed = !document.querySelector(".lbt-find");
+      log(`find: «${all}» then whole word «${words}», «${replaced.trim()}», closed ${closed}`);
+      check("find and replace in the file", all === "1 sur 3" || all === "1 of 3", all);
+      check("whole words only, replaced together, the card closed by Escape", (words === "1 sur 1" || words === "1 of 1") && replaced === "Un chien, deux chats, trois chatons.\n" && closed, `${words} ${replaced} ${closed}`);
+      await editor.saveAll({ silent: true });
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "R", code: "KeyR", shiftKey: true, ...mod }));
+      await until(() => ui.sidebar === "search" && searchStore.showReplace && !!document.querySelector(".results"), 3_000, "replace in the project");
+      searchStore.query = "chats";
+      searchStore.replacement = "chiens";
+      await searchStore.run();
+      const found = searchStore.results.length;
+      await pause(200);
+      const preview = document.querySelector(".results ins")?.textContent;
+      await searchStore.replaceMatches(searchStore.results.slice(0, 1));
+      const project = view.state.doc.toString();
+      log(`project: ${found} found, preview «${preview}», «${project.trim()}», left ${searchStore.results.length}`);
+      check("replace in the project, one match at a time, with what it becomes", found === 1 && preview === "chiens" && project === "Un chien, deux chiens, trois chatons.\n" && searchStore.results.length === 0, `${found} ${preview} ${project}`);
+      searchStore.showReplace = false;
+      ui.showSidebar("files");
     }
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "" } });
     const shown = (sel: string) => [...document.querySelectorAll<HTMLElement>(sel)].filter((e) => e.offsetWidth > 0).map((e) => e.textContent?.trim());

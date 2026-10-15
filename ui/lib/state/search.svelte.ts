@@ -11,6 +11,9 @@ class SearchStore {
   replacement = $state("");
   regex = $state(false);
   caseSensitive = $state(false);
+  wholeWord = $state(false);
+  /** The row of replacement is shown. */
+  showReplace = $state(false);
   results = $state<SearchMatch[]>([]);
   /** Set when showing references instead of text matches. */
   title = $state<string | null>(null);
@@ -39,7 +42,7 @@ class SearchStore {
     this.running = true;
     try {
       await editor.flush();
-      this.results = await ipc.search(this.query, this.regex, this.caseSensitive);
+      this.results = await ipc.search(this.query, this.regex, this.caseSensitive, this.wholeWord);
     } catch (e) {
       this.error = String(e);
       this.results = [];
@@ -68,20 +71,38 @@ class SearchStore {
     ui.saveLayout();
   }
 
-  /** Replaces every match (open files stay undoable). */
-  async replaceAll(): Promise<number> {
-    const edits = this.results.map((m) => ({ file: m.location.file, range: m.location.range, newText: this.replacement }));
-    if (!edits.length) return 0;
-    await editor.applyEdits(edits);
-    const n = edits.length;
-    await this.run();
-    return n;
+  /** What a match becomes: the replacement, its groups (`$1`) filled in for an expression. */
+  replacementFor(m: SearchMatch): string {
+    const r = m.location.range;
+    if (!this.regex || r.start.line !== r.end.line) return this.replacement;
+    const matched = m.lineText.slice(r.start.character, r.end.character);
+    try {
+      return matched.replace(new RegExp(this.query, this.caseSensitive ? "" : "i"), this.replacement);
+    } catch {
+      return this.replacement;
+    }
   }
 
-  focus() {
+  /** Replaces these matches (open files stay undoable), then searches again. */
+  async replaceMatches(matches: SearchMatch[]): Promise<number> {
+    const edits = matches.map((m) => ({ file: m.location.file, range: m.location.range, newText: this.replacementFor(m) }));
+    if (!edits.length) return 0;
+    await editor.applyEdits(edits);
+    await this.run();
+    return edits.length;
+  }
+
+  /** Replaces every match. */
+  replaceAll(): Promise<number> {
+    return this.replaceMatches(this.results);
+  }
+
+  /** The panel in front, its field in focus; `replace`: with its row of replacement. */
+  focus(replace = false) {
     ui.sidebar = "search";
     ui.sidebarVisible = true;
     ui.saveLayout();
+    if (replace) this.showReplace = true;
     this.focusRequest++;
   }
 }

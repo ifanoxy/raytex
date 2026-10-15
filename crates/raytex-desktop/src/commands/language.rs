@@ -472,11 +472,18 @@ pub async fn search(
     query: String,
     regex: bool,
     case_sensitive: bool,
+    whole_word: Option<bool>,
 ) -> CmdResult<Vec<SearchMatch>> {
     blocking(&app, move |_, state| {
         let project = state.project();
         let pr = project.as_ref().ok_or("no project")?;
-        pr.ws.search(&query, regex, case_sensitive, 2000)
+        pr.ws.search(
+            &query,
+            regex,
+            case_sensitive,
+            whole_word.unwrap_or(false),
+            2000,
+        )
     })
     .await?
 }

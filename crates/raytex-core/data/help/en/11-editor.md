@@ -35,7 +35,14 @@ Hover a command, an environment or a package: its documentation appears. On a la
 | Go to a section (`@`) or a label (`#`) | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>P</kbd> then `@` or `#` |
 | Go to a line | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>L</kbd> |
 | Next problem | <kbd>F8</kbd> |
+| Find in the file | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>F</kbd> |
+| Replace in the file | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>R</kbd> |
 | Search the project | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>F</kbd> |
+| Replace in the project | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>R</kbd> |
+
+**In the file**, a card opens at the top right of the editor: the matches are highlighted and counted (*2 of 5*), <kbd>Enter</kbd> goes to the next one, <kbd>⇧</kbd> + <kbd>Enter</kbd> to the previous one, <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>Enter</kbd> selects them all. *Aa* matches case, *ab* keeps whole words only, *.\** reads a regular expression. In the replacement field, <kbd>Enter</kbd> replaces the selected match and <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd> all of them.
+
+**In the project**, the *Search* panel groups the results by file; with replacement, each line shows what it will become, and is replaced alone, with its file or with all the others (`$1` brings back a group of a regular expression).
 
 ## Formatting bar
 

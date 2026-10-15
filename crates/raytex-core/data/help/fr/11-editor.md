@@ -35,7 +35,14 @@ Survolez une commande, un environnement ou un package : sa documentation s'affic
 | Aller à une section (`@`) ou une étiquette (`#`) | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>P</kbd> puis `@` ou `#` |
 | Aller à une ligne | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>L</kbd> |
 | Problème suivant | <kbd>F8</kbd> |
+| Rechercher dans le fichier | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>F</kbd> |
+| Remplacer dans le fichier | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>R</kbd> |
 | Rechercher dans le projet | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>F</kbd> |
+| Remplacer dans le projet | <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⇧</kbd> + <kbd>R</kbd> |
+
+**Dans le fichier**, une carte s'ouvre en haut à droite de l'éditeur : les occurrences sont surlignées et comptées (*2 sur 5*), <kbd>Entrée</kbd> va à la suivante, <kbd>⇧</kbd> + <kbd>Entrée</kbd> à la précédente, <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>Entrée</kbd> les sélectionne toutes. *Aa* respecte la casse, *ab* ne garde que les mots entiers, *.\** lit une expression régulière. Dans le champ de remplacement, <kbd>Entrée</kbd> remplace l'occurrence sélectionnée et <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>Entrée</kbd> toutes.
+
+**Dans le projet**, le panneau *Recherche* regroupe les résultats par fichier ; avec le remplacement, chaque ligne montre ce qu'elle deviendra, et se remplace seule, avec son fichier ou avec toutes les autres (`$1` reprend un groupe d'une expression régulière).
 
 ## Barre de mise en forme
 
