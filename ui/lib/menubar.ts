@@ -186,6 +186,7 @@ export function menus(ctx: MenuContext): TopMenu[] {
         action("format.titlePage"),
         action("format.margins"),
         action("format.pageStyles"),
+        action("format.paragraphs"),
         sep,
         snippet("format.pageBreak", "page-break", "\\newpage\n"),
         snippet("format.toc", "outline", "\\tableofcontents\n"),

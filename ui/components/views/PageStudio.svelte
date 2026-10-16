@@ -5,7 +5,8 @@
   // before anything is written. The main settings are in sight; each group
   // keeps the others behind "Advanced". A style is then given to the whole
   // document, to the pages that open, from the cursor on, to one page or
-  // to pages by their numbers.
+  // to pages by their numbers. The paragraphs: set in or apart, the first
+  // one after a heading, and what the text does by hand against them.
   import { open as openDialog } from "@tauri-apps/plugin-dialog";
   import { onMount, tick } from "svelte";
   import { i18n, t } from "$lib/i18n.svelte";
@@ -62,6 +63,7 @@
     validStyleName,
     writeMargins,
   } from "$lib/layout";
+  import { type IssueKind, type Paragraphs, type ParIssue, type ParStyle, fixIssues, paragraphIssues, paragraphsPreview, readParagraphs, writeParagraphs } from "$lib/paragraphs";
   import { preambleEnd } from "$lib/preamble";
   import { editor } from "$lib/state/editor.svelte";
   import { bringPicture } from "$lib/state/pictures";
@@ -77,7 +79,7 @@
   const path = editor.active ?? project.info?.main ?? null;
   const lang = i18n.lang === "fr" ? "fr" : "en";
 
-  let tab = $state<"margins" | "styles">(ui.layoutTab);
+  let tab = $state<"margins" | "styles" | "paragraphs">(ui.layoutTab);
   let root = $state<string | null>(null);
   /** The root document as the editor has it. */
   let source = $state<string | null>(null);
@@ -91,6 +93,11 @@
   let style = $state<PageStyle | null>(null);
   let isNew = $state(false);
   let markKind = $state<"none" | "text" | "image">("none");
+  let paragraphs = $state<Paragraphs | null>(null);
+  /** The text of the file being edited, where what is done by hand to the paragraphs is looked for. */
+  let fileText = $state<string | null>(null);
+  /** The indent and the space between paragraphs as TeX set them in the preview (points). */
+  let parMeasured = $state<{ indent: number; skip: number } | null>(null);
   /** Which groups show their advanced settings. */
   const open = $state({ paper: false, margins: false, head: false, foot: false, mark: false, more: false, use: false });
 
@@ -99,6 +106,8 @@
 
   function read(text: string) {
     source = text;
+    paragraphs = readParagraphs(text);
+    if (path) fileText = editor.textOf(path);
     margins = readMargins(text);
     styles = readStyles(text);
     use = readUse(text);
@@ -141,6 +150,7 @@
   const previewText = $derived.by(() => {
     if (source === null) return null;
     if (tab === "margins") return margins ? previewSource(writeMargins(source, margins), marginsSample(lang), "\\usepackage{showframe}\n") : null;
+    if (tab === "paragraphs") return paragraphs ? paragraphsPreview(writeParagraphs(source, paragraphs), lang) : null;
     return style && styleReady ? previewSource(saveStyle(source, style), styleSample(style.name, lang)) : null;
   });
 
@@ -171,6 +181,7 @@
       if (my !== running) return;
       outcome = result;
       measured = metrics(result.measures) ?? measured;
+      if (tab === "paragraphs" && result.measures?.length === 2) parMeasured = { indent: result.measures[0], skip: result.measures[1] };
       failure = null;
       revision++;
     } catch (e) {
@@ -268,6 +279,45 @@
     if (!code || !(await change(ensureGeometry))) return;
     insertHere(code);
     ui.toast("info", t("layout.marginsFromHereDone"));
+  }
+
+  // -------------------------------------------------------------- paragraphs
+
+  const PAR_STYLES: ParStyle[] = ["indent", "skip", "both"];
+  const ISSUES: IssueKind[] = ["noindent", "blank-after-math", "break-paragraph"];
+
+  /** What the file being edited does by hand, as the paragraphs are set in the window. */
+  const issues = $derived(fileText !== null && paragraphs ? paragraphIssues(fileText, paragraphs) : []);
+  const issuesOf = (kind: IssueKind) => issues.filter((i) => i.kind === kind);
+  const fileName = $derived(path ? basename(path) : "");
+
+  async function applyParagraphs() {
+    const p = paragraphs;
+    if (!p || applying) return;
+    applying = true;
+    try {
+      const done = await change((text) => writeParagraphs(text, $state.snapshot(p) as Paragraphs));
+      if (done) ui.toast("success", t("par.applied", { file: basename(done) }));
+    } finally {
+      applying = false;
+    }
+  }
+
+  /** Takes out what does nothing (or goes against the paragraphs) in the file being edited. */
+  async function fix(kind: IssueKind) {
+    const p = paragraphs;
+    if (!path || !p) return;
+    const settings = $state.snapshot(p) as Paragraphs;
+    await editor.rewrite(path, (text) => fixIssues(text, paragraphIssues(text, settings).filter((i) => i.kind === kind && i.useless)));
+    fileText = editor.textOf(path);
+    if (root && path === root) read(editor.textOf(root) ?? "");
+  }
+
+  function goTo(issue: ParIssue) {
+    if (!path) return;
+    ui.closeOverlay();
+    editor.reveal(path, null, issue.line);
+    editor.focus();
   }
 
   // ------------------------------------------------------------- page styles
@@ -574,6 +624,7 @@
       <div class="tabs" role="tablist">
         <button class="tab" class:active={tab === "margins"} role="tab" aria-selected={tab === "margins"} title={t("layout.marginsTip")} onclick={() => (tab = "margins")}><Icon name="margins" size={14} />{t("layout.tabMargins")}</button>
         <button class="tab" class:active={tab === "styles"} role="tab" aria-selected={tab === "styles"} title={t("layout.stylesTip")} onclick={() => (tab = "styles")}><Icon name="page-style" size={14} />{t("layout.tabStyles")}</button>
+        <button class="tab" class:active={tab === "paragraphs"} role="tab" aria-selected={tab === "paragraphs"} data-tab="paragraphs" title={t("par.tip")} onclick={() => (tab = "paragraphs")}><Icon name="align-left" size={14} />{t("par.tab")}</button>
       </div>
 
       {#if missing}
@@ -691,6 +742,56 @@
           <button class="btn" disabled={!canInsert} onclick={() => insertHere("\\restoregeometry")} title={t("layout.restoreHereTitle")}>{t("layout.restoreHere")}</button>
           <button class="btn" disabled={!canInsert || !pagesCode} onclick={marginsFromHere} title={t("layout.marginsFromHereTitle")}>{t("layout.fromHere")}</button>
           <button class="btn primary" disabled={applying} onclick={applyMargins}><Icon name="check" size={14} />{t("layout.applyDocument")}</button>
+        </div>
+      {:else if tab === "paragraphs" && paragraphs}
+        {@const p = paragraphs}
+        <div class="par-styles" role="radiogroup" aria-label={t("par.start")}>
+          {#each PAR_STYLES as s (s)}
+            <button class="par-style" class:active={p.style === s} role="radio" aria-checked={p.style === s} data-style={s} onclick={() => (p.style = s)}>
+              <span class="lines {s}" aria-hidden="true"><i></i><i></i><i></i><b></b><i></i><i></i></span>
+              <span>{t(`par.style.${s}`)}</span>
+            </button>
+          {/each}
+        </div>
+        <div class="grid three">
+          {#if p.style !== "skip"}
+            <LengthField value={p.indent} {unit} label={t("par.indent")} placeholder={parMeasured ? auto(parMeasured.indent) : ""} title={t("par.indentTitle")} onchange={(v) => (p.indent = v)} />
+          {/if}
+          {#if p.style !== "indent"}
+            <LengthField value={p.skip} {unit} label={t("par.skip")} placeholder={parMeasured ? auto(parMeasured.skip) : ""} title={t("par.skipTitle")} onchange={(v) => (p.skip = v)} />
+          {/if}
+        </div>
+        {#if p.style !== "skip"}
+          <label class="check" title={t(p.french ? "par.firstFrench" : "par.firstEnglish")}>
+            <input type="checkbox" checked={p.first} onchange={(e) => (p.first = e.currentTarget.checked)} />
+            <span>{t("par.first")}</span>
+          </label>
+        {/if}
+        <h4 class="par-file">{t("par.inFile", { file: fileName })}</h4>
+        {#if !issues.length}
+          <p class="faint par-none">{t("par.nothing")}</p>
+        {/if}
+        {#each ISSUES as kind (kind)}
+          {@const found = issuesOf(kind)}
+          {@const useless = found.filter((i) => i.useless)}
+          {#if found.length}
+            <div class="par-issue" data-issue={kind}>
+              <div class="par-head">
+                <span class="par-name">{t(`par.issue.${kind}`, { n: found.length })}</span>
+                {#if useless.length}<button class="btn small" onclick={() => fix(kind)}>{t(kind === "noindent" && useless.length < found.length ? "par.removeUseless" : "par.remove", { n: useless.length })}</button>{/if}
+              </div>
+              <span class="faint par-why">{t(kind === "noindent" ? (useless.length ? "par.why.noindentUseless" : "par.why.noindent") : `par.why.${kind}`)}</span>
+              <div class="par-lines">
+                {#each found.slice(0, 12) as i (i.from)}
+                  <button class="chip" class:kept={!i.useless} title={t(i.useless ? "par.lineUseless" : "par.lineKept")} onclick={() => goTo(i)}>{t("par.line", { n: i.line })}</button>
+                {/each}
+                {#if found.length > 12}<span class="faint">+{found.length - 12}</span>{/if}
+              </div>
+            </div>
+          {/if}
+        {/each}
+        <div class="actions">
+          <button class="btn primary" disabled={applying} onclick={applyParagraphs}><Icon name="check" size={14} />{t("layout.applyDocument")}</button>
         </div>
       {:else if tab === "styles" && source !== null}
         <div class="chips" class:hidden={!style && !styles.length} role="group" aria-label={t("layout.styles")}>
@@ -869,7 +970,7 @@
     </section>
 
     <section class="right">
-      <h3>{t(tab === "margins" ? "layout.previewMargins" : "layout.previewStyle")}</h3>
+      <h3>{t(tab === "margins" ? "layout.previewMargins" : tab === "paragraphs" ? "par.preview" : "layout.previewStyle")}</h3>
       <div class="preview-box">
         {#if outcome?.pdf}
           <PdfPreview pdf={outcome.pdf} {revision} maxScale={1.1} />
@@ -899,6 +1000,105 @@
 </Modal>
 
 <style>
+  /* The three ways a paragraph starts, drawn. */
+  .par-styles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .par-style {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 8px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-input);
+    color: var(--text);
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .par-style:hover {
+    border-color: var(--border-strong);
+  }
+  .par-style.active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    font-weight: 600;
+  }
+  .lines {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 64px;
+  }
+  .lines i {
+    display: block;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--text-faint);
+  }
+  .lines b {
+    display: block;
+    height: 0;
+  }
+  .lines i:nth-child(3),
+  .lines i:last-child {
+    width: 70%;
+  }
+  /* The first line of each paragraph set in; or a space between them; or both. */
+  .lines.indent i:first-child,
+  .lines.indent i:nth-child(5),
+  .lines.both i:first-child,
+  .lines.both i:nth-child(5) {
+    margin-left: 14px;
+  }
+  .lines.skip b,
+  .lines.both b {
+    height: 5px;
+  }
+  .par-file {
+    margin: 10px 0 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .par-none {
+    margin: 0;
+    font-size: 12px;
+  }
+  .par-issue {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .par-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .par-name {
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .par-why {
+    font-size: 11.5px;
+  }
+  .par-lines {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .par-lines .chip.kept {
+    opacity: 0.7;
+  }
   .studio {
     display: grid;
     grid-template-columns: minmax(380px, 6fr) minmax(320px, 5fr);

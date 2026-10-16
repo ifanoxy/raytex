@@ -100,7 +100,7 @@ class UiStore {
   /** Bumped when a definition is added: the lists of commands read the project again. */
   commandsRevision = $state(0);
   /** What the page studio opens on. */
-  layoutTab = $state<"margins" | "styles">("margins");
+  layoutTab = $state<"margins" | "styles" | "paragraphs">("margins");
   toasts = $state<Toast[]>([]);
   dialog = $state<DialogState | null>(null);
   /** Package or file to highlight in the packages panel. */
@@ -188,8 +188,8 @@ class UiStore {
     this.overlay = "commands";
   }
 
-  /** Opens the page studio: the margins of the document, or its page styles. */
-  openLayout(tab: "margins" | "styles" = "margins") {
+  /** Opens the page studio: the margins of the document, its page styles, or its paragraphs. */
+  openLayout(tab: "margins" | "styles" | "paragraphs" = "margins") {
     this.layoutTab = tab;
     this.overlay = "layout";
   }

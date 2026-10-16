@@ -1,6 +1,6 @@
 # Mise en page
 
-Les marges, l'en-tête, le pied de page, un filigrane : la fenêtre **Mise en page** les règle avec des champs, et montre le résultat sur de vraies pages, compilées avec la classe et le préambule de votre projet, avant de rien écrire dans le document. Ouvrez-la depuis le menu **Page**, ou par la palette de commandes (*Marges du document…*, *Styles de page…*).
+Les marges, l'en-tête, le pied de page, un filigrane, les paragraphes : la fenêtre **Mise en page** les règle avec des champs, et montre le résultat sur de vraies pages, compilées avec la classe et le préambule de votre projet, avant de rien écrire dans le document. Ouvrez-la depuis le menu **Page**, ou par la palette de commandes (*Marges du document…*, *Styles de page…*).
 
 Chaque groupe montre l'essentiel ; **Avancé**, à droite de son titre, déplie le reste.
 
@@ -59,6 +59,25 @@ Si l'en-tête est plus haut que la place que la page lui garde (une image, deux 
 > Une page qui ouvre un chapitre garde le style que son chapitre lui donne, même si son numéro est dans une plage : utilisez *Pages de titre et de chapitre* pour celles-là.
 
 **Enregistrer le style** écrit sa définition dans le préambule, avec les packages qu'il lui faut. **Supprimer le style** retire aussi ce qui l'utilisait ; *Annuler* dans l'éditeur le fait revenir.
+
+## Les paragraphes
+
+L'onglet **Paragraphes** (aussi *Page › Paragraphes et retraits…*) règle le début des paragraphes, vu sur une page compilée avec votre préambule :
+
+| Choix | Ce qui est écrit |
+|---|---|
+| **Retrait** | la première ligne en retrait, à la manière de LaTeX ; un retrait donné écrit `\setlength{\parindent}{…}` |
+| **Espace** | un espace entre les paragraphes, sans retrait : `\usepackage[skip=…]{parskip}` (vide : une demi-ligne) |
+| **Les deux** | `\usepackage[skip=…, indent]{parskip}` |
+| Premier paragraphe après un titre en retrait | l'usage français : `\frenchsetup{IndentFirst=…}` avec babel en français ; le package `indentfirst` sinon |
+
+Ce qui réglait les paragraphes avant (un autre `\setlength`, un `parskip`) est retiré : il n'en reste qu'un réglage.
+
+Sous les réglages, **Dans** *fichier* dit ce que le fichier ouvert fait à la main contre ses paragraphes, ligne par ligne (un clic y va) :
+
+- les `\noindent` : ceux qui ne font rien là où ils sont (pas de retrait à retirer : après un titre sans retrait, ou avec l'espace entre paragraphes) peuvent partir d'un clic ; ceux qui retirent un retrait voulu restent ;
+- les lignes vides après une formule, devant une phrase qui continue (`où`, `avec`…) : la ligne vide commence un nouveau paragraphe, en retrait ; sans elle, la phrase continue ;
+- les `\\` qui finissent un paragraphe : une ligne vide suffit, le `\\` ajoute une ligne trop courte (*Underfull \hbox*).
 
 ## La page de titre
 

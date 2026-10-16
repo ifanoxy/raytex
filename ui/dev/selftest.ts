@@ -1389,7 +1389,7 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
         ofFamily.insert.some((e) => /^Image/.test(e)) &&
         ofFamily.math.some((e) => /Courbes|plots/i.test(e)) &&
         ofFamily.math.some((e) => /variations/i.test(e)) &&
-        ofFamily.page.length === 5 &&
+        ofFamily.page.length === 6 &&
         atCells >= 15,
       `format ${ofFormat.length}, sizes ${sizes.length}, insert ${ofFamily.insert.join(" | ")}, maths ${ofFamily.math.join(" | ")}, page ${ofFamily.page.length}, @ ${atCells}`,
     );
@@ -1423,6 +1423,32 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     const first = document.querySelector(".palette .entry");
     check("menus: in the palette", /Saut de page|Page break/.test(first?.querySelector(".label")?.textContent ?? "") && /Page/.test(first?.querySelector(".detail")?.textContent ?? ""), first?.textContent);
     press("Escape");
+    // Paragraphs: a space between them in place of the indent, seen in the
+    // preview, written in the preamble; what the text did by hand goes.
+    const pv = editor.view!;
+    const parAt = pv.state.doc.toString().lastIndexOf("\\end{document}");
+    pv.dispatch({ changes: { from: parAt, insert: "\\noindent Un paragraphe fait main.\\\\\n\n" } });
+    void runAction("format.paragraphs");
+    await until(() => !!document.querySelector('.par-style[data-style="skip"]'), 10_000, "paragraphs tab");
+    document.querySelector<HTMLButtonElement>('.par-style[data-style="skip"]')!.click();
+    await until(() => !!document.querySelector<HTMLInputElement>(".left input[placeholder]")?.placeholder, 60_000, "paragraphs preview measured");
+    await until(() => !!document.querySelector('.par-issue[data-issue="noindent"] .btn'), 5_000, "noindent useless");
+    await scene("paragraphs", 1200);
+    const parButton = (label: RegExp) => [...document.querySelectorAll<HTMLButtonElement>(".left .actions .btn")].find((b) => label.test(b.textContent ?? ""));
+    parButton(/Appliquer|Apply/)!.click();
+    await until(() => /\\usepackage(\[[^\]]*\])?\{parskip\}/.test(editor.textOf(main) ?? ""), 5_000, "parskip written");
+    document.querySelector<HTMLButtonElement>('.par-issue[data-issue="noindent"] .btn')!.click();
+    await pause(200);
+    document.querySelector<HTMLButtonElement>('.par-issue[data-issue="break-paragraph"] .btn')!.click();
+    await pause(200);
+    const parText = editor.textOf(main) ?? "";
+    check("paragraphs: a space, written; what was done by hand gone", parText.includes("\nUn paragraphe fait main.\n\n") && !document.querySelector(".par-issue"), parText.slice(parText.lastIndexOf("fait main") - 30, parText.lastIndexOf("fait main") + 20));
+    ui.closeOverlay();
+    check("paragraphs: it builds", await buildOk(log, "paragraphs with a space"));
+    // As it was: the indent, the paragraph taken out.
+    const back = (editor.textOf(main) ?? "").replace(/\n\\usepackage(\[[^\]]*\])?\{parskip\}/, "").replace("Un paragraphe fait main.\n\n", "");
+    editor.view!.dispatch({ changes: { from: 0, to: editor.view!.state.doc.length, insert: back } });
+
     // The line written for the keyboard goes, whatever it became.
     const doc = editor.view!.state.doc;
     for (let n = doc.lines; n >= 1; n--) {

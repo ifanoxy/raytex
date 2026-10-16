@@ -1,6 +1,6 @@
 # Page layout
 
-Margins, header, footer, a watermark: the **Page layout** window sets them with fields, and shows the result on real pages, compiled with the class and the preamble of your project, before anything is written in the document. Open it from the **Page** menu, or from the command palette (*Margins of the document…*, *Page styles…*).
+Margins, header, footer, a watermark, paragraphs: the **Page layout** window sets them with fields, and shows the result on real pages, compiled with the class and the preamble of your project, before anything is written in the document. Open it from the **Page** menu, or from the command palette (*Margins of the document…*, *Page styles…*).
 
 Each group shows what matters most; **Advanced**, on the right of its title, unfolds the rest.
 
@@ -59,6 +59,25 @@ If the header is taller than the room the page keeps for it (an image, two lines
 > A page that opens a chapter keeps the style its chapter gives it, even when its number is in a range: use *Title and chapter pages* for those.
 
 **Save the style** writes its definition in the preamble, with the packages it needs. **Delete the style** also removes what used it; *Undo* in the editor brings it back.
+
+## Paragraphs
+
+The **Paragraphs** tab (also *Page › Paragraphs and indents…*) sets how paragraphs start, seen on a page compiled with your preamble:
+
+| Choice | What is written |
+|---|---|
+| **Indent** | the first line indented, LaTeX's way; an indent given writes `\setlength{\parindent}{…}` |
+| **Space** | a space between paragraphs, no indent: `\usepackage[skip=…]{parskip}` (empty: half a line) |
+| **Both** | `\usepackage[skip=…, indent]{parskip}` |
+| First paragraph after a heading indented | the French way: `\frenchsetup{IndentFirst=…}` with babel in French; the `indentfirst` package otherwise |
+
+What set the paragraphs before (another `\setlength`, a `parskip`) is taken out: one setting is left.
+
+Under the settings, **In** *file* says what the open file does by hand against its paragraphs, line by line (a click goes there):
+
+- the `\noindent`: those that do nothing where they are (no indent to take away: after a heading without one, or with the space between paragraphs) can go in one click; those taking away an indent on purpose stay;
+- blank lines after a formula, before a sentence that goes on (`where`, `with`…): the blank line starts a new paragraph, indented; without it, the sentence goes on;
+- the `\\` ending a paragraph: a blank line is enough, the `\\` adds a line too short (*Underfull \hbox*).
 
 ## The title page
 

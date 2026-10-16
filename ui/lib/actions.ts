@@ -257,6 +257,7 @@ export const actions: Action[] = [
   { id: "format.fonts", title: "action.fonts", category: "edit", icon: "type", when: hasProject, run: () => media.openFonts() },
   { id: "format.margins", title: "action.margins", category: "edit", icon: "margins", when: hasProject, run: () => ui.openLayout("margins") },
   { id: "format.pageStyles", title: "action.pageStyles", category: "edit", icon: "page-style", when: hasProject, run: () => ui.openLayout("styles") },
+  { id: "format.paragraphs", title: "action.paragraphs", category: "edit", icon: "align-left", when: hasProject, run: () => ui.openLayout("paragraphs") },
   { id: "format.titlePage", title: "action.titlePage", category: "edit", icon: "title-page", when: hasProject, run: () => ui.openOverlay("title") },
 
   // -------------------------------------------------------------- TeX
