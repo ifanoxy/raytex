@@ -82,6 +82,28 @@ export function partnerOf(doc: Text, span: NameSpan): { from: number; to: number
   return null;
 }
 
+/**
+ * A name chosen for an environment that is already there (in the list of
+ * completion, at `from`): when its `\begin{…}` or `\end{…}` has its
+ * partner, both names change and nothing else is written (no new body, no
+ * second `\end`). The cursor goes after the closing brace of the name
+ * edited. Null when it has no partner (a new environment).
+ */
+export function renameBoth(doc: Text, from: number, name: string): { changes: { from: number; to: number; insert: string }[]; cursor: number } | null {
+  if (!name || /[{}\\%\n]/.test(name)) return null;
+  const span = nameSpanAt(doc, from, from);
+  if (!span) return null;
+  const partner = partnerOf(doc, span);
+  if (!partner) return null;
+  const changes = [
+    { from: span.from, to: span.to, insert: name },
+    { from: partner.from, to: partner.to, insert: name },
+  ].sort((a, b) => a.from - b.from);
+  // The partner before (an \end edited): its new length moves the cursor.
+  const shift = partner.from < span.from ? name.length - (partner.to - partner.from) : 0;
+  return { changes, cursor: span.from + shift + name.length + 1 };
+}
+
 /** The change to add to `tr` so that the partner of an edited name follows it. */
 export function linkedChange(tr: Transaction): TransactionSpec | null {
   if (!tr.docChanged || !(tr.isUserEvent("input") || tr.isUserEvent("delete"))) return null;

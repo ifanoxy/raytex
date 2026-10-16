@@ -7,6 +7,7 @@ import type { CompletionItem, ItemKind } from "../types";
 import { t } from "../i18n.svelte";
 import { completionPrefix, docPath, hooks } from "./context";
 import { argumentHints } from "./hints";
+import { renameBoth } from "./linked-envs";
 import { autoClosed } from "./pairs";
 
 const TYPE: Record<ItemKind, string> = {
@@ -43,6 +44,15 @@ interface Extra {
  */
 function apply(item: CompletionItem, tail: string) {
   return (view: EditorView, completion: Completion, from: number, to: number) => {
+    // An environment already there, renamed: its \begin and its \end
+    // change together, and nothing else is written.
+    if (item.kind === "environment") {
+      const renamed = renameBoth(view.state.doc, from, item.label);
+      if (renamed) {
+        view.dispatch({ changes: renamed.changes, selection: { anchor: renamed.cursor }, userEvent: "input.complete", scrollIntoView: true });
+        return;
+      }
+    }
     if (tail && view.state.sliceDoc(to, to + tail.length) === tail) to += tail.length;
     // `@[` typed became `@[]`: the `]` goes with what is replaced.
     else if (autoClosed(view.state.sliceDoc(from, to), view.state.sliceDoc(to, to + 1))) to += 1;

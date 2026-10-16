@@ -2230,6 +2230,35 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
       await pause(200);
       check(`@${key} typed gives its brackets`, opened && view.state.doc.toString() === written, `${opened} ${view.state.doc.toString()}`);
     }
+    // An environment renamed from the list: its \begin and its \end
+    // change together, and no second body is written (from either end).
+    {
+      const body = "\\documentclass{article}\n\\begin{document}\n\\begin{itemize}\n\t\\item a\n\\end{itemize}\nSuite.\n\\end{document}\n";
+      const pick = async (at: number, typed: string, name: string) => {
+        view.dispatch({ changes: { from: at, to: at + "itemize".length, insert: "" }, selection: { anchor: at }, userEvent: "delete" });
+        typeKeys(typed);
+        startCompletion(view);
+        const opened = await until(() => currentCompletions(view.state).some((c) => c.label === name), 8_000, `${name} completion`).then(
+          () => true,
+          () => false,
+        );
+        const option = currentCompletions(view.state).findIndex((c) => c.label === name);
+        if (option >= 0) view.dispatch({ effects: setSelectedCompletion(option) });
+        await pause(200);
+        acceptCompletion(view);
+        await pause(300);
+        return opened;
+      };
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: body } });
+      const fromBegin = await pick(body.indexOf("\\begin{itemize}") + 7, "enu", "enumerate");
+      const renamed = view.state.doc.toString();
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: body } });
+      const fromEnd = await pick(body.indexOf("\\end{itemize}") + 5, "desc", "description");
+      const renamedEnd = view.state.doc.toString();
+      const wanted = (env: string) => body.replace(/itemize/g, env);
+      check("an environment renamed from the list keeps one \\end, renamed", fromBegin && renamed === wanted("enumerate"), `${fromBegin} ${JSON.stringify(renamed)}`);
+      check("from its \\end too", fromEnd && renamedEnd === wanted("description"), `${fromEnd} ${JSON.stringify(renamedEnd)}`);
+    }
     // Writing aids. Special characters typed in text are escaped (one
     // undo brings the character back); in a table, a label or a formula
     // they stay. A selection is wrapped by what is typed around it.

@@ -7,7 +7,7 @@ import { EditorSelection, EditorState, type TransactionSpec } from "@codemirror/
 import type { EditorView } from "@codemirror/view";
 import { dollarAction, insideDollarMath } from "./dollar.ts";
 import { alignLines, headingLine, headingOf, listBlock, setColor, setHeading, setList, setSize, tableSnippet } from "./format.ts";
-import { linkedEnvironments } from "./linked-envs.ts";
+import { linkedEnvironments, renameBoth } from "./linked-envs.ts";
 
 /** A view-like object: enough for commands that only read the state and dispatch. */
 function fakeView(doc: string, anchor: number, head = anchor) {
@@ -50,6 +50,26 @@ test("linked environments: renaming \\begin renames \\end", () => {
   const x = fakeView("\\begin{a}\n\\end{a}", 0);
   x.dispatch({ changes: { from: 7, to: 8, insert: "b" } });
   assert.equal(x.state.doc.toString(), "\\begin{b}\n\\end{a}");
+});
+
+test("linked environments: a name chosen in the list renames both, and writes nothing else", () => {
+  const doc = "\\begin{itemize}\n\\item a\n\\end{itemize}\nSuite.";
+  const apply = (text: string, at: number, name: string) => {
+    const r = renameBoth(EditorState.create({ doc: text }).doc, at, name);
+    if (!r) return null;
+    const state = EditorState.create({ doc: text }).update({ changes: r.changes, selection: { anchor: r.cursor } }).state;
+    return { text: state.doc.toString(), after: state.doc.sliceString(state.selection.main.head) };
+  };
+  // From \begin: the cursor after its brace.
+  assert.deepEqual(apply(doc, 7, "enumerate"), { text: "\\begin{enumerate}\n\\item a\n\\end{enumerate}\nSuite.", after: "\n\\item a\n\\end{enumerate}\nSuite." });
+  // From \end: the \begin before it is renamed too.
+  const end = doc.indexOf("\\end{") + 5;
+  assert.deepEqual(apply(doc, end, "description"), { text: "\\begin{description}\n\\item a\n\\end{description}\nSuite.", after: "\nSuite." });
+  // A name being typed (the \end followed it), then chosen.
+  assert.equal(apply("\\begin{enu}\n\\end{enu}", 7, "enumerate")?.text, "\\begin{enumerate}\n\\end{enumerate}");
+  // A new environment (no \end of that name): left to the list, which writes its body.
+  assert.equal(apply("\\begin{ite}\ntext\n", 7, "itemize"), null);
+  assert.equal(apply("\\begin{a}\n\\end{b}", 7, "c"), null);
 });
 
 test("headings", () => {
