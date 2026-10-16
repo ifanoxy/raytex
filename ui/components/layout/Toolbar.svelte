@@ -60,6 +60,7 @@
       actionItem("build.output"),
       { separator: true },
       actionItem("pdf.export"),
+      actionItem("pdf.exportArchive"),
       actionItem("pdf.external"),
       { separator: true },
       { label: t("toolbar.buildSettings"), icon: "settings", run: () => ui.openSettings("build") },

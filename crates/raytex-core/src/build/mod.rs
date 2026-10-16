@@ -111,6 +111,10 @@ pub struct BuildPlan {
     /// The build shows one file of the document (see [`only`]).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub only: Option<only::OnlyFile>,
+    /// TeX given to the engine before the document (`\DocumentMetadata{…}`
+    /// of a PDF/A, see [`crate::pdfa`]): nothing is written in the files.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prefix: Option<String>,
 }
 
 /// Why a build cannot start.
@@ -203,6 +207,7 @@ pub fn plan(
         tool,
         bib_tool,
         only: None,
+        prefix: None,
     })
 }
 
@@ -739,7 +744,17 @@ impl Runner<'_, '_> {
             cmd = cmd.args(preamble::use_format(self.ctx.dist, format));
         }
         cmd = cmd.args(s.extra_args.iter().cloned());
-        cmd.arg(plan.engine_input())
+        match &plan.prefix {
+            // Read before the document, the job keeping its name.
+            Some(prefix) => cmd
+                .arg(if self.ctx.dist.kind == DistroKind::MikTex {
+                    format!("--job-name={}", plan.job)
+                } else {
+                    format!("-jobname={}", plan.job)
+                })
+                .arg(format!("{prefix}\\input{{{}}}", plan.engine_input())),
+            None => cmd.arg(plan.engine_input()),
+        }
     }
 
     /// One engine run; returns its exit code and parsed log.
@@ -1265,6 +1280,9 @@ impl Runner<'_, '_> {
         }
         cmd = cmd.arg(format!("-outdir={}", plan.out_dir.display()));
         cmd = cmd.args(s.extra_args.iter().cloned());
+        if let Some(prefix) = &plan.prefix {
+            cmd = cmd.arg(format!("-usepretex={prefix}"));
+        }
         // The root, or the document written for a file shown on its own.
         cmd = cmd.arg(plan.engine_input());
         if self.figures {

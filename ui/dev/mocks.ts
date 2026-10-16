@@ -820,7 +820,7 @@ export function installMocks() {
           return false;
         case "export_pdf_lighter":
           return (async () => {
-            for (let done = 1; done <= 12; done++) {
+            for (let done = 1; done <= 12 && a.step !== null; done++) {
               await sleep(90);
               await emit("export:pictures", { done, total: 12 });
             }
@@ -829,7 +829,10 @@ export function installMocks() {
               await sleep(160);
               await emit("export:output", { lines: [{ stream: "stdout", text: `(./chapitres/introduction.tex [${i + 1}]` }] });
             }
-            return { size: 6_180_000, step: Number(a.step), within: true, errors: 0 };
+            const archive = a.archive
+              ? { standard: a.archive, problems: [], own: false, check: { version: "1.7", part: 2, conformance: "B", outputIntent: true, fonts: 9, notEmbedded: 0, missing: [], transparency: false, encrypted: false, javascript: false } }
+              : null;
+            return { size: 6_180_000, step: Number(a.step ?? 0), within: true, errors: 0, archive };
           })();
         case "export_file":
           return sleep(250).then(() => null);

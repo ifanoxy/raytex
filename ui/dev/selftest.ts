@@ -6,6 +6,7 @@
 // distribution, waits for the PDF to be drawn by pdf.js, exercises
 // completion and SyncTeX, prints a report on the terminal and quits.
 
+import { runAction } from "$lib/actions";
 import { refused } from "$lib/policy";
 import { acceptCompletion, currentCompletions, setSelectedCompletion, startCompletion } from "@codemirror/autocomplete";
 import { undo } from "@codemirror/commands";
@@ -1137,6 +1138,29 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
       ok;
   } catch (e) {
     log(`lighter pdf failed: ${e}, job ${JSON.stringify(pdfExport.job)}`);
+    ok = false;
+  }
+  // ---------------------------------------------------------------- PDF/A
+  // Asked for from its command: the window of choices has it ticked; the
+  // document is built apart as a PDF/A-2b, and the PDF made is checked.
+  try {
+    const root = project.info!.root;
+    void runAction("pdf.exportArchive");
+    await until(() => !!document.querySelector(".pdf-choice .archive select"), 20_000, "PDF/A in the choices");
+    const level = document.querySelector<HTMLSelectElement>(".pdf-choice .archive select")!.value;
+    await scene("pdf-archive");
+    ui.closeOverlay();
+    const archived = `${root}-archive-${Date.now()}.pdf`;
+    await pdfExport.start(archived, { kind: "original" }, "a-2b");
+    await until(() => pdfExport.job === null, 240_000, "PDF/A export");
+    const bytes = new Uint8Array(await ipc.readBinaryFile(archived));
+    const head = new TextDecoder().decode(bytes.slice(0, 8));
+    const said = ui.toasts.map((x) => x.message).find((m) => m.includes("PDF/A")) ?? "";
+    log(`pdf/a: level offered ${level}, file ${bytes.length} bytes, ${head.trim()}, said «${said}»`);
+    ok = level === "a-2b" && bytes.length > 1000 && head.startsWith("%PDF-1.7") && /PDF\/A-2B/.test(said) && /Vérifié|Checked/.test(said) && ok;
+  } catch (e) {
+    log(`pdf/a failed: ${e}, job ${JSON.stringify(pdfExport.job)}`);
+    if (ui.overlay) ui.closeOverlay();
     ok = false;
   }
   await editor.saveAll();

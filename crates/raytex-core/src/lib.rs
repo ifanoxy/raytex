@@ -48,6 +48,7 @@ pub mod lighter;
 pub mod lint;
 pub mod log;
 pub mod navigation;
+pub mod pdfa;
 pub mod preview;
 pub mod process;
 pub mod projects;

@@ -56,10 +56,15 @@ class PdfExportStore {
   private last: { dest: string; phase: ExportWindowPhase; end: { result: string; warning: boolean } | null } | null = null;
   /** The window being opened. */
   private opening: Promise<void> = Promise.resolve();
+  /** The export is a PDF/A, of this level. */
+  private archive: ipc.PdfStandard | null = null;
+  /** Asked for from "Export as PDF/A": the window of choices opens with it ticked. */
+  archiveAsked = false;
 
-  /** Exports the PDF of the document to `dest`, as it is or with lighter pictures. */
-  async start(dest: string, choice: PdfChoice = ORIGINAL) {
+  /** Exports the PDF of the document to `dest`, as it is or with lighter pictures, as a PDF/A when `archive` is given. */
+  async start(dest: string, choice: PdfChoice = ORIGINAL, archive: ipc.PdfStandard | null = null) {
     if (this.job && this.job.phase !== "failed") return;
+    this.archive = archive;
     const run = ++this.run;
     const current = () => run === this.run;
     this.job = null;
@@ -181,7 +186,7 @@ class PdfExportStore {
   }
 
   private write(dest: string, choice: PdfChoice, run: number, withErrors: boolean) {
-    return choice.kind === "original" ? this.copy(dest, run, withErrors) : this.lighter(dest, choice, run);
+    return choice.kind === "original" && !this.archive ? this.copy(dest, run, withErrors) : this.lighter(dest, choice, run);
   }
 
   private async copy(dest: string, run: number, withErrors: boolean) {
@@ -241,32 +246,47 @@ class PdfExportStore {
     });
   }
 
-  /** The document built again with lighter pictures, in a copy of the project, and written at `dest`. */
-  private async lighter(dest: string, choice: Exclude<PdfChoice, { kind: "original" }>, run: number) {
+  /**
+   * The document built again apart, and written at `dest`: with lighter
+   * pictures (in a copy of the project), as a PDF/A (checked once made).
+   */
+  private async lighter(dest: string, choice: PdfChoice, run: number) {
     const target = build.target();
     if (!target) return this.fail(dest, choice, 0, t("pdfExport.noPdf"), false);
     const current = () => run === this.run;
-    this.set(dest, choice, "pictures");
+    const archive = this.archive;
+    this.set(dest, choice, choice.kind === "original" ? "lighter" : "pictures");
     await this.ready();
     if (!current()) return;
     const lang = i18n.lang === "fr" ? "fr" : "en";
     try {
-      let step = choice.kind === "step" ? choice.step : STEP_LIGHT;
+      let step: number | null = choice.kind === "original" ? null : choice.kind === "step" ? choice.step : STEP_LIGHT;
       if (choice.kind === "limit") {
         // The lightest touch that should do: the engine goes further if the PDF is still over.
         const weights = await ipc.pdfWeights(target);
         if (!current()) return;
         if (weights) step = stepFor(weights, choice.bytes).step;
       }
-      const made = await ipc.exportPdfLighter(target, dest, step, choice.kind === "limit" ? choice.bytes : null);
+      const made = await ipc.exportPdfLighter(target, dest, step, choice.kind === "limit" ? choice.bytes : null, archive);
       if (!current()) return;
       const told = { file: basename(dest), size: sizeLabel(made.size, lang) };
+      if (made.archive) {
+        const a = made.archive;
+        const standard = `PDF/${a.standard.slice(0, 1).toUpperCase()}-${a.standard.slice(2).toUpperCase()}`;
+        if (!a.problems.length) this.done(dest, "success", t("pdfExport.doneArchive", { ...told, standard }));
+        else {
+          const problems = a.problems.map((p) => t(`pdfa.problem.${p}` as "pdfa.problem.fonts", { n: a.check.notEmbedded, names: a.check.missing.join(", ") })).join(" ; ");
+          this.done(dest, "warning", t("pdfExport.archiveProblems", { ...told, standard, problems }));
+        }
+        return;
+      }
       if (made.within) this.done(dest, "success", t("pdfExport.doneSize", told));
       else this.done(dest, "warning", t("pdfExport.doneOver", { ...told, limit: sizeLabel(choice.kind === "limit" ? choice.bytes : 0, lang) }));
     } catch (e) {
       if (!current()) return;
       const said = String(e);
       if (said.includes("cancelled")) return this.close();
+      if (said.includes("archive-engine")) return this.fail(dest, choice, 0, t("pdfExport.archiveEngine"), false);
       const why = said.startsWith("build:") ? said.slice(6).trim() || t("pdfExport.noOutput") : said;
       this.fail(dest, choice, 0, why, false);
     }

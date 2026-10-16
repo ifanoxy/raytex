@@ -132,6 +132,7 @@ export const actions: Action[] = [
   { id: "build.problems", title: "action.showProblems", category: "build", icon: "alert-circle", run: () => ui.showBottom("problems") },
   { id: "build.live", title: "action.toggleLiveBuild", category: "build", icon: "bolt", run: () => toggleLiveBuild() },
   { id: "pdf.export", title: "action.exportPdf", category: "build", icon: "download", when: hasPdf, run: () => viewer.exportPdf() },
+  { id: "pdf.exportArchive", title: "action.exportArchive", category: "build", icon: "shield", when: hasPdf, run: () => void openArchive() },
   { id: "pdf.external", title: "action.openPdfExternal", category: "build", icon: "external", when: hasPdf, run: () => viewer.openExternal() },
 
   // ------------------------------------------------------------- view
@@ -286,6 +287,13 @@ export function openGrid(view: EditorView, kind: GridKind, rows = 3, cols = 3) {
 }
 
 /** Opens the TikZ studio, on the picture under the cursor if there is one. */
+/** The window of choices of the export, PDF/A ticked. */
+async function openArchive() {
+  const { pdfExport } = await import("./state/pdfexport.svelte");
+  pdfExport.archiveAsked = true;
+  ui.openOverlay("pdfChoice");
+}
+
 export async function openTikz() {
   media.openTikz(await editor.tikzAt());
 }

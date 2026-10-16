@@ -77,15 +77,31 @@ export const pdfPictures = (path: string) => call<{ pictures: number; original: 
 /** What these pictures weigh at each step of compression (seconds, the first time); null when given up. */
 export const pdfWeights = (path: string) => call<PdfWeights | null>("pdf_weights", { path });
 export const pdfWeightsCancel = () => call<void>("pdf_weights_cancel");
-/** A lighter PDF: its size, the step it was made with, whether it is within the limit asked. */
+/** The levels of PDF/A offered. */
+export type PdfStandard = "a-2b" | "a-1b" | "a-2u" | "a-3b";
+/** What a PDF/A export found in the PDF it made: what does not go with the standard (`fonts`, `transparency`…). */
+export interface PdfArchive {
+  standard: PdfStandard;
+  problems: string[];
+  /** The document gives its own `\DocumentMetadata`: it was kept. */
+  own: boolean;
+  check: { version: string; part: number | null; conformance: string | null; outputIntent: boolean; fonts: number; notEmbedded: number; missing: string[]; transparency: boolean; encrypted: boolean; javascript: boolean };
+}
+/** A PDF built apart: its size, the step of its pictures, whether it is within the limit asked, what its PDF/A check found. */
 export interface LighterPdf {
   size: number;
   step: number;
   within: boolean;
   errors: number;
+  archive: PdfArchive | null;
 }
-/** Builds the document again with its pictures at `step` in a copy of the project, and writes the PDF at `dest`. */
-export const exportPdfLighter = (path: string, dest: string, step: number, limit: number | null) => call<LighterPdf>("export_pdf_lighter", { path, dest, step, limit });
+/**
+ * Builds the document again apart and writes the PDF at `dest`: with its
+ * pictures at `step` (null: as they are) in a copy of the project, as a
+ * PDF/A when `archive` is given.
+ */
+export const exportPdfLighter = (path: string, dest: string, step: number | null, limit: number | null, archive: PdfStandard | null = null) =>
+  call<LighterPdf>("export_pdf_lighter", { path, dest, step, limit, archive });
 export const exportPdfCancel = () => call<void>("export_pdf_cancel");
 /** Opens the window of its own that follows an export (or brings it to the front). */
 export const exportWindowOpen = (title: string) => call<void>("export_window_open", { title });

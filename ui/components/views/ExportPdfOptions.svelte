@@ -24,7 +24,7 @@
   const target = build.target();
 
   // The choice and the limit of the last time.
-  const saved: { kind?: Kind; limit?: string } = (() => {
+  const saved: { kind?: Kind; limit?: string; standard?: ipc.PdfStandard } = (() => {
     try {
       return JSON.parse(localStorage.getItem(KEY) ?? "{}");
     } catch {
@@ -33,6 +33,11 @@
   })();
   let kind = $state<Kind>(KINDS.includes(saved.kind as Kind) ? (saved.kind as Kind) : "original");
   let limit = $state(typeof saved.limit === "string" ? saved.limit : "10");
+  const STANDARDS: ipc.PdfStandard[] = ["a-2b", "a-1b", "a-2u", "a-3b"];
+  /** A PDF/A, for archiving: ticked when asked for from "Export as PDF/A". */
+  let archive = $state(pdfExport.archiveAsked);
+  let standard = $state<ipc.PdfStandard>(STANDARDS.includes(saved.standard as ipc.PdfStandard) ? (saved.standard as ipc.PdfStandard) : "a-2b");
+  pdfExport.archiveAsked = false;
   /** The pictures and the PDF as they are (at once), then what they weigh at each step (seconds). */
   let pictures = $state<{ pictures: number; original: number; pdf: number | null } | null>(null);
   let weights = $state<PdfWeights | null>(null);
@@ -41,6 +46,8 @@
   onMount(async () => {
     if (!target) return;
     pictures = await ipc.pdfPictures(target).catch(() => null);
+    // No pictures: the PDF as it is (a PDF/A, if asked).
+    if (!pictures?.pictures) kind = "original";
     weights = await ipc.pdfWeights(target).catch(() => null);
     weighing = false;
   });
@@ -64,7 +71,7 @@
   async function choose() {
     if (!ready) return;
     try {
-      localStorage.setItem(KEY, JSON.stringify({ kind, limit }));
+      localStorage.setItem(KEY, JSON.stringify({ kind, limit, standard }));
     } catch {
       /* not remembered */
     }
@@ -75,16 +82,16 @@
     const dest = await save({ defaultPath, filters: [{ name: "PDF", extensions: ["pdf"] }] });
     if (!dest) return;
     ui.closeOverlay();
-    await pdfExport.start(dest, choice);
+    await pdfExport.start(dest, choice, archive ? standard : null);
   }
 </script>
 
 <Modal title={t("pdfChoice.title")} icon="download" width="min(540px, 94vw)" height="auto">
   <div class="pdf-choice">
-    {#if pictures}
+    {#if pictures?.pictures}
       <p class="what faint">{plural(pictures.pictures, "pdfChoice.picturesOne", "pdfChoice.picturesMany")} · {sizeLabel(pictures.original, lang)}</p>
     {/if}
-    <div class="choices" role="radiogroup" aria-label={t("pdfChoice.title")}>
+    <div class="choices" role="radiogroup" aria-label={t("pdfChoice.title")} hidden={!pictures?.pictures}>
       {#each KINDS as of (of)}
         {@const size = about(of)}
         <label class="choice" class:active={kind === of} data-kind={of}>
@@ -107,7 +114,16 @@
         </label>
       {/each}
     </div>
-    <p class="note faint"><Icon name="shield" size={13} />{t("pdfChoice.note")}</p>
+    <div class="archive" class:active={archive}>
+      <label class="check"><input type="checkbox" bind:checked={archive} />{t("pdfChoice.archive")}</label>
+      {#if archive}
+        <select class="select" bind:value={standard} aria-label={t("pdfChoice.archiveLevel")}>
+          {#each STANDARDS as s (s)}<option value={s}>{t(`pdfa.${s}`)}</option>{/each}
+        </select>
+        <span class="hint faint">{t("pdfChoice.archiveHint")}</span>
+      {/if}
+    </div>
+    {#if pictures?.pictures}<p class="note faint"><Icon name="shield" size={13} />{t("pdfChoice.note")}</p>{/if}
     <div class="buttons">
       <button class="btn" onclick={() => ui.closeOverlay()}>{t("common.cancel")}</button>
       <button class="btn primary" disabled={!ready} onclick={choose}><Icon name="download" size={14} />{t("pdfChoice.export")}</button>
@@ -133,6 +149,33 @@
     display: flex;
     align-items: center;
     gap: 6px;
+  }
+  .archive {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .archive.active {
+    border-color: var(--accent);
+  }
+  .archive .check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .archive .check input {
+    accent-color: var(--accent);
+  }
+  .archive .hint {
+    font-size: 11.5px;
+  }
+  .choices[hidden] {
+    display: none;
   }
   .choices {
     display: flex;

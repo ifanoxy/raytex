@@ -15,7 +15,9 @@ use raytex_core::diagnostics::Severity;
 use raytex_core::export::{self, Target};
 use raytex_core::images::Compression;
 use raytex_core::lighter::{self, Cache};
-use raytex_core::{history, lighter::Weights};
+use raytex_core::settings::BuildTool;
+use raytex_core::tex::Engine;
+use raytex_core::{history, lighter::Weights, pdfa};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
@@ -123,6 +125,8 @@ pub struct LighterPdf {
     pub within: bool,
     /// Errors of its build (it made a PDF all the same).
     pub errors: usize,
+    /// What a PDF/A export found in it.
+    pub archive: Option<Archive>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -140,20 +144,36 @@ impl Drop for Copy {
     }
 }
 
-/// Builds the document of `path` again with its pictures at `step`, in a
-/// copy of the project, and writes the PDF at `dest`. With a `limit` (in
-/// bytes), a PDF that weighs more is built again at the next steps (three
-/// times at most). Nothing of the project is touched.
+/// What a PDF/A export found in the PDF it made (see `raytex_core::pdfa`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Archive {
+    pub standard: pdfa::Standard,
+    /// What does not go with the standard (`fonts`, `transparency`…).
+    pub problems: Vec<&'static str>,
+    /// The document gives its own `\DocumentMetadata`: it was kept.
+    pub own: bool,
+    pub check: pdfa::Check,
+}
+
+/// Builds the document of `path` again apart and writes the PDF at `dest`:
+/// with its pictures at `step` (in a copy of the project; with a `limit` in
+/// bytes, a PDF that weighs more is built again at the next steps, three
+/// times at most), and as a PDF/A when `archive` is given (in a folder of
+/// the build of its own when the pictures stay as they are). Nothing of the
+/// project is touched.
 ///
-/// Fails with `no-project`, `no-distribution`, `cancelled`, or
-/// `build:<what stopped it>` when no whole PDF was made.
+/// Fails with `no-project`, `no-distribution`, `cancelled`, `archive-engine`
+/// (an engine that cannot write a PDF/A), or `build:<what stopped it>` when
+/// no whole PDF was made.
 #[tauri::command]
 pub async fn export_pdf_lighter(
     app: AppHandle,
     path: String,
     dest: String,
-    step: usize,
+    step: Option<usize>,
     limit: Option<u64>,
+    archive: Option<pdfa::Standard>,
 ) -> CmdResult<LighterPdf> {
     let file = abs(&path);
     let dest = abs(&dest);
@@ -169,51 +189,78 @@ pub async fn export_pdf_lighter(
         let pictures = cache(state);
         pictures.prune();
 
-        let work = state
-            .paths
-            .cache
-            .join("export")
-            .join(history::folder(Path::new(""), &root_dir));
-        let _copy = Copy(work.clone());
-        let mirror = lighter::mirror(
-            &Target {
-                root_dir: &root_dir,
-                main: &main,
-                out_dir: &out_dir,
-                bib_files: &bib_files,
-            },
-            whole,
-            &work,
-        )
-        .map_err(err)?;
-
         let mut settings = prep.settings.clone();
         settings.synctex = false;
         settings.precompile_preamble = false;
         settings.figure_cache = false;
         settings.halt_on_error = false;
         settings.copy_pdf_to_root = false;
-        // Built outside its folder (a file opened on its own): the copy too.
-        if !mirror
-            .out_dir
-            .starts_with(mirror.main.parent().unwrap_or(&work))
-        {
-            settings.out_dir = mirror.out_dir.to_string_lossy().into_owned();
+        // Steps of one's own cannot be given what is read before the document.
+        if archive.is_some() && settings.tool == BuildTool::Custom {
+            settings.tool = BuildTool::Auto;
         }
+        // Lighter pictures: in a copy of the project, removed at the end.
+        let work = state
+            .paths
+            .cache
+            .join("export")
+            .join(history::folder(Path::new(""), &root_dir));
+        let (_copy, mirror) = match step {
+            Some(_) => {
+                let mirror = lighter::mirror(
+                    &Target {
+                        root_dir: &root_dir,
+                        main: &main,
+                        out_dir: &out_dir,
+                        bib_files: &bib_files,
+                    },
+                    whole,
+                    &work,
+                )
+                .map_err(err)?;
+                // Built outside its folder (a file opened on its own): the copy too.
+                if !mirror
+                    .out_dir
+                    .starts_with(mirror.main.parent().unwrap_or(&work))
+                {
+                    settings.out_dir = mirror.out_dir.to_string_lossy().into_owned();
+                }
+                (Some(Copy(work.clone())), Some(mirror))
+            }
+            None => {
+                // As it is, for the archive: apart from the build of the project.
+                settings.out_dir = out_dir.join(".raytex-pdfa").to_string_lossy().into_owned();
+                (None, None)
+            }
+        };
+        let root = mirror
+            .as_ref()
+            .map_or(prep.root.clone(), |m| m.main.clone());
+        let root_text = std::fs::read_to_string(&root).unwrap_or_default();
         let source = |p: &Path| std::fs::read_to_string(p).ok();
         let last = Compression::STEPS.len() - 1;
-        let mut step = step.min(last);
+        let mut step = step.map(|s| s.min(last));
         let mut attempts = 0;
         let (built, size, errors) = loop {
             attempts += 1;
-            let told = |done: usize, total: usize| {
-                let _ = app.emit("export:pictures", Pictures { done, total });
-            };
-            if !lighter::lighten(&mirror, Compression::STEPS[step], &pictures, &cancel, &told) {
-                return Err("cancelled".to_owned());
+            if let (Some(mirror), Some(at)) = (&mirror, step) {
+                let told = |done: usize, total: usize| {
+                    let _ = app.emit("export:pictures", Pictures { done, total });
+                };
+                if !lighter::lighten(mirror, Compression::STEPS[at], &pictures, &cancel, &told) {
+                    return Err("cancelled".to_owned());
+                }
             }
-            let plan = build::plan(&mirror.main, &settings, Some(&dist), &prep.facts, lang)
+            let mut plan = build::plan(&root, &settings, Some(&dist), &prep.facts, lang)
                 .map_err(|e| format!("build:{}", e.to_diagnostic(lang).message))?;
+            if let Some(standard) = archive {
+                if matches!(plan.engine, Engine::Tectonic | Engine::Latex) {
+                    return Err("archive-engine".to_owned());
+                }
+                if !pdfa::has_metadata(&root_text) {
+                    plan.prefix = Some(pdfa::metadata(standard, &root_text));
+                }
+            }
             let (tx, forwarder) = forward_output(app, "export:output");
             let ctx = RunContext {
                 dist: &dist,
@@ -253,19 +300,36 @@ pub async fn export_pdf_lighter(
             let size = std::fs::metadata(&built).map_err(err)?.len();
             // Over the limit: the pictures one step lighter, the build again
             // (its state is there: one pass).
-            if limit.is_some_and(|l| size > l) && step < last && attempts < 4 {
-                step += 1;
+            if let Some(at) = step
+                && limit.is_some_and(|l| size > l)
+                && at < last
+                && attempts < 4
+            {
+                step = Some(at + 1);
                 continue;
             }
             break (built, size, errors.len());
+        };
+        let archive = match archive {
+            Some(standard) => {
+                let check = pdfa::check(&built).map_err(err)?;
+                Some(Archive {
+                    standard,
+                    problems: pdfa::problems(&check, standard),
+                    own: pdfa::has_metadata(&root_text),
+                    check,
+                })
+            }
+            None => None,
         };
         state.note_own_write(&dest);
         export::copy_pdf(&built, &dest).map_err(err)?;
         Ok(LighterPdf {
             size,
-            step,
+            step: step.unwrap_or(0),
             within: limit.is_none_or(|l| size <= l),
             errors,
+            archive,
         })
     })
     .await?
