@@ -34,6 +34,126 @@ export interface VersionNotes {
 
 export const NOTES: VersionNotes[] = [
   {
+    version: "0.5.4",
+    date: "2026-10-16",
+    en: {
+      points: [
+        "Menus in the top bar (Format, Insert, Maths, Page, @) in place of See all: every tool by its name, with its shortcut and its submenus, usable with the keyboard.",
+        "A subject and its answer key from one file: Subject | Answer key above the preview, and both PDFs exported in one go.",
+        "Studios for maths: function plots (tangents, points, areas), tables of variations and of signs worked out from a function, probability trees.",
+        "PDF/A for archiving and accessible PDF (PDF/UA, read by screen readers), checked once made, and a description for each picture.",
+        "Paragraphs and indents set in the Page layout window, and what the text does by hand against them found and taken out.",
+        "Fixes, and a lighter start.",
+      ],
+      details: [
+        {
+          title: "Menus",
+          items: [
+            "The top bar has the menus Format, Insert, Maths, Page and @: each tool by its name with its shortcut, the style of the line, the size, the colour and the alignment in submenus, the @ shortcuts drawn.",
+            "A click opens a menu, passing over the others opens them; the arrows, Enter, Escape and the first letter of an entry work in them, and the text keeps its selection meanwhile.",
+            "The command palette finds what they hold by its name too (Large, Fraction, Page break…).",
+          ],
+        },
+        {
+          title: "Subject and answer key",
+          items: [
+            "Above the preview, Subject | Answer key turns the switch of the document (one line of its preamble) and builds; Export both writes the subject and the answer key, each built apart, the document untouched.",
+            "Insert › Subject and answer key writes an exercise with its points, a solution (framed in the answer key, left out of the subject), lines, room or a grid to answer on, with what they need in the preamble.",
+            "The class exam, xsim and a switch of the document's own are understood as they are; a new template, Test with answer key, has it all. The export window gives the total of the points.",
+          ],
+        },
+        {
+          title: "Studios for maths",
+          items: [
+            "Function plots (pgfplots): functions written as on paper, each with its colour, line and name, tangents worked out from the derivative, points, lines, areas, axes as in textbooks. Opened again from its chip.",
+            "Tables of variations and of signs (tkz-tab): filled by hand, or from a function (derivative, zeros, forbidden values, limits, simple values written exactly).",
+            "Probability trees: one line a branch, the probability left out of two worked out (1 - p), each node checked to add up to 1, the probability of each path at its end if asked.",
+          ],
+        },
+        {
+          title: "PDF/A and accessible PDF",
+          items: [
+            "Export as PDF/A builds the document apart for archiving (PDF/A-2b, 1b, 2u or 3b), with pdfLaTeX, LuaLaTeX and XeLaTeX, then checks the PDF made (identification, colour profile, fonts, transparency).",
+            "Export an accessible PDF builds it tagged, as PDF/UA-2 (PDF/A-3b and PDF/UA-1 with a PDF/A): its structure and language read by screen readers. The pictures without a description are counted.",
+            "Both were validated with veraPDF, the reference validator. The image window has a Description field for each picture (`alt={…}`).",
+          ],
+        },
+        {
+          title: "Paragraphs and indents",
+          items: [
+            "A tab of the Page layout window: paragraphs indented, apart (a space between them) or both, the first one after a heading indented or not, seen on a compiled page before anything is written.",
+            "What the open file does by hand against them, line by line: the `\\noindent` that do nothing, the blank lines after a formula that start a new paragraph, the `\\\\` ending a paragraph, each taken out in a click.",
+          ],
+        },
+        {
+          title: "Fixes",
+          items: [
+            "An environment renamed from the list of completion (`itemize` becoming `enumerate`) got a second body and `\\end`: its `\\begin` and `\\end` now change together, from either one.",
+            "The code of the studios is loaded when one of them is opened, not at startup.",
+          ],
+        },
+      ],
+    },
+    fr: {
+      points: [
+        "Des menus dans la barre du haut (Format, Insertion, Maths, Page, @) à la place de Tout voir : chaque outil par son nom, avec son raccourci et ses sous-menus, utilisables au clavier.",
+        "Un sujet et son corrigé dans un seul fichier : Sujet | Corrigé au-dessus de l'aperçu, et les deux PDF exportés d'un coup.",
+        "Des ateliers de maths : courbes de fonctions (tangentes, points, aires), tableaux de variations et de signes calculés depuis une fonction, arbres de probabilités.",
+        "PDF/A pour l'archivage et PDF accessible (PDF/UA, lu par les lecteurs d'écran), vérifiés une fois faits, et une description pour chaque image.",
+        "Les paragraphes et leur retrait réglés dans la fenêtre Mise en page, et ce que le texte fait à la main contre eux trouvé et retiré.",
+        "Des corrections, et un démarrage plus léger.",
+      ],
+      details: [
+        {
+          title: "Les menus",
+          items: [
+            "La barre du haut a les menus Format, Insertion, Maths, Page et @ : chaque outil par son nom avec son raccourci, le style de la ligne, la taille, la couleur et l'alignement en sous-menus, les raccourcis @ dessinés.",
+            "Un clic ouvre un menu, passer sur les autres les ouvre ; les flèches, Entrée, Échap et la première lettre d'une entrée y fonctionnent, et le texte garde sa sélection pendant ce temps.",
+            "La palette de commandes trouve aussi ce qu'ils contiennent par son nom (Grand, Fraction, Saut de page…).",
+          ],
+        },
+        {
+          title: "Sujet et corrigé",
+          items: [
+            "Au-dessus de l'aperçu, Sujet | Corrigé bascule l'interrupteur du document (une ligne de son préambule) et compile ; Exporter les deux écrit le sujet et le corrigé, chacun compilé à part, sans toucher au document.",
+            "Insertion › Sujet et corrigé écrit un exercice avec son barème, un corrigé (encadré dans le corrigé, absent du sujet), des lignes, une place ou un quadrillage pour répondre, avec ce qu'il leur faut dans le préambule.",
+            "La classe exam, xsim et un interrupteur propre au document sont compris tels quels ; un nouveau modèle, Devoir avec corrigé, a tout cela. La fenêtre d'export donne le total des points.",
+          ],
+        },
+        {
+          title: "Les ateliers de maths",
+          items: [
+            "Courbes de fonctions (pgfplots) : des fonctions écrites comme sur papier, chacune avec sa couleur, son trait et son nom, des tangentes calculées depuis la dérivée, des points, des droites, des aires, des axes comme dans les manuels. Rouvert depuis sa puce.",
+            "Tableaux de variations et de signes (tkz-tab) : remplis à la main, ou depuis une fonction (dérivée, zéros, valeurs interdites, limites, valeurs simples écrites exactement).",
+            "Arbres de probabilités : une ligne par branche, la probabilité laissée vide sur deux calculée (1 - p), chaque nœud vérifié pour faire 1, la probabilité de chaque chemin au bout si demandé.",
+          ],
+        },
+        {
+          title: "PDF/A et PDF accessible",
+          items: [
+            "Exporter en PDF/A compile le document à part pour l'archivage (PDF/A-2b, 1b, 2u ou 3b), avec pdfLaTeX, LuaLaTeX et XeLaTeX, puis vérifie le PDF obtenu (identification, profil de couleur, polices, transparence).",
+            "Exporter un PDF accessible le compile balisé, en PDF/UA-2 (PDF/A-3b et PDF/UA-1 avec un PDF/A) : sa structure et sa langue lues par les lecteurs d'écran. Les images sans description sont comptées.",
+            "Les deux ont été validés avec veraPDF, le validateur de référence. La fenêtre des images a un champ Description pour chaque image (`alt={…}`).",
+          ],
+        },
+        {
+          title: "Paragraphes et retraits",
+          items: [
+            "Un onglet de la fenêtre Mise en page : des paragraphes en retrait, séparés par un espace ou les deux, le premier après un titre en retrait ou non, vus sur une page compilée avant que rien ne soit écrit.",
+            "Ce que le fichier ouvert fait à la main contre eux, ligne par ligne : les `\\noindent` sans effet, les lignes vides après une formule qui commencent un nouveau paragraphe, les `\\\\` en fin de paragraphe, chacun retiré d'un clic.",
+          ],
+        },
+        {
+          title: "Corrections",
+          items: [
+            "Un environnement renommé depuis la liste de complétion (`itemize` devenant `enumerate`) recevait un deuxième corps et un deuxième `\\end` : son `\\begin` et son `\\end` changent maintenant ensemble, depuis l'un ou l'autre.",
+            "Le code des ateliers se charge quand l'un d'eux s'ouvre, plus au démarrage.",
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: "0.5.3",
     date: "2026-10-15",
     en: {

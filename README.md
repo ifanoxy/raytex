@@ -30,7 +30,7 @@ RayTeX is a LaTeX editor that helps beginners learn and lets experts go fast: li
 ## Features
 
 **Writing**
-- A formatting bar like a word processor's: undo / redo, heading style of the line, text size, bold, italic, underline, colour, alignment, lists, formulas, image, table (size picked on a grid), TikZ drawing, links and references; **See all** lists every command with its shortcut. The top bar keeps the project, the build and a **View** menu; the PDF preview and the console close with a cross.
+- A formatting bar like a word processor's: undo / redo, heading style of the line, text size, bold, italic, underline, colour, alignment, lists, formulas, image, table (size picked on a grid), TikZ drawing, links and references; the **menus** of the top bar (Format, Insert, Maths, Page, @) hold every command by its name, with its shortcut and submenus, usable with the keyboard. The top bar also keeps the project, the build and a **View** menu; the PDF preview and the console close with a cross.
 - Context-aware completion: commands and environments of the LaTeX kernel, of every package your document loads (read from the package source, whatever the package), of your own `\newcommand`s; labels with their number, citations with authors and title, files, options, colours.
 - Keys and values of arguments, with their documentation: `\includegraphics[width=…]`, `\begin{itemize}[label=…]`, `\hypersetup{…}`, `\geometry{…}`, siunitx, listings, minted, tcolorbox, fontspec, TikZ, pgfplots, beamer… (about 520 documented keys, plus the keys each installed package declares). In a free argument, a hint says what goes there (`\item[term]`: the text shown instead of the bullet).
 - A matrix and table editor filled cell by cell (Enter to the next cell, paste from a spreadsheet, LaTeX formatting and macros in the cells, live preview); a chip after `\begin{pmatrix}`, `\begin{tabular}`, `\includegraphics` or `\begin{tikzpicture}` reopens the matching editor on that code.
@@ -45,6 +45,7 @@ RayTeX is a LaTeX editor that helps beginners learn and lets experts go fast: li
 - Environment auto-closing, list continuation, folding, multiple cursors, Vim mode, spell checking.
 
 **Images, drawings and fonts**
+- *Studios for maths*: **function plots** (pgfplots: functions written as on paper, tangents from the derivative, points, lines, areas, axes as in textbooks), **tables of variations and of signs** (tkz-tab, filled from a function) and **probability trees** (the probability left out of two worked out, the probability of each path), each opened again from its chip.
 - *Insert images*: choose, paste or drop images (or pick those of the project); folder, LaTeX-safe file name, width with a page preview, placement, caption and label; several images become sub-figures. SVG is converted to vector PDF, WebP/GIF/HEIC/BMP/TIFF to PNG; `graphicx`, `subcaption`, `float` are added when needed.
 - *Commands of the project*: every `\newcommand`, operator, environment and theorem the project defines, listed with what it writes, where it is defined and how often it is used; a **command studio** makes a new one from a name, a number of arguments and a definition (or from the selected text), tries it in a small document compiled with the preamble of the project, and adds it to the preamble.
 - *TikZ studio*: a **whiteboard** to draw with the mouse on a fine, adjustable grid (the TikZ code writes itself and stays in step with the drawing both ways), a gallery of 22 drawings (plots, flowchart, tree, mind map, Venn, geometry, circuit, automaton, graph, neural network, commutative diagram…), element and style buttons, a live preview compiled with the document's preamble, a centimetre grid, click-to-insert coordinates, insertion at the cursor or in its own file, packages and `\usetikzlibrary` added automatically; edit an existing drawing in place.
@@ -62,9 +63,14 @@ RayTeX is a LaTeX editor that helps beginners learn and lets experts go fast: li
 - Lint while typing: undefined references and citations, duplicate labels, unbalanced braces, missing packages and files, obsolete commands, typography.
 - Log parser that pinpoints the exact line and column, with a plain-language explanation (English and French) and fixes: add or install a package, fix a misspelt command, switch engines, create a missing file…
 
+**Teaching**
+- **Subject and answer key** from one file: *Subject | Answer key* above the preview turns the switch of the document (the class exam, xsim, or a switch of its own) and *Export both* writes the two PDFs; exercises with their points, framed solutions and room to answer (lines, blank, grid) from the Insert menu.
+
 **PDF**
 - Built-in viewer (pdf.js): only visible pages are rendered, reloads keep your position, text selection, dark mode.
 - SyncTeX both ways, with a native parser (double-click in the PDF → source; `Ctrl/⌘ + Alt + J` → PDF).
+- Export as **PDF/A** for archiving (2b, 1b, 2u, 3b) or as an **accessible PDF** (tagged, PDF/UA-2, or PDF/A-3b with PDF/UA-1), built apart and checked once made (validated with veraPDF); a lighter PDF when the document has images.
+- *Page layout*: margins, page styles, title page and **paragraphs** (indent, space between them, the first after a heading) set with fields and seen on real pages.
 
 **Any TeX distribution, every package**
 - Detects TeX Live, MacTeX, MiKTeX, TinyTeX, Tectonic and Linux system TeX Live; lets you choose one or add custom folders.
@@ -76,7 +82,7 @@ RayTeX is a LaTeX editor that helps beginners learn and lets experts go fast: li
 - A projects folder (`Documents/RayTeX` by default) and a **My projects** browser with previews of each PDF, search, recent projects and files.
 - Light mode: open a single `.tex` file, edit it and export its PDF without creating any file next to it; make it a project in one step when images or other files are needed.
 - New projects start empty; the **Templates** panel shows each template by its first page (shipped with the application, whatever your distribution) and puts it in the document in one undoable click.
-- 16 templates (article, report, thesis, research article, slides, poster, course notes, exam, exercise sheet, homework, lab report, letter, CV, TikZ figure…), all building without warnings, in English and French.
+- 17 templates (article, report, thesis, research article, slides, poster, course notes, test with answer key, exam, exercise sheet, homework, lab report, letter, CV, TikZ figure…), all building without warnings, in English and French.
 - Project settings in `raytex.toml`, versioned with the project.
 - Command palette, quick open, project search and replace, outline with real numbers, TODO list, session restore.
 - Help centre: guides, command reference, symbol palette, common errors explained, shortcuts.

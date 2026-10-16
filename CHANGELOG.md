@@ -4,6 +4,8 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+## [0.5.4] — 2026-10-16
+
 - **Accessible PDF**, read by screen readers: *Export an accessible PDF…* (menu of the **Build** button, or the *Accessible PDF* box of the export window) builds the document apart, tagged (`\DocumentMetadata{tagging=on}`): its structure and its language are written in the PDF, which says it is PDF/UA-2; with a PDF/A too, PDF/A-3b and PDF/UA-1 at once (PDF/A-2 refuses the files tagging attaches). The PDF made is checked (tagged, language, title, identification) and the pictures without a description are counted. Validated with veraPDF for pdfLaTeX, LuaLaTeX and XeLaTeX; a LaTeX of June 2025 or later is needed, said plainly otherwise. The image window has a **Description** field for each picture (`alt={…}`, read back when it is opened again).
 - **Probability trees** (*Maths › Probability tree…*): one line a branch, set in by its level, with its event (the **Ā** button gives the complement) and its probability (`0,3`, `1/3`, `p`); of two branches, the one left empty is worked out (`1 − p`, shown in grey); each node checked to add up to 1; the probability of each path written at its end if asked (`P(A ∩ B) = 0,12`, exact, as a fraction when there is one); a level more, the same events at each level. Written as a TikZ tree growing right, the probabilities above the upper branches and below the lower ones, the French way in a French document; the **Tree** chip opens it again. Its code is loaded when it is opened.
 - **Paragraphs and indents**, a tab of the *Page layout* window (*Page › Paragraphs and indents…*): paragraphs that start indented, apart (a space between them, `parskip`), or both, with the indent and the space as TeX sets them; the first paragraph after a heading indented or not (`\frenchsetup{IndentFirst=…}` in French, `indentfirst` otherwise); seen on a page compiled with the preamble of the document before anything is written, and what set them before is taken out. Below, what the open file does by hand against its paragraphs, line by line: the `\noindent` that do nothing where they are (they go in one click; those taking away an indent on purpose stay), the blank lines after a formula that make the sentence going on a new indented paragraph, the `\\` ending a paragraph.
@@ -356,6 +358,7 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[0.5.4]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.4
 [0.5.3]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.3
 [0.5.2]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.2
 [0.5.1]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.1

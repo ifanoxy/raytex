@@ -30,7 +30,7 @@ RayTeX aide les débutants à apprendre et laisse les experts aller vite : aper�
 ## Fonctionnalités
 
 **Écrire**
-- Une barre de mise en forme comme dans un traitement de texte : annuler / rétablir, style de la ligne (titres), taille du texte, gras, italique, souligné, couleur, alignement, listes, formules, image, tableau (taille choisie sur une grille), schéma TikZ, liens et renvois ; **Tout voir** liste toutes les commandes avec leur raccourci. La barre du haut garde le projet, la compilation et un menu **Affichage** ; l'aperçu PDF et la console se ferment par une croix.
+- Une barre de mise en forme comme dans un traitement de texte : annuler / rétablir, style de la ligne (titres), taille du texte, gras, italique, souligné, couleur, alignement, listes, formules, image, tableau (taille choisie sur une grille), schéma TikZ, liens et renvois ; les **menus** de la barre du haut (Format, Insertion, Maths, Page, @) rangent toutes les commandes par leur nom, avec leur raccourci et leurs sous-menus, utilisables au clavier. La barre du haut garde aussi le projet, la compilation et un menu **Affichage** ; l'aperçu PDF et la console se ferment par une croix.
 - Autocomplétion selon le contexte : commandes et environnements du noyau LaTeX, de chaque package chargé par le document (lus dans la source du package, quel qu'il soit), de vos `\newcommand` ; étiquettes avec leur numéro, citations avec auteurs et titre, fichiers, options, couleurs.
 - L'autocomplétion crée les accolades et les laisse vides, à vous de les remplir ; choisir une commande d'un package non chargé ajoute le `\usepackage`.
 - Les clés et valeurs des arguments, avec leur documentation : `\includegraphics[width=…]`, `\begin{itemize}[label=…]`, `\hypersetup{…}`, `\geometry{…}`, siunitx, listings, minted, tcolorbox, fontspec, TikZ, pgfplots, beamer… (environ 520 clés documentées, plus celles que déclare chaque package installé). Dans un argument libre, une info-bulle dit ce qu'on y met (`\item[terme]` : le texte affiché à la place de la puce).
@@ -45,6 +45,7 @@ RayTeX aide les débutants à apprendre et laisse les experts aller vite : aper�
 - Fermeture automatique des environnements, listes qui se continuent, repli, curseurs multiples, mode Vim, correcteur orthographique.
 
 **Images, schémas et polices**
+- *Ateliers de maths* : **courbes de fonctions** (pgfplots : fonctions écrites comme sur papier, tangentes depuis la dérivée, points, droites, aires, axes comme dans les manuels), **tableaux de variations et de signes** (tkz-tab, remplis depuis une fonction) et **arbres de probabilités** (la probabilité laissée vide sur deux calculée, la probabilité de chaque chemin), chacun rouvert depuis sa puce.
 - *Insérer des images* : choisissez, collez ou déposez des images (ou prenez celles du projet) ; dossier, nom de fichier sûr pour LaTeX, largeur avec aperçu de la page, position, légende et étiquette ; plusieurs images deviennent des sous-figures. Les SVG sont convertis en PDF vectoriel, WebP/GIF/HEIC/BMP/TIFF en PNG ; `graphicx`, `subcaption`, `float` sont ajoutés si besoin.
 - *Commandes du projet* : chaque `\newcommand`, opérateur, environnement et théorème que le projet définit, listé avec ce qu'il écrit, l'endroit où il est défini et le nombre de fois où il sert ; un **atelier de commandes** en crée une nouvelle à partir d'un nom, d'un nombre d'arguments et d'une définition (ou du texte sélectionné), l'essaie dans un petit document compilé avec le préambule du projet, et l'ajoute au préambule.
 - *Studio TikZ* : un **tableau blanc** pour dessiner à la souris sur une grille fine et réglable (le code TikZ s'écrit tout seul et reste lié au dessin dans les deux sens), une galerie de 22 schémas (courbes, organigramme, arbre, carte mentale, Venn, géométrie, circuit, automate, graphe, réseau de neurones, diagramme commutatif…), des boutons d'éléments et de styles, un aperçu compilé en direct avec le préambule du document, une grille en centimètres, les coordonnées insérées d'un clic, l'insertion au curseur ou dans un fichier séparé, les packages et `\usetikzlibrary` ajoutés automatiquement ; modification d'un schéma existant sur place.
@@ -62,9 +63,14 @@ RayTeX aide les débutants à apprendre et laisse les experts aller vite : aper�
 - Vérification pendant la frappe : renvois et citations indéfinis, étiquettes en double, accolades déséquilibrées, packages et fichiers manquants, commandes obsolètes, typographie.
 - Analyse du journal qui localise l'erreur à la ligne et à la colonne près, avec une explication claire (français et anglais) et des corrections : ajouter ou installer un package, corriger une commande mal orthographiée, changer de moteur, créer un fichier manquant…
 
+**Enseigner**
+- **Sujet et corrigé** dans un seul fichier : *Sujet | Corrigé* au-dessus de l'aperçu bascule l'interrupteur du document (la classe exam, xsim, ou un interrupteur à lui) et *Exporter les deux* écrit les deux PDF ; exercices avec leur barème, corrigés encadrés et place pour répondre (lignes, blanc, quadrillage) depuis le menu Insertion.
+
 **PDF**
 - Visionneuse intégrée (pdf.js) : seules les pages visibles sont dessinées, le rechargement garde la position, texte sélectionnable, mode sombre.
 - SyncTeX dans les deux sens, avec un analyseur natif (double-clic dans le PDF → source ; `Ctrl/⌘ + Alt + J` → PDF).
+- Export en **PDF/A** pour l'archivage (2b, 1b, 2u, 3b) ou en **PDF accessible** (balisé, PDF/UA-2, ou PDF/A-3b avec PDF/UA-1), compilé à part et vérifié une fois fait (validé avec veraPDF) ; un PDF plus léger quand le document a des images.
+- *Mise en page* : marges, styles de page, page de titre et **paragraphes** (retrait, espace entre eux, le premier après un titre) réglés par des champs et vus sur de vraies pages.
 
 **Toutes les distributions, tous les packages**
 - Détecte TeX Live, MacTeX, MiKTeX, TinyTeX, Tectonic et le TeX Live des distributions Linux ; choix de la distribution et dossiers personnalisés.
@@ -76,7 +82,7 @@ RayTeX aide les débutants à apprendre et laisse les experts aller vite : aper�
 - Un dossier des projets (`Documents/RayTeX` par défaut) et un navigateur **Mes projets** avec l'aperçu de chaque PDF, une recherche, les projets et fichiers récents.
 - Mode léger : ouvrir un seul fichier `.tex`, le modifier et exporter son PDF sans créer aucun fichier à côté ; en faire un projet en une étape quand il faut des images ou d'autres fichiers.
 - Les nouveaux projets commencent vides ; le panneau **Modèles** montre chaque modèle par sa première page (fournie avec l'application, quelle que soit votre distribution) et le place dans le document en un clic, annulable.
-- 16 modèles (article, rapport, thèse, article de recherche, diaporama, poster, notes de cours, examen, fiche d'exercices, devoir, compte rendu de TP, lettre, CV, figure TikZ…), qui compilent tous sans avertissement, en français et en anglais.
+- 17 modèles (article, rapport, thèse, article de recherche, diaporama, poster, notes de cours, devoir avec corrigé, examen, fiche d'exercices, devoir, compte rendu de TP, lettre, CV, figure TikZ…), qui compilent tous sans avertissement, en français et en anglais.
 - Réglages du projet dans `raytex.toml`, versionné avec le projet.
 - Palette de commandes, ouverture rapide, recherche et remplacement dans le projet, plan avec les vrais numéros, liste des TODO, restauration de session.
 - Centre d'aide : guides, référence des commandes, palette de symboles, erreurs courantes expliquées, raccourcis.
