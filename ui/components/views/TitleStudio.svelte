@@ -26,6 +26,8 @@
   let root = $state<string | null>(null);
   let source = $state<string | null>(null);
   let missing = $state(false);
+  /** The document was read: the fields show what it has (nothing typed before is overwritten). */
+  let loaded = $state(false);
   let page = $state<TitlePage>(emptyTitlePage(lang));
   /** What the document had when the window opened. */
   let had = $state<TitleKind>("none");
@@ -72,6 +74,7 @@
     dateKind = p.date.trim() === TODAY ? "today" : p.date.trim() ? "other" : "none";
     dateText = dateKind === "other" ? p.date : "";
     page = p;
+    loaded = true;
   });
 
   const classic = $derived(page.style === "classic" || beamer);
@@ -164,6 +167,8 @@
 <Modal title={t("title.title")} icon="type" width="min(1120px, 96vw)" height="min(780px, 94vh)">
   {#if missing}
     <div class="empty whole">{t("layout.noPreamble")}</div>
+  {:else if !loaded}
+    <div class="empty whole"><span class="spinner"></span></div>
   {:else}
     <div class="studio title-studio">
       <section class="left">

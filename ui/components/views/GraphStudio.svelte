@@ -57,8 +57,7 @@
   onMount(async () => {
     const request = media.graphRequest;
     media.graphRequest = null;
-    const found = path ? await editor.rootSource(path) : null;
-    source = found?.text ?? "";
+    // What is changed shows at once: nothing typed meanwhile is overwritten.
     if (request?.edit) {
       edit = request.edit;
       graph = request.edit.graph;
@@ -67,6 +66,8 @@
       graph.curves.push(first);
       open = first.id;
     }
+    const found = path ? await editor.rootSource(path) : null;
+    source = found?.text ?? "";
   });
 
   const french = $derived(writesFrench(source));

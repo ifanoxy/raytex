@@ -35,7 +35,7 @@ export interface VersionNotes {
 export const NOTES: VersionNotes[] = [
   {
     version: "0.5.4",
-    date: "2026-10-16",
+    date: "2026-10-17",
     en: {
       points: [
         "Menus in the top bar (Format, Insert, Maths, Page, @) in place of See all: every tool by its name, with its shortcut and its submenus, usable with the keyboard.",
@@ -90,6 +90,7 @@ export const NOTES: VersionNotes[] = [
           items: [
             "An environment renamed from the list of completion (`itemize` becoming `enumerate`) got a second body and `\\end`: its `\\begin` and `\\end` now change together, from either one.",
             "The code of the studios is loaded when one of them is opened, not at startup.",
+            "What was typed in the title page window as it opened, or in a studio opened again from its chip, is no longer replaced by what the document had.",
           ],
         },
       ],
@@ -148,6 +149,7 @@ export const NOTES: VersionNotes[] = [
           items: [
             "Un environnement renommé depuis la liste de complétion (`itemize` devenant `enumerate`) recevait un deuxième corps et un deuxième `\\end` : son `\\begin` et son `\\end` changent maintenant ensemble, depuis l'un ou l'autre.",
             "Le code des ateliers se charge quand l'un d'eux s'ouvre, plus au démarrage.",
+            "Ce qui était tapé dans la fenêtre de la page de titre à son ouverture, ou dans un atelier rouvert depuis sa puce, n'est plus remplacé par ce qu'avait le document.",
           ],
         },
       ],

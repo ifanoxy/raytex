@@ -35,12 +35,13 @@
   onMount(async () => {
     const request = media.treeRequest;
     media.treeRequest = null;
-    const found = path ? await editor.rootSource(path) : null;
-    source = found?.text ?? "";
+    // What is changed shows at once: nothing typed meanwhile is overwritten.
     if (request?.edit) {
       edit = request.edit;
       tree = request.edit.tree;
     }
+    const found = path ? await editor.rootSource(path) : null;
+    source = found?.text ?? "";
   });
 
   /** Numbers written the French way in a French document. */
