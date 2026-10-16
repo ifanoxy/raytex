@@ -42,6 +42,9 @@
   let archive = $state(pdfExport.archiveAsked);
   let standard = $state<ipc.PdfStandard>(STANDARDS.includes(saved.standard as ipc.PdfStandard) ? (saved.standard as ipc.PdfStandard) : "a-2b");
   pdfExport.archiveAsked = false;
+  /** Tagged for screen readers (PDF/UA): ticked when asked for from "Export an accessible PDF". */
+  let accessible = $state(pdfExport.accessibleAsked);
+  pdfExport.accessibleAsked = false;
   /** A subject with its answer key: the one shown, or both when asked for. */
   const answers = answerKey.current;
   type Which = Version | "both";
@@ -101,6 +104,7 @@
     const main = project.info?.light ? project.info.main : null;
     const filters = [{ name: "PDF", extensions: ["pdf"] }];
     const level = archive ? standard : null;
+    const tagged = accessible;
     if (answers) {
       // The version shown is the build of the project: the others are built apart.
       const versionOf = (v: Version) => ((v === "key") === answers.shown ? null : answerKey.versionOf(v));
@@ -108,20 +112,20 @@
       if (!dest) return;
       if (which !== "both") {
         ui.closeOverlay();
-        await pdfExport.start(dest, choice, level, versionOf(which));
+        await pdfExport.start(dest, choice, level, versionOf(which), tagged);
         return;
       }
       const key = keyNext(dest);
       if (key !== dest && (await ipc.pathExists(key).catch(() => false)) && !(await ui.confirm({ title: t("answers.replaceTitle"), message: t("answers.replace", { file: basename(key) }), okLabel: t("answers.replaceOk") }))) return;
       ui.closeOverlay();
-      if (await pdfExport.start(dest, choice, level, versionOf("subject"))) await pdfExport.start(key, choice, level, versionOf("key"));
+      if (await pdfExport.start(dest, choice, level, versionOf("subject"), tagged)) await pdfExport.start(key, choice, level, versionOf("key"), tagged);
       return;
     }
     const defaultPath = main ? main.replace(/\.[^./\\]+$/, ".pdf") : viewer.pdf ? basename(viewer.pdf) : "document.pdf";
     const dest = await save({ defaultPath, filters });
     if (!dest) return;
     ui.closeOverlay();
-    await pdfExport.start(dest, choice, level);
+    await pdfExport.start(dest, choice, level, null, tagged);
   }
 </script>
 
@@ -168,12 +172,18 @@
     </div>
     <div class="archive" class:active={archive}>
       <label class="check"><input type="checkbox" bind:checked={archive} />{t("pdfChoice.archive")}</label>
-      {#if archive}
+      {#if archive && accessible}
+        <span class="hint faint">{t("pdfChoice.archiveAccessible")}</span>
+      {:else if archive}
         <select class="select" bind:value={standard} aria-label={t("pdfChoice.archiveLevel")}>
           {#each STANDARDS as s (s)}<option value={s}>{t(`pdfa.${s}`)}</option>{/each}
         </select>
         <span class="hint faint">{t("pdfChoice.archiveHint")}</span>
       {/if}
+    </div>
+    <div class="archive" class:active={accessible}>
+      <label class="check"><input type="checkbox" bind:checked={accessible} data-accessible />{t("pdfChoice.accessible")}</label>
+      {#if accessible}<span class="hint faint">{t("pdfChoice.accessibleHint")}</span>{/if}
     </div>
     {#if pictures?.pictures}<p class="note faint"><Icon name="shield" size={13} />{t("pdfChoice.note")}</p>{/if}
     <div class="buttons">

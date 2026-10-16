@@ -829,10 +829,12 @@ export function installMocks() {
               await sleep(160);
               await emit("export:output", { lines: [{ stream: "stdout", text: `(./chapitres/introduction.tex [${i + 1}]` }] });
             }
-            const archive = a.archive
-              ? { standard: a.archive, problems: [], own: false, check: { version: "1.7", part: 2, conformance: "B", outputIntent: true, fonts: 9, notEmbedded: 0, missing: [], transparency: false, encrypted: false, javascript: false } }
+            const making = (a.making ?? {}) as { archive?: string | null; accessible?: boolean };
+            const archive = making.archive
+              ? { standard: making.accessible ? "a-3b" : making.archive, problems: [], own: false, check: { version: "1.7", part: 2, conformance: "B", outputIntent: true, fonts: 9, notEmbedded: 0, missing: [], transparency: false, encrypted: false, javascript: false } }
               : null;
-            return { size: 6_180_000, step: Number(a.step ?? 0), within: true, errors: 0, archive };
+            const accessible = making.accessible ? { problems: ["alt"], missingAlt: 1, part: making.archive ? 1 : 2 } : null;
+            return { size: 6_180_000, step: Number(a.step ?? 0), within: true, errors: 0, archive, accessible };
           })();
         case "export_file":
           return sleep(250).then(() => null);

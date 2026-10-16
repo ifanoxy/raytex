@@ -9,6 +9,7 @@ Click **Image** in the toolbar (<kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⌥</kbd>/
 - **the layout**: a figure with a caption (numbered, with a label for `\ref`) or an image in the text;
 - **the width**, in percent of the text width, with a preview of the page;
 - **the position**: automatic (recommended), exactly here, top or bottom of a page;
+- **the description** of each image (`alt={…}`), read in its place by screen readers in an [accessible PDF](07-compilation.md);
 - **the weight of the images** copied into the project: *Original*, *Lighter* or *Light*. Each image shows what it weighs and what it will weigh. A photograph is made smaller (2400 or 1600 pixels wide at most) and written as a JPEG, even when it was a PNG; a drawing, a screenshot or an image with transparency stays a PNG, without loss; PDF, EPS and SVG are not touched. The image you chose is never changed, and the choice is kept for the next times.
 
 Several images become **sub-figures** side by side, each with its caption: drag them by their handle (or up and down arrows) to change their order, the sketch of the page shows them at their place. In the code they have **one chip**, *2 images*: a click opens the window again on all of them, with their order, their captions and their layout. Formats LaTeX cannot read are converted: an **SVG** becomes a PDF that stays vector, WebP, GIF, HEIC, BMP or TIFF become PNG. The packages needed (`graphicx`, `subcaption`, `float`) are added to the preamble, and the cursor lands on the caption, ready to type.

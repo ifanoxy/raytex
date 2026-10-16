@@ -94,19 +94,29 @@ export interface LighterPdf {
   within: boolean;
   errors: number;
   archive: PdfArchive | null;
+  /** What an accessible export found in it. */
+  accessible: PdfAccessible | null;
 }
-/**
- * Builds the document again apart and writes the PDF at `dest`: with its
- * pictures at `step` (null: as they are) in a copy of the project, as a
- * PDF/A when `archive` is given.
- */
+/** What an accessible (tagged, PDF/UA) export found: what is missing, the pictures without a text in place of them. */
+export interface PdfAccessible {
+  problems: ("untagged" | "lang" | "title" | "identification" | "alt")[];
+  missingAlt: number;
+  /** The part of PDF/UA it says it is (2 alone, 1 with a PDF/A). */
+  part: number | null;
+}
 /** A version of the document built apart: its name, the text of its root file (the subject of an exam, its answer key). */
 export interface DocVersion {
   name: string;
   text: string;
 }
-export const exportPdfLighter = (path: string, dest: string, step: number | null, limit: number | null, archive: PdfStandard | null = null, version: DocVersion | null = null) =>
-  call<LighterPdf>("export_pdf_lighter", { path, dest, step, limit, archive, version });
+/**
+ * Builds the document again apart and writes the PDF at `dest`: with its
+ * pictures at `step` (null: as they are) in a copy of the project, as a
+ * PDF/A when `archive` is given, as a `version` of it when one is, tagged
+ * for screen readers when `accessible` (PDF/UA).
+ */
+export const exportPdfLighter = (path: string, dest: string, step: number | null, limit: number | null, archive: PdfStandard | null = null, version: DocVersion | null = null, accessible = false) =>
+  call<LighterPdf>("export_pdf_lighter", { path, dest, step, limit, making: { archive, version, accessible } });
 export const exportPdfCancel = () => call<void>("export_pdf_cancel");
 /** Opens the window of its own that follows an export (or brings it to the front). */
 export const exportWindowOpen = (title: string) => call<void>("export_window_open", { title });

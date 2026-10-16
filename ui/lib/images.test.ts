@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { figureAt, figureCode, figureGroupAt, firstPictureOf, safeStem, targetExtension } from "./images.ts";
+import { figureAt, figureCode, figureGroupAt, firstPictureOf, safeStem, splitAlt, targetExtension } from "./images.ts";
 
 test("names follow the engine's rules", () => {
   assert.equal(safeStem("Capture d’écran 2026-09-27 à 10.12.33"), "capture-d-ecran-2026-09-27-a-10-12-33");
@@ -65,9 +65,9 @@ test("a figure of several images is read back as one group", () => {
     assert.equal(text.slice(g.from, g.to), fig);
     assert.equal(g.mode, "figure");
     assert.deepEqual(g.images, [
-      { path: "figures/a", caption: "Avant", label: "fig:a" },
-      { path: "figures/b", caption: "", label: "" },
-      { path: "figures/c", caption: "Après {x}", label: "fig:c" },
+      { path: "figures/a", caption: "Avant", label: "fig:a", alt: "" },
+      { path: "figures/b", caption: "", label: "", alt: "" },
+      { path: "figures/c", caption: "Après {x}", label: "fig:c", alt: "" },
     ]);
     assert.deepEqual([g.columns, g.placement, g.caption, g.label], [2, "H", "Les trois essais.", "fig:essais"]);
     assert.equal(firstPictureOf(text, g), text.indexOf("\\includegraphics"));
@@ -116,4 +116,24 @@ test("images side by side are one group", () => {
   assert.equal(figureGroupAt(mixed, 0), null);
   // Next to each other without `\hfill`: two pictures, not a group.
   assert.equal(figureGroupAt("\\includegraphics{a} \\includegraphics{b}", 0), null);
+});
+
+test("the text in place of a picture (alt) is read, kept apart from its width, and written back", () => {
+  assert.deepEqual(splitAlt("width=0.5\\linewidth, alt={Un graphique, en barres}"), { alt: "Un graphique, en barres", rest: "width=0.5\\linewidth" });
+  assert.deepEqual(splitAlt("alt=Courbe, scale=2"), { alt: "Courbe", rest: "scale=2" });
+  assert.deepEqual(splitAlt("width=3cm"), { alt: "", rest: "width=3cm" });
+  const doc = "\\begin{figure}[htbp]\n\t\\centering\n\t\\includegraphics[width=0.8\\linewidth, alt={Le montage}]{figures/a}\n\t\\caption{Montage}\n\\end{figure}";
+  const f = figureAt(doc, doc.indexOf("\\includegraphics"))!;
+  assert.equal(f.width, 80);
+  assert.equal(f.alt, "Le montage");
+  const code = figureCode({ paths: ["figures/a"], captions: [""], labels: [""], mode: "figure", width: 80, placement: "htbp", caption: "Montage", label: "", columns: 1, alts: ["Le montage"] });
+  assert.ok(code.includes("\\includegraphics[width=0.8\\linewidth, alt={Le montage}]{figures/a}"));
+  const two = figureCode({ paths: ["a", "b"], captions: ["", ""], labels: ["", ""], mode: "figure", width: 80, placement: "htbp", caption: "Deux", label: "", columns: 2, alts: ["", "Le second"] });
+  assert.ok(two.includes("\\includegraphics[width=\\linewidth]{a}") && two.includes("\\includegraphics[width=\\linewidth, alt={Le second}]{b}"));
+  const group = figureGroupAt(two, two.indexOf("\\includegraphics"))!;
+  assert.deepEqual(group.images.map((i) => i.alt), ["", "Le second"]);
+  const side = "\\includegraphics[width=0.4\\linewidth, alt={Un}]{a}\\hfill\n\\includegraphics[width=0.4\\linewidth]{b}";
+  const g = figureGroupAt(side, 0)!;
+  assert.equal(g.width, 40);
+  assert.deepEqual(g.images.map((i) => i.alt), ["Un", ""]);
 });

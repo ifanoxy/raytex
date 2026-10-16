@@ -98,6 +98,29 @@ export interface FigureOptions {
   columns: number;
   /** Options of a single `\\includegraphics` kept as written (instead of `width`). */
   options?: string | null;
+  /** The text in place of each picture (`alt={…}`), read aloud by screen readers. */
+  alts?: string[];
+}
+
+/**
+ * The text in place of a picture (`alt={…}`) taken out of its options, and
+ * what is left of them (`width=…` read as before).
+ */
+export function splitAlt(options: string): { alt: string; rest: string } {
+  const m = /(^|,)\s*alt\s*=\s*(?:\{((?:[^{}]|\{[^{}]*\})*)\}|([^,]*))\s*(?=,|$)/.exec(options);
+  if (!m) return { alt: "", rest: options.trim() };
+  const rest = `${options.slice(0, m.index)}${m[1]}${options.slice(m.index + m[0].length)}`
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean)
+    .join(", ");
+  return { alt: (m[2] ?? m[3] ?? "").trim(), rest };
+}
+
+/** Options with the text in place of the picture after them. */
+function withAlt(options: string, alt: string | undefined): string {
+  const a = alt?.trim();
+  return a ? (options ? `${options}, alt={${a}}` : `alt={${a}}`) : options;
 }
 
 /** Pictures the image dialog lays out side by side, at most. */
@@ -110,20 +133,22 @@ function fraction(percent: number): string {
 
 /** LaTeX code inserting the images (tabs mark one indentation level). */
 export function figureCode(o: FigureOptions): string {
-  const one = (p: string) =>
-    o.options != null ? `\\includegraphics${o.options ? `[${o.options}]` : ""}{${p}}` : `\\includegraphics[width=${fraction(o.width)}]{${p}}`;
+  const one = (p: string, i: number) => {
+    const options = withAlt(o.options != null ? o.options : `width=${fraction(o.width)}`, o.alts?.[i]);
+    return `\\includegraphics${options ? `[${options}]` : ""}{${p}}`;
+  };
   if (o.mode === "inline") {
     return o.paths.map(one).join("\\hfill\n");
   }
   const lines = [`\\begin{figure}[${o.placement}]`, "\t\\centering"];
   if (o.paths.length === 1) {
-    lines.push(`\t${one(o.paths[0])}`);
+    lines.push(`\t${one(o.paths[0], 0)}`);
   } else {
     const cols = Math.max(1, Math.min(o.columns, o.paths.length));
     const sub = `${Math.floor((1 / cols - 0.02) * 100) / 100}\\linewidth`;
     o.paths.forEach((p, i) => {
       if (i > 0) lines.push(i % cols === 0 ? "\t\\par\\medskip" : "\t\\hfill");
-      lines.push(`\t\\begin{subfigure}[b]{${sub}}`, "\t\t\\centering", `\t\t\\includegraphics[width=\\linewidth]{${p}}`);
+      lines.push(`\t\\begin{subfigure}[b]{${sub}}`, "\t\t\\centering", `\t\t\\includegraphics[${withAlt("width=\\linewidth", o.alts?.[i])}]{${p}}`);
       if (o.captions[i]) lines.push(`\t\t\\caption{${o.captions[i]}}`);
       if (o.labels[i]) lines.push(`\t\t\\label{${o.labels[i]}}`);
       lines.push("\t\\end{subfigure}");
@@ -145,8 +170,10 @@ export interface FigureAt {
   path: string;
   /** Width in percent of the line, or null when the options say something else. */
   width: number | null;
-  /** Options of `\\includegraphics` as written. */
+  /** Options of `\\includegraphics` as written (but the text in place of the picture). */
   options: string;
+  /** The text in place of the picture (`alt={…}`). */
+  alt: string;
   placement: string;
   caption: string;
   label: string;
@@ -173,10 +200,10 @@ function commandArg(text: string, name: string): { raw: string; value: string } 
 export function figureAt(text: string, at: number): FigureAt | null {
   const m = /^\\includegraphics\*?\s*(?:\[([^\]]*)\])?\s*\{([^{}]*)\}/.exec(text.slice(at, at + 1000));
   if (!m) return null;
-  const options = (m[1] ?? "").trim();
+  const { alt, rest: options } = splitAlt((m[1] ?? "").trim());
   const w = /^width\s*=\s*([\d.]*)\s*\\(?:linewidth|textwidth|columnwidth)$/.exec(options);
   const width = w ? Math.round((w[1] ? Number(w[1]) : 1) * 100) : null;
-  const inline: FigureAt = { from: at, to: at + m[0].length, mode: "inline", path: m[2].trim(), width, options, placement: "htbp", caption: "", label: "" };
+  const inline: FigureAt = { from: at, to: at + m[0].length, mode: "inline", path: m[2].trim(), width, options, alt, placement: "htbp", caption: "", label: "" };
   const begin = text.lastIndexOf("\\begin{figure", at);
   if (begin < 0 || text.slice(begin, at).includes("\\end{figure")) return inline;
   const head = /^\\begin\{figure\*?\}\s*(?:\[([^\]]*)\])?/.exec(text.slice(begin, begin + 80));
@@ -209,6 +236,8 @@ export interface GroupImage {
   /** Its own caption and label (sub-figure), empty when it has none. */
   caption: string;
   label: string;
+  /** The text in place of it (`alt={…}`). */
+  alt: string;
 }
 
 /**
@@ -244,13 +273,16 @@ function lineWidth(options: string): number | null {
 
 /** The pictures side by side that the one at `at` belongs to: joined by `\\hfill`, nothing else between them. */
 function inlineGroup(text: string, at: number): FigureGroup | null {
-  const found: { from: number; to: number; options: string; path: string }[] = [];
+  const found: { from: number; to: number; options: string; alt: string; path: string }[] = [];
   const re = new RegExp(GRAPHICS.source, "g");
   // A little before and after: a group is a few lines.
   const start = Math.max(0, at - 4000);
   re.lastIndex = start;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) && m.index < at + 4000) found.push({ from: m.index, to: m.index + m[0].length, options: (m[1] ?? "").trim(), path: m[2].trim() });
+  while ((m = re.exec(text)) && m.index < at + 4000) {
+    const { alt, rest } = splitAlt((m[1] ?? "").trim());
+    found.push({ from: m.index, to: m.index + m[0].length, options: rest, alt, path: m[2].trim() });
+  }
   const mine = found.findIndex((f) => f.from === at);
   if (mine < 0) return null;
   const joined = (a: number, b: number) => {
@@ -270,7 +302,7 @@ function inlineGroup(text: string, at: number): FigureGroup | null {
     from: run[0].from,
     to: run[run.length - 1].to,
     mode: "inline",
-    images: run.map((f) => ({ path: f.path, caption: "", label: "" })),
+    images: run.map((f) => ({ path: f.path, caption: "", label: "", alt: f.alt })),
     columns: Math.min(MAX_COLUMNS, run.length),
     width,
     options: width === null ? run[0].options : null,
@@ -311,7 +343,7 @@ export function figureGroupAt(text: string, at: number): FigureGroup | null {
     if (caption) rest = rest.replace(caption.raw, "");
     if (label) rest = rest.replace(label.raw, "");
     if (rest.replace(/%.*$/gm, "").replace(/\\centering\b/, "").trim()) return inlineGroup(text, at);
-    images.push({ path: picture[2].trim(), caption: caption?.value ?? "", label: label?.value ?? "" });
+    images.push({ path: picture[2].trim(), caption: caption?.value ?? "", label: label?.value ?? "", alt: splitAlt(picture[1] ?? "").alt });
     const share = /^([\d.]*)\s*\\(?:linewidth|textwidth|columnwidth)$/.exec(m[1].trim());
     spans.push({ from: m.index, to: m.index + m[0].length, share: share ? (share[1] ? Number(share[1]) : 1) : 0 });
   }

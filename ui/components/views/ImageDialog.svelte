@@ -42,6 +42,8 @@
     url: string | null;
     ratio: number | null;
     caption: string;
+    /** What it shows, in words (`alt={…}`): read aloud by screen readers in an accessible PDF. */
+    alt: string;
     /** Size of the image as it is, in bytes, once read. */
     size?: number;
     /** The image as a PNG, once converted (a format LaTeX does not read). */
@@ -137,7 +139,7 @@
     caption = f.caption;
     label = f.label;
     labelEdited = true;
-    if (change.file) void addPath(change.file, { written: f.path });
+    if (change.file) void addPath(change.file, { written: f.path, alt: f.alt });
     else ui.toast("warning", t("image.missing", { path: f.path }));
   }
 
@@ -156,7 +158,7 @@
     g.images.forEach((image, i) => {
       const file = change.files[i];
       // A picture with a caption has the label it was given, none included; one without gets a label with its caption.
-      const said = { written: image.path, caption: image.caption, label: image.caption || image.label ? image.label : undefined };
+      const said = { written: image.path, caption: image.caption, label: image.caption || image.label ? image.label : undefined, alt: image.alt };
       if (file) void addPath(file, said);
       else items = [...items, { id: uid(), kind: "kept", original: image.path, stem: safeStem(stemOf(image.path)), ext: extensionOf(image.path), url: null, ratio: null, ...said }];
     });
@@ -269,7 +271,7 @@
     img.src = item.url;
   }
 
-  async function addPath(path: string, said: { written?: string; caption?: string; label?: string } = {}) {
+  async function addPath(path: string, said: { written?: string; caption?: string; label?: string; alt?: string } = {}) {
     const ext = extensionOf(path);
     if (!ACCEPTED.includes(ext)) {
       ui.toast("warning", t("image.unsupported", { name: path.split(/[\\/]/).pop() ?? path }));
@@ -287,6 +289,7 @@
       url: null,
       ratio: null,
       caption: "",
+      alt: "",
       ...said,
     };
     items = [...items, item];
@@ -324,6 +327,7 @@
       url: null,
       ratio: null,
       caption: "",
+      alt: "",
     };
     items = [...items, item];
     await preview(items[items.length - 1], blob);
@@ -419,6 +423,7 @@
       ? figureCode({
           paths: items.map((i) => i.written ?? includePath(targetPath(i))),
           captions: items.map((i) => i.caption),
+          alts: items.map((i) => i.alt),
           labels: items.map(subLabel),
           mode,
           width,
@@ -485,6 +490,7 @@
         const rewritten = figureCode({
           paths,
           captions: items.map((i) => i.caption),
+          alts: items.map((i) => i.alt),
           labels: items.map(subLabel),
           mode,
           width,
@@ -499,6 +505,7 @@
       const final = figureCode({
         paths,
         captions: items.map((i) => i.caption),
+        alts: items.map((i) => i.alt),
         labels: items.map(subLabel),
         mode,
         width,
@@ -641,6 +648,10 @@
                 <input class="input small" bind:value={item.caption} placeholder={t("image.optional")} />
               </label>
             {/if}
+            <label class="inline-field" title={t("image.altHint")}>
+              <span>{t("image.alt")}</span>
+              <input class="input small" bind:value={item.alt} placeholder={t("image.altPlaceholder")} data-alt />
+            </label>
           </div>
         </div>
       {:else}

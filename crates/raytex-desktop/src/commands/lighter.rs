@@ -127,6 +127,20 @@ pub struct LighterPdf {
     pub errors: usize,
     /// What a PDF/A export found in it.
     pub archive: Option<Archive>,
+    /// What an accessible export found in it.
+    pub accessible: Option<Accessible>,
+}
+
+/// What an accessible export found in the PDF it made (tagged, PDF/UA).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Accessible {
+    /// What does not go with PDF/UA (`untagged`, `lang`, `title`, `identification`, `alt`).
+    pub problems: Vec<&'static str>,
+    /// Pictures without a text in place of them (`alt={…}`).
+    pub missing_alt: usize,
+    /// The part of PDF/UA it says it is (2 alone, 1 with a PDF/A).
+    pub part: Option<u8>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -154,6 +168,19 @@ pub struct Archive {
     /// The document gives its own `\DocumentMetadata`: it was kept.
     pub own: bool,
     pub check: pdfa::Check,
+}
+
+/// How the PDF is made apart, besides its pictures: a PDF/A, a version of
+/// the document, tagged for screen readers.
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Making {
+    /// A PDF/A of that level.
+    pub archive: Option<pdfa::Standard>,
+    /// A version of the document (the subject of an exam, its answer key).
+    pub version: Option<Version>,
+    /// Tagged for screen readers (PDF/UA).
+    pub accessible: bool,
 }
 
 /// A version of the document, built apart from the text of its root file
@@ -186,14 +213,16 @@ impl Version {
 /// Builds the document of `path` again apart and writes the PDF at `dest`:
 /// with its pictures at `step` (in a copy of the project; with a `limit` in
 /// bytes, a PDF that weighs more is built again at the next steps, three
-/// times at most), and as a PDF/A when `archive` is given (in a folder of
-/// the build of its own when the pictures stay as they are), and as a
-/// `version` of it when one is given (its root file written in that folder,
-/// or in the copy). Nothing of the project is touched.
+/// times at most), and as `making` says: a PDF/A (in a folder of the build
+/// of its own when the pictures stay as they are), a version of it (its
+/// root file written in that folder, or in the copy), tagged for screen
+/// readers (PDF/UA-2, or PDF/A-3b with PDF/UA-1 when a PDF/A is asked too).
+/// Nothing of the project is touched.
 ///
 /// Fails with `no-project`, `no-distribution`, `cancelled`, `archive-engine`
 /// (an engine that cannot write a PDF/A), `archive-latex` (a LaTeX older
-/// than June 2022), or `build:<what stopped it>` when no whole PDF was made.
+/// than June 2022), `accessible-latex` (one older than June 2025), or
+/// `build:<what stopped it>` when no whole PDF was made.
 #[tauri::command]
 pub async fn export_pdf_lighter(
     app: AppHandle,
@@ -201,9 +230,21 @@ pub async fn export_pdf_lighter(
     dest: String,
     step: Option<usize>,
     limit: Option<u64>,
-    archive: Option<pdfa::Standard>,
-    version: Option<Version>,
+    making: Option<Making>,
 ) -> CmdResult<LighterPdf> {
+    let Making {
+        archive,
+        version,
+        accessible,
+    } = making.unwrap_or_default();
+    // With an accessible PDF, the PDF/A that goes with it.
+    let archive = archive.map(|a| {
+        if accessible {
+            pdfa::ACCESSIBLE_ARCHIVE
+        } else {
+            a
+        }
+    });
     let file = abs(&path);
     let dest = abs(&dest);
     blocking(&app, move |app, state| {
@@ -225,7 +266,7 @@ pub async fn export_pdf_lighter(
         settings.halt_on_error = false;
         settings.copy_pdf_to_root = false;
         // Steps of one's own cannot be given what is read before the document.
-        if archive.is_some() && settings.tool == BuildTool::Custom {
+        if (archive.is_some() || accessible) && settings.tool == BuildTool::Custom {
             settings.tool = BuildTool::Auto;
         }
         // Lighter pictures: in a copy of the project, removed at the end.
@@ -258,9 +299,10 @@ pub async fn export_pdf_lighter(
             }
             None => {
                 // As it is, for the archive or a version: apart from the build of the project.
-                let folder = match (archive.is_some(), &version) {
+                let folder = match (archive.is_some() || accessible, &version) {
                     (true, Some(v)) => format!(".raytex-pdfa-{}", v.folder()),
                     (false, Some(v)) => format!(".raytex-{}", v.folder()),
+                    _ if accessible => ".raytex-ua".to_owned(),
                     _ => ".raytex-pdfa".to_owned(),
                 };
                 settings.out_dir = out_dir.join(folder).to_string_lossy().into_owned();
@@ -294,7 +336,7 @@ pub async fn export_pdf_lighter(
         let last = Compression::STEPS.len() - 1;
         let mut step = step.map(|s| s.min(last));
         let mut attempts = 0;
-        let (built, size, errors) = loop {
+        let (built, size, errors, missing_alt) = loop {
             attempts += 1;
             if let (Some(mirror), Some(at)) = (&mirror, step) {
                 let told = |done: usize, total: usize| {
@@ -307,14 +349,17 @@ pub async fn export_pdf_lighter(
             let mut plan = build::plan(&root, &settings, Some(&dist), &prep.facts, lang)
                 .map_err(|e| format!("build:{}", e.to_diagnostic(lang).message))?;
             plan.source = written.clone();
-            if let Some(standard) = archive {
+            if archive.is_some() || accessible {
                 if matches!(plan.engine, Engine::Tectonic | Engine::Latex) {
                     return Err("archive-engine".to_owned());
+                }
+                if accessible && !pdfa::tagging_supported(&dist) {
+                    return Err("accessible-latex".to_owned());
                 }
                 if !pdfa::supported(&dist) {
                     return Err("archive-latex".to_owned());
                 }
-                plan.prefix = Some(pdfa::prefix(standard, &root_text));
+                plan.prefix = Some(pdfa::prefix_for(archive, accessible, &root_text));
             }
             let (tx, forwarder) = forward_output(app, "export:output");
             let ctx = RunContext {
@@ -363,19 +408,35 @@ pub async fn export_pdf_lighter(
                 step = Some(at + 1);
                 continue;
             }
-            break (built, size, errors.len());
+            // The pictures tagpdf found without a text in place of them.
+            let missing_alt = outcome
+                .diagnostics
+                .iter()
+                .filter(|d| d.message.contains(pdfa::MISSING_ALT))
+                .count();
+            break (built, size, errors.len(), missing_alt);
         };
-        let archive = match archive {
-            Some(standard) => {
-                let check = pdfa::check(&built).map_err(err)?;
-                Some(Archive {
-                    standard,
-                    problems: pdfa::problems(&check, standard),
-                    own: pdfa::has_metadata(&root_text),
-                    check,
-                })
-            }
-            None => None,
+        let check = if archive.is_some() || accessible {
+            Some(pdfa::check(&built).map_err(err)?)
+        } else {
+            None
+        };
+        let accessible = match (&check, accessible) {
+            (Some(check), true) => Some(Accessible {
+                problems: pdfa::accessible_problems(check, missing_alt),
+                missing_alt,
+                part: check.ua_part,
+            }),
+            _ => None,
+        };
+        let archive = match (archive, check) {
+            (Some(standard), Some(check)) => Some(Archive {
+                standard,
+                problems: pdfa::problems(&check, standard),
+                own: pdfa::has_metadata(&root_text),
+                check,
+            }),
+            _ => None,
         };
         state.note_own_write(&dest);
         export::copy_pdf(&built, &dest).map_err(err)?;
@@ -385,6 +446,7 @@ pub async fn export_pdf_lighter(
             within: limit.is_none_or(|l| size <= l),
             errors,
             archive,
+            accessible,
         })
     })
     .await?

@@ -60,6 +60,10 @@ class PdfExportStore {
   private archive: ipc.PdfStandard | null = null;
   /** The export is a version of the document (its subject, its answer key), built apart. */
   private version: ipc.DocVersion | null = null;
+  /** The export is tagged for screen readers (PDF/UA). */
+  private accessible = false;
+  /** Asked for from "Export an accessible PDF": the window of choices opens with it ticked. */
+  accessibleAsked = false;
   /** The last export wrote its PDF. */
   private ok = false;
   /** Asked for from "Export as PDF/A": the window of choices opens with it ticked. */
@@ -70,16 +74,17 @@ class PdfExportStore {
    * pictures, as a PDF/A when `archive` is given, as a `version` of the
    * document when one is (built apart). True once the PDF is written.
    */
-  async start(dest: string, choice: PdfChoice = ORIGINAL, archive: ipc.PdfStandard | null = null, version: ipc.DocVersion | null = null): Promise<boolean> {
+  async start(dest: string, choice: PdfChoice = ORIGINAL, archive: ipc.PdfStandard | null = null, version: ipc.DocVersion | null = null, accessible = false): Promise<boolean> {
     this.ok = false;
-    await this.begin(dest, choice, archive, version);
+    await this.begin(dest, choice, archive, version, accessible);
     return this.ok;
   }
 
-  private async begin(dest: string, choice: PdfChoice, archive: ipc.PdfStandard | null, version: ipc.DocVersion | null) {
+  private async begin(dest: string, choice: PdfChoice, archive: ipc.PdfStandard | null, version: ipc.DocVersion | null, accessible: boolean) {
     if (this.job && this.job.phase !== "failed") return;
     this.archive = archive;
     this.version = version;
+    this.accessible = accessible;
     const run = ++this.run;
     const current = () => run === this.run;
     this.job = null;
@@ -202,7 +207,7 @@ class PdfExportStore {
   }
 
   private write(dest: string, choice: PdfChoice, run: number, withErrors: boolean) {
-    return choice.kind === "original" && !this.archive && !this.version ? this.copy(dest, run, withErrors) : this.lighter(dest, choice, run);
+    return choice.kind === "original" && !this.archive && !this.version && !this.accessible ? this.copy(dest, run, withErrors) : this.lighter(dest, choice, run);
   }
 
   private async copy(dest: string, run: number, withErrors: boolean) {
@@ -283,17 +288,20 @@ class PdfExportStore {
         if (!current()) return;
         if (weights) step = stepFor(weights, choice.bytes).step;
       }
-      const made = await ipc.exportPdfLighter(target, dest, step, choice.kind === "limit" ? choice.bytes : null, archive, this.version);
+      const made = await ipc.exportPdfLighter(target, dest, step, choice.kind === "limit" ? choice.bytes : null, archive, this.version, this.accessible);
       if (!current()) return;
       const told = { file: basename(dest), size: sizeLabel(made.size, lang) };
-      if (made.archive) {
+      if (made.archive || made.accessible) {
+        // The standards it says it is, and what does not go with them.
         const a = made.archive;
-        const standard = `PDF/${a.standard.slice(0, 1).toUpperCase()}-${a.standard.slice(2).toUpperCase()}`;
-        if (!a.problems.length) this.done(dest, "success", t("pdfExport.doneArchive", { ...told, standard }));
-        else {
-          const problems = a.problems.map((p) => t(`pdfa.problem.${p}` as "pdfa.problem.fonts", { n: a.check.notEmbedded, names: a.check.missing.join(", ") })).join(" ; ");
-          this.done(dest, "warning", t("pdfExport.archiveProblems", { ...told, standard, problems }));
-        }
+        const u = made.accessible;
+        const standard = [a ? `PDF/${a.standard.slice(0, 1).toUpperCase()}-${a.standard.slice(2).toUpperCase()}` : "", u ? `PDF/UA-${u.part ?? (a ? 1 : 2)}` : ""].filter(Boolean).join(" + ");
+        const problems = [
+          ...(a?.problems.map((p) => t(`pdfa.problem.${p}` as "pdfa.problem.fonts", { n: a.check.notEmbedded, names: a.check.missing.join(", ") })) ?? []),
+          ...(u?.problems.map((p) => t(`pdfua.problem.${p}` as "pdfua.problem.alt", { n: u.missingAlt })) ?? []),
+        ].join(" ; ");
+        if (!problems) this.done(dest, "success", t(u ? "pdfExport.doneAccessible" : "pdfExport.doneArchive", { ...told, standard }));
+        else this.done(dest, "warning", t("pdfExport.archiveProblems", { ...told, standard, problems }));
         return;
       }
       if (made.within) this.done(dest, "success", t("pdfExport.doneSize", told));
@@ -304,6 +312,7 @@ class PdfExportStore {
       if (said.includes("cancelled")) return this.close();
       if (said.includes("archive-engine")) return this.fail(dest, choice, 0, t("pdfExport.archiveEngine"), false);
       if (said.includes("archive-latex")) return this.fail(dest, choice, 0, t("pdfExport.archiveLatex"), false);
+      if (said.includes("accessible-latex")) return this.fail(dest, choice, 0, t("pdfExport.accessibleLatex"), false);
       const why = said.startsWith("build:") ? said.slice(6).trim() || t("pdfExport.noOutput") : said;
       this.fail(dest, choice, 0, why, false);
     }

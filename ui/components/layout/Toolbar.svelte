@@ -64,6 +64,7 @@
       { separator: true },
       actionItem("pdf.export"),
       actionItem("pdf.exportArchive"),
+      actionItem("pdf.exportAccessible"),
       ...(answerKey.current ? [actionItem("pdf.exportAnswers")] : []),
       actionItem("pdf.external"),
       { separator: true },

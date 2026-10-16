@@ -135,6 +135,7 @@ export const actions: Action[] = [
   { id: "build.live", title: "action.toggleLiveBuild", category: "build", icon: "bolt", run: () => toggleLiveBuild() },
   { id: "pdf.export", title: "action.exportPdf", category: "build", icon: "download", when: hasPdf, run: () => viewer.exportPdf() },
   { id: "pdf.exportArchive", title: "action.exportArchive", category: "build", icon: "shield", when: hasPdf, run: () => void openArchive() },
+  { id: "pdf.exportAccessible", title: "action.exportAccessible", category: "build", icon: "eye", when: hasPdf, run: () => void openAccessible() },
   { id: "pdf.external", title: "action.openPdfExternal", category: "build", icon: "external", when: hasPdf, run: () => viewer.openExternal() },
 
   // ------------------------------------------------------------- view
@@ -307,6 +308,12 @@ function answerPiece(id: string, title: MessageKey, piece: Piece, icon: string):
 /** The window of the export, with the subject and the answer key chosen. */
 function openAnswers() {
   answerKey.bothAsked = true;
+  ui.openOverlay("pdfChoice");
+}
+
+async function openAccessible() {
+  const { pdfExport } = await import("./state/pdfexport.svelte");
+  pdfExport.accessibleAsked = true;
   ui.openOverlay("pdfChoice");
 }
 

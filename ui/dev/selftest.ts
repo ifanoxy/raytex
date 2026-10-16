@@ -1199,6 +1199,28 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     if (ui.overlay) ui.closeOverlay();
     ok = false;
   }
+  // ------------------------------------------------------ accessible PDF
+  // Asked for from its command: ticked in the window; tagged as PDF/UA-2,
+  // the picture of the document without a description said; with a PDF/A,
+  // PDF/A-3b and PDF/UA-1.
+  try {
+    const root = project.info!.root;
+    void runAction("pdf.exportAccessible");
+    await until(() => !!document.querySelector<HTMLInputElement>(".pdf-choice [data-accessible]")?.checked, 20_000, "accessible in the choices");
+    await scene("pdf-accessible");
+    ui.closeOverlay();
+    const tagged = `${root}-accessible-${Date.now()}.pdf`;
+    await pdfExport.start(tagged, { kind: "original" }, null, null, true);
+    await until(() => pdfExport.job === null, 240_000, "accessible export");
+    const said = ui.toasts.map((x) => x.message).find((m) => m.includes("PDF/UA")) ?? "";
+    const both = await ipc.exportPdfLighter(build.target()!, `${root}-accessible-archive-${Date.now()}.pdf`, null, null, "a-2b", null, true);
+    log(`accessible: said «${said}», with PDF/A ${both.archive?.standard} ${JSON.stringify(both.archive?.problems)} UA-${both.accessible?.part} ${JSON.stringify(both.accessible?.problems)} (${both.accessible?.missingAlt} without alt)`);
+    ok = /PDF\/UA-2/.test(said) && /description|alt/.test(said) && both.archive?.standard === "a-3b" && !both.archive.problems.length && both.accessible?.part === 1 && (both.accessible?.missingAlt ?? 0) >= 1 && both.accessible!.problems.every((p) => p === "alt" || p === "title") && ok;
+  } catch (e) {
+    log(`accessible failed: ${e}, job ${JSON.stringify(pdfExport.job)}`);
+    if (ui.overlay) ui.closeOverlay();
+    ok = false;
+  }
   await editor.saveAll();
   log(`media scenes ${ok ? "PASSED" : "FAILED"}`);
   return ok;
