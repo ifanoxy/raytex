@@ -4,6 +4,7 @@
   // formatting buttons live in the bar below (FormatBar).
   import { getAction, keyFor, runAction } from "$lib/actions";
   import { t } from "$lib/i18n.svelte";
+  import { answerKey } from "$lib/state/answerkey.svelte";
   import { app } from "$lib/state/app.svelte";
   import { build } from "$lib/state/build.svelte";
   import { project } from "$lib/state/project.svelte";
@@ -63,6 +64,7 @@
       { separator: true },
       actionItem("pdf.export"),
       actionItem("pdf.exportArchive"),
+      ...(answerKey.current ? [actionItem("pdf.exportAnswers")] : []),
       actionItem("pdf.external"),
       { separator: true },
       { label: t("toolbar.buildSettings"), icon: "settings", run: () => ui.openSettings("build") },

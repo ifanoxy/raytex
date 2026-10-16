@@ -1,19 +1,23 @@
 <script lang="ts">
   // Exporting the PDF of a document that has pictures: as it is, with
   // lighter pictures, or under a size. Each choice says about what the PDF
-  // would weigh before anything is done.
+  // would weigh before anything is done. A subject with its answer key:
+  // either one, or both in two files.
   import { onDestroy, onMount } from "svelte";
   import { save } from "@tauri-apps/plugin-dialog";
+  import { totalPoints } from "$lib/answerkey";
   import { sizeLabel } from "$lib/history";
   import { i18n, plural, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { estimate, megabytes, type PdfChoice, type PdfWeights, STEP_BALANCED, STEP_LIGHT, stepFor } from "$lib/pdfweight";
+  import { answerKey, type Version } from "$lib/state/answerkey.svelte";
   import { build } from "$lib/state/build.svelte";
+  import { editor } from "$lib/state/editor.svelte";
   import { pdfExport } from "$lib/state/pdfexport.svelte";
   import { project } from "$lib/state/project.svelte";
   import { ui } from "$lib/state/ui.svelte";
   import { viewer } from "$lib/state/viewer.svelte";
-  import { basename } from "$lib/utils";
+  import { basename, stem } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
   import Modal from "../common/Modal.svelte";
 
@@ -38,6 +42,23 @@
   let archive = $state(pdfExport.archiveAsked);
   let standard = $state<ipc.PdfStandard>(STANDARDS.includes(saved.standard as ipc.PdfStandard) ? (saved.standard as ipc.PdfStandard) : "a-2b");
   pdfExport.archiveAsked = false;
+  /** A subject with its answer key: the one shown, or both when asked for. */
+  const answers = answerKey.current;
+  type Which = Version | "both";
+  let which = $state<Which>(answerKey.bothAsked ? "both" : answers?.shown ? "key" : "subject");
+  answerKey.bothAsked = false;
+  const points = answers && project.info?.main ? totalPoints(editor.textOf(project.info.main) ?? "", answers) : null;
+  /** What the files are called by default: the project, then the version. */
+  const base = project.info?.light && project.info.main ? stem(project.info.main) : (project.info?.name ?? "document");
+  const named = (v: Version) => `${base} - ${t(v === "subject" ? "answers.fileSubject" : "answers.fileKey")}.pdf`;
+  /** The answer key next to the subject chosen: its word replaced, else added. */
+  function keyNext(subject: string): string {
+    const file = basename(subject);
+    const word = t("answers.fileSubject");
+    const at = file.toLowerCase().lastIndexOf(word.toLowerCase());
+    const name = at >= 0 ? file.slice(0, at) + t("answers.fileKey") + file.slice(at + word.length) : file.replace(/(\.pdf)?$/i, ` - ${t("answers.fileKey")}.pdf`);
+    return subject.slice(0, subject.length - file.length) + name;
+  }
   /** The pictures and the PDF as they are (at once), then what they weigh at each step (seconds). */
   let pictures = $state<{ pictures: number; original: number; pdf: number | null } | null>(null);
   let weights = $state<PdfWeights | null>(null);
@@ -78,16 +99,47 @@
     const choice: PdfChoice = kind === "original" ? { kind } : kind === "limit" ? { kind, bytes: bytes! } : { kind: "step", step: kind === "balanced" ? STEP_BALANCED : STEP_LIGHT };
     // Light mode: proposed next to the .tex file (its build is in the cache).
     const main = project.info?.light ? project.info.main : null;
+    const filters = [{ name: "PDF", extensions: ["pdf"] }];
+    const level = archive ? standard : null;
+    if (answers) {
+      // The version shown is the build of the project: the others are built apart.
+      const versionOf = (v: Version) => ((v === "key") === answers.shown ? null : answerKey.versionOf(v));
+      const dest = await save({ defaultPath: named(which === "key" ? "key" : "subject"), filters });
+      if (!dest) return;
+      if (which !== "both") {
+        ui.closeOverlay();
+        await pdfExport.start(dest, choice, level, versionOf(which));
+        return;
+      }
+      const key = keyNext(dest);
+      if (key !== dest && (await ipc.pathExists(key).catch(() => false)) && !(await ui.confirm({ title: t("answers.replaceTitle"), message: t("answers.replace", { file: basename(key) }), okLabel: t("answers.replaceOk") }))) return;
+      ui.closeOverlay();
+      if (await pdfExport.start(dest, choice, level, versionOf("subject"))) await pdfExport.start(key, choice, level, versionOf("key"));
+      return;
+    }
     const defaultPath = main ? main.replace(/\.[^./\\]+$/, ".pdf") : viewer.pdf ? basename(viewer.pdf) : "document.pdf";
-    const dest = await save({ defaultPath, filters: [{ name: "PDF", extensions: ["pdf"] }] });
+    const dest = await save({ defaultPath, filters });
     if (!dest) return;
     ui.closeOverlay();
-    await pdfExport.start(dest, choice, archive ? standard : null);
+    await pdfExport.start(dest, choice, level);
   }
 </script>
 
 <Modal title={t("pdfChoice.title")} icon="download" width="min(540px, 94vw)" height="auto">
   <div class="pdf-choice">
+    {#if answers}
+      <p class="what faint">{t("pdfChoice.version")}</p>
+      <div class="choices versions" role="radiogroup" aria-label={t("pdfChoice.version")}>
+        {#each ["subject", "key", "both"] as const as v (v)}
+          <label class="choice" class:active={which === v} data-version={v}>
+            <input type="radio" name="pdf-version" value={v} bind:group={which} />
+            <span class="name">{t(v === "subject" ? "pdfChoice.versionSubject" : v === "key" ? "pdfChoice.versionKey" : "pdfChoice.versionBoth")}</span>
+            <span class="size">{#if v === "subject" && points !== null}{t("pdfChoice.points", { n: points })}{/if}</span>
+            {#if v === "both"}<span class="hint faint">{t("pdfChoice.versionBothHint", { subject: named("subject"), key: named("key") })}</span>{/if}
+          </label>
+        {/each}
+      </div>
+    {/if}
     {#if pictures?.pictures}
       <p class="what faint">{plural(pictures.pictures, "pdfChoice.picturesOne", "pdfChoice.picturesMany")} · {sizeLabel(pictures.original, lang)}</p>
     {/if}

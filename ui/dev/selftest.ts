@@ -25,6 +25,7 @@ import { causeOf, fixable, quickFix } from "../lib/fixes";
 import { fileSelection } from "../lib/state/selection.svelte";
 import { media } from "../lib/state/media.svelte";
 import { pdfExport } from "../lib/state/pdfexport.svelte";
+import { answerKey } from "../lib/state/answerkey.svelte";
 import { bringPicture } from "../lib/state/pictures";
 import { colors } from "../lib/state/colors.svelte";
 import { fonts } from "../lib/state/fonts.svelte";
@@ -1812,6 +1813,47 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     let refused = false;
     await ipc.trashProject(`${projectsDir}/rapport`).catch(() => (refused = true));
     check("open project protected", refused);
+
+    // ------------------------------------------- subject and answer key
+    // A document of its own gets the switch, the frame of the solutions and
+    // the strip of the preview from the Insert menu; it builds.
+    await until(() => editor.active === project.info?.main && !!editor.view, 10_000, "rapport open");
+    const rapport = project.info!.main!;
+    const v0 = editor.view!;
+    v0.dispatch({ selection: { anchor: v0.state.doc.toString().lastIndexOf("\\end{document}") } });
+    await runAction("insert.solution");
+    await until(() => !!answerKey.current, 5_000, "switch written");
+    const written = editor.textOf(rapport) ?? "";
+    check(
+      "answer key: written in a document",
+      answerKey.current?.kind === "newif" && answerKey.current.env === "corrige" && /\\newif\\ifcorrige\n\\corrigefalse/.test(written) && /\\begin\{corrige\}/.test(written.slice(written.indexOf("\\begin{document}"))),
+      JSON.stringify(answerKey.current),
+    );
+    check("answer key: the document builds", await buildOk(log, "with a solution"));
+    await until(() => !!document.querySelector(".pdf-viewer .versions"), 5_000, "versions strip");
+
+    // A test from its template: the subject, the answer key one click away, both exported.
+    check("test project", await project.createEmpty(`${projectsDir}/devoir`, "Devoir de maths"));
+    await templates.apply(templates.list.find((x) => x.id === "test-answer-key")!);
+    await until(() => !build.running && samePath(build.outcome?.plan.root, project.info?.main), 120_000, "test build");
+    check("answer key: the subject builds", build.status === "success", build.status);
+    await until(() => !!document.querySelector(".pdf-viewer .versions .on"), 5_000, "strip of the test");
+    check("answer key: the subject shown", answerKey.current?.shown === false && document.querySelector(".versions .on")?.getAttribute("data-version") === "subject");
+    await scene("answer-key-subject");
+    const revision = viewer.revision;
+    document.querySelector<HTMLButtonElement>('.versions [data-version="key"]')!.click();
+    await until(() => answerKey.current?.shown === true, 5_000, "switch turned");
+    await until(() => viewer.revision !== revision && !build.running, 120_000, "answer key built");
+    check("answer key: shown and built", /^\\corrigetrue$/m.test(editor.textOf(project.info!.main!) ?? "") && build.status === "success", build.status);
+    await scene("answer-key-key");
+    // Both, built apart: the subject from its version, the answer key as shown.
+    const subjectPdf = `${projectsDir}/Devoir - sujet.pdf`;
+    const keyPdf = `${projectsDir}/Devoir - corrigé.pdf`;
+    const madeSubject = await pdfExport.start(subjectPdf, { kind: "original" }, null, answerKey.versionOf("subject"));
+    const madeKey = madeSubject && (await pdfExport.start(keyPdf, { kind: "original" }, null, null));
+    const sizes = madeKey ? [(await ipc.readBinaryFile(subjectPdf)).byteLength, (await ipc.readBinaryFile(keyPdf)).byteLength] : [];
+    check("answer key: both exported", madeKey && sizes[0] > 1000 && sizes[1] > sizes[0], `${madeSubject} ${madeKey} ${sizes.join(" / ")}`);
+    check("answer key: the document unchanged", /^\\corrigetrue$/m.test(editor.textOf(project.info!.main!) ?? ""));
   } catch (e) {
     results.failure = String(e);
   }

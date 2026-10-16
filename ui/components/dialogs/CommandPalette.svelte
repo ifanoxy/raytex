@@ -90,7 +90,7 @@
         });
       }
       const main = project.info?.main;
-      const chapters = hasChapters((main && editor.textOf(main)) ?? "");
+      const chapters = hasChapters((main && editor.headOf(main, 4000)) ?? "");
       for (const { path, entry } of leaves(menus({ chapters, shortcuts: [], allColors: () => {} }))) {
         if (entry.disabled) continue;
         const label = path[path.length - 1];

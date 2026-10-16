@@ -45,8 +45,9 @@
   /** Chapters exist only in book-like classes. */
   const hasChapters = $derived.by(() => {
     void editor.revision;
+    void editor.mainEdits;
     const main = project.info?.main;
-    const text = (main && editor.textOf(main)) ?? "";
+    const text = (main && editor.headOf(main, 4000)) ?? "";
     return bookLike(text);
   });
 

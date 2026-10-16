@@ -1,0 +1,11 @@
+category = "teacher"
+order = 2
+main = "main.tex"
+engine = "pdflatex"
+tags = ["devoir", "contrôle", "sujet", "corrigé", "barème", "évaluation", "test", "answer key"]
+[name]
+en = "Test with answer key"
+fr = "Devoir avec corrigé"
+[description]
+en = "Numbered exercises with their points, lines or a grid to answer on, and the solutions: the preview shows the subject or the answer key, and both are exported in one go."
+fr = "Exercices numérotés avec leur barème, des lignes ou un quadrillage pour répondre, et les corrigés : l'aperçu montre le sujet ou le corrigé, et les deux s'exportent d'un coup."

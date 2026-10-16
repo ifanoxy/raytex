@@ -58,13 +58,28 @@ class PdfExportStore {
   private opening: Promise<void> = Promise.resolve();
   /** The export is a PDF/A, of this level. */
   private archive: ipc.PdfStandard | null = null;
+  /** The export is a version of the document (its subject, its answer key), built apart. */
+  private version: ipc.DocVersion | null = null;
+  /** The last export wrote its PDF. */
+  private ok = false;
   /** Asked for from "Export as PDF/A": the window of choices opens with it ticked. */
   archiveAsked = false;
 
-  /** Exports the PDF of the document to `dest`, as it is or with lighter pictures, as a PDF/A when `archive` is given. */
-  async start(dest: string, choice: PdfChoice = ORIGINAL, archive: ipc.PdfStandard | null = null) {
+  /**
+   * Exports the PDF of the document to `dest`, as it is or with lighter
+   * pictures, as a PDF/A when `archive` is given, as a `version` of the
+   * document when one is (built apart). True once the PDF is written.
+   */
+  async start(dest: string, choice: PdfChoice = ORIGINAL, archive: ipc.PdfStandard | null = null, version: ipc.DocVersion | null = null): Promise<boolean> {
+    this.ok = false;
+    await this.begin(dest, choice, archive, version);
+    return this.ok;
+  }
+
+  private async begin(dest: string, choice: PdfChoice, archive: ipc.PdfStandard | null, version: ipc.DocVersion | null) {
     if (this.job && this.job.phase !== "failed") return;
     this.archive = archive;
+    this.version = version;
     const run = ++this.run;
     const current = () => run === this.run;
     this.job = null;
@@ -140,6 +155,7 @@ class PdfExportStore {
 
   private done(dest: string, kind: "success" | "warning", message: string) {
     this.job = null;
+    this.ok = true;
     this.tell(dest, "done", { result: message, warning: kind === "warning" });
     // Said in the main window too: the other one may have been closed.
     ui.toast(kind, message, { action: { label: t("export.show"), run: () => void ipc.revealInOs(dest) } });
@@ -186,7 +202,7 @@ class PdfExportStore {
   }
 
   private write(dest: string, choice: PdfChoice, run: number, withErrors: boolean) {
-    return choice.kind === "original" && !this.archive ? this.copy(dest, run, withErrors) : this.lighter(dest, choice, run);
+    return choice.kind === "original" && !this.archive && !this.version ? this.copy(dest, run, withErrors) : this.lighter(dest, choice, run);
   }
 
   private async copy(dest: string, run: number, withErrors: boolean) {
@@ -267,7 +283,7 @@ class PdfExportStore {
         if (!current()) return;
         if (weights) step = stepFor(weights, choice.bytes).step;
       }
-      const made = await ipc.exportPdfLighter(target, dest, step, choice.kind === "limit" ? choice.bytes : null, archive);
+      const made = await ipc.exportPdfLighter(target, dest, step, choice.kind === "limit" ? choice.bytes : null, archive, this.version);
       if (!current()) return;
       const told = { file: basename(dest), size: sizeLabel(made.size, lang) };
       if (made.archive) {

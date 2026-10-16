@@ -5,9 +5,10 @@
   // highlighted rectangles).
   import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
   import { onDestroy, onMount, tick } from "svelte";
-  import { keyFor } from "$lib/actions";
+  import { keyFor, runAction } from "$lib/actions";
   import { t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
+  import { answerKey } from "$lib/state/answerkey.svelte";
   import { app } from "$lib/state/app.svelte";
   import { build } from "$lib/state/build.svelte";
   import { editor } from "$lib/state/editor.svelte";
@@ -467,6 +468,20 @@
     <button class="icon-btn" onclick={() => ui.setVisible("pdf", false)} title={t("viewer.hide")} aria-label={t("viewer.hide")}><Icon name="x" /></button>
   </div>
 
+  {#if answerKey.current}
+    {@const shown = answerKey.current.shown}
+    <!-- A subject and its answer key: either one shown, both exported. -->
+    <div class="versions">
+      <Icon name="graduation" size={14} />
+      <div class="seg" role="group" aria-label={t("answers.title")}>
+        <button class:on={!shown} aria-pressed={!shown} data-version="subject" onclick={() => answerKey.show(false)}>{t("answers.subject")}</button>
+        <button class:on={shown} aria-pressed={shown} data-version="key" onclick={() => answerKey.show(true)}>{t("answers.key")}</button>
+      </div>
+      <span class="spacer"></span>
+      <button class="both" title={t("answers.exportBothHint")} onclick={() => runAction("pdf.exportAnswers")}><Icon name="download" size={13} />{t("answers.exportBoth")}</button>
+    </div>
+  {/if}
+
   {#if alone}
     <!-- A part of the document compiled on its own: said, with the way back to the whole. -->
     <div class="alone" title={t("part.aloneHint")}>
@@ -530,6 +545,63 @@
 </div>
 
 <style>
+  .versions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 32px;
+    padding: 0 8px 0 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-elev);
+    color: var(--accent);
+    font-size: 12px;
+  }
+  .versions .spacer {
+    flex: 1;
+  }
+  .seg {
+    display: flex;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-input);
+  }
+  .seg button {
+    height: 22px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-muted);
+    font: inherit;
+    cursor: pointer;
+  }
+  .seg button:hover:not(.on) {
+    color: var(--text);
+  }
+  .seg button.on {
+    background: var(--accent);
+    color: var(--accent-contrast);
+    font-weight: 600;
+  }
+  .versions .both {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    padding: 3px 8px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .versions .both:hover {
+    background: var(--bg-hover);
+  }
   .alone {
     display: flex;
     align-items: center;

@@ -1,5 +1,5 @@
 category = "teacher"
-order = 3
+order = 4
 main = "main.tex"
 engine = "pdflatex"
 tags = ["td", "feuille", "exercices", "corrections", "worksheet"]

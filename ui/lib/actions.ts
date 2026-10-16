@@ -13,12 +13,14 @@ import { specFromSelection } from "./commands";
 import { REPOSITORY_URL } from "./constants";
 import type { GridKind } from "./grid";
 import { allDiagnostics, fixable, fixAllAndReport, quickFix } from "./fixes";
+import { canWrite, type Piece } from "./answerkey";
 import { learnLayout, matchesKey } from "./keys";
 import { setAlignment, setList } from "./editor/format";
 import { wrapCommand, wrapEnvironment, wrapMath } from "./editor/structure";
 import { type MessageKey, t } from "./i18n.svelte";
 import { confirmAndRun } from "./install";
 import * as ipc from "./ipc";
+import { answerKey } from "./state/answerkey.svelte";
 import { app } from "./state/app.svelte";
 import { build } from "./state/build.svelte";
 import { editor } from "./state/editor.svelte";
@@ -229,6 +231,14 @@ export const actions: Action[] = [
   { id: "insert.code", title: "action.insertCode", category: "insert", icon: "code", when: hasTex, run: () => editor.openCode() },
   { id: "insert.graph", title: "action.insertGraph", category: "insert", icon: "chart", when: hasTex, run: () => media.openGraph() },
   { id: "insert.variations", title: "action.insertVariations", category: "insert", icon: "variations", when: hasTex, run: () => media.openVariations() },
+  // Subject and answer key: the pieces, the switch, both PDFs.
+  answerPiece("insert.exercise", "action.insertExercise", "exercise", "hash"),
+  answerPiece("insert.solution", "action.insertSolution", "solution", "graduation"),
+  answerPiece("insert.answerLines", "action.insertAnswerLines", "lines", "list"),
+  answerPiece("insert.answerSpace", "action.insertAnswerSpace", "space", "square"),
+  answerPiece("insert.answerGrid", "action.insertAnswerGrid", "grid", "grid"),
+  { id: "view.answers", title: "action.toggleAnswers", category: "view", icon: "graduation", when: () => !!answerKey.current, run: () => answerKey.show(!answerKey.current?.shown) },
+  { id: "pdf.exportAnswers", title: "action.exportAnswers", category: "build", icon: "download", when: () => hasProject() && !!answerKey.current, run: () => void openAnswers() },
   {
     id: "insert.command",
     title: "action.newCommand",
@@ -288,6 +298,16 @@ export function openGrid(view: EditorView, kind: GridKind, rows = 3, cols = 3) {
 
 /** Opens the TikZ studio, on the picture under the cursor if there is one. */
 /** The window of choices of the export, PDF/A ticked. */
+function answerPiece(id: string, title: MessageKey, piece: Piece, icon: string): Action {
+  return { id, title, category: "insert", icon, when: () => hasTex() && canWrite(answerKey.current, piece), run: () => answerKey.insert(piece) };
+}
+
+/** The window of the export, with the subject and the answer key chosen. */
+function openAnswers() {
+  answerKey.bothAsked = true;
+  ui.openOverlay("pdfChoice");
+}
+
 async function openArchive() {
   const { pdfExport } = await import("./state/pdfexport.svelte");
   pdfExport.archiveAsked = true;

@@ -100,8 +100,13 @@ export interface LighterPdf {
  * pictures at `step` (null: as they are) in a copy of the project, as a
  * PDF/A when `archive` is given.
  */
-export const exportPdfLighter = (path: string, dest: string, step: number | null, limit: number | null, archive: PdfStandard | null = null) =>
-  call<LighterPdf>("export_pdf_lighter", { path, dest, step, limit, archive });
+/** A version of the document built apart: its name, the text of its root file (the subject of an exam, its answer key). */
+export interface DocVersion {
+  name: string;
+  text: string;
+}
+export const exportPdfLighter = (path: string, dest: string, step: number | null, limit: number | null, archive: PdfStandard | null = null, version: DocVersion | null = null) =>
+  call<LighterPdf>("export_pdf_lighter", { path, dest, step, limit, archive, version });
 export const exportPdfCancel = () => call<void>("export_pdf_cancel");
 /** Opens the window of its own that follows an export (or brings it to the front). */
 export const exportWindowOpen = (title: string) => call<void>("export_window_open", { title });

@@ -273,6 +273,8 @@ class EditorStore {
   words = $state<{ file: number; project: number } | null>(null);
   /** Increments when the active document changes (for panels following it). */
   revision = $state(0);
+  /** Changes with each edit of the main file: what is read from its preamble follows it. */
+  mainEdits = $state(0);
   /** The cursor is inside a TikZ picture (the toolbar offers to edit it). */
   inTikz = $state(false);
   /** Heading command of the cursor line (`section`), shown by the style menu. */
@@ -379,6 +381,12 @@ class EditorStore {
   /** Current text of an open document. */
   textOf(path: string): string | null {
     return this.stateOf(path)?.doc.toString() ?? null;
+  }
+
+  /** The start of an open document (its preamble), without copying the rest. */
+  headOf(path: string, length = 60_000): string | null {
+    const doc = this.stateOf(path)?.doc;
+    return doc ? doc.sliceString(0, Math.min(length, doc.length)) : null;
   }
 
   // ------------------------------------------------------- configuration
@@ -616,6 +624,7 @@ class EditorStore {
   /** Book-keeping after any change of a document (shown or not). */
   private afterChange(m: DocModel, state: EditorState) {
     m.version++;
+    if (samePath(m.path, project.info?.main)) this.mainEdits++;
     const dirty = state.doc !== m.saved;
     this.setTabFlag(m.path, "dirty", dirty);
     if (m.kind === "tex" || m.kind === "bib") this.syncSoon(pathKey(m.path));

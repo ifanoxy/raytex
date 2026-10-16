@@ -7,6 +7,7 @@ import { BASE_COLORS, type NamedColor } from "./colors";
 import { COLORS, HEADINGS, type Heading, setHeading, setSize, SIZES, type Size } from "./editor/format";
 import { t, type MessageKey } from "./i18n.svelte";
 import type { MenuEntry, TopMenu } from "./menu";
+import { answerKey } from "./state/answerkey.svelte";
 import { colors } from "./state/colors.svelte";
 import { editor } from "./state/editor.svelte";
 import { ui } from "./state/ui.svelte";
@@ -91,6 +92,23 @@ export function menus(ctx: MenuContext): TopMenu[] {
     items: [action("edit.alignLeft"), action("edit.alignCenter"), action("edit.alignRight"), action("edit.alignJustify")],
   };
 
+  // Subject and answer key: the pieces, the switch, both PDFs.
+  const answers: MenuEntry = {
+    label: t("menu.answers"),
+    icon: "graduation",
+    items: [
+      action("insert.exercise"),
+      action("insert.solution"),
+      sep,
+      action("insert.answerLines"),
+      action("insert.answerSpace"),
+      action("insert.answerGrid"),
+      sep,
+      { ...action("view.answers"), checked: !!answerKey.current?.shown },
+      action("pdf.exportAnswers"),
+    ],
+  };
+
   const known = new Map(ctx.shortcuts);
   const favourites = FAVOURITES.filter((k) => known.has(k));
 
@@ -134,6 +152,8 @@ export function menus(ctx: MenuContext): TopMenu[] {
         action("insert.ref", "hash"),
         action("insert.cite", "quote"),
         snippet("format.label", "hash", "\\label{${1}}"),
+        sep,
+        answers,
         sep,
         action("insert.command"),
         action("insert.frame", "presentation"),

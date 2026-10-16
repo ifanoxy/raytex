@@ -48,7 +48,7 @@
     if (!open) return false;
     void editor.revision;
     const main = project.info?.main;
-    return hasChapters((main && editor.textOf(main)) ?? "");
+    return hasChapters((main && editor.headOf(main, 4000)) ?? "");
   });
   const current = $derived(open ? (menus({ chapters, shortcuts, allColors }).find((m) => m.id === open) ?? null) : null);
   const subEntries = $derived(current && sub !== null ? (current.items[sub]?.items ?? []) : []);

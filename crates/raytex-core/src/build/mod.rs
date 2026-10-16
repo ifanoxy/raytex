@@ -115,6 +115,11 @@ pub struct BuildPlan {
     /// of a PDF/A, see [`crate::pdfa`]): nothing is written in the files.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prefix: Option<String>,
+    /// The document given to the engine in place of the root, written in
+    /// the folder of the build (a version of it: the subject of an exam,
+    /// its answer key), read from the folder of the root all the same.
+    #[serde(skip)]
+    pub source: Option<PathBuf>,
 }
 
 /// Why a build cannot start.
@@ -208,6 +213,7 @@ pub fn plan(
         bib_tool,
         only: None,
         prefix: None,
+        source: None,
     })
 }
 
@@ -594,11 +600,17 @@ pub fn run(
 
 impl BuildPlan {
     /// What the engine is given: the root, or the document written for a
-    /// build of one file (from the folder of the root, with `/`).
+    /// build of one file or for a version of the root (from the folder of
+    /// the root, with `/`).
     fn engine_input(&self) -> String {
-        match &self.only {
-            Some(o) => only::relative(&self.root_dir, &o.source)
-                .unwrap_or_else(|| o.source.to_string_lossy().into_owned()),
+        match self
+            .only
+            .as_ref()
+            .map(|o| &o.source)
+            .or(self.source.as_ref())
+        {
+            Some(source) => only::relative(&self.root_dir, source)
+                .unwrap_or_else(|| source.to_string_lossy().replace('\\', "/")),
             None => self
                 .root
                 .file_name()
@@ -2073,6 +2085,68 @@ mod tests {
                     .unwrap()
                     .contains("undefinedmacro")
             );
+        }
+    }
+
+    /// A version of the root (the answer key of an exam) written in the
+    /// folder of the build is what the engine reads, the files it brings in
+    /// read from the folder of the root, with the engine and with latexmk;
+    /// the root itself is not touched.
+    #[test]
+    #[ignore = "depends on the local TeX installation"]
+    fn a_version_of_the_root_is_built_from_its_folder() {
+        let Some(dist) = crate::tex::detect(&[]).into_iter().next() else {
+            println!("no TeX distribution: nothing checked");
+            return;
+        };
+        for tool in [BuildTool::Auto, BuildTool::Latexmk] {
+            let dir = tempfile::tempdir().unwrap();
+            let base = dunce::canonicalize(dir.path()).unwrap();
+            let root = crate::log::normalize(&base.join("devoir.tex"));
+            std::fs::create_dir_all(base.join("parties")).unwrap();
+            std::fs::write(base.join("parties/un.tex"), "\\typeout{PART=ONE}\n").unwrap();
+            std::fs::write(base.join("parties/deux.tex"), "\\typeout{PART=TWO}Deux.\n").unwrap();
+            let subject = "\\documentclass{article}\n\\newif\\ifcorrige\n\\corrigefalse\n\\begin{document}\n\\ifcorrige\\typeout{VERSION=KEY}\\else\\typeout{VERSION=SUBJECT}\\fi\nTexte.\n\\input{parties/un}\n\\include{parties/deux}\n\\end{document}\n";
+            std::fs::write(&root, subject).unwrap();
+            let settings = BuildSettings {
+                out_dir: "build/.raytex-corrige".to_owned(),
+                precompile_preamble: false,
+                tool,
+                ..BuildSettings::default()
+            };
+            let mut plan = plan(
+                &root,
+                &settings,
+                Some(&dist),
+                &DocumentFacts::default(),
+                Lang::En,
+            )
+            .unwrap();
+            std::fs::create_dir_all(&plan.out_dir).unwrap();
+            let version = plan.out_dir.join("devoir.tex");
+            std::fs::write(&version, subject.replace("\\corrigefalse", "\\corrigetrue")).unwrap();
+            plan.source = Some(version);
+            let cancel = AtomicBool::new(false);
+            let source = |p: &Path| std::fs::read_to_string(p).ok();
+            let ctx = RunContext {
+                dist: &dist,
+                settings: &settings,
+                cancel: &cancel,
+                lang: Lang::En,
+                source: &source,
+                packages: None,
+                background: false,
+                live: false,
+            };
+            let outcome = run(&plan, &ctx, &mut |_: BuildEvent| {});
+            let log = std::fs::read_to_string(&plan.log).unwrap_or_default();
+            assert!(outcome.success, "{tool:?}: {:?}", outcome.diagnostics);
+            assert!(plan.pdf.exists(), "{tool:?}");
+            assert!(
+                log.contains("VERSION=KEY") && log.contains("PART=ONE") && log.contains("PART=TWO"),
+                "{tool:?}"
+            );
+            assert_eq!(std::fs::read_to_string(&root).unwrap(), subject);
         }
     }
 

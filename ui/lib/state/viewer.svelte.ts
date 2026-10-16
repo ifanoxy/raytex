@@ -83,7 +83,9 @@ class ViewerStore {
     const { build } = await import("./build.svelte");
     const target = build.target();
     const found = target ? await ipc.pdfPictures(target).catch(() => null) : null;
-    if (found?.pictures) {
+    // A subject with its answer key: which one (or both) is asked there too.
+    const { answerKey } = await import("./answerkey.svelte");
+    if (found?.pictures || answerKey.current) {
       ui.openOverlay("pdfChoice");
       return;
     }

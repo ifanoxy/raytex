@@ -18,7 +18,7 @@ use raytex_core::lighter::{self, Cache};
 use raytex_core::settings::BuildTool;
 use raytex_core::tex::Engine;
 use raytex_core::{history, lighter::Weights, pdfa};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 
 use super::build::{OutputLine, Step, forward_output};
@@ -156,12 +156,40 @@ pub struct Archive {
     pub check: pdfa::Check,
 }
 
+/// A version of the document, built apart from the text of its root file
+/// written for it (the subject of an exam, its answer key).
+#[derive(Debug, Deserialize)]
+pub struct Version {
+    /// What it is called (`sujet`, `corrige`): the folder of its build.
+    pub name: String,
+    /// The text of the root file for this version.
+    pub text: String,
+}
+
+impl Version {
+    /// The name, as a folder can have it.
+    fn folder(&self) -> String {
+        let name: String = self
+            .name
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric() || *c == '-')
+            .take(24)
+            .collect();
+        if name.is_empty() {
+            "version".into()
+        } else {
+            name
+        }
+    }
+}
+
 /// Builds the document of `path` again apart and writes the PDF at `dest`:
 /// with its pictures at `step` (in a copy of the project; with a `limit` in
 /// bytes, a PDF that weighs more is built again at the next steps, three
 /// times at most), and as a PDF/A when `archive` is given (in a folder of
-/// the build of its own when the pictures stay as they are). Nothing of the
-/// project is touched.
+/// the build of its own when the pictures stay as they are), and as a
+/// `version` of it when one is given (its root file written in that folder,
+/// or in the copy). Nothing of the project is touched.
 ///
 /// Fails with `no-project`, `no-distribution`, `cancelled`, `archive-engine`
 /// (an engine that cannot write a PDF/A), `archive-latex` (a LaTeX older
@@ -174,6 +202,7 @@ pub async fn export_pdf_lighter(
     step: Option<usize>,
     limit: Option<u64>,
     archive: Option<pdfa::Standard>,
+    version: Option<Version>,
 ) -> CmdResult<LighterPdf> {
     let file = abs(&path);
     let dest = abs(&dest);
@@ -228,15 +257,39 @@ pub async fn export_pdf_lighter(
                 (Some(Copy(work.clone())), Some(mirror))
             }
             None => {
-                // As it is, for the archive: apart from the build of the project.
-                settings.out_dir = out_dir.join(".raytex-pdfa").to_string_lossy().into_owned();
+                // As it is, for the archive or a version: apart from the build of the project.
+                let folder = match (archive.is_some(), &version) {
+                    (true, Some(v)) => format!(".raytex-pdfa-{}", v.folder()),
+                    (false, Some(v)) => format!(".raytex-{}", v.folder()),
+                    _ => ".raytex-pdfa".to_owned(),
+                };
+                settings.out_dir = out_dir.join(folder).to_string_lossy().into_owned();
                 (None, None)
             }
         };
         let root = mirror
             .as_ref()
             .map_or(prep.root.clone(), |m| m.main.clone());
-        let root_text = std::fs::read_to_string(&root).unwrap_or_default();
+        // A version: its root file in the copy of the project, or in the
+        // folder of its build (given to the engine from there).
+        let written = match (&version, &mirror) {
+            (Some(v), Some(_)) => {
+                std::fs::write(&root, &v.text).map_err(err)?;
+                None
+            }
+            (Some(v), None) => {
+                let dir = PathBuf::from(&settings.out_dir);
+                std::fs::create_dir_all(&dir).map_err(err)?;
+                let file = dir.join(root.file_name().unwrap_or_default());
+                std::fs::write(&file, &v.text).map_err(err)?;
+                Some(file)
+            }
+            (None, _) => None,
+        };
+        let root_text = match &version {
+            Some(v) => v.text.clone(),
+            None => std::fs::read_to_string(&root).unwrap_or_default(),
+        };
         let source = |p: &Path| std::fs::read_to_string(p).ok();
         let last = Compression::STEPS.len() - 1;
         let mut step = step.map(|s| s.min(last));
@@ -253,6 +306,7 @@ pub async fn export_pdf_lighter(
             }
             let mut plan = build::plan(&root, &settings, Some(&dist), &prep.facts, lang)
                 .map_err(|e| format!("build:{}", e.to_diagnostic(lang).message))?;
+            plan.source = written.clone();
             if let Some(standard) = archive {
                 if matches!(plan.engine, Engine::Tectonic | Engine::Latex) {
                     return Err("archive-engine".to_owned());

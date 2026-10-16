@@ -1,0 +1,122 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[{{babel}}]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2cm]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{tcolorbox}
+\usepackage{tikz}
+
+{{fr:% Sujet et corrigé : \corrigetrue montre les corrigés, \corrigefalse les cache
+% (l'aperçu de RayTeX bascule cette ligne, et exporte le sujet et le corrigé).
+\newif\ifcorrige
+\corrigefalse
+
+% Le corrigé : encadré dans le corrigé, absent du sujet.
+\tcbuselibrary{breakable}
+\AtBeginDocument{%
+  \ifcorrige
+    \newtcolorbox{corrige}{breakable, colback=green!3, colframe=green!45!black, fonttitle=\bfseries, title=Corrigé}%
+  \else
+    \NewDocumentEnvironment{corrige}{+b}{}{}%
+  \fi}
+
+% Un exercice numéroté, avec son barème : \begin{exercice}[4 points].
+\newcounter{exercice}
+\NewDocumentEnvironment{exercice}{o}
+  {\par\bigskip\refstepcounter{exercice}\noindent\textbf{Exercice~\theexercice}\IfValueT{#1}{\enspace\textit{(#1)}}\par\nobreak\smallskip}
+  {\par}
+
+% Des lignes pour répondre, dans le sujet seulement : \lignesreponse{5}.
+\newcounter{lignesreponse}
+\newcommand\lignesreponse[1]{\ifcorrige\else
+  \par\setcounter{lignesreponse}{#1}%
+  \loop\ifnum\value{lignesreponse}>0
+    \vspace{4mm}\noindent\makebox[\linewidth]{\dotfill}\par
+    \addtocounter{lignesreponse}{-1}%
+  \repeat
+\fi}
+
+% Une place vide pour répondre, dans le sujet seulement : \espacereponse{3cm}.
+\newcommand\espacereponse[1]{\ifcorrige\else
+  \par\vspace*{#1}
+\fi}
+
+% Un quadrillage de 5 mm pour répondre, dans le sujet seulement : \quadrillage{4cm}.
+\newcommand\quadrillage[1]{\ifcorrige\else
+  \par\medskip\noindent
+  \begin{tikzpicture}\draw[step=5mm, gray!40, very thin] (0,0) grid (\linewidth,#1);\end{tikzpicture}\par
+\fi}|en:% Subject and answer key: \answerstrue shows the solutions, \answersfalse hides them
+% (the preview of RayTeX turns this line, and exports both).
+\newif\ifanswers
+\answersfalse
+
+% A solution: framed in the answer key, left out of the subject.
+\tcbuselibrary{breakable}
+\AtBeginDocument{%
+  \ifanswers
+    \newtcolorbox{solution}{breakable, colback=green!3, colframe=green!45!black, fonttitle=\bfseries, title=Solution}%
+  \else
+    \NewDocumentEnvironment{solution}{+b}{}{}%
+  \fi}
+
+% A numbered exercise, with its points: \begin{exercise}[4 points].
+\newcounter{exercise}
+\NewDocumentEnvironment{exercise}{o}
+  {\par\bigskip\refstepcounter{exercise}\noindent\textbf{Exercise~\theexercise}\IfValueT{#1}{\enspace\textit{(#1)}}\par\nobreak\smallskip}
+  {\par}
+
+% Lines to answer on, in the subject only: \answerlines{5}.
+\newcounter{answerlines}
+\newcommand\answerlines[1]{\ifanswers\else
+  \par\setcounter{answerlines}{#1}%
+  \loop\ifnum\value{answerlines}>0
+    \vspace{4mm}\noindent\makebox[\linewidth]{\dotfill}\par
+    \addtocounter{answerlines}{-1}%
+  \repeat
+\fi}
+
+% Room to answer, in the subject only: \answerspace{3cm}.
+\newcommand\answerspace[1]{\ifanswers\else
+  \par\vspace*{#1}
+\fi}
+
+% A 5 mm grid to answer on, in the subject only: \answergrid{4cm}.
+\newcommand\answergrid[1]{\ifanswers\else
+  \par\medskip\noindent
+  \begin{tikzpicture}\draw[step=5mm, gray!40, very thin] (0,0) grid (\linewidth,#1);\end{tikzpicture}\par
+\fi}}}
+
+\begin{document}
+
+\noindent\textbf{{{institution}}} \hfill {{fr:Durée : 1 h|en:Duration: 1 h}}
+\begin{center}
+  {\Large\bfseries {{title}}}
+\end{center}
+\noindent {{fr:Nom|en:Name}}~: \rule{5cm}{0.4pt} \hfill {{fr:Classe|en:Class}}~: \rule{3cm}{0.4pt}
+
+\begin{{{fr:exercice|en:exercise}}}[4 points]
+  {{fr:Résoudre dans $\mathbb{R}$ l'équation $x^2 - 5x + 6 = 0$.|en:Solve $x^2 - 5x + 6 = 0$ over $\mathbb{R}$.}}
+  \{{fr:lignesreponse|en:answerlines}}{4}
+  \begin{{{fr:corrige|en:solution}}}
+    $\Delta = 25 - 24 = 1$, {{fr:donc|en:so}} $x = \frac{5 - 1}{2} = 2$ {{fr:ou|en:or}} $x = \frac{5 + 1}{2} = 3$.
+  \end{{{fr:corrige|en:solution}}}
+\end{{{fr:exercice|en:exercise}}}
+
+\begin{{{fr:exercice|en:exercise}}}[3 points]
+  {{fr:Placer les points $A(1, 2)$ et $B(3, -1)$ dans un repère, puis tracer la droite $(AB)$.|en:Plot the points $A(1, 2)$ and $B(3, -1)$, then draw the line $(AB)$.}}
+  \{{fr:quadrillage|en:answergrid}}{4cm}
+  \begin{{{fr:corrige|en:solution}}}
+    {{fr:La droite $(AB)$ a pour coefficient directeur|en:The slope of $(AB)$ is}} $\frac{-1 - 2}{3 - 1} = -\frac{3}{2}$.
+  \end{{{fr:corrige|en:solution}}}
+\end{{{fr:exercice|en:exercise}}}
+
+\begin{{{fr:exercice|en:exercise}}}[3 points]
+  {{fr:Énoncer le théorème de Pythagore.|en:State the Pythagorean theorem.}}
+  \{{fr:espacereponse|en:answerspace}}{3cm}
+  \begin{{{fr:corrige|en:solution}}}
+    {{fr:Dans un triangle rectangle, le carré de l'hypoténuse est égal à la somme des carrés des deux autres côtés.|en:In a right triangle, the square of the hypotenuse equals the sum of the squares of the other two sides.}}
+  \end{{{fr:corrige|en:solution}}}
+\end{{{fr:exercice|en:exercise}}}
+
+\end{document}
