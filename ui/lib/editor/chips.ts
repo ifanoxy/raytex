@@ -8,7 +8,7 @@ import { commented, envHead, gridKind } from "../grid";
 import { figureGroupAt, firstPictureOf } from "../images";
 import { listingAt } from "../listing";
 
-export type ChipKind = "matrix" | "table" | "tikz" | "image" | "code";
+export type ChipKind = "matrix" | "table" | "tikz" | "graph" | "variations" | "image" | "code";
 
 export interface ChipOptions {
   /** `count`: pictures the chip stands for, when they are several written together. */
@@ -24,6 +24,8 @@ const ICONS: Record<ChipKind, string> = {
   tikz: '<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
   image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/>',
   code: '<path d="m8 7-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/>',
+  graph: '<path d="M4 3v17h17"/><path d="M6.5 16c2.5-8 5.5-8 7.5-3s3.5 3 6-6"/>',
+  variations: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/><path d="m11 17 3-4 3 2 2-3"/>',
 };
 
 /** What starts a listing: its environment, or the command that reads it from a file. */
@@ -65,7 +67,12 @@ class Chip extends WidgetType {
       const pos = view.posAtDOM(el);
       const start = Math.max(0, pos - 1000);
       const before = view.state.doc.sliceString(start, pos);
-      const i = this.kind === "code" ? Math.max(...LISTING.map((head) => before.lastIndexOf(head))) : before.lastIndexOf(this.kind === "image" ? "\\includegraphics" : "\\begin");
+      const i =
+        this.kind === "code"
+          ? Math.max(...LISTING.map((head) => before.lastIndexOf(head)))
+          : this.kind === "graph" || this.kind === "variations"
+            ? before.lastIndexOf("\\begin{tikzpicture}")
+            : before.lastIndexOf(this.kind === "image" ? "\\includegraphics" : "\\begin");
       if (i >= 0) this.options.open(view, this.kind, start + i);
     });
     return el;
@@ -80,6 +87,15 @@ class Chip extends WidgetType {
 function graphicsEnd(text: string, i: number): number {
   const m = /^\\includegraphics\*?\s*(?:\[[^\]]*\])?\s*\{[^{}\n]*\}/.exec(text.slice(i, i + 600));
   return m ? i + m[0].length : -1;
+}
+
+/** What a picture is, from what it holds: curves (pgfplots), a table of variations (tkz-tab), or a drawing. */
+function pictureKind(text: string): ChipKind {
+  const end = text.indexOf("\\end{tikzpicture}");
+  const inside = end < 0 ? text : text.slice(0, end);
+  if (/\\begin\s*\{axis\}/.test(inside)) return "graph";
+  if (/\\tkzTabInit\b/.test(inside)) return "variations";
+  return "tikz";
 }
 
 /** End of `\begin{tikzpicture}[…]` starting at `i`. */
@@ -121,7 +137,7 @@ function chips(view: EditorView, options: ChipOptions): DecorationSet {
           count = group.images.length;
         }
       } else if (TIKZ.test(m[1])) {
-        kind = "tikz";
+        kind = m[1] === "tikzpicture" ? pictureKind(doc.sliceString(from + m.index, Math.min(doc.length, from + m.index + 20_000))) : "tikz";
         end = tikzEnd(text, m.index);
       } else {
         kind = gridKind(m[1]);

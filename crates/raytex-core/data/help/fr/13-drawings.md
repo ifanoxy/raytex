@@ -86,6 +86,29 @@ Dans l'onglet **Code** :
 
 RayTeX ajoute au préambule ce dont le schéma a besoin : `\usepackage{tikz}` (ou pgfplots, circuitikz, tikz-cd), les `\usetikzlibrary`, et la bibliothèque `babel` quand le document est en français (elle évite les conflits avec la ponctuation française).
 
+## Courbes de fonctions
+
+Le bouton des courbes de la barre de mise en forme (ou *Tout voir › Maths*, ou la palette de commandes : *Courbes de fonctions*) ouvre l'atelier des courbes : RayTeX écrit le graphique avec pgfplots.
+
+- **Les fonctions** s'écrivent comme sur papier : `x^2 - 2x + 1`, `2sin(x)`, `e^(-x)`, `ln(x)/x`, `|x - 1|`, `√x`, `1,5x`. Chacune a sa couleur, son trait (plein, tirets, pointillés), son épaisseur, son intervalle et son nom, placé sur la courbe (`\mathcal{C}_f`) ou dans une légende. Une courbe est coupée là où elle n'est pas définie et à ses pôles : `1/x` est tracée de part et d'autre de 0, `√x` à partir de 0.
+- **Les tangentes** : à une courbe en un point, calculées par la dérivée, avec leur équation affichée (`y = 2x - 2`), le point de contact et un nom.
+- **Les points** : sur une courbe (`A`, d'abscisse 2 sur `f`) ou par leurs coordonnées, avec des pointillés vers les axes.
+- **Les droites** `x = a` (une asymptote verticale) ou `y = b`, et **les aires** sous une courbe ou entre deux courbes, d'une abscisse à une autre.
+- **Les axes** : l'intervalle de x et de y (celui de y se règle tout seul sur les courbes), des axes par l'origine (comme dans les manuels), un cadre, ou à gauche et en bas, une grille, un repère orthonormé ; dans *Avancé*, les noms des axes, les graduations et la taille.
+
+Le rendu de LaTeX s'affiche à mesure. Un document en français a ses nombres avec une virgule. Chaque ligne du dessin dit en commentaire ce qu'elle trace (`% f(x) = x^2 - 1`) : la pastille **Courbes** après `\begin{tikzpicture}` rouvre le graphique dans l'atelier, et ce qui y a été ajouté à la main est gardé.
+
+## Tableaux de variations et de signes
+
+Le bouton voisin (*Tableau de variations ou de signes*) ouvre une grille disposée comme le tableau (package `tkz-tab`) :
+
+- **Les valeurs de x** en haut, écrites en LaTeX (`-\infty`, `\frac{1}{2}`) ; le **+** entre deux valeurs en ajoute une, la croix d'une valeur la retire.
+- **Une ligne de signes** : un clic sur un intervalle change son signe (+, −, rien, hachuré) ; un clic sous une valeur y met un zéro, une valeur interdite (double barre) ou une barre.
+- **Une ligne de variations** : chaque valeur est en haut ou en bas (la flèche se dessine entre elles), ou sans valeur ; la double barre d'une valeur interdite donne une limite de chaque côté.
+- **À partir d'une fonction** : écrivez `f(x)` et l'intervalle, puis **Variations** (signe de la dérivée et variations) ou **Signes**. RayTeX calcule la dérivée, ses zéros, les valeurs interdites et les limites ; les valeurs simples sont écrites exactement (`2`, `\frac{1}{3}`, `\frac{\pi}{2}`, `\sqrt{3}`), les autres arrondies, et il le dit. Tout reste modifiable.
+
+La pastille **Tableau** après `\begin{tikzpicture}` le rouvre.
+
 ## Pour aller plus loin
 
 ```latex

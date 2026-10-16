@@ -226,6 +226,8 @@ export const actions: Action[] = [
   snippetAction("insert.link", "action.insertLink", () => `\\href{\${1:https://}}{\${2:\${SELECTION}}}\${0}`),
   { id: "insert.image", title: "action.insertImage", category: "insert", keys: "Mod-Alt-i", icon: "image", when: hasTex, run: () => media.openImages() },
   { id: "insert.code", title: "action.insertCode", category: "insert", icon: "code", when: hasTex, run: () => editor.openCode() },
+  { id: "insert.graph", title: "action.insertGraph", category: "insert", icon: "chart", when: hasTex, run: () => media.openGraph() },
+  { id: "insert.variations", title: "action.insertVariations", category: "insert", icon: "variations", when: hasTex, run: () => media.openVariations() },
   {
     id: "insert.command",
     title: "action.newCommand",

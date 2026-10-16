@@ -2,8 +2,10 @@
 // chosen (pasted image, dropped files, picture under the cursor…).
 
 import { t } from "../i18n.svelte";
+import type { Graph } from "../graph";
 import type { FigureAt, FigureGroup } from "../images";
 import type { Listing } from "../listing";
+import type { Table } from "../variations";
 import type { FontRole } from "../types";
 import { ui } from "./ui.svelte";
 
@@ -61,6 +63,30 @@ export interface CodeRequest {
   code?: string;
 }
 
+/** A graph of the document to change (its chip): where its picture is, and what it holds. */
+export interface GraphEdit {
+  path: string;
+  from: number;
+  to: number;
+  graph: Graph;
+}
+
+export interface GraphRequest {
+  edit?: GraphEdit;
+}
+
+/** A table of variations of the document to change (its chip). */
+export interface VariationEdit {
+  path: string;
+  from: number;
+  to: number;
+  table: Table;
+}
+
+export interface VariationRequest {
+  edit?: VariationEdit;
+}
+
 export interface TikzRequest {
   code: string;
   /** Range replaced by "Update" (a picture of the document)… */
@@ -74,6 +100,10 @@ class MediaStore {
   tikzRequest = $state<TikzRequest | null>(null);
   /** What the code window opens on (read once, when it opens). */
   codeRequest: CodeRequest | null = null;
+  /** What the graph studio opens on (read once). */
+  graphRequest: GraphRequest | null = null;
+  /** What the window of tables of variations opens on (read once). */
+  variationRequest: VariationRequest | null = null;
   /** Font files to show first in the font dialog. */
   fontRequest = $state<string[] | null>(null);
   /** Role chosen before opening the font dialog (from the font menu). */
@@ -101,6 +131,16 @@ class MediaStore {
   openCode(request: CodeRequest | null = null) {
     this.codeRequest = request;
     ui.openOverlay("code");
+  }
+
+  openGraph(request: GraphRequest | null = null) {
+    this.graphRequest = request;
+    ui.openOverlay("graph");
+  }
+
+  openVariations(request: VariationRequest | null = null) {
+    this.variationRequest = request;
+    ui.openOverlay("variations");
   }
 
   openFonts(files: string[] | null = null, preset: FontPreset | null = null) {

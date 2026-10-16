@@ -4,6 +4,9 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- **Function plots.** A button of the formatting bar (and *See all › Maths*) opens a studio that writes the plot with pgfplots: functions written as on paper (`x^2 - 2x + 1`, `2sin(x)`, `e^(-x)`, `ln(x)/x`, `|x|`, `√x`), each with its colour, line, width, interval and name (on the curve or in a legend), cut where they are not defined and at their poles; tangents worked out from the derivative, with their equation; points on a curve or by coordinates, with dashed lines to the axes; lines `x = a` and `y = b`; areas under a curve or between two; axes through the origin as in textbooks, a box or left and bottom, a grid, the same unit on both axes, the range of y worked out from the curves. The rendering of LaTeX follows as you type; a French document writes its numbers with a comma. Each line of the picture says in a comment what it draws, and the **Plot** chip opens it again, what was written by hand kept.
+- **Tables of variations and of signs** (`tkz-tab`), from the button next to it: a grid laid out as the table, values of x added between two others, signs, zeros, forbidden values, values high or low with their arrows, limits on each side of a forbidden value. **From a function**: the derivative, its zeros, the forbidden values and the limits are worked out (`x^2 - 4`, `1/x`, `ln(x)`, `sin(x)` over `[0 ; 2pi]`), simple values written exactly (`\frac{1}{3}`, `\frac{\pi}{2}`, `\sqrt{3}`), others rounded and said to be. The **Table** chip opens it again.
+
 ## [0.5.3] — 2026-10-15
 
 - **Fewer passes, lighter passes.**

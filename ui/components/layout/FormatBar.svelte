@@ -206,6 +206,8 @@
   <div class="group">
     <button class="icon-btn" disabled={!canEdit} onmousedown={keep} onclick={() => run("edit.math")} title={title("edit.math")} aria-label={t("action.inlineMath")}><Icon name="formula" /></button>
     <button class="icon-btn" disabled={!canEdit} onmousedown={keep} onclick={() => run("insert.equation")} title={title("insert.equation")} aria-label={t("action.insertEquation")}><Icon name="equation" /></button>
+    <button class="icon-btn" disabled={!canEdit} onmousedown={keep} onclick={() => run("insert.graph")} title={title("insert.graph")} aria-label={t("action.insertGraph")}><Icon name="chart" /></button>
+    <button class="icon-btn" disabled={!canEdit} onmousedown={keep} onclick={() => run("insert.variations")} title={title("insert.variations")} aria-label={t("action.insertVariations")}><Icon name="variations" /></button>
   </div>
 
   <div class="group">

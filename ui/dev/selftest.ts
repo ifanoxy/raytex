@@ -518,6 +518,89 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     ok = false;
   }
 
+  // -------------------------------------------- curves and their studio
+  // A function, a tangent, the picture of pgfplots in the document; opened
+  // again from its chip and changed.
+  const typeIn = (el: HTMLInputElement, text: string) => {
+    el.value = text;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  const chipOf = async (label: RegExp, at: number) => {
+    const v = editor.view!;
+    v.dispatch({ selection: { anchor: at }, scrollIntoView: true });
+    await until(() => [...document.querySelectorAll(".cm-code-chip")].some((c) => label.test(c.textContent ?? "")), 10_000, `chip ${label}`);
+    const chip = [...document.querySelectorAll<HTMLElement>(".cm-code-chip")].find((c) => label.test(c.textContent ?? ""))!;
+    chip.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+  };
+  try {
+    const v = editor.view!;
+    v.dispatch({ changes: { from: v.state.doc.length, insert: "\n\n" }, selection: { anchor: v.state.doc.length + 2 } });
+    media.openGraph();
+    await until(() => !!document.querySelector('[role="dialog"] .item input.expr'), 10_000, "graph studio");
+    clickText('[role="dialog"] .adds .btn', "Tangente") || clickText('[role="dialog"] .adds .btn', "Tangent");
+    await until(() => !!document.querySelector('[role="dialog"] .equation'), 5_000, "tangent equation");
+    const equation = document.querySelector('[role="dialog"] .equation')?.textContent?.trim() ?? "";
+    await drawn('[role="dialog"] .preview canvas', log, "graph preview");
+    await until(() => !document.querySelector('[role="dialog"] .preview-bar .spinner'), 60_000, "graph rendering");
+    const rendering = document.querySelector('[role="dialog"] .preview-bar .status.err')?.textContent ?? "";
+    await scene("graph-studio");
+    document.querySelector<HTMLButtonElement>('[role="dialog"] .side .btn.primary')!.click();
+    await until(() => ui.overlay === null, 20_000, "graph insertion");
+    const text = editor.textOf(chapter)!;
+    const inserted = text.includes("\\begin{axis}") && text.includes("% f(x) = x^2 - 2x - 1") && text.includes("% y = f'(1)(x - 1) + f(1)");
+    const main = editor.textOf(project.info!.main!) ?? "";
+    const packages = /\\usepackage\{pgfplots\}/.test(main) && main.includes("\\pgfplotsset{compat=1.18}");
+    const built = await buildOk(log, "graph");
+    await chipOf(/Courbes|Plot/, text.indexOf("\\begin{axis}"));
+    await until(() => document.querySelector<HTMLInputElement>('[role="dialog"] .item input.expr')?.value === "x^2 - 2x - 1", 10_000, "graph opened again");
+    const tangents = document.querySelectorAll('[role="dialog"] .equation').length;
+    typeIn(document.querySelector<HTMLInputElement>('[role="dialog"] .item input.expr')!, "x^2 - 4");
+    await pause(300);
+    document.querySelector<HTMLButtonElement>('[role="dialog"] .side .btn.primary')!.click();
+    await until(() => ui.overlay === null, 20_000, "graph update");
+    const after = editor.textOf(chapter)!;
+    const updated = after.includes("% f(x) = x^2 - 4") && !after.includes("% f(x) = x^2 - 2x - 1") && after.split("\\begin{axis}").length === 2;
+    log(`graph: tangent «${equation}», rendering «${rendering}», inserted ${inserted}, packages ${packages}, opened again with ${tangents} tangent, updated ${updated}`);
+    ok = equation === "y = -2" && !rendering && inserted && packages && built && tangents === 1 && updated && (await buildOk(log, "graph changed")) && ok;
+  } catch (e) {
+    log(`graph failed: ${e}`);
+    if (ui.overlay) ui.closeOverlay();
+    ok = false;
+  }
+
+  // ----------------------------------------------- tables of variations
+  try {
+    const v = editor.view!;
+    v.dispatch({ changes: { from: v.state.doc.length, insert: "\n\n" }, selection: { anchor: v.state.doc.length + 2 } });
+    media.openVariations();
+    await until(() => !!document.querySelector('[role="dialog"] .from input'), 10_000, "variations studio");
+    typeIn(document.querySelector<HTMLInputElement>('[role="dialog"] .from input')!, "x^2 - 4");
+    await pause(200);
+    clickText('[role="dialog"] .from .btn', "Variations");
+    await until(() => document.querySelectorAll('[role="dialog"] .value.head input').length === 3, 5_000, "table filled");
+    const values = [...document.querySelectorAll<HTMLInputElement>('[role="dialog"] .value.head input')].map((i) => i.value);
+    await drawn('[role="dialog"] .preview canvas', log, "variations preview");
+    await until(() => !document.querySelector('[role="dialog"] .preview-bar .spinner'), 60_000, "table rendering");
+    const rendering = document.querySelector('[role="dialog"] .preview-bar .status.err')?.textContent ?? "";
+    await scene("variations-studio");
+    document.querySelector<HTMLButtonElement>('[role="dialog"] .side .btn.primary')!.click();
+    await until(() => ui.overlay === null, 20_000, "table insertion");
+    const text = editor.textOf(chapter)!;
+    const inserted = text.includes("\\tkzTabInit{$x$ / 1, $f'(x)$ / 1, $f(x)$ / 2}{$-\\infty$, $0$, $+\\infty$}") && text.includes("\\tkzTabVar{+/ $+\\infty$, -/ $-4$, +/ $+\\infty$}");
+    const packages = /\\usepackage\{tkz-tab\}/.test(editor.textOf(project.info!.main!) ?? "");
+    const built = await buildOk(log, "variations");
+    await chipOf(/Tableau|Table/, text.indexOf("\\tkzTabInit"));
+    await until(() => document.querySelectorAll('[role="dialog"] .value.head input').length === 3, 10_000, "table opened again");
+    const again = [...document.querySelectorAll<HTMLInputElement>('[role="dialog"] .value.head input')].map((i) => i.value);
+    ui.closeOverlay();
+    log(`variations: values ${values.join(" ")}, rendering «${rendering}», inserted ${inserted}, package ${packages}, opened again ${again.join(" ")}`);
+    ok = values.join(" ") === "-\\infty 0 +\\infty" && !rendering && inserted && packages && built && again.join(" ") === values.join(" ") && ok;
+  } catch (e) {
+    log(`variations failed: ${e}`);
+    if (ui.overlay) ui.closeOverlay();
+    ok = false;
+  }
+
   // --------------------------------------------------------------- fonts
   try {
     media.openFonts();

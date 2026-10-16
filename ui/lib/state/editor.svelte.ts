@@ -51,6 +51,8 @@ import { spelling as spellingExtension } from "../editor/spelling";
 import { editorTheme } from "../editor/theme";
 import { fixLabel, runFix, suggestionOf } from "../fixes";
 import { gutterClicks } from "../editor/gutter";
+import { readGraph } from "../graph";
+import { readTable } from "../variations";
 import { figureAt, figureGroupAt } from "../images";
 import { listingAt } from "../listing";
 import { i18n, type MessageKey, t } from "../i18n.svelte";
@@ -262,6 +264,8 @@ const CHIP_TEXT: Record<ChipKind, [MessageKey, MessageKey]> = {
   tikz: ["chip.tikz", "chip.tikzHint"],
   image: ["chip.image", "chip.imageHint"],
   code: ["chip.code", "chip.codeHint"],
+  graph: ["chip.graph", "chip.graphHint"],
+  variations: ["chip.variations", "chip.variationsHint"],
 };
 
 class EditorStore {
@@ -1323,10 +1327,19 @@ class EditorStore {
   private async openChip(view: EditorView, path: string, kind: ChipKind, from: number) {
     if (kind === "matrix" || kind === "table") {
       if (!gridStore.edit(view, path, from)) ui.toast("warning", t("grid.unreadable"));
-    } else if (kind === "tikz") {
+    } else if (kind === "tikz" || kind === "graph" || kind === "variations") {
       const request = await this.tikzAt(from + 1);
-      if (request) media.openTikz(request);
-      else ui.toast("warning", t("chip.unreadable"));
+      if (!request) {
+        ui.toast("warning", t("chip.unreadable"));
+        return;
+      }
+      // Curves and tables of variations open in their studio when it can
+      // read them, in the TikZ studio otherwise.
+      const graph = kind === "graph" && request.range ? readGraph(request.code) : null;
+      const table = kind === "variations" && request.range ? readTable(request.code) : null;
+      if (graph && request.range) media.openGraph({ edit: { ...request.range, graph } });
+      else if (table && request.range) media.openVariations({ edit: { ...request.range, table } });
+      else media.openTikz(request);
     } else if (kind === "code") {
       const doc = view.state.doc;
       const found = listingAt(doc.sliceString(from, Math.min(doc.length, from + 200_000)), 0);

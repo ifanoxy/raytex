@@ -86,6 +86,29 @@ At every pause in typing, the drawing is compiled with the preamble of your docu
 
 RayTeX adds what the drawing needs to the preamble: `\usepackage{tikz}` (or pgfplots, circuitikz, tikz-cd), the `\usetikzlibrary` lines, and the `babel` library when the document uses babel (it avoids conflicts with active punctuation, in French for instance).
 
+## Function plots
+
+The plot button of the formatting bar (or *See all › Maths*, or the command palette: *Function plots*) opens the graph studio: RayTeX writes the plot with pgfplots.
+
+- **Functions** are written as on paper: `x^2 - 2x + 1`, `2sin(x)`, `e^(-x)`, `ln(x)/x`, `|x - 1|`, `√x`. Each has its colour, its line (solid, dashed, dotted), its width, its interval and its name, on the curve (`\mathcal{C}_f`) or in a legend. A curve is cut where it is not defined and at its poles: `1/x` is drawn on both sides of 0, `√x` from 0.
+- **Tangents**: to a curve at a point, worked out from the derivative, with their equation shown (`y = 2x - 2`), the point of contact and a name.
+- **Points**: on a curve (`A`, at x = 2 on `f`) or by their coordinates, with dashed lines to the axes.
+- **Lines** `x = a` (a vertical asymptote) or `y = b`, and **areas** under a curve or between two curves, from one abscissa to another.
+- **Axes**: the range of x and of y (that of y follows the curves by itself), axes through the origin (as in textbooks), a box, or left and bottom, a grid, the same unit on both axes; in *Advanced*, the names of the axes, the ticks and the size.
+
+The rendering of LaTeX follows as you type. A French document writes its numbers with a comma. Each line of the drawing says in a comment what it draws (`% f(x) = x^2 - 1`): the **Plot** chip after `\begin{tikzpicture}` opens the plot again in the studio, and what was added to it by hand is kept.
+
+## Tables of variations and of signs
+
+The button next to it (*Table of variations or of signs*) opens a grid laid out as the table (package `tkz-tab`):
+
+- **The values of x** at the top, in LaTeX (`-\infty`, `\frac{1}{2}`); the **+** between two values adds one, the cross of a value takes it out.
+- **A line of signs**: a click on an interval changes its sign (+, −, nothing, hatched); a click under a value puts there a zero, a forbidden value (double bar) or a bar.
+- **A line of variations**: each value is high or low (the arrow is drawn between them), or without a value; the double bar of a forbidden value gives a limit on each side.
+- **From a function**: write `f(x)` and the interval, then **Variations** (sign of the derivative and variations) or **Signs**. RayTeX works out the derivative, its zeros, the forbidden values and the limits; simple values are written exactly (`2`, `\frac{1}{3}`, `\frac{\pi}{2}`, `\sqrt{3}`), others are rounded, and it says so. Everything stays editable.
+
+The **Table** chip after `\begin{tikzpicture}` opens it again.
+
 ## Going further
 
 ```latex
