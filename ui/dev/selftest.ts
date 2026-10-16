@@ -12,7 +12,8 @@ import { acceptCompletion, currentCompletions, setSelectedCompletion, startCompl
 import { undo } from "@codemirror/commands";
 import { EditorView } from "@codemirror/view";
 import { invoke } from "@tauri-apps/api/core";
-import { i18n } from "../lib/i18n.svelte";
+import { i18n, t } from "../lib/i18n.svelte";
+import { keyLang, NAMES } from "../lib/answerkey";
 import * as ipc from "../lib/ipc";
 import { app } from "../lib/state/app.svelte";
 import { build } from "../lib/state/build.svelte";
@@ -1475,7 +1476,8 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     // The palette finds what the menus hold by its name.
     void runAction("view.palette");
     await until(() => !!document.querySelector(".palette input"), 5_000, "palette");
-    type(document.querySelector<HTMLInputElement>(".palette input")!, ">saut de page");
+    // In the language of the application (English on the machines of the CI).
+    type(document.querySelector<HTMLInputElement>(".palette input")!, `>${t("format.pageBreak")}`);
     await pause(200);
     const first = document.querySelector(".palette .entry");
     check("menus: in the palette", /Saut de page|Page break/.test(first?.querySelector(".label")?.textContent ?? "") && /Page/.test(first?.querySelector(".detail")?.textContent ?? ""), first?.textContent);
@@ -1907,9 +1909,15 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     await runAction("insert.solution");
     await until(() => !!answerKey.current, 5_000, "switch written");
     const written = editor.textOf(rapport) ?? "";
+    // The names of the language of the document (that of the application, in which its template was written).
+    const names = NAMES[keyLang(written, i18n.lang === "fr" ? "fr" : "en")];
     check(
       "answer key: written in a document",
-      answerKey.current?.kind === "newif" && answerKey.current.env === "corrige" && /\\newif\\ifcorrige\n\\corrigefalse/.test(written) && /\\begin\{corrige\}/.test(written.slice(written.indexOf("\\begin{document}"))),
+      answerKey.current?.kind === "newif" &&
+        answerKey.current.name === names.flag &&
+        answerKey.current.env === names.solution &&
+        written.includes(`\\newif\\if${names.flag}\n\\${names.flag}false`) &&
+        written.slice(written.indexOf("\\begin{document}")).includes(`\\begin{${names.solution}}`),
       JSON.stringify(answerKey.current),
     );
     check("answer key: the document builds", await buildOk(log, "with a solution"));
@@ -1927,7 +1935,8 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     document.querySelector<HTMLButtonElement>('.versions [data-version="key"]')!.click();
     await until(() => answerKey.current?.shown === true, 5_000, "switch turned");
     await until(() => viewer.revision !== revision && !build.running, 120_000, "answer key built");
-    check("answer key: shown and built", /^\\corrigetrue$/m.test(editor.textOf(project.info!.main!) ?? "") && build.status === "success", build.status);
+    const flagOn = () => (editor.textOf(project.info!.main!) ?? "").split("\n").includes(`\\${answerKey.current?.name ?? "corrige"}true`);
+    check("answer key: shown and built", flagOn() && build.status === "success", `${build.status} ${answerKey.current?.name}`);
     await scene("answer-key-key");
     // Both, built apart: the subject from its version, the answer key as shown.
     const subjectPdf = `${projectsDir}/Devoir - sujet.pdf`;
@@ -1936,7 +1945,7 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     const madeKey = madeSubject && (await pdfExport.start(keyPdf, { kind: "original" }, null, null));
     const sizes = madeKey ? [(await ipc.readBinaryFile(subjectPdf)).byteLength, (await ipc.readBinaryFile(keyPdf)).byteLength] : [];
     check("answer key: both exported", madeKey && sizes[0] > 1000 && sizes[1] > sizes[0], `${madeSubject} ${madeKey} ${sizes.join(" / ")}`);
-    check("answer key: the document unchanged", /^\\corrigetrue$/m.test(editor.textOf(project.info!.main!) ?? ""));
+    check("answer key: the document unchanged", flagOn());
   } catch (e) {
     results.failure = String(e);
   }
