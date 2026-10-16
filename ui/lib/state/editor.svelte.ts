@@ -51,8 +51,6 @@ import { spelling as spellingExtension } from "../editor/spelling";
 import { editorTheme } from "../editor/theme";
 import { fixLabel, runFix, suggestionOf } from "../fixes";
 import { gutterClicks } from "../editor/gutter";
-import { readGraph } from "../graph";
-import { readTable } from "../variations";
 import { figureAt, figureGroupAt } from "../images";
 import { listingAt } from "../listing";
 import { i18n, type MessageKey, t } from "../i18n.svelte";
@@ -1334,9 +1332,9 @@ class EditorStore {
         return;
       }
       // Curves and tables of variations open in their studio when it can
-      // read them, in the TikZ studio otherwise.
-      const graph = kind === "graph" && request.range ? readGraph(request.code) : null;
-      const table = kind === "variations" && request.range ? readTable(request.code) : null;
+      // read them, in the TikZ studio otherwise (their code is loaded then).
+      const graph = kind === "graph" && request.range ? (await import("../graph")).readGraph(request.code) : null;
+      const table = kind === "variations" && request.range ? (await import("../variations")).readTable(request.code) : null;
       if (graph && request.range) media.openGraph({ edit: { ...request.range, graph } });
       else if (table && request.range) media.openVariations({ edit: { ...request.range, table } });
       else media.openTikz(request);
