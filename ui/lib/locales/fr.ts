@@ -2061,6 +2061,7 @@ const fr: Record<keyof typeof en, string> = {
   "pdfExport.doneArchive": "{standard} exporté : {file} ({size}). Vérifié : métadonnées, profil de couleur, polices intégrées.",
   "pdfExport.archiveProblems": "{standard} exporté : {file} ({size}), mais : {problems}.",
   "pdfExport.archiveEngine": "Un PDF/A s'écrit avec pdfLaTeX, LuaLaTeX ou XeLaTeX.",
+  "pdfExport.archiveLatex": "Un PDF/A demande un LaTeX de juin 2022 ou plus récent : mettez à jour la distribution TeX (TeX Live 2022, un MiKTeX à jour).",
 };
 
 export default fr;

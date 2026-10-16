@@ -164,8 +164,8 @@ pub struct Archive {
 /// project is touched.
 ///
 /// Fails with `no-project`, `no-distribution`, `cancelled`, `archive-engine`
-/// (an engine that cannot write a PDF/A), or `build:<what stopped it>` when
-/// no whole PDF was made.
+/// (an engine that cannot write a PDF/A), `archive-latex` (a LaTeX older
+/// than June 2022), or `build:<what stopped it>` when no whole PDF was made.
 #[tauri::command]
 pub async fn export_pdf_lighter(
     app: AppHandle,
@@ -256,6 +256,9 @@ pub async fn export_pdf_lighter(
             if let Some(standard) = archive {
                 if matches!(plan.engine, Engine::Tectonic | Engine::Latex) {
                     return Err("archive-engine".to_owned());
+                }
+                if !pdfa::supported(&dist) {
+                    return Err("archive-latex".to_owned());
                 }
                 if !pdfa::has_metadata(&root_text) {
                     plan.prefix = Some(pdfa::metadata(standard, &root_text));

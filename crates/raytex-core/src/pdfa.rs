@@ -116,6 +116,31 @@ pub fn language_tag(root: &str) -> Option<&'static str> {
     })
 }
 
+/// Whether LaTeX of `dist` writes PDF/A: `\DocumentMetadata` came in its
+/// kernel in June 2022 (an older one types its keys as text). Read from the
+/// date of `latex.ltx`; a distribution that does not tell is trusted.
+pub fn supported(dist: &crate::tex::Distribution) -> bool {
+    let Ok(found) = crate::process::output(
+        &dist.cmd("kpsewhich").arg("latex.ltx"),
+        std::time::Duration::from_secs(30),
+    ) else {
+        return true;
+    };
+    let path = found.stdout.lines().next().unwrap_or("").trim().to_owned();
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return true;
+    };
+    kernel_date(&text).is_none_or(|date| date >= (2022, 6, 1))
+}
+
+/// The date of the kernel, from `\edef\fmtversion {2022-11-01}`.
+fn kernel_date(latex_ltx: &str) -> Option<(u32, u32, u32)> {
+    let m = Regex::new(r"\\e?def\\fmtversion\s*\{(\d{4})[-/](\d{2})[-/](\d{2})\}").unwrap();
+    let c = m.captures(latex_ltx.as_bytes())?;
+    let n = |i: usize| std::str::from_utf8(&c[i]).ok()?.parse().ok();
+    Some((n(1)?, n(2)?, n(3)?))
+}
+
 /// Whether the document gives its own `\DocumentMetadata` (it is then kept as it is).
 pub fn has_metadata(root: &str) -> bool {
     root.split("\\documentclass").next().is_some_and(|before| {
@@ -391,6 +416,11 @@ mod tests {
         assert!(!has_metadata(
             "% \\DocumentMetadata{}\n\\documentclass{article}\n\\DocumentMetadata"
         ));
+        assert_eq!(
+            kernel_date("\\edef\\fmtversion\n   {2021-11-15}"),
+            Some((2021, 11, 15))
+        );
+        assert_eq!(kernel_date("\\edef\\fmtversion{x}"), None);
     }
 
     #[test]
@@ -427,6 +457,10 @@ mod tests {
             println!("no TeX distribution: nothing checked");
             return;
         };
+        if !supported(&dist) {
+            println!("LaTeX older than June 2022: no PDF/A, nothing checked");
+            return;
+        }
         let doc = "\\documentclass{article}\n\\usepackage{iftex}\n\\ifPDFTeX\\usepackage[T1]{fontenc}\\fi\n\\usepackage[french]{babel}\n\\usepackage{tikz}\n\\usepackage{hyperref}\n\\hypersetup{pdftitle={Étude}, pdfauthor={Camille Martin}}\n\\begin{document}\n\\section{Un}\\label{s}\nTexte, $x^2$ et un renvoi~\\ref{s}.\n\\begin{tikzpicture}\\fill[blue, opacity=0.5] (0,0) rectangle (1,1);\\end{tikzpicture}\n\\end{document}\n";
         for engine in [
             EngineChoice::Pdflatex,

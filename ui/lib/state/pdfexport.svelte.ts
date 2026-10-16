@@ -287,6 +287,7 @@ class PdfExportStore {
       const said = String(e);
       if (said.includes("cancelled")) return this.close();
       if (said.includes("archive-engine")) return this.fail(dest, choice, 0, t("pdfExport.archiveEngine"), false);
+      if (said.includes("archive-latex")) return this.fail(dest, choice, 0, t("pdfExport.archiveLatex"), false);
       const why = said.startsWith("build:") ? said.slice(6).trim() || t("pdfExport.noOutput") : said;
       this.fail(dest, choice, 0, why, false);
     }

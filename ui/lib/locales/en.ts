@@ -2059,6 +2059,7 @@ const en = {
   "pdfExport.doneArchive": "{standard} exported: {file} ({size}). Checked: metadata, colour profile, fonts embedded.",
   "pdfExport.archiveProblems": "{standard} exported: {file} ({size}), but: {problems}.",
   "pdfExport.archiveEngine": "A PDF/A is written with pdfLaTeX, LuaLaTeX or XeLaTeX.",
+  "pdfExport.archiveLatex": "A PDF/A needs LaTeX of June 2022 or later: update the TeX distribution (TeX Live 2022, an up-to-date MiKTeX).",
 };
 
 export default en;
