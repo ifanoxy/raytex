@@ -260,9 +260,7 @@ pub async fn export_pdf_lighter(
                 if !pdfa::supported(&dist) {
                     return Err("archive-latex".to_owned());
                 }
-                if !pdfa::has_metadata(&root_text) {
-                    plan.prefix = Some(pdfa::metadata(standard, &root_text));
-                }
+                plan.prefix = Some(pdfa::prefix(standard, &root_text));
             }
             let (tx, forwarder) = forward_output(app, "export:output");
             let ctx = RunContext {

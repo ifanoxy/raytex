@@ -9,6 +9,7 @@
 //   E2E_OUT=out node scripts/e2e.mjs        # where logs and screenshots go
 //   E2E_SHOTS=0 node scripts/e2e.mjs        # no screenshots (they are of the whole screen)
 //   E2E_BUILT=1 node scripts/e2e.mjs        # the built application, not the development one
+//   E2E_KEEP=1 node scripts/e2e.mjs         # the copy of the project is kept (what was exported)
 //
 // The built application reads its pages from the program itself, under
 // the security policy of tauri.conf.json: what that policy refuses (a
@@ -187,7 +188,9 @@ async function run(group) {
     });
   });
   try {
-    rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
+    // E2E_KEEP=1 keeps the copy of the project, and what the scenes wrote next to it.
+    if (process.env.E2E_KEEP) console.log(`${group}: kept in ${work}`);
+    else rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
   } catch (e) {
     // A TeX run still ending holds a file (Windows): the folder stays.
     console.log(`${group}: ${work} not removed (${e.code ?? e})`);

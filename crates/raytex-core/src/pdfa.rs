@@ -153,7 +153,33 @@ pub fn has_metadata(root: &str) -> bool {
     })
 }
 
-/// What is given to the engine before the document.
+/// The text of every glyph of the Type 1 fonts (the large symbols of
+/// mathematics among them, which pdfTeX and LuaTeX leave without one): the
+/// PDF is copied and searched as it reads, and PDF/A-2u asks for it. The
+/// names of Computer Modern are those of pdfx (`glyphtounicode-cmr`).
+pub const UNICODE: &str = concat!(
+    r"\ifdefined\pdfextension",
+    r"\begingroup\def\pdfglyphtounicode{\pdfextension glyphtounicode}",
+    r"\input{glyphtounicode}\IfFileExists{glyphtounicode-cmr.tex}{\input{glyphtounicode-cmr}}{}",
+    r"\endgroup\pdfvariable gentounicode=1 ",
+    r"\else\ifdefined\pdfglyphtounicode",
+    r"\input{glyphtounicode}\IfFileExists{glyphtounicode-cmr.tex}{\input{glyphtounicode-cmr}}{}",
+    r"\pdfgentounicode=1 ",
+    r"\fi\fi"
+);
+
+/// What is given to the engine before the document: the text of the
+/// glyphs, and the metadata of the standard (unless the document gives its
+/// own `\DocumentMetadata`, which is kept).
+pub fn prefix(standard: Standard, root: &str) -> String {
+    if has_metadata(root) {
+        UNICODE.to_owned()
+    } else {
+        format!("{UNICODE}{}", metadata(standard, root))
+    }
+}
+
+/// The `\DocumentMetadata` of a standard.
 pub fn metadata(standard: Standard, root: &str) -> String {
     let mut keys = vec![
         format!("pdfstandard={}", standard.key()),
@@ -461,13 +487,13 @@ mod tests {
             println!("LaTeX older than June 2022: no PDF/A, nothing checked");
             return;
         }
-        let doc = "\\documentclass{article}\n\\usepackage{iftex}\n\\ifPDFTeX\\usepackage[T1]{fontenc}\\fi\n\\usepackage[french]{babel}\n\\usepackage{tikz}\n\\usepackage{hyperref}\n\\hypersetup{pdftitle={Étude}, pdfauthor={Camille Martin}}\n\\begin{document}\n\\section{Un}\\label{s}\nTexte, $x^2$ et un renvoi~\\ref{s}.\n\\begin{tikzpicture}\\fill[blue, opacity=0.5] (0,0) rectangle (1,1);\\end{tikzpicture}\n\\end{document}\n";
+        let doc = "\\documentclass{article}\n\\usepackage{iftex}\n\\ifPDFTeX\\usepackage[T1]{fontenc}\\fi\n\\usepackage[french]{babel}\n\\usepackage{tikz}\n\\usepackage{hyperref}\n\\hypersetup{pdftitle={Étude}, pdfauthor={Camille Martin}}\n\\begin{document}\n\\section{Un}\\label{s}\nTexte, $x^2$, $\\displaystyle\\int_0^1 \\sum_{k} x^k\\,dx$ et un renvoi~\\ref{s}.\n\\begin{tikzpicture}\\fill[blue, opacity=0.5] (0,0) rectangle (1,1);\\end{tikzpicture}\n\\end{document}\n";
         for engine in [
             EngineChoice::Pdflatex,
             EngineChoice::Lualatex,
             EngineChoice::Xelatex,
         ] {
-            for standard in [Standard::A2b, Standard::A1b, Standard::A3b] {
+            for standard in [Standard::A2b, Standard::A1b, Standard::A2u, Standard::A3b] {
                 let dir = tempfile::tempdir().unwrap();
                 let root = dunce::canonicalize(dir.path()).unwrap().join("main.tex");
                 std::fs::write(&root, doc).unwrap();
@@ -486,7 +512,7 @@ mod tests {
                     Lang::En,
                 )
                 .unwrap();
-                p.prefix = Some(metadata(standard, doc));
+                p.prefix = Some(prefix(standard, doc));
                 let cancel = AtomicBool::new(false);
                 let source = |path: &Path| std::fs::read_to_string(path).ok();
                 let ctx = RunContext {
@@ -514,6 +540,20 @@ mod tests {
                     vec![]
                 };
                 assert_eq!(found, expected, "{engine:?} {standard:?}: {c:?}");
+                // With veraPDF (`VERAPDF`, the path of its command): it says the same.
+                if let Ok(vera) = std::env::var("VERAPDF") {
+                    let out = std::process::Command::new(&vera)
+                        .args(["--flavour", &standard.key()[2..], "--format", "text"])
+                        .arg(&p.pdf)
+                        .output()
+                        .unwrap();
+                    let said = String::from_utf8_lossy(&out.stdout);
+                    assert_eq!(
+                        said.starts_with("PASS"),
+                        found.is_empty(),
+                        "{engine:?} {standard:?}: veraPDF {said}"
+                    );
+                }
                 assert!(c.fonts > 0, "{engine:?}: {c:?}");
             }
         }
