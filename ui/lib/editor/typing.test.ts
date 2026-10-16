@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { EditorSelection, EditorState, type TransactionSpec } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { dollarAction, insideDollarMath } from "./dollar.ts";
-import { alignLines, headingLine, headingOf, listBlock, setColor, setHeading, setList, setSize, tableSnippet } from "./format.ts";
+import { alignLines, hasChapters, headingLine, headingOf, listBlock, setColor, setHeading, setList, setSize, tableSnippet } from "./format.ts";
 import { linkedEnvironments, renameBoth } from "./linked-envs.ts";
 
 /** A view-like object: enough for commands that only read the state and dispatch. */
@@ -122,4 +122,12 @@ test("tables have empty cells", () => {
   // The caption under the table.
   assert.ok(s.indexOf("\\caption") > s.indexOf("\\end{tabular}"), s);
   assert.ok(!/\$\{\d+:/.test(s), "no default text");
+});
+
+test("chapters are offered by the classes that have them", () => {
+  assert.ok(hasChapters("\\documentclass[12pt]{report}\n"));
+  assert.ok(hasChapters("\\documentclass{scrbook}"));
+  assert.ok(hasChapters("\\documentclass{these-ups}"));
+  assert.ok(!hasChapters("\\documentclass{article}"));
+  assert.ok(!hasChapters(""));
 });

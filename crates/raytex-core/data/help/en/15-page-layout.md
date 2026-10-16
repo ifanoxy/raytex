@@ -1,6 +1,6 @@
 # Page layout
 
-Margins, header, footer, a watermark: the **Page layout** window sets them with fields, and shows the result on real pages, compiled with the class and the preamble of your project, before anything is written in the document. Open it from **See all › Page**, or from the command palette (*Margins of the document…*, *Page styles…*).
+Margins, header, footer, a watermark: the **Page layout** window sets them with fields, and shows the result on real pages, compiled with the class and the preamble of your project, before anything is written in the document. Open it from the **Page** menu, or from the command palette (*Margins of the document…*, *Page styles…*).
 
 Each group shows what matters most; **Advanced**, on the right of its title, unfolds the rest.
 
@@ -62,7 +62,7 @@ If the header is taller than the room the page keeps for it (an image, two lines
 
 ## The title page
 
-**See all › Page › Title page…** (or the command palette) opens a window that writes the title page for you: you fill in fields, and the page is shown next to them, compiled with the class and the preamble of your project.
+The **Page › Title page…** menu entry (or the command palette) opens a window that writes the title page for you: you fill in fields, and the page is shown next to them, compiled with the class and the preamble of your project.
 
 - **Four layouts**, chosen by their picture: *Classic* (the `\maketitle` of LaTeX, above the text in an article), *Centered*, *Report* (the institution at the top, authors on the left and supervisors on the right) and *Modern* (aligned on the left along a rule).
 - **Text**: title, subtitle, authors (one per line), date (today, none, or the one you write).

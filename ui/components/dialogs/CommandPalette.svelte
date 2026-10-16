@@ -1,9 +1,13 @@
 <script lang="ts">
-  // Command palette and quick open. Prefixes: `>` commands, `:` line,
-  // `@` sections of the document, `#` labels; no prefix: project files.
+  // Command palette and quick open. Prefixes: `>` commands (with what the
+  // menus of the top bar hold: headings, sizes, formulas…), `:` line, `@`
+  // sections of the document, `#` labels; no prefix: project files.
   import { actions, isAvailable, keyFor, runAction } from "$lib/actions";
+  import { hasChapters } from "$lib/editor/format";
   import { fuzzy, highlight } from "$lib/fuzzy";
   import { t } from "$lib/i18n.svelte";
+  import { leaves } from "$lib/menu";
+  import { menus } from "$lib/menubar";
   import { editor } from "$lib/state/editor.svelte";
   import { project } from "$lib/state/project.svelte";
   import { ui } from "$lib/state/ui.svelte";
@@ -28,6 +32,16 @@
     recent = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
   } catch {
     recent = [];
+  }
+
+  /** A command run is offered first the next times. */
+  function remember(id: string) {
+    recent = [id, ...recent.filter((x) => x !== id)].slice(0, 12);
+    try {
+      localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+    } catch {
+      /* not remembered */
+    }
   }
 
   let query = $state(ui.paletteMode === "commands" ? ">" : "");
@@ -70,13 +84,32 @@
           indices: fuzzy(text, label)?.indices ?? [],
           score: m.score + (r >= 0 ? (text ? 30 : 1000) - r : 0),
           run: () => {
-            recent = [a.id, ...recent.filter((x) => x !== a.id)].slice(0, 12);
-            try {
-              localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
-            } catch {
-              /* not remembered */
-            }
+            remember(a.id);
             return runAction(a.id);
+          },
+        });
+      }
+      const main = project.info?.main;
+      const chapters = hasChapters((main && editor.textOf(main)) ?? "");
+      for (const { path, entry } of leaves(menus({ chapters, shortcuts: [], allColors: () => {} }))) {
+        if (entry.disabled) continue;
+        const label = path[path.length - 1];
+        const detail = path.slice(0, -1).join(" › ");
+        const m = fuzzy(text, label) ?? fuzzy(text, `${detail} ${label}`);
+        if (!m) continue;
+        const id = `menu:${path.join("/")}`;
+        const r = recent.indexOf(id);
+        out.push({
+          id,
+          label,
+          detail,
+          icon: entry.icon ?? "command",
+          indices: fuzzy(text, label)?.indices ?? [],
+          score: m.score + (r >= 0 ? (text ? 30 : 1000) - r : 0) - 1,
+          run: async () => {
+            remember(id);
+            await entry.run?.();
+            editor.focus();
           },
         });
       }

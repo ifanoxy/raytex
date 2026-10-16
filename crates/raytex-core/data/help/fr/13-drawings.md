@@ -88,7 +88,7 @@ RayTeX ajoute au préambule ce dont le schéma a besoin : `\usepackage{tikz}` (o
 
 ## Courbes de fonctions
 
-Le bouton des courbes de la barre de mise en forme (ou *Tout voir › Maths*, ou la palette de commandes : *Courbes de fonctions*) ouvre l'atelier des courbes : RayTeX écrit le graphique avec pgfplots.
+Le bouton des courbes de la barre de mise en forme (ou le menu *Maths*, ou la palette de commandes : *Courbes de fonctions*) ouvre l'atelier des courbes : RayTeX écrit le graphique avec pgfplots.
 
 - **Les fonctions** s'écrivent comme sur papier : `x^2 - 2x + 1`, `2sin(x)`, `e^(-x)`, `ln(x)/x`, `|x - 1|`, `√x`, `1,5x`. Chacune a sa couleur, son trait (plein, tirets, pointillés), son épaisseur, son intervalle et son nom, placé sur la courbe (`\mathcal{C}_f`) ou dans une légende. Une courbe est coupée là où elle n'est pas définie et à ses pôles : `1/x` est tracée de part et d'autre de 0, `√x` à partir de 0.
 - **Les tangentes** : à une courbe en un point, calculées par la dérivée, avec leur équation affichée (`y = 2x - 2`), le point de contact et un nom.

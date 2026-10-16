@@ -12,6 +12,11 @@ import type { EditorView } from "@codemirror/view";
 export const HEADINGS = ["part", "chapter", "section", "subsection", "subsubsection", "paragraph"] as const;
 export type Heading = (typeof HEADINGS)[number];
 
+/** Whether the class of a document has chapters (books, reports, theses). */
+export function hasChapters(text: string): boolean {
+  return /\\documentclass\s*(\[[^\]]*\])?\s*\{(report|book|memoir|scrbook|scrreprt|thesis|[^}]*these[^}]*)\}/.test(text.slice(0, 4000));
+}
+
 const HEADING_RE = /^(\s*)\\(part|chapter|section|subsection|subsubsection|paragraph)(\*?)\s*\{/;
 
 /** Index just after the brace closing the group opened at `open` (or -1). */

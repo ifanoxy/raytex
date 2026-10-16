@@ -1,6 +1,7 @@
 <script lang="ts">
-  // Top bar: project, compilation, main file, search and the "View" menu.
-  // Formatting lives in the bar below (FormatBar).
+  // Top bar: project, the menus of the tools (Format, Insert, Maths, Page,
+  // @), compilation, main file, search and the "View" menu. The usual
+  // formatting buttons live in the bar below (FormatBar).
   import { getAction, keyFor, runAction } from "$lib/actions";
   import { t } from "$lib/i18n.svelte";
   import { app } from "$lib/state/app.svelte";
@@ -11,6 +12,7 @@
   import { appWindow } from "$lib/state/window.svelte";
   import { basename, formatDuration, prettyKey, relative, samePath } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
+  import MenuBar from "./MenuBar.svelte";
   import WindowControls from "./WindowControls.svelte";
 
   const logo = $derived(app.theme === "dark" ? "/assets/logo-mark-dark.svg" : "/assets/logo-mark-light.svg");
@@ -124,6 +126,8 @@
     {/if}
 
     <div class="sep"></div>
+    <MenuBar />
+    <div class="sep"></div>
 
     <div class="build" class:running={build.running && build.manual}>
       {#if build.running && build.manual}
@@ -145,7 +149,7 @@
 
     {#if project.info.light}
       <button class="btn ghost small export" disabled={!viewer.pdf} onclick={() => runAction("pdf.export")} title={t("action.exportPdf")}>
-        <Icon name="download" size={14} />{t("light.export")}
+        <Icon name="download" size={14} /><span>{t("light.export")}</span>
       </button>
     {/if}
 
@@ -159,7 +163,7 @@
     <button class="state {status}" onclick={() => ui.showBottom(status === "failed" ? "problems" : "output")} title={t("toolbar.lastBuild")}>
       {#if status === "success"}
         <Icon name="check" size={14} />
-        {formatDuration(build.outcome?.durationMs ?? 0)}
+        <span class="duration">{formatDuration(build.outcome?.durationMs ?? 0)}</span>
       {:else if status === "failed"}
         <Icon name="alert-circle" size={14} />
         {errors ? t("toolbar.errors", { n: errors }) : t("toolbar.failed")}
@@ -391,6 +395,14 @@
   .palette-btn:hover {
     border-color: var(--border-strong);
     color: var(--text-muted);
+  }
+  /* A narrow window: the menus keep their room, the logo gives its own. */
+  @media (max-width: 1000px) {
+    .brand,
+    .duration,
+    .export span {
+      display: none;
+    }
   }
   @media (max-width: 1100px) {
     .chip,

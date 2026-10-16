@@ -29,7 +29,7 @@ Vous avez déjà des fichiers ? **Ouvrir un dossier** suffit : RayTeX trouve seu
 
 ## 3. Écrire
 
-La **barre de mise en forme**, sous la barre du haut, fonctionne comme dans un traitement de texte : style de la ligne (texte normal, section, sous-section…), taille, gras, italique, souligné, couleur, alignement, listes, formules, image, tableau, schéma. **Tout voir** ouvre toutes les commandes, avec leur raccourci.
+La **barre de mise en forme**, sous la barre du haut, fonctionne comme dans un traitement de texte : style de la ligne (texte normal, section, sous-section…), taille, gras, italique, souligné, couleur, alignement, listes, formules, image, tableau, schéma. Les menus de la barre du haut (**Format**, **Insertion**, **Maths**, **Page** et **@**) rangent toutes les commandes, chacune avec son raccourci.
 
 L'éditeur vous aide aussi à chaque frappe :
 

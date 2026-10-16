@@ -1,6 +1,6 @@
 # Mise en page
 
-Les marges, l'en-tête, le pied de page, un filigrane : la fenêtre **Mise en page** les règle avec des champs, et montre le résultat sur de vraies pages, compilées avec la classe et le préambule de votre projet, avant de rien écrire dans le document. Ouvrez-la depuis **Tout voir › Page**, ou par la palette de commandes (*Marges du document…*, *Styles de page…*).
+Les marges, l'en-tête, le pied de page, un filigrane : la fenêtre **Mise en page** les règle avec des champs, et montre le résultat sur de vraies pages, compilées avec la classe et le préambule de votre projet, avant de rien écrire dans le document. Ouvrez-la depuis le menu **Page**, ou par la palette de commandes (*Marges du document…*, *Styles de page…*).
 
 Chaque groupe montre l'essentiel ; **Avancé**, à droite de son titre, déplie le reste.
 
@@ -62,7 +62,7 @@ Si l'en-tête est plus haut que la place que la page lui garde (une image, deux 
 
 ## La page de titre
 
-**Tout voir › Page › Page de titre…** (ou la palette de commandes) ouvre une fenêtre qui écrit la page de titre à votre place : vous remplissez des champs, la page s'affiche à côté, compilée avec la classe et le préambule de votre projet.
+Le menu **Page › Page de titre…** (ou la palette de commandes) ouvre une fenêtre qui écrit la page de titre à votre place : vous remplissez des champs, la page s'affiche à côté, compilée avec la classe et le préambule de votre projet.
 
 - **Quatre mises en page**, à choisir sur leur dessin : *Classique* (le `\maketitle` de LaTeX, au-dessus du texte dans un article), *Centrée*, *Rapport* (établissement en haut, auteurs à gauche et encadrants à droite) et *Moderne* (alignée à gauche le long d'un filet).
 - **Texte** : titre, sous-titre, auteurs (un par ligne), date (aujourd'hui, aucune, ou celle que vous écrivez).

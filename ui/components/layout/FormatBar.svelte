@@ -1,10 +1,10 @@
 <script lang="ts">
   // Formatting bar (like a word processor's): undo, heading style, size,
   // bold/italic/underline, colour, alignment, lists, maths and insertions.
-  // "See all" opens every command, grouped. Buttons never take the focus
-  // from the text, so the selection stays and typing goes on.
+  // Every command is also in the menus of the top bar. Buttons never take
+  // the focus from the text, so the selection stays and typing goes on.
   import { getAction, keyFor, openGrid, runAction } from "$lib/actions";
-  import { HEADINGS, type Heading, setHeading, setSize, SIZES, type Size } from "$lib/editor/format";
+  import { hasChapters as bookLike, HEADINGS, type Heading, setHeading, setSize, SIZES, type Size } from "$lib/editor/format";
   import type { GridKind } from "$lib/grid";
   import { gridStore } from "$lib/state/grid.svelte";
   import { t, type MessageKey } from "$lib/i18n.svelte";
@@ -16,7 +16,6 @@
   import { colors } from "$lib/state/colors.svelte";
   import { fonts } from "$lib/state/fonts.svelte";
   import ColorMenu from "./ColorMenu.svelte";
-  import AllTools from "./AllTools.svelte";
   import FontMenu from "./FontMenu.svelte";
 
   const canEdit = $derived(!!editor.activeTab && editor.activeTab.kind === "tex" && !editor.activeTab.readOnly);
@@ -48,7 +47,7 @@
     void editor.revision;
     const main = project.info?.main;
     const text = (main && editor.textOf(main)) ?? "";
-    return /\\documentclass\s*(\[[^\]]*\])?\s*\{(report|book|memoir|scrbook|scrreprt|thesis|[^}]*these[^}]*)\}/.test(text.slice(0, 4000));
+    return bookLike(text);
   });
 
   let pop = $state<{ kind: "color" | "table" | "matrix" | "font"; x: number; y: number } | null>(null);
@@ -61,7 +60,6 @@
     void colors.refresh();
   });
   const mainFont = $derived(fonts.current?.main);
-  let allOpen = $state(false);
   let grid = $state({ rows: 0, cols: 0 });
 
   /** Keeps the focus (and selection) in the editor when a button is pressed. */
@@ -138,13 +136,11 @@
   function outside(e: PointerEvent) {
     const el = e.target as HTMLElement;
     if (pop && !el.closest(".pop") && !el.closest("[data-pop]")) pop = null;
-    if (allOpen && !el.closest(".all-tools") && !el.closest("[data-all]") && !el.closest(".pop")) allOpen = false;
   }
 
   function key(e: KeyboardEvent) {
-    if (e.key === "Escape" && (pop || allOpen)) {
+    if (e.key === "Escape" && pop) {
       pop = null;
-      allOpen = false;
       done();
     }
   }
@@ -156,7 +152,7 @@
 <svelte:window onpointerdown={outside} onkeydown={key} />
 
 <div class="format-bar" role="toolbar" aria-label={t("format.bar")}>
-  <!-- Groups that do not fit are clipped; "See all" always stays visible. -->
+  <!-- Groups that do not fit are clipped: the menus of the top bar have them all. -->
   <div class="groups">
   <div class="group history">
     <button class="icon-btn" disabled={!hasDoc || !editor.canUndo} onmousedown={keep} onclick={() => run("edit.undo")} title={title("edit.undo")} aria-label={t("action.undo")}><Icon name="undo" /></button>
@@ -237,10 +233,6 @@
   </button>
 
   </div>
-
-  <button class="text-btn all" class:active={allOpen} data-all onmousedown={keep} onclick={() => (allOpen = !allOpen)} title={t("format.allHint")}>
-    <Icon name="grid" size={15} /><span>{t("format.all")}</span>
-  </button>
 </div>
 
 {#if pop?.kind === "font"}
@@ -259,10 +251,6 @@
     </div>
     <p class="faint">{grid.rows ? t("format.tableSize", { rows: grid.rows, cols: grid.cols }) : t("format.tablePick")}</p>
   </div>
-{/if}
-
-{#if allOpen}
-  <AllTools onclose={() => (allOpen = false)} {hasChapters} />
 {/if}
 
 <style>
@@ -351,21 +339,13 @@
     background: var(--bg-input);
     color: var(--text);
   }
-  .tikz.editing,
-  .all.active {
+  .tikz.editing {
     color: var(--accent);
     background: var(--accent-soft);
   }
   .macros {
     color: var(--accent);
     font-weight: 600;
-  }
-  .all {
-    flex-shrink: 0;
-    margin-left: 6px;
-    border: 1px solid var(--border);
-    font-weight: 600;
-    color: var(--text);
   }
   .pop {
     position: fixed;
@@ -416,7 +396,7 @@
     }
   }
   @media (max-width: 1194px) {
-    .text-btn:not(.all):not(.macros) span {
+    .text-btn:not(.macros) span {
       display: none;
     }
     .select-btn.font {

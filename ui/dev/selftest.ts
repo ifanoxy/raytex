@@ -1358,27 +1358,79 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
       withTable.slice(withTable.indexOf("\\begin{table}"), withTable.indexOf("\\end{table}") + 11),
     );
     press("Escape");
-    document.querySelector<HTMLButtonElement>(".format-bar .all")!.click();
-    await until(() => !!document.querySelector(".all-tools .at-item .katex"), 10_000, "all tools");
-    await scene("all-tools");
-    // Every tool is there, a family shows its own, and the field finds a tool by its name (without its accents).
-    const tools = () => [...document.querySelectorAll<HTMLElement>(".all-tools .item .label")].map((l) => l.textContent?.trim() ?? "");
-    const everything = tools().length;
-    const families = document.querySelectorAll(".all-tools .family").length;
-    document.querySelector<HTMLButtonElement>('.all-tools .family[data-family="format.groupPage"]')!.click();
-    await pause(200);
-    const ofPage = tools().length;
-    const finder = document.querySelector<HTMLInputElement>(".all-tools .search")!;
-    type(finder, "equation");
-    await pause(200);
-    const found = tools();
+    // The menus of the top bar: every tool by its family, passing over a menu opens it.
+    const top = (id: string) => document.querySelector<HTMLButtonElement>(`.menubar .top[data-menu="${id}"]`)!;
+    const entries = (sub = false) => [...document.querySelectorAll<HTMLElement>(`.menu-drop${sub ? ".sub" : ":not(.sub)"} .entry .label`)].map((l) => l.textContent?.trim() ?? "");
+    top("format").click();
+    await until(() => !!document.querySelector(".menu-drop"), 5_000, "format menu");
+    const ofFormat = entries();
+    const sizeEntry = [...document.querySelectorAll<HTMLElement>(".menu-drop .entry")].find((e) => /Taille du texte|Text size/.test(e.textContent ?? ""))!;
+    // The pointer moves over an entry (a real move: the menus leave a pointer at rest aside).
+    const pointTo = (el: Element) => el.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, movementX: 2, movementY: 1 }));
+    pointTo(sizeEntry);
+    await until(() => !!document.querySelector(".menu-drop.sub"), 5_000, "size submenu");
+    await scene("menu-format");
+    const sizes = entries(true);
+    const ofFamily: Record<string, string[]> = {};
+    for (const id of ["insert", "math", "page"]) {
+      pointTo(top(id));
+      await pause(150);
+      ofFamily[id] = entries();
+    }
+    pointTo(top("shortcuts"));
+    await until(() => !!document.querySelector(".menu-drop .cell .katex"), 10_000, "@ menu");
+    await scene("menu-shortcuts", 1200);
+    const atCells = document.querySelectorAll(".menu-drop .cell").length;
     check(
-      "see all: every tool, by family, by name",
-      everything >= 45 && families === 7 && ofPage === 5 && found.length >= 2 && found.every((name) => /[eé]quation/i.test(name)),
-      `${everything} tools, ${families} families, page ${ofPage}, «equation» ${found.join(" | ")}`,
+      "menus: every tool, by family",
+      ofFormat.length === 15 &&
+        sizes.length === 10 &&
+        ofFamily.insert.some((e) => /^Image/.test(e)) &&
+        ofFamily.math.some((e) => /Courbes|plots/i.test(e)) &&
+        ofFamily.math.some((e) => /variations/i.test(e)) &&
+        ofFamily.page.length === 5 &&
+        atCells >= 15,
+      `format ${ofFormat.length}, sizes ${sizes.length}, insert ${ofFamily.insert.join(" | ")}, maths ${ofFamily.math.join(" | ")}, page ${ofFamily.page.length}, @ ${atCells}`,
     );
-    type(finder, "");
-    document.querySelector<HTMLButtonElement>(".format-bar .all")!.click();
+    press("Escape");
+    // The keyboard: Format, down to the style of the line, into its submenu, «s» for Section, Enter.
+    const menuKey = (key: string) => (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    const mv = editor.view!;
+    const menuAt = mv.state.doc.toString().lastIndexOf("\\end{document}");
+    mv.dispatch({ changes: { from: menuAt, insert: "Menus au clavier\n" }, selection: { anchor: menuAt + 3 } });
+    mv.focus();
+    top("format").click();
+    await until(() => !!document.querySelector(".menu-drop"), 5_000, "format menu again");
+    for (let i = 0; i < 7; i++) menuKey("ArrowDown");
+    menuKey("ArrowRight");
+    await until(() => !!document.querySelector(".menu-drop.sub"), 5_000, "style submenu");
+    menuKey("s");
+    await pause(100);
+    const meant = document.querySelector(".menu-drop.sub .entry.at .label")?.textContent?.trim();
+    menuKey("Enter");
+    await pause(300);
+    check(
+      "menus: by the keyboard, the text keeping its focus",
+      meant === "Section" && (editor.textOf(main) ?? "").includes("\\section{Menus au clavier}") && !document.querySelector(".menu-drop") && document.activeElement === mv.contentDOM,
+      `${meant}, ${!!document.querySelector(".menu-drop")}, ${(editor.textOf(main) ?? "").slice(menuAt - 10, menuAt + 40)}`,
+    );
+    // The palette finds what the menus hold by its name.
+    void runAction("view.palette");
+    await until(() => !!document.querySelector(".palette input"), 5_000, "palette");
+    type(document.querySelector<HTMLInputElement>(".palette input")!, ">saut de page");
+    await pause(200);
+    const first = document.querySelector(".palette .entry");
+    check("menus: in the palette", /Saut de page|Page break/.test(first?.querySelector(".label")?.textContent ?? "") && /Page/.test(first?.querySelector(".detail")?.textContent ?? ""), first?.textContent);
+    press("Escape");
+    // The line written for the keyboard goes, whatever it became.
+    const doc = editor.view!.state.doc;
+    for (let n = doc.lines; n >= 1; n--) {
+      const line = doc.line(n);
+      if (/au clavier/.test(line.text)) {
+        editor.view!.dispatch({ changes: { from: line.from, to: Math.min(doc.length, line.to + 1) } });
+        break;
+      }
+    }
 
     // ------------------------------------------ completion with @ hint
     const e2 = editor.view!;

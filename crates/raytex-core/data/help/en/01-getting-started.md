@@ -29,7 +29,7 @@ Already have files? **Open folder** is enough: RayTeX finds the main file (the o
 
 ## 3. Write
 
-The **formatting bar**, under the top bar, works like a word processor's: style of the line (normal text, section, subsection…), size, bold, italic, underline, colour, alignment, lists, formulas, image, table, drawing. **See all** opens every command, with its shortcut.
+The **formatting bar**, under the top bar, works like a word processor's: style of the line (normal text, section, subsection…), size, bold, italic, underline, colour, alignment, lists, formulas, image, table, drawing. The menus of the top bar (**Format**, **Insert**, **Maths**, **Page** and **@**) hold every command, each with its shortcut.
 
 The editor also helps at every keystroke:
 

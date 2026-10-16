@@ -62,7 +62,8 @@ Sous la barre du haut, comme dans un traitement de texte (tous les boutons agiss
 | Image, Tableau, Schéma TikZ | fenêtre d'images ; grille pour choisir la taille du tableau (cellules vides, `booktabs` ajouté) ; studio TikZ |
 | Lien, note, renvoi, citation | `\href`, `\footnote`, `\ref`, `\cite` |
 | Macros | la liste des raccourcis @ |
-| Tout voir | toutes les commandes de mise en forme et d'insertion, chacune avec son raccourci : un champ en haut trouve un outil par son nom (Entrée lance le premier trouvé), les familles à gauche (Texte, Paragraphes et titres, Maths, Insérer, Page, Raccourcis @) en montrent une à la fois |
+
+Les **menus** de la barre du haut rangent toutes les commandes, chacune avec son raccourci : **Format** (gras, italique…, puis *Style de la ligne*, *Taille du texte*, *Couleur du texte* et *Alignement* dans des sous-menus, listes, commentaires), **Insertion** (image, figure, tableau, code, TikZ, lien, note, renvoi, citation, étiquette, nouvelle commande), **Maths** (formules, fraction, racine, somme, intégrale, matrice, courbes, tableaux de variations, symboles), **Page** (page de titre, marges, styles de page, saut de page, table des matières) et **@** (les raccourcis @ les plus utiles). Un clic ouvre un menu, passer sur les autres les ouvre ; au clavier, les flèches s'y déplacent, Entrée choisit, Échap ferme, et la première lettre d'une entrée y va. Le texte garde sa sélection pendant ce temps. La palette de commandes trouve aussi ces entrées par leur nom (*Grand*, *Fraction*, *Saut de page*…).
 
 Le menu **Affichage** (en haut à droite) montre ou masque cette barre, le panneau latéral, l'aperçu PDF et la console ; l'aperçu et la console se ferment aussi par leur croix.
 

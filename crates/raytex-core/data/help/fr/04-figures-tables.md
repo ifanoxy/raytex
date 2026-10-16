@@ -101,7 +101,7 @@ Le modèle **Figure TikZ** crée un projet `standalone` idéal pour préparer un
 
 ## Du code dans le document
 
-*Insérer du code…* (dans *Tout voir* ou la palette de commandes ; avec du texte sélectionné, il devient le code) ouvre une fenêtre avec le code et, juste dessous, ce code compilé par LaTeX (cadré sur lui, à la largeur d'une ligne de votre document) ; ses réglages sont à droite :
+*Insérer du code…* (dans le menu *Insertion* ou la palette de commandes ; avec du texte sélectionné, il devient le code) ouvre une fenêtre avec le code et, juste dessous, ce code compilé par LaTeX (cadré sur lui, à la largeur d'une ligne de votre document) ; ses réglages sont à droite :
 
 - **le langage**, parmi une quarantaine : Python, C, Java, JavaScript, TypeScript, Rust, Go, SQL, Bash, LaTeX… Ceux que le paquet `listings` ne connaît pas (JavaScript, Rust, Go, JSON, YAML…) sont définis dans le préambule quand vous les utilisez ;
 - **l'indentation** : *2 espaces*, *4 espaces* ou *Tabulations* réécrit le code niveau par niveau. Un code collé depuis le milieu d'un fichier revient à la marge, sans les espaces en fin de ligne ; des tabulations et des espaces mélangés sont signalés ;

@@ -88,7 +88,7 @@ RayTeX adds what the drawing needs to the preamble: `\usepackage{tikz}` (or pgfp
 
 ## Function plots
 
-The plot button of the formatting bar (or *See all › Maths*, or the command palette: *Function plots*) opens the graph studio: RayTeX writes the plot with pgfplots.
+The plot button of the formatting bar (or the *Maths* menu, or the command palette: *Function plots*) opens the graph studio: RayTeX writes the plot with pgfplots.
 
 - **Functions** are written as on paper: `x^2 - 2x + 1`, `2sin(x)`, `e^(-x)`, `ln(x)/x`, `|x - 1|`, `√x`. Each has its colour, its line (solid, dashed, dotted), its width, its interval and its name, on the curve (`\mathcal{C}_f`) or in a legend. A curve is cut where it is not defined and at its poles: `1/x` is drawn on both sides of 0, `√x` from 0.
 - **Tangents**: to a curve at a point, worked out from the derivative, with their equation shown (`y = 2x - 2`), the point of contact and a name.
