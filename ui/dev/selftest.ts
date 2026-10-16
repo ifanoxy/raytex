@@ -603,6 +603,41 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     ok = false;
   }
 
+  // -------------------------------------------------- probability trees
+  try {
+    const v = editor.view!;
+    v.dispatch({ changes: { from: v.state.doc.length, insert: "\n\n" }, selection: { anchor: v.state.doc.length + 2 } });
+    void runAction("insert.tree");
+    const probs = () => [...document.querySelectorAll<HTMLInputElement>('[role="dialog"] .branch .prob')];
+    await until(() => probs().length === 6, 10_000, "tree studio");
+    typeIn(probs()[0], "0,3");
+    typeIn(probs()[1], "0,4");
+    typeIn(probs()[4], "0,5");
+    await pause(200);
+    // The other branch of each pair is worked out (in grey).
+    const worked = probs().map((p) => p.value || p.placeholder);
+    document.querySelector<HTMLInputElement>('[role="dialog"] .side .check input')!.click();
+    await drawn('[role="dialog"] .preview canvas', log, "tree preview");
+    await until(() => !document.querySelector('[role="dialog"] .preview-bar .spinner'), 60_000, "tree rendering");
+    const rendering = document.querySelector('[role="dialog"] .preview-bar .status.err')?.textContent ?? "";
+    await scene("tree-studio");
+    document.querySelector<HTMLButtonElement>('[role="dialog"] .side .btn.primary')!.click();
+    await until(() => ui.overlay === null, 20_000, "tree insertion");
+    const text = editor.textOf(chapter)!;
+    const inserted = text.includes("P(A \\cap B) = 0{,}12") && text.includes("edge from parent node[below] {$0{,}7$}");
+    const built = await buildOk(log, "tree");
+    await chipOf(/Arbre|Tree/, text.indexOf("grow'=right"));
+    await until(() => probs().length === 6, 10_000, "tree opened again");
+    const again = probs().map((p) => p.value);
+    ui.closeOverlay();
+    log(`tree: ${worked.join(" ")}, rendering «${rendering}», inserted ${inserted}, opened again ${JSON.stringify(again)}`);
+    ok = worked.join(" ") === "0,3 0,4 0,6 0,7 0,5 0,5" && !rendering && inserted && built && JSON.stringify(again) === JSON.stringify(["0,3", "0,4", "", "", "0,5", ""]) && ok;
+  } catch (e) {
+    log(`tree failed: ${e}`);
+    if (ui.overlay) ui.closeOverlay();
+    ok = false;
+  }
+
   // --------------------------------------------------------------- fonts
   try {
     media.openFonts();

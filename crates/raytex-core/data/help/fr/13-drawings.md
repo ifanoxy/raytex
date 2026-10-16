@@ -109,6 +109,17 @@ Le bouton voisin (*Tableau de variations ou de signes*) ouvre une grille dispos�
 
 La pastille **Tableau** après `\begin{tikzpicture}` le rouvre.
 
+## Arbres de probabilités
+
+Le menu *Maths › Arbre de probabilités…* (ou la palette de commandes) ouvre l'atelier des arbres : une ligne par branche, en retrait selon son niveau, avec son événement (`A`, ou `\overline{A}` : le bouton **Ā** donne le contraire) et sa probabilité (`0,3`, `1/3`, `p`).
+
+- Sur deux branches, une probabilité laissée vide est calculée : `1 − p` (`0,7`, `2/3`, `1-p`), montrée en gris.
+- Chaque nœud est vérifié : des branches qui ne font pas 1 sont signalées.
+- **Probabilité de chaque chemin au bout** écrit `P(A ∩ B) = 0,12` au bout de chaque chemin, calculé exactement (en fraction si une fraction s'y trouve).
+- **Un niveau de plus** ajoute un événement et son contraire au bout de chaque branche ; **Mêmes événements à chaque niveau** recopie ceux de la première branche d'un niveau.
+
+L'arbre est écrit avec TikZ, qui pousse vers la droite (`grow'=right`), les probabilités au-dessus des branches du haut et au-dessous de celles du bas, les nombres à la française dans un document en français. La puce **Arbre** le rouvre dans l'atelier.
+
 ## Pour aller plus loin
 
 ```latex

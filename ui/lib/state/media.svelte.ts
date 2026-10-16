@@ -6,6 +6,7 @@ import type { Graph } from "../graph";
 import type { FigureAt, FigureGroup } from "../images";
 import type { Listing } from "../listing";
 import type { Table } from "../variations";
+import type { Tree } from "../probtree";
 import type { FontRole } from "../types";
 import { ui } from "./ui.svelte";
 
@@ -87,6 +88,18 @@ export interface VariationRequest {
   edit?: VariationEdit;
 }
 
+/** A probability tree of the document to change (its chip). */
+export interface TreeEdit {
+  path: string;
+  from: number;
+  to: number;
+  tree: Tree;
+}
+
+export interface TreeRequest {
+  edit?: TreeEdit;
+}
+
 export interface TikzRequest {
   code: string;
   /** Range replaced by "Update" (a picture of the document)… */
@@ -104,6 +117,8 @@ class MediaStore {
   graphRequest: GraphRequest | null = null;
   /** What the window of tables of variations opens on (read once). */
   variationRequest: VariationRequest | null = null;
+  /** What the window of probability trees opens on (read once). */
+  treeRequest: TreeRequest | null = null;
   /** Font files to show first in the font dialog. */
   fontRequest = $state<string[] | null>(null);
   /** Role chosen before opening the font dialog (from the font menu). */
@@ -141,6 +156,11 @@ class MediaStore {
   openVariations(request: VariationRequest | null = null) {
     this.variationRequest = request;
     ui.openOverlay("variations");
+  }
+
+  openTree(request: TreeRequest | null = null) {
+    this.treeRequest = request;
+    ui.openOverlay("tree");
   }
 
   openFonts(files: string[] | null = null, preset: FontPreset | null = null) {

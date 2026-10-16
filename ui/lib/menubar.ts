@@ -175,6 +175,7 @@ export function menus(ctx: MenuContext): TopMenu[] {
         sep,
         action("insert.graph"),
         action("insert.variations"),
+        action("insert.tree"),
         sep,
         action("view.symbols"),
       ],

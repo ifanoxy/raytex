@@ -264,6 +264,7 @@ const CHIP_TEXT: Record<ChipKind, [MessageKey, MessageKey]> = {
   code: ["chip.code", "chip.codeHint"],
   graph: ["chip.graph", "chip.graphHint"],
   variations: ["chip.variations", "chip.variationsHint"],
+  tree: ["chip.tree", "chip.treeHint"],
 };
 
 class EditorStore {
@@ -1334,7 +1335,7 @@ class EditorStore {
   private async openChip(view: EditorView, path: string, kind: ChipKind, from: number) {
     if (kind === "matrix" || kind === "table") {
       if (!gridStore.edit(view, path, from)) ui.toast("warning", t("grid.unreadable"));
-    } else if (kind === "tikz" || kind === "graph" || kind === "variations") {
+    } else if (kind === "tikz" || kind === "graph" || kind === "variations" || kind === "tree") {
       const request = await this.tikzAt(from + 1);
       if (!request) {
         ui.toast("warning", t("chip.unreadable"));
@@ -1344,8 +1345,10 @@ class EditorStore {
       // read them, in the TikZ studio otherwise (their code is loaded then).
       const graph = kind === "graph" && request.range ? (await import("../graph")).readGraph(request.code) : null;
       const table = kind === "variations" && request.range ? (await import("../variations")).readTable(request.code) : null;
+      const tree = kind === "tree" && request.range ? (await import("../probtree")).readTree(request.code) : null;
       if (graph && request.range) media.openGraph({ edit: { ...request.range, graph } });
       else if (table && request.range) media.openVariations({ edit: { ...request.range, table } });
+      else if (tree && request.range) media.openTree({ edit: { ...request.range, tree } });
       else media.openTikz(request);
     } else if (kind === "code") {
       const doc = view.state.doc;

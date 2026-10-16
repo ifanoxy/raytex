@@ -109,6 +109,17 @@ The button next to it (*Table of variations or of signs*) opens a grid laid out 
 
 The **Table** chip after `\begin{tikzpicture}` opens it again.
 
+## Probability trees
+
+*Maths › Probability tree…* (or the command palette) opens the tree studio: one line a branch, set in by its level, with its event (`A`, or `\overline{A}`: the **Ā** button gives the complement) and its probability (`0.3`, `1/3`, `p`).
+
+- Of two branches, a probability left empty is worked out: `1 − p` (`0.7`, `2/3`, `1-p`), shown in grey.
+- Each node is checked: branches that do not make 1 are said.
+- **Probability of each path at its end** writes `P(A ∩ B) = 0.12` at the end of each path, worked out exactly (as a fraction when there is one in it).
+- **One level more** adds an event and its complement at the end of each branch; **Same events at each level** copies those of the first branch of a level.
+
+The tree is written with TikZ, growing right (`grow'=right`), the probabilities above the upper branches and below the lower ones, numbers written the French way in a French document. The **Tree** chip opens it again in the studio.
+
 ## Going further
 
 ```latex
