@@ -22,6 +22,7 @@
   import Icon from "../components/common/Icon.svelte";
   import BlockPanel from "./BlockPanel.svelte";
   import FrameCode from "./FrameCode.svelte";
+  import PresenterView from "./PresenterView.svelte";
   import ThemePanel from "./ThemePanel.svelte";
   import PageCanvas from "./PageCanvas.svelte";
 
@@ -305,6 +306,13 @@
   }
 
   function key(e: KeyboardEvent) {
+    // While presenting, the keys are the presenter's.
+    if (presenting !== null) return;
+    if (e.key === "F5") {
+      e.preventDefault();
+      present(e.shiftKey ? (range?.[0] ?? 1) : 1);
+      return;
+    }
     const target = e.target as HTMLElement;
     if (target.closest("input, textarea, select, .cm-editor, [role='dialog']")) return;
     if (e.altKey && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
@@ -393,12 +401,31 @@
     host.edit({ version: told.version, changes: [{ from: 0, to: end, insert: next.slice(0, next.length - (told.text.length - end)) }] });
   }
 
+  // ------------------------------------------------------------ presenting
+
+  /** The page the presentation began at, while it goes on. */
+  let presenting = $state<number | null>(null);
+  function present(page: number) {
+    if (!doc || !told?.pdf) return;
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    presenting = page;
+  }
+  /** The presentation ended at a page: its slide is chosen. */
+  function endPresenting(page: number) {
+    presenting = null;
+    const k = pages.findIndex(([a, b]) => page >= a && page <= b);
+    if (k >= 0) select(k);
+  }
+
   const sections = $derived(deck.frames.map((f, i) => (i === 0 || f.section !== deck.frames[i - 1].section ? f.section : null)));
 </script>
 
 <svelte:window onkeydown={key} onpointerdown={(e) => layoutsOpen && !(e.target as HTMLElement).closest(".bar .add") && (layoutsOpen = false)} />
 
 <div class="slides-mode" data-pages={doc?.numPages ?? 0} data-drawn={doc && frame ? "yes" : "no"} data-placed={placed.filter(Boolean).length}>
+  {#if presenting !== null && doc && told?.pdf}
+    <PresenterView {doc} pdf={told.pdf} built={told.built} {pages} frames={deck.frames} start={presenting} ratio={frameRatio} {revision} onend={endPresenting} />
+  {/if}
   <header class="bar">
     <button class="btn small" data-action="leave" title={t("slides.leaveHint")} onclick={() => host.command({ kind: "leave" })}><Icon name="arrow-left" size={13} />{t("slides.leave")}</button>
     <span class="sep"></span>
@@ -420,6 +447,7 @@
     <button class="icon-btn" data-action="down" title={t("slides.down")} aria-label={t("slides.down")} disabled={!frame || selected >= deck.frames.length - 1} onclick={() => shift(1)}><Icon name="chevron-down" size={15} /></button>
     <button class="icon-btn" data-action="delete" title={t("slides.delete")} aria-label={t("slides.delete")} disabled={!frame} onclick={remove}><Icon name="trash" size={15} /></button>
     <span class="spacer"></span>
+    <button class="btn small primary" data-action="present" title={t("slides.presentHint")} disabled={!doc || !told?.pdf} onclick={() => present(range?.[0] ?? 1)}><Icon name="play" size={13} />{t("slides.present")}</button>
     {#if told?.building}<span class="status"><span class="spinner"></span>{t("slides.building")}</span>{:else if told?.failed}<span class="status err"><Icon name="alert-circle" size={13} />{t("slides.failed")}</span>{/if}
 
   </header>
@@ -546,6 +574,7 @@
 
 <style>
   .slides-mode {
+    position: relative;
     display: grid;
     grid-template-columns: 196px minmax(0, 1fr) var(--side, 340px);
     grid-template-rows: 40px minmax(0, 1fr);

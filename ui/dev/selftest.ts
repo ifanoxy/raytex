@@ -2108,6 +2108,24 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
       `${drawnThemes} drawn`,
     );
     document.querySelector<HTMLButtonElement>('.slides-mode [data-view="interface"]')!.click();
+    // Presenting: the window of the presentation opens and draws the page the
+    // presenter's view says; the arrows move from step to step; Escape ends it.
+    const presenter = () => document.querySelector<HTMLElement>(".slides-mode .presenter");
+    document.querySelector<HTMLButtonElement>('.slides-mode .thumb[data-index="0"]')!.click();
+    await pause(150);
+    action("present");
+    await until(() => !!presenter() && presenter()!.dataset.drawn === "1", 20_000, "presentation drawn");
+    const opened = await ipc.presentShown();
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+    await until(() => presenter()?.dataset.drawn === "2", 10_000, "next step drawn");
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await until(() => !presenter(), 5_000, "presentation ended");
+    let closed = false;
+    for (let k = 0; k < 50 && !closed; k++) {
+      closed = !(await ipc.presentShown());
+      if (!closed) await pause(100);
+    }
+    check("slides mode: presented in a window of its own, step by step, then ended", opened && closed && !presenter(), `${opened} ${closed}`);
     action("leave");
     await until(() => ui.mode === "editor" && !root() && !!document.querySelector(".work:not(.hidden)"), 5_000, "back to the editor");
     check("slides mode: back to the editor", ui.mode === "editor" && !!editor.view);

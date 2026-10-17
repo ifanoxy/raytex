@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "present",
+  "description": "Permissions of the window of a presentation: it shows the slides full screen and talks to the main window, which leads it.",
+  "windows": [
+    "present"
+  ],
+  "permissions": [
+    "core:default"
+  ]
+}

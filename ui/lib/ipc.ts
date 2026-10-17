@@ -122,6 +122,12 @@ export const exportPdfCancel = () => call<void>("export_pdf_cancel");
 export const exportWindowOpen = (title: string) => call<void>("export_window_open", { title });
 export const exportWindowClose = () => call<void>("export_window_close");
 export const exportWindowShown = () => call<boolean>("export_window_shown");
+/** The screens of the computer, for the window of a presentation. */
+export const presentScreens = () => call<{ name: string; width: number; height: number; main: boolean }[]>("present_screens");
+/** Shows the window of a presentation full screen on a screen (by default one the main window is not on); gives the screen. */
+export const presentOpen = (screen: number | null = null) => call<number>("present_open", { screen });
+export const presentShown = () => call<boolean>("present_shown");
+export const presentClose = () => call<void>("present_close");
 /** Says something to one window of the application. */
 export function tell<K extends keyof Events>(window: string, event: K, payload: Events[K]): Promise<void> {
   return emitTo(window, event, payload);
@@ -291,6 +297,14 @@ export interface Events {
   "export-window:command": ExportWindowCommand;
   "export-window:ready": null;
   "export-window:report": ExportWindowReport;
+  /** To the window of a presentation: the page shown (`black`: nothing), of the PDF built `built` times. */
+  "present:show": { pdf: string; built: number; page: number; black: boolean };
+  /** From it: a key pressed there (or a click, as the next step), it is ready, a page drawn. */
+  "present:key": { key: string };
+  "present:ready": null;
+  "present:drawn": { page: number };
+  /** It was closed. */
+  "present:closed": null;
   "export:step": { name: string; command: string };
   "export:output": { lines: T.OutputLine[] };
   "tex:status": T.TexStatus;
