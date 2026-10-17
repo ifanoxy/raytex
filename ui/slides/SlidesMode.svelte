@@ -18,9 +18,11 @@
   import type { Frame } from "$lib/slides/deck";
   import { blockAt, type Box, partAt, partsOf, type Placement, placeBlocks, withPart } from "$lib/slides/place";
   import type { SlidesHost, SlidesState } from "$lib/slides/host";
+  import { type DeckLook, preambleEnd, writeLook } from "$lib/slides/theme";
   import Icon from "../components/common/Icon.svelte";
   import BlockPanel from "./BlockPanel.svelte";
   import FrameCode from "./FrameCode.svelte";
+  import ThemePanel from "./ThemePanel.svelte";
   import PageCanvas from "./PageCanvas.svelte";
 
   let { host }: { host: SlidesHost } = $props();
@@ -353,16 +355,18 @@
   // --------------------------------------------- the interface, or the code
 
   const VIEW_KEY = "raytex.slides.view";
-  let view = $state<"interface" | "code">(
+  type View = "interface" | "code" | "look";
+  let view = $state<View>(
     (() => {
       try {
-        return localStorage.getItem(VIEW_KEY) === "code" ? "code" : "interface";
+        const kept = localStorage.getItem(VIEW_KEY);
+        return kept === "code" || kept === "look" ? kept : "interface";
       } catch {
         return "interface";
       }
     })(),
   );
-  function show(v: "interface" | "code") {
+  function show(v: View) {
     view = v;
     try {
       localStorage.setItem(VIEW_KEY, v);
@@ -379,6 +383,14 @@
     codeProblem = !one;
     if (!one || text === frameText) return;
     host.edit({ version: told.version, changes: [{ from: frame.from, to: frame.to, insert: text.trim() }] });
+  }
+
+  /** A look chosen: the preamble written again (the rest of the deck as it was). */
+  function setLook(look: Partial<DeckLook>) {
+    if (!told) return;
+    const end = preambleEnd(told.text);
+    const next = writeLook(told.text, look);
+    host.edit({ version: told.version, changes: [{ from: 0, to: end, insert: next.slice(0, next.length - (told.text.length - end)) }] });
   }
 
   const sections = $derived(deck.frames.map((f, i) => (i === 0 || f.section !== deck.frames[i - 1].section ? f.section : null)));
@@ -508,12 +520,15 @@
       </label>
     </main>
 
-    <aside class="side" class:code={view === "code"}>
+    <aside class="side" class:code={view !== "interface"}>
       <div class="views" role="tablist" aria-label={t("slides.views")}>
         <button role="tab" class:on={view === "interface"} aria-selected={view === "interface"} data-view="interface" onclick={() => show("interface")}><Icon name="layout" size={13} />{t("slides.interface")}</button>
         <button role="tab" class:on={view === "code"} aria-selected={view === "code"} data-view="code" onclick={() => show("code")}><Icon name="code" size={13} />{t("slides.code")}</button>
+        <button role="tab" class:on={view === "look"} aria-selected={view === "look"} data-view="look" onclick={() => show("look")}><Icon name="palette" size={13} />{t("slides.look")}</button>
       </div>
-      {#if frame && view === "code" && told?.path}
+      {#if view === "look" && told?.path}
+        <ThemePanel text={told.text} path={told.path} {frameText} onlook={setLook} />
+      {:else if frame && view === "code" && told?.path}
         <FrameCode text={frameText} path={told.path} onchange={codeChanged} />
         {#if codeProblem}<p class="problem">{t("slides.codeProblem")}</p>{/if}
       {:else if frame}

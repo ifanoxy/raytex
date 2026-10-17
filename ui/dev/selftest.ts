@@ -2087,6 +2087,27 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     enter(field()!);
     await until(() => slideNames()[1] === "Plan", 10_000, "title written in the text");
     check("slides mode: the title written on the slide", titleWas === "Sommaire", titleWas);
+    // The look: themes drawn on the slide, one chosen, its colours, the shape 4:3.
+    const deckNow = () => editor.textOf(project.info!.main!) ?? "";
+    document.querySelector<HTMLButtonElement>('.slides-mode [data-view="look"]')!.click();
+    await until(() => !!document.querySelector('.slides-mode .theme[data-theme="Warsaw"] canvas'), 120_000, "themes drawn");
+    document.querySelector<HTMLButtonElement>('.slides-mode .theme[data-theme="Warsaw"]')!.click();
+    await until(() => deckNow().includes("\\usetheme{Warsaw}"), 10_000, "theme chosen");
+    document.querySelector<HTMLButtonElement>('.slides-mode [data-color="whale"]')!.click();
+    await until(() => deckNow().includes("\\usecolortheme{whale}"), 10_000, "colours chosen");
+    document.querySelector<HTMLButtonElement>('.slides-mode [data-ratio="43"]')!.click();
+    await until(() => /\\documentclass\[aspectratio=43\]\{beamer\}/.test(deckNow()), 10_000, "shape chosen");
+    await until(() => {
+      const b = document.querySelector<HTMLElement>(".slides-mode .slide-box")?.getBoundingClientRect();
+      return !build.running && !!b && Math.abs(b.width / b.height - 4 / 3) < 0.05;
+    }, 120_000, "deck built in 4:3");
+    const drawnThemes = document.querySelectorAll(".slides-mode .theme canvas").length;
+    check(
+      "slides mode: themes drawn on the slide, one chosen with its colours and its shape",
+      !deckNow().includes("\\usetheme{Madrid}") && !deckNow().includes("beaver") && document.querySelector<HTMLElement>(".slides-mode .theme.on")?.dataset.theme === "Warsaw" && drawnThemes >= 3,
+      `${drawnThemes} drawn`,
+    );
+    document.querySelector<HTMLButtonElement>('.slides-mode [data-view="interface"]')!.click();
     action("leave");
     await until(() => ui.mode === "editor" && !root() && !!document.querySelector(".work:not(.hidden)"), 5_000, "back to the editor");
     check("slides mode: back to the editor", ui.mode === "editor" && !!editor.view);
