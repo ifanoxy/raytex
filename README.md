@@ -63,6 +63,9 @@ RayTeX is a LaTeX editor that helps beginners learn and lets experts go fast: li
 - Lint while typing: undefined references and citations, duplicate labels, unbalanced braces, missing packages and files, obsolete commands, typography.
 - Log parser that pinpoints the exact line and column, with a plain-language explanation (English and French) and fixes: add or install a package, fix a misspelt command, switch engines, create a missing file…
 
+**Slides**
+- **Slides mode** for Beamer decks, in the same window: the slide written where it is drawn (texts, lists, pictures, columns, formulas, tables, boxes), the real slide beside it, elements added from one bar or dragged where they go, their tools above the slide, reveals step by step, a theme chosen on real slides, presenting with a presenter's view, exports with the notes or as handouts; all written as plain LaTeX. Optional: offered by the Windows installer or the first time it is opened.
+
 **Teaching**
 - **Subject and answer key** from one file: *Subject | Answer key* above the preview turns the switch of the document (the class exam, xsim, or a switch of its own) and *Export both* writes the two PDFs; exercises with their points, framed solutions and room to answer (lines, blank, grid) from the Insert menu.
 

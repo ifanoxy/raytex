@@ -34,6 +34,128 @@ export interface VersionNotes {
 
 export const NOTES: VersionNotes[] = [
   {
+    version: "0.6.0",
+    date: "2026-10-17",
+    en: {
+      points: [
+        "The slides mode, for Beamer presentations: the slide written where it is drawn, the real slide as Beamer draws it beside it, the notes under it.",
+        "Elements added from one bar or dragged where they go (text, lists, pictures, columns, formulas, tables, boxes), moved by their handle and set by their tools, written as plain LaTeX.",
+        "Reveals step by step, tables managed cell by cell, a theme chosen on real slides with a colour of one's own.",
+        "Presenting: the slides full screen on the projector, the presenter's view with the next slide, the notes and a timer.",
+        "Exports: the slides, the slides with the notes, or handouts.",
+        "Optional: offered by the installer of Windows, or the first time it is opened.",
+      ],
+      details: [
+        {
+          title: "The slides mode",
+          items: [
+            "View › Slides mode, or the Slides button of the top bar when the document is a Beamer deck, turns the window into the slides mode; Editor goes back. The editor stays behind: every change is made in it (undone with Ctrl+Z) and the deck is built again.",
+            "On the left, the slides as thumbnails with their sections: a new one from a layout, copied or deleted from its thumbnail, moved by dragging it.",
+            "In the middle, the slide written where it is drawn: its title, its texts (bold, italic, colours shown as they are), the points of its lists (Enter makes the next one), its pictures (their width set by a handle), its columns (their widths by the line between them), its formulas drawn, its tables, its boxes. What is anything else is kept as it is written and shown apart.",
+            "On the right, the real slide as Beamer draws it, with its steps, or its LaTeX (written as in the editor, with completion); the notes of the speaker under it. A line at the bottom of the slide shows when it is too full.",
+          ],
+        },
+        {
+          title: "Elements and their tools",
+          items: [
+            "Insert adds an element after the one chosen: text, list, picture, columns, formula, table, box, and under More a numbered list, three columns, an alert, an example, code, a pause. The + between two elements does the same.",
+            "Elements are dragged where they go, between two others or into a column, and moved by their handle; a picture dragged from the system is copied into the project. Dragging works the same on Windows.",
+            "Above the slide, the tools of the element chosen: bold, italic, underlined, alert, a colour, a formula, a link on the words chosen; left, centred, right; smaller, larger; what its kind has; the step it appears at; copied, deleted. Delete, Ctrl+D and Alt with the arrows work from the keyboard.",
+            "Everything is written as plain LaTeX (`\\begin{center}`, `\\begin{large}`, `\\begin{uncoverenv}<2->`, `\\textbf`, `\\textcolor`), only the element changed, at the indentation of the document; nothing is placed by coordinates.",
+          ],
+        },
+        {
+          title: "Tables",
+          items: [
+            "Cells typed into; Enter goes to the cell below and Tab to the next one, a row more after the last.",
+            "Rows and columns put above, below, on the left or the right of the cell with the caret, or taken out; each column aligned; no lines, a line under the head, lines between rows or a grid; the head in bold.",
+          ],
+        },
+        {
+          title: "Theme",
+          items: [
+            "Theme opens a large window: every Beamer theme drawn on the slide chosen, and the look being chosen drawn on the title page and that slide.",
+            "Its shape (16:9, 16:10, 4:3), its colour theme, a main colour of one's own, its font, the size of its text and the navigation symbols. Nothing is written before Apply, then only what changed.",
+          ],
+        },
+        {
+          title: "Reveals, presenting, exports",
+          items: [
+            "Each element can appear from a step on, or at one step only; a list can show one point a click. The steps are seen on the real slide.",
+            "Present (F5 from the start, Shift+F5 from the slide chosen) shows the slides full screen on the screen of the projector; the main window becomes the presenter's view: the page shown, the next one, the notes, a timer, a black screen. The arrows, the space bar, a remote and a click move from step to step; Escape ends.",
+            "Export gives the slides as a PDF, with the notes of the speaker, or as handouts (one, two or four to a page), each built apart, the deck untouched.",
+          ],
+        },
+        {
+          title: "Optional",
+          items: [
+            "The slides mode is offered by a box of the installer of Windows (NSIS); otherwise it is offered the first time it is opened, and installed at once, without the network.",
+            "It is taken off and back in Settings › General; taken off, nothing of it is loaded.",
+          ],
+        },
+      ],
+    },
+    fr: {
+      points: [
+        "Le mode diaporama, pour les présentations Beamer : la diapositive écrite là où elle est dessinée, la vraie diapositive telle que Beamer la dessine à côté, les notes dessous.",
+        "Des éléments ajoutés depuis une seule barre ou glissés là où ils vont (texte, listes, images, colonnes, formules, tableaux, encadrés), déplacés par leur poignée et réglés par leurs outils, écrits en LaTeX simple.",
+        "Des apparitions étape par étape, des tableaux gérés case par case, un thème choisi sur de vraies diapositives avec une couleur à soi.",
+        "La présentation : les diapositives en plein écran sur le projecteur, la vue présentateur avec la diapositive suivante, les notes et un chrono.",
+        "Les exports : les diapositives, les diapositives avec les notes, ou un polycopié.",
+        "Facultatif : proposé par l'installateur de Windows, ou à la première ouverture.",
+      ],
+      details: [
+        {
+          title: "Le mode diaporama",
+          items: [
+            "Affichage › Mode diaporama, ou le bouton Diaporama de la barre du haut quand le document est une présentation Beamer, change la fenêtre en mode diaporama ; Éditeur y revient. L'éditeur reste derrière : chaque changement y est fait (annulé par Ctrl+Z) et la présentation est recompilée.",
+            "À gauche, les diapositives en miniatures avec leurs parties : une nouvelle depuis une mise en page, copiée ou supprimée depuis sa miniature, déplacée en la glissant.",
+            "Au milieu, la diapositive écrite là où elle est dessinée : son titre, ses textes (gras, italique, couleurs montrés tels quels), les points de ses listes (Entrée crée le suivant), ses images (leur largeur réglée par une poignée), ses colonnes (leur largeur par le trait qui les sépare), ses formules dessinées, ses tableaux, ses encadrés. Ce qui est autre chose est gardé tel qu'il est écrit et montré à part.",
+            "À droite, la vraie diapositive telle que Beamer la dessine, avec ses étapes, ou son LaTeX (écrit comme dans l'éditeur, avec la complétion) ; les notes de l'orateur dessous. Un trait en bas de la diapositive montre quand elle est trop pleine.",
+          ],
+        },
+        {
+          title: "Les éléments et leurs outils",
+          items: [
+            "Insérer ajoute un élément après celui choisi : texte, liste, image, colonnes, formule, tableau, encadré, et sous Plus une liste numérotée, trois colonnes, une alerte, un exemple, du code, une pause. Le + entre deux éléments fait de même.",
+            "Les éléments se glissent là où ils vont, entre deux autres ou dans une colonne, et se déplacent par leur poignée ; une image glissée depuis le système est copiée dans le projet. Le glisser marche de même sous Windows.",
+            "Au-dessus de la diapositive, les outils de l'élément choisi : gras, italique, souligné, alerte, une couleur, une formule, un lien sur les mots choisis ; à gauche, centré, à droite ; plus petit, plus grand ; ce que son type a ; l'étape où il apparaît ; copié, supprimé. Suppr, Ctrl+D et Alt avec les flèches marchent au clavier.",
+            "Tout est écrit en LaTeX simple (`\\begin{center}`, `\\begin{large}`, `\\begin{uncoverenv}<2->`, `\\textbf`, `\\textcolor`), seul l'élément changé, à l'indentation du document ; rien n'est placé par coordonnées.",
+          ],
+        },
+        {
+          title: "Les tableaux",
+          items: [
+            "On écrit dans les cases ; Entrée va à la case du dessous et Tab à la suivante, une ligne de plus après la dernière.",
+            "Lignes et colonnes ajoutées au-dessus, en dessous, à gauche ou à droite de la case du curseur, ou supprimées ; chaque colonne alignée ; sans traits, un trait sous l'en-tête, des traits entre les lignes ou une grille ; l'en-tête en gras.",
+          ],
+        },
+        {
+          title: "Le thème",
+          items: [
+            "Thème ouvre une grande fenêtre : chaque thème Beamer dessiné sur la diapositive choisie, et l'allure choisie dessinée sur la page de titre et cette diapositive.",
+            "Son format (16:9, 16:10, 4:3), son jeu de couleurs, une couleur principale à soi, sa police, la taille de son texte et les symboles de navigation. Rien n'est écrit avant Appliquer, puis seulement ce qui a changé.",
+          ],
+        },
+        {
+          title: "Apparitions, présentation, exports",
+          items: [
+            "Chaque élément peut apparaître à partir d'une étape, ou à une étape seulement ; une liste peut montrer un point par clic. Les étapes se voient sur la vraie diapositive.",
+            "Présenter (F5 depuis le début, Maj+F5 depuis la diapositive choisie) montre les diapositives en plein écran sur l'écran du projecteur ; la fenêtre principale devient la vue présentateur : la page montrée, la suivante, les notes, un chrono, un écran noir. Les flèches, la barre d'espace, une télécommande et un clic avancent d'étape en étape ; Échap termine.",
+            "Exporter donne les diapositives en PDF, avec les notes de l'orateur, ou en polycopié (une, deux ou quatre par page), chacun compilé à part, la présentation intacte.",
+          ],
+        },
+        {
+          title: "Facultatif",
+          items: [
+            "Le mode diaporama est proposé par une case de l'installateur de Windows (NSIS) ; sinon il est proposé à la première ouverture, et installé aussitôt, sans réseau.",
+            "Il s'ôte et se remet dans Réglages › Général ; ôté, rien n'en est chargé.",
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: "0.5.4",
     date: "2026-10-17",
     en: {

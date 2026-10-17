@@ -63,6 +63,9 @@ RayTeX aide les débutants à apprendre et laisse les experts aller vite : aper�
 - Vérification pendant la frappe : renvois et citations indéfinis, étiquettes en double, accolades déséquilibrées, packages et fichiers manquants, commandes obsolètes, typographie.
 - Analyse du journal qui localise l'erreur à la ligne et à la colonne près, avec une explication claire (français et anglais) et des corrections : ajouter ou installer un package, corriger une commande mal orthographiée, changer de moteur, créer un fichier manquant…
 
+**Diapositives**
+- **Mode diaporama** pour les présentations Beamer, dans la même fenêtre : la diapositive écrite là où elle est dessinée (textes, listes, images, colonnes, formules, tableaux, encadrés), la vraie diapositive à côté, des éléments ajoutés depuis une seule barre ou glissés là où ils vont, leurs outils au-dessus de la diapositive, des apparitions étape par étape, un thème choisi sur de vraies diapositives, la présentation avec une vue présentateur, des exports avec les notes ou en polycopié ; le tout écrit en LaTeX simple. Facultatif : proposé par l'installateur de Windows ou à la première ouverture.
+
 **Enseigner**
 - **Sujet et corrigé** dans un seul fichier : *Sujet | Corrigé* au-dessus de l'aperçu bascule l'interrupteur du document (la classe exam, xsim, ou un interrupteur à lui) et *Exporter les deux* écrit les deux PDF ; exercices avec leur barème, corrigés encadrés et place pour répondre (lignes, blanc, quadrillage) depuis le menu Insertion.
 
