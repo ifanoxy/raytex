@@ -41,7 +41,7 @@
   let subEl = $state<HTMLElement | null>(null);
   let colorsAt = $state<{ x: number; y: number } | null>(null);
   let shortcuts = $state<[string, string][]>([]);
-  const buttons: Record<string, HTMLButtonElement> = {};
+  const buttons = $state<Record<string, HTMLButtonElement>>({});
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const chapters = $derived.by(() => {

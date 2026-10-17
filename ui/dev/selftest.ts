@@ -2011,6 +2011,55 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     await until(() => !!document.querySelector(".slides-mode .problem"), 5_000, "broken slide refused");
     check("slides mode: the code of a slide written, a broken one refused", (editor.textOf(project.info!.main!) ?? "") === before && slideNames()[1] === "Sommaire");
     document.querySelector<HTMLButtonElement>('.slides-mode [data-view="interface"]')!.click();
+    // The content of the slide in blocks: a list added after its columns,
+    // its first point changed and a point added right after (the second
+    // change waits for the text the first one gave), shown one point a
+    // click; seen on the slide, chosen by a click on it; moved, taken out.
+    const { parseDeck } = await import("$lib/slides/deck");
+    const slideText = () => {
+      const text = editor.textOf(project.info!.main!) ?? "";
+      const f = parseDeck(text).frames[1];
+      return f ? text.slice(f.from, f.to) : "";
+    };
+    const kinds = () => [...document.querySelectorAll<HTMLElement>(".slides-mode .block")].map((b) => b.dataset.kind);
+    const commit = (el: HTMLInputElement | HTMLTextAreaElement, text: string) => {
+      el.focus();
+      el.value = text;
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+    await until(() => kinds().join() === "columns", 5_000, "blocks of the slide");
+    action("add-block");
+    await pause(100);
+    document.querySelector<HTMLButtonElement>('.slides-mode [data-add="list"]')!.click();
+    await until(() => kinds().join() === "columns,list" && !!document.querySelector('.slides-mode .block.open[data-kind="list"]'), 10_000, "list added");
+    commit(document.querySelector<HTMLInputElement>(".slides-mode .block.open .item input")!, "Le contexte");
+    action("add-item");
+    await until(() => document.querySelectorAll(".slides-mode .block.open .item").length === 3, 10_000, "point added");
+    document.querySelector<HTMLInputElement>(".slides-mode .block.open .check input")!.click();
+    await until(() => slideText().includes("[<+->]"), 10_000, "one point a click");
+    const listed = slideText();
+    check(
+      "slides mode: the content of a slide in blocks, a list added and filled",
+      /\\end\{columns\}\s*\\begin\{itemize\}\[<\+->\]\s*\\item Le contexte\s*\\item [^\n]+\s*\\item [^\n]+\s*\\end\{itemize\}/.test(listed),
+      listed,
+    );
+    // Seen on the slide once built, then chosen by a click on it.
+    await until(() => !build.running && root()?.dataset.drawn === "yes", 120_000, "deck built with its list");
+    await until(() => !!document.querySelector(".slides-mode .marked"), 30_000, "block shown on the slide").catch((e) => {
+      throw new Error(`${e} (placed ${root()?.dataset.placed}, pages ${pagesShown()}, open ${document.querySelector<HTMLElement>(".slides-mode .block.open")?.dataset.kind}, view ${document.querySelector<HTMLElement>(".slides-mode .views .on")?.dataset.view})`);
+    });
+    const mark = document.querySelector<HTMLElement>(".slides-mode .marked")!.getBoundingClientRect();
+    document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="list"] .name')!.click();
+    await until(() => !document.querySelector(".slides-mode .block.open"), 5_000, "block closed");
+    document.querySelector<HTMLElement>(".slides-mode .slide-box")!.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: mark.left + mark.width / 2, clientY: mark.top + Math.min(mark.height / 2, 20) }));
+    await until(() => !!document.querySelector('.slides-mode .block.open[data-kind="list"]'), 10_000, "block chosen on the slide");
+    check("slides mode: a block shown on the slide, a click on the slide chooses it", !!document.querySelector('.slides-mode .block.open[data-kind="list"]') && mark.width > 20 && mark.height > 10, `${mark.width} × ${mark.height}`);
+    document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="list"] [data-action="block-up"]')!.click();
+    await until(() => kinds().join() === "list,columns", 10_000, "block moved up");
+    const moved = slideText();
+    document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="list"] [data-action="block-delete"]')!.click();
+    await until(() => kinds().join() === "columns", 10_000, "block taken out");
+    check("slides mode: blocks moved and taken out", moved.indexOf("\\begin{itemize}") < moved.indexOf("\\begin{columns}") && !slideText().includes("itemize") && slideText().includes("\\begin{columns}"));
     action("leave");
     await until(() => ui.mode === "editor" && !root() && !!document.querySelector(".work:not(.hidden)"), 5_000, "back to the editor");
     check("slides mode: back to the editor", ui.mode === "editor" && !!editor.view);

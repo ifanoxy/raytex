@@ -2,18 +2,24 @@
   // The slides mode: the window shows the slides of a Beamer deck as
   // thumbnails on the left (added from a layout, duplicated, deleted, moved
   // by dragging or with Alt and the arrows), the slide chosen large in the
-  // middle with its steps and the notes of the speaker under it, and its
-  // title on the right. The text stays with the application (its editor,
+  // middle with its steps and the notes of the speaker under it, and on the
+  // right its title and its content in blocks (the one chosen outlined on
+  // the slide, a click on the slide choosing the one it falls on), or its
+  // LaTeX. The text stays with the application (its editor,
   // left behind, its undo, its builds): the mode is given a host that tells
   // it the text and makes the changes it asks for.
   import { onDestroy, onMount } from "svelte";
   import type { PDFDocumentProxy } from "pdfjs-dist";
   import { i18n, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
-  import { closePdf, loadPdf } from "$lib/pdf/pdfjs";
+  import { closePdf, loadPdf, pageTexts } from "$lib/pdf/pdfjs";
   import { type DeckEdit, deleteFrame, duplicateFrame, framePages, insertFrame, type Layout, LAYOUTS, moveFrame, pagesOf, parseDeck, setNotes, setTitle } from "$lib/slides/deck";
+  import { type Block, type BlockEdit, frameBlocks, indentUnit } from "$lib/slides/blocks";
+  import type { Frame } from "$lib/slides/deck";
+  import { blockAt, type Box, placeBlocks } from "$lib/slides/place";
   import type { SlidesHost, SlidesState } from "$lib/slides/host";
   import Icon from "../components/common/Icon.svelte";
+  import BlockPanel from "./BlockPanel.svelte";
   import FrameCode from "./FrameCode.svelte";
   import PageCanvas from "./PageCanvas.svelte";
 
@@ -42,6 +48,7 @@
       const rebuilt = !told || told.built !== next.built || told.pdf !== next.pdf;
       told = next;
       if (i18n.lang !== next.lang) i18n.lang = next.lang;
+      if (asked && next.version !== asked.version) nextAsked();
       if (rebuilt) void reload(next);
       // The slide the cursor of the editor was in.
       if (first && next.cursorLine !== null) {
@@ -91,8 +98,85 @@
   }
 
   function select(i: number) {
-    if (i !== selected) step = 0;
+    if (i !== selected) {
+      step = 0;
+      block = -1;
+    }
     selected = i;
+  }
+
+  // ---------------------------------------------------------- the blocks
+
+  /** The block of the slide chosen (-1: none). */
+  let block = $state(-1);
+  const blocks = $derived<Block[]>(frame && told ? frameBlocks(told.text, frame) : []);
+  const unit = $derived(indentUnit(told?.text ?? ""));
+
+  // A change of a block is made on the text as it is when it is asked: one
+  // after the other, the next one waiting for the text the last one gave.
+  type Make = (text: string, frame: Frame, blocks: Block[]) => BlockEdit | null;
+  let asked: { version: number; timer: ReturnType<typeof setTimeout> } | null = null;
+  const waiting: Make[] = [];
+  function blockEdit(make: Make) {
+    waiting.push(make);
+    if (!asked) nextAsked();
+  }
+  function nextAsked() {
+    if (asked) clearTimeout(asked.timer);
+    asked = null;
+    const s = told;
+    const make = waiting.shift();
+    if (!make || !s) return;
+    const f = parseDeck(s.text).frames[selected];
+    const edit = f ? make(s.text, f, frameBlocks(s.text, f)) : null;
+    if (!edit) return nextAsked();
+    // Not answered (refused, or the text as it was): the next one is not held.
+    asked = { version: s.version, timer: setTimeout(nextAsked, 1500) };
+    host.edit({ version: s.version, changes: [{ from: edit.from, to: edit.to, insert: edit.insert }] });
+    block = edit.select;
+  }
+
+  /** Where the blocks are on the slide: found by their words in the texts of its last step (all shown). */
+  let placed = $state<(Box | null)[]>([]);
+  $effect(() => {
+    const d = doc;
+    const r = range;
+    const bs = blocks;
+    const f = frame;
+    void revision;
+    placed = [];
+    if (!d || !r || !f || r[1] > d.numPages) return;
+    let gone = false;
+    void (async () => {
+      const page = await d.getPage(r[1]);
+      const viewport = page.getViewport({ scale: 1 });
+      const items = await pageTexts(page).catch(() => null);
+      if (gone || !items) return;
+      const texts = items.flatMap((it) => {
+        if (!it.str.trim()) return [];
+        const [x, y] = viewport.convertToViewportPoint(it.transform[4], it.transform[5]);
+        const height = it.height || Math.hypot(it.transform[2], it.transform[3]);
+        return [{ str: it.str, x, y: y - height, width: it.width, height }];
+      });
+      placed = placeBlocks(texts, bs, `${f.title} ${f.subtitle}`, { width: viewport.width, height: viewport.height });
+    })();
+    return () => {
+      gone = true;
+    };
+  });
+  /** Where the block chosen is on the slide, in points of the page. */
+  const marked = $derived(placed[block] ?? null);
+
+  /** A click on the slide: the block it falls on is chosen. */
+  function pickOnSlide(e: MouseEvent) {
+    const canvas = (e.currentTarget as HTMLElement).querySelector("canvas");
+    if (!canvas) return;
+    const r = canvas.getBoundingClientRect();
+    if (!r.width || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+    const at = blockAt(placed, ((e.clientX - r.left) / r.width) * pageSize.width, ((e.clientY - r.top) / r.height) * pageSize.height);
+    if (at < 0) return;
+    block = at;
+    if (view !== "interface") show("interface");
   }
 
   const lang = $derived(i18n.lang === "fr" ? "fr" : "en");
@@ -163,6 +247,7 @@
       select(Math.max(0, Math.min(deck.frames.length - 1, selected + (e.key === "ArrowDown" ? 1 : -1))));
     } else if (e.key === "ArrowRight" && range && shownPage < range[1]) step++;
     else if (e.key === "ArrowLeft" && step > 0) step--;
+    else if (e.key === "Escape" && layoutsOpen) layoutsOpen = false;
     else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d") {
       e.preventDefault();
       duplicate();
@@ -179,18 +264,25 @@
     observer.observe(stage);
     return () => observer.disconnect();
   });
-  /** The shape of the pages of the deck; the slides are always shown lying down (16:9, 4:3…). */
-  let pageRatio = $state(16 / 9);
+  /** The size of the pages of the deck, in points; the slides are always shown lying down (16:9, 4:3…). */
+  let pageSize = $state({ width: 16, height: 9 });
+  const pageRatio = $derived(pageSize.width / pageSize.height);
   $effect(() => {
     const d = doc;
     if (!d) return;
     void d.getPage(1).then((p) => {
       const v = p.getViewport({ scale: 1 });
-      pageRatio = v.width / v.height;
+      pageSize = { width: v.width, height: v.height };
     });
   });
   const frameRatio = $derived(pageRatio >= 1 ? pageRatio : 16 / 9);
   const slideWidth = $derived(Math.max(0, Math.min(stageSize.width - 32, (stageSize.height - 24) * frameRatio)));
+  /** How the page is drawn in the frame: its scale, and where it begins. */
+  const drawnAt = $derived.by(() => {
+    const height = slideWidth / frameRatio;
+    const scale = Math.min(slideWidth / pageSize.width, height / pageSize.height);
+    return { scale, left: (slideWidth - pageSize.width * scale) / 2, top: (height - pageSize.height * scale) / 2 };
+  });
 
   // --------------------------------------------- the interface, or the code
 
@@ -226,9 +318,9 @@
   const sections = $derived(deck.frames.map((f, i) => (i === 0 || f.section !== deck.frames[i - 1].section ? f.section : null)));
 </script>
 
-<svelte:window onkeydown={key} />
+<svelte:window onkeydown={key} onpointerdown={(e) => layoutsOpen && !(e.target as HTMLElement).closest(".bar .add") && (layoutsOpen = false)} />
 
-<div class="slides-mode" data-pages={doc?.numPages ?? 0} data-drawn={doc && frame ? "yes" : "no"}>
+<div class="slides-mode" data-pages={doc?.numPages ?? 0} data-drawn={doc && frame ? "yes" : "no"} data-placed={placed.filter(Boolean).length}>
   <header class="bar">
     <button class="btn small" data-action="leave" title={t("slides.leaveHint")} onclick={() => host.command({ kind: "leave" })}><Icon name="arrow-left" size={13} />{t("slides.leave")}</button>
     <span class="sep"></span>
@@ -292,7 +384,19 @@
     <main class="center">
       <div class="stage" bind:this={stage}>
         {#if doc && frame && range}
-          <div class="slide-box"><PageCanvas {doc} page={shownPage} width={slideWidth} height={slideWidth / frameRatio} {revision} /></div>
+          <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+          <div class="slide-box" onclick={pickOnSlide}>
+            <PageCanvas {doc} page={shownPage} width={slideWidth} height={slideWidth / frameRatio} {revision} />
+            {#if marked && view === "interface"}
+              <span
+                class="marked"
+                style:left="{drawnAt.left + marked.x * drawnAt.scale - 4}px"
+                style:top="{drawnAt.top + marked.y * drawnAt.scale - 4}px"
+                style:width="{marked.width * drawnAt.scale + 8}px"
+                style:height="{marked.height * drawnAt.scale + 8}px"
+              ></span>
+            {/if}
+          </div>
         {:else if frame}
           <div class="waiting faint">{told?.building ? t("slides.building") : t("slides.notBuilt")}</div>
         {/if}
@@ -324,7 +428,8 @@
           <input class="input" bind:value={titleField} disabled={frame.titlePage} onfocus={() => (editing = "title")} onblur={saveTitle} onkeydown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} />
         </label>
         {#if frame.options}<p class="faint options">{t("slides.options", { options: frame.options })}</p>{/if}
-        <button class="btn small" data-action="reveal" onclick={() => host.command({ kind: "reveal", line: frame!.line })}><Icon name="code" size={13} />{t("slides.reveal")}</button>
+        <BlockPanel text={told?.text ?? ""} {blocks} {unit} path={told?.path ?? null} {lang} bind:selected={block} onedit={blockEdit} />
+        <button class="btn small reveal" data-action="reveal" onclick={() => host.command({ kind: "reveal", line: frame!.line })}><Icon name="code" size={13} />{t("slides.reveal")}</button>
       {/if}
     </aside>
   {/if}
@@ -333,7 +438,7 @@
 <style>
   .slides-mode {
     display: grid;
-    grid-template-columns: 196px minmax(0, 1fr) var(--side, 300px);
+    grid-template-columns: 196px minmax(0, 1fr) var(--side, 340px);
     grid-template-rows: 40px minmax(0, 1fr);
     height: 100%;
     min-height: 0;
@@ -522,8 +627,20 @@
     padding: 12px 16px;
   }
   .slide-box {
+    position: relative;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
     border-radius: 3px;
+    cursor: pointer;
+  }
+  .marked {
+    position: absolute;
+    border: 2px solid var(--accent);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    pointer-events: none;
+  }
+  .reveal {
+    align-self: flex-start;
   }
   .waiting {
     font-size: 13px;
