@@ -120,6 +120,9 @@ pub struct GeneralSettings {
     pub hide_aux_files: bool,
     /// Folder of the projects (default: `RayTeX` in the documents folder).
     pub projects_dir: Option<PathBuf>,
+    /// The slides mode is installed (ticked in the installer, or installed
+    /// from the application the first time it is asked for).
+    pub slides_mode: bool,
 }
 
 impl Default for GeneralSettings {
@@ -131,6 +134,7 @@ impl Default for GeneralSettings {
             beginner_tips: true,
             hide_aux_files: true,
             projects_dir: None,
+            slides_mode: false,
         }
     }
 }

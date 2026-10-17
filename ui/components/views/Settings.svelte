@@ -291,6 +291,11 @@
         {@render field(t("settings.projectsDir"), t("settings.projectsDirHint"), projectsDirControl)}
         {@render toggle(t("settings.restoreSession"), t("settings.restoreSessionHint"), s.general.restoreSession, (v) => set((x) => (x.general.restoreSession = v)))}
         {@render toggle(t("settings.beginnerTips"), t("settings.beginnerTipsHint"), s.general.beginnerTips, (v) => set((x) => (x.general.beginnerTips = v)))}
+        {@render toggle(t("settings.slidesMode"), t("settings.slidesModeHint"), s.general.slidesMode, (v) => {
+          // Taken off while it is shown: back to the editor first.
+          if (!v && ui.mode === "slides") ui.mode = "editor";
+          set((x) => (x.general.slidesMode = v));
+        })}
         {@render toggle(t("settings.hideAux"), t("settings.hideAuxHint"), s.general.hideAuxFiles, (v) => {
           set((x) => (x.general.hideAuxFiles = v));
           setTimeout(() => project.refreshTree(), 100);

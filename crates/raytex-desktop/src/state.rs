@@ -18,6 +18,10 @@ use raytex_core::tex::{Distribution, PackageAnalyzer, TexmfIndex};
 use raytex_core::workspace::Workspace;
 use serde::{Deserialize, Serialize};
 
+/// The file the installer of Windows leaves next to the program when its
+/// box "slides mode" was ticked (see `windows/installer-hooks.nsh`).
+pub const SLIDES_MARKER: &str = "slides-mode.install";
+
 /// Where the application keeps its files.
 #[derive(Debug, Clone)]
 pub struct AppPaths {
@@ -341,7 +345,20 @@ impl AppState {
     /// Loads settings and session.
     pub fn new() -> Self {
         let paths = AppPaths::default();
-        let settings = Settings::load(&paths.settings);
+        let mut settings = Settings::load(&paths.settings);
+        // The slides mode ticked in the installer of Windows: the file it left
+        // next to the program, read once.
+        if let Some(marker) = std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent().map(|dir| dir.join(SLIDES_MARKER)))
+            .filter(|marker| marker.exists())
+        {
+            settings.general.slides_mode = true;
+            if let Err(e) = settings.save(&paths.settings) {
+                tracing::warn!("settings not saved: {e}");
+            }
+            let _ = std::fs::remove_file(&marker);
+        }
         let mut session: Session = std::fs::read_to_string(&paths.session)
             .ok()
             .and_then(|s| serde_json::from_str(&s).ok())

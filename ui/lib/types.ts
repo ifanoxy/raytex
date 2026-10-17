@@ -51,6 +51,8 @@ export interface Settings {
     hideAuxFiles: boolean;
     /** Folder of the projects (null: `RayTeX` in the documents folder). */
     projectsDir: string | null;
+    /** The slides mode is installed (it is optional). */
+    slidesMode: boolean;
   };
   editor: {
     fontFamily: string;

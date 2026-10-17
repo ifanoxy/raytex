@@ -1964,8 +1964,12 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
       el.dispatchEvent(new Event("input", { bubbles: true }));
       el.dispatchEvent(new FocusEvent("blur"));
     };
+    // Optional: not installed, it is offered first, and installed on yes.
     void runAction("view.slides");
+    await until(() => ui.dialog?.title === t("slides.install.title"), 5_000, "slides mode offered");
+    ui.closeDialog(true);
     await until(() => slideNames().length > 0 && pagesShown() > 0 && root()?.dataset.drawn === "yes" && !!root()?.querySelector(".stage canvas"), 30_000, "slides mode");
+    check("slides mode: offered, installed on yes", app.settings?.general.slidesMode === true);
     check("slides mode: in the same window, the editor hidden", ui.mode === "slides" && !document.querySelector(".work:not(.hidden)") && !document.querySelector(".format-bar"));
     const first = slideNames().length;
     const firstPages = pagesShown();
@@ -2214,6 +2218,13 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     action("leave");
     await until(() => ui.mode === "editor" && !root() && !!document.querySelector(".work:not(.hidden)"), 5_000, "back to the editor");
     check("slides mode: back to the editor", ui.mode === "editor" && !!editor.view);
+    // Taken off in the settings: offered again, and not opened when declined.
+    await app.update((x) => (x.general.slidesMode = false));
+    void runAction("view.slides");
+    await until(() => ui.dialog?.title === t("slides.install.title"), 5_000, "slides mode offered again");
+    ui.closeDialog(false);
+    await pause(400);
+    check("slides mode: taken off, offered again, not opened when declined", ui.mode === "editor" && !root() && app.settings?.general.slidesMode === false);
   } catch (e) {
     results.failure = String(e);
   }

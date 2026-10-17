@@ -312,8 +312,18 @@ function openAnswers() {
   ui.openOverlay("pdfChoice");
 }
 
-/** The window becomes the slides mode, or the editor again: its code loaded when it is opened. */
+/**
+ * The window becomes the slides mode, or the editor again: its code loaded
+ * when it is opened. Not installed (it is optional), it is offered first:
+ * installed on yes, then opened.
+ */
 async function toggleSlides() {
+  if (ui.mode !== "slides" && !app.settings?.general.slidesMode) {
+    const yes = await ui.confirm({ title: t("slides.install.title"), message: t("slides.install.message"), okLabel: t("slides.install.ok"), cancelLabel: t("slides.install.later") });
+    if (!yes) return;
+    await app.update((s) => (s.general.slidesMode = true));
+    ui.toast("success", t("slides.install.done"));
+  }
   const { slides } = await import("./state/slides.svelte");
   if (ui.mode === "slides") slides.leave();
   else slides.open();

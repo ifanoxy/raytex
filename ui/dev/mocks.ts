@@ -214,7 +214,7 @@ const tree: T.FileNode[] = [
 
 let settings: T.Settings = {
   version: 3,
-  general: { language: "system", theme: "system", restoreSession: true, beginnerTips: true, hideAuxFiles: true, projectsDir: null },
+  general: { language: "system", theme: "system", restoreSession: true, beginnerTips: true, hideAuxFiles: true, projectsDir: null, slidesMode: false },
   editor: {
     fontFamily: "",
     fontSize: 14,
