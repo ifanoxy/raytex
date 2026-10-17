@@ -138,6 +138,7 @@
 
   /** Where the blocks are on the slide: found by their words in the texts of its last step (all shown). */
   let placement = $state<Placement | null>(null);
+  let placedSlide = -1;
   const placed = $derived(placement?.boxes ?? []);
   $effect(() => {
     const d = doc;
@@ -145,8 +146,13 @@
     const bs = blocks;
     const f = frame;
     void revision;
-    placement = null;
-    if (!d || !r || !f || r[1] > d.numPages) return;
+    if (!d || !r || !f || r[1] > d.numPages) {
+      placement = null;
+      return;
+    }
+    // The last placement of the same slide stays meanwhile: a click falls on it, not on nothing.
+    const slide = selected;
+    if (placedSlide !== slide) placement = null;
     let gone = false;
     void (async () => {
       const page = await d.getPage(r[1]);
@@ -160,6 +166,7 @@
         return [{ str: it.str, x, y: y - height, width: it.width, height }];
       });
       placement = placeBlocks(texts, bs, `${f.title} ${f.subtitle}`, { width: viewport.width, height: viewport.height });
+      placedSlide = slide;
     })();
     return () => {
       gone = true;
@@ -515,7 +522,7 @@
           <input class="input" bind:value={titleField} disabled={frame.titlePage} onfocus={() => (editing = "title")} onblur={saveTitle} onkeydown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} />
         </label>
         {#if frame.options}<p class="faint options">{t("slides.options", { options: frame.options })}</p>{/if}
-        <BlockPanel text={told?.text ?? ""} {blocks} {unit} path={told?.path ?? null} {lang} bind:selected={block} onedit={blockEdit} />
+        <BlockPanel text={told?.text ?? ""} {blocks} {unit} path={told?.path ?? null} {lang} steps={range ? range[1] - range[0] + 1 : 1} bind:selected={block} onedit={blockEdit} />
         <button class="btn small reveal" data-action="reveal" onclick={() => host.command({ kind: "reveal", line: frame!.line })}><Icon name="code" size={13} />{t("slides.reveal")}</button>
       {/if}
     </aside>

@@ -10,7 +10,7 @@
   import * as ipc from "$lib/ipc";
   import { pictureFolder } from "$lib/pictures";
   import { graphicsPaths } from "$lib/preamble";
-  import { type Block, type BlockEdit, type BlockKind, deleteBlock, type Grid, gridCode, gridColumns, insertBlock, moveBlock, newBlock, oneByOne, replaceBlock, setOneByOne, tableGrid } from "$lib/slides/blocks";
+  import { type Block, type BlockEdit, type BlockKind, deleteBlock, type Grid, gridCode, gridColumns, insertBlock, moveBlock, newBlock, oneByOne, replaceBlock, revealStep, setOneByOne, setReveal, tableGrid } from "$lib/slides/blocks";
   import type { Frame } from "$lib/slides/deck";
   import { dirname, join, relative } from "$lib/utils";
   import Icon from "../components/common/Icon.svelte";
@@ -23,9 +23,13 @@
     unit,
     path,
     lang,
+    steps,
     selected = $bindable(-1),
     onedit,
-  }: { text: string; blocks: Block[]; unit: string; path: string | null; lang: "fr" | "en"; selected?: number; onedit: (make: Make) => void } = $props();
+  }: { text: string; blocks: Block[]; unit: string; path: string | null; lang: "fr" | "en"; steps: number; selected?: number; onedit: (make: Make) => void } = $props();
+
+  /** The steps a block can appear at: those of the slide, and one more. */
+  const stepChoices = $derived(Array.from({ length: Math.max(3, steps) }, (_, k) => k + 2));
 
   const ICONS: Record<BlockKind, string> = {
     text: "type",
@@ -163,6 +167,10 @@
             <Icon name={ICONS[b.kind]} size={13} />
             <span class="kind">{t(`slides.block.${b.kind}`)}</span>
             <span class="sum ellipsis">{summary(b)}</span>
+            {#if b.reveal}
+              {@const rs = revealStep(b)}
+              <span class="step-chip" title={rs ? t("slides.reveal.chip", { n: rs.step }) : b.reveal.overlay}>{rs ? `${rs.step}${rs.only ? "" : "+"}` : b.reveal.overlay}</span>
+            {/if}
           </button>
           <span class="tools">
             <button class="icon-btn tiny" data-action="block-up" title={t("slides.blockUp")} aria-label={t("slides.blockUp")} disabled={i === 0} onclick={() => onedit((tx, _f, bs) => moveBlock(tx, bs, i, -1))}><Icon name="chevron-up" size={13} /></button>
@@ -265,6 +273,18 @@
             {:else if b.kind === "special"}
               <p class="faint hint">{t("slides.special.hint")}</p>
             {/if}
+            {#if b.kind !== "pause"}
+              {@const rs = revealStep(b)}
+              <div class="reveal-row">
+                <span>{t("slides.reveal.label")}</span>
+                <select class="input" data-reveal value={b.reveal ? (rs ? String(rs.step) : "other") : "1"} onchange={field(i, (x, v) => setReveal(x, Number(v), revealStep(x)?.only ?? false))}>
+                  <option value="1">{t("slides.reveal.always")}</option>
+                  {#each stepChoices as n (n)}<option value={String(n)}>{t("slides.reveal.from", { n })}</option>{/each}
+                  {#if b.reveal && !rs}<option value="other" disabled>{b.reveal.overlay}</option>{/if}
+                </select>
+                {#if rs}<label class="check"><input type="checkbox" checked={rs.only} onchange={ticked(i, (x, on) => setReveal(x, revealStep(x)?.step ?? 2, on))} />{t("slides.reveal.only")}</label>{/if}
+              </div>
+            {/if}
           </div>
         {/if}
       </div>
@@ -334,6 +354,30 @@
   }
   .sum {
     color: var(--text-muted);
+  }
+  .step-chip {
+    flex: none;
+    padding: 0 6px;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 16px;
+  }
+  .reveal-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .reveal-row select {
+    width: auto;
+    height: 26px;
+    padding: 0 6px;
   }
   .tools {
     display: flex;

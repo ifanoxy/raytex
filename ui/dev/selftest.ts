@@ -2065,6 +2065,12 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     enter(field()!);
     await until(() => slideText().includes("\\item Le contexte précis"), 10_000, "point written in the text");
     check("slides mode: a point of a list written on the slide", pointWas === "Le contexte" && !field(), pointWas);
+    // Shown from a step on: around the list, its chip saying so.
+    const reveal = document.querySelector<HTMLSelectElement>('.slides-mode .block.open[data-kind="list"] [data-reveal]')!;
+    reveal.value = "4";
+    reveal.dispatchEvent(new Event("change", { bubbles: true }));
+    await until(() => slideText().includes("\\begin{uncoverenv}<4->") && document.querySelector('.slides-mode .block[data-kind="list"] .step-chip')?.textContent === "4+", 10_000, "list shown from step 4");
+    check("slides mode: a block shown from a step on", /\\begin\{uncoverenv\}<4->\s*\\begin\{itemize\}[\s\S]*\\end\{itemize\}\s*\\end\{uncoverenv\}/.test(slideText()));
     document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="list"] [data-action="block-up"]')!.click();
     await until(() => kinds().join() === "list,columns", 10_000, "block moved up");
     const moved = slideText();

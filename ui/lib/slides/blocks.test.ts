@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { blockCode, deleteBlock, frameBlocks, gridCode, gridColumns, indentUnit, insertBlock, moveBlock, newBlock, oneByOne, replaceBlock, setOneByOne, tableGrid } from "./blocks.ts";
+import { blockCode, deleteBlock, frameBlocks, gridCode, gridColumns, indentUnit, insertBlock, moveBlock, newBlock, oneByOne, replaceBlock, revealStep, setOneByOne, setReveal, tableGrid } from "./blocks.ts";
 import { parseDeck } from "./deck.ts";
 
 const DECK = `\\documentclass{beamer}
@@ -155,4 +155,51 @@ test("a list shown one point a click, either way it is written", () => {
   assert.equal(oneByOne(setOneByOne(on, false)), false);
   const g = tableGrid("\\begin{tabular}{ll}\na & b \\\\\n\\end{tabular}")!;
   assert.equal(gridCode(gridColumns(g, 1)), "\\begin{tabular}{llc}\n\ta & b & \\\\\n\\end{tabular}");
+});
+
+test("blocks shown at some steps only: around them, by a command, on them", () => {
+  const deck = `\\documentclass{beamer}
+\\begin{document}
+\\begin{frame}{Étapes}
+  \\begin{uncoverenv}<2->
+    \\begin{itemize}
+      \\item Un
+    \\end{itemize}
+  \\end{uncoverenv}
+  \\uncover<3->{Une phrase}
+  \\begin{alertblock}<4>{Attention}
+    Seulement là
+  \\end{alertblock}
+  \\includegraphics<5->[width=0.5\\textwidth]{fig}
+  \\only<2>{Un mot} et la suite
+  \\begin{onlyenv}<2>
+    A
+    \\[ x \\]
+  \\end{onlyenv}
+\\end{frame}
+\\end{document}
+`;
+  const f = parseDeck(deck).frames[0];
+  const blocks = frameBlocks(deck, f);
+  assert.deepEqual(
+    blocks.map((b) => [b.kind, b.reveal?.form, b.reveal?.name, b.reveal?.overlay]),
+    [
+      ["list", "env", "uncoverenv", "2-"],
+      ["text", "command", "uncover", "3-"],
+      ["box", "spec", "", "4"],
+      ["image", "spec", "", "5-"],
+      ["text", undefined, undefined, undefined],
+      ["raw", undefined, undefined, undefined],
+    ],
+  );
+  assert.deepEqual(blocks[0].items?.map((it) => it.text), ["Un"]);
+  assert.deepEqual([blocks[2].title, blocks[2].text], ["Attention", "Seulement là"]);
+  assert.deepEqual(revealStep(blocks[2]), { step: 4, only: true });
+  // Written back as they were.
+  for (const i of [0, 1, 2, 3]) assert.equal(apply(deck, replaceBlock(deck, blocks, i, blocks[i])), deck, `block ${i}`);
+  // Set from the interface: around a text, on a box, taken off.
+  assert.equal(blockCode(setReveal(newBlock("text", "en"), 2), "  ", "  "), "\\begin{uncoverenv}<2->\n    A paragraph of text.\n  \\end{uncoverenv}");
+  assert.equal(blockCode(setReveal(blocks[2], 3)), "\\begin{alertblock}<3->{Attention}\n\tSeulement là\n\\end{alertblock}");
+  assert.equal(blockCode(setReveal(blocks[1], 1)), "Une phrase");
+  assert.equal(setReveal(blocks[1], 2, true).reveal?.overlay, "2");
 });

@@ -41,6 +41,19 @@ export interface Block {
   title?: string;
   /** What Beamer draws by itself: `titlepage`, `tableofcontents`, `sectionpage`… */
   special?: string;
+  /**
+   * When it is shown: its overlay (`2-`: from step 2 on, `2`: at step 2
+   * only), set around it (`\begin{uncoverenv}<2->`), by a command
+   * (`\uncover<2->{…}`), or on it (`\begin{block}<2->`, `\includegraphics<2->`).
+   */
+  reveal?: Reveal;
+}
+
+export interface Reveal {
+  form: "env" | "command" | "spec";
+  /** The environment or the command (`uncoverenv`, `onlyenv`, `uncover`…); "" on it. */
+  name: string;
+  overlay: string;
 }
 
 const LISTS = ["itemize", "enumerate", "description"];
@@ -48,6 +61,8 @@ const FORMULAS = ["equation", "equation*", "align", "align*", "gather", "gather*
 const BOXES = ["block", "alertblock", "exampleblock"];
 const CODES = ["lstlisting", "verbatim", "minted"];
 const SPECIALS = ["titlepage", "maketitle", "tableofcontents", "sectionpage", "subsectionpage", "partpage"];
+const REVEAL_ENVS = ["uncoverenv", "visibleenv", "onlyenv", "invisibleenv"];
+const REVEAL_COMMANDS = ["uncover", "visible", "only", "onslide", "invisible"];
 
 /** The end of the group opened at `open` (`{` or `[`), or -1. */
 function groupEnd(code: string, open: number): number {
@@ -99,10 +114,13 @@ function listItems(text: string, code: string, from: number, to: number): ListIt
 
 /** The blocks of the body of a slide, in order. */
 export function frameBlocks(text: string, frame: Frame): Block[] {
-  const code = mask(text);
+  return bodyBlocks(text, mask(text), frame.bodyFrom, frame.bodyTo);
+}
+
+/** The blocks between `from` and `end`: a body, or what is shown at some steps only. */
+function bodyBlocks(text: string, code: string, from: number, end: number): Block[] {
   const out: Block[] = [];
-  const end = frame.bodyTo;
-  let i = frame.bodyFrom;
+  let i = from;
   let textFrom = -1;
   const flushText = (upTo: number) => {
     if (textFrom < 0) return;
@@ -132,7 +150,13 @@ export function frameBlocks(text: string, frame: Frame): Block[] {
       if (e > 0 && e <= end) {
         next = e;
         const inner = (o = 0) => [i + begin[0].length + o, e - `\\end{${name}}`.length] as const;
-        if (LISTS.includes(name)) {
+        const spec = /^\s*<([^>]*)>/.exec(code.slice(i + begin[0].length, e));
+        if (REVEAL_ENVS.includes(name)) {
+          // What is shown at some steps only: the block inside, when it is one.
+          const [a, b] = inner(spec?.[0].length ?? 0);
+          const one = bodyBlocks(text, code, a, b);
+          block = one.length === 1 && !one[0].reveal ? { ...one[0], from: i, to: e, reveal: { form: "env", name, overlay: spec?.[1] ?? "" } } : { kind: "raw", from: i, to: e, text: dedent(text.slice(i, e)) };
+        } else if (LISTS.includes(name)) {
           let [a] = inner();
           const b = inner()[1];
           const ov = /^\s*\[\s*<([^>]*)>\s*\]/.exec(code.slice(a, b));
@@ -152,7 +176,7 @@ export function frameBlocks(text: string, frame: Frame): Block[] {
           const [a, b] = inner();
           block = { kind: "formula", from: i, to: e, text: dedent(text.slice(a, b)), numbered: !name.endsWith("*") && name !== "displaymath", env: name };
         } else if (BOXES.includes(name)) {
-          let [a] = inner();
+          let [a] = inner(spec?.[0].length ?? 0);
           const b = inner()[1];
           let title = "";
           const t = /^\s*\{/.exec(code.slice(a, b));
@@ -164,13 +188,13 @@ export function frameBlocks(text: string, frame: Frame): Block[] {
               a = te;
             }
           }
-          block = { kind: "box", from: i, to: e, text: dedent(text.slice(a, b)), env: name, title };
+          block = { kind: "box", from: i, to: e, text: dedent(text.slice(a, b)), env: name, title, ...(spec ? { reveal: { form: "spec" as const, name: "", overlay: spec[1] } } : {}) };
         } else if (CODES.includes(name)) {
           block = { kind: "code", from: i, to: e, text: text.slice(i, e), env: name };
         } else if (name === "figure" || name === "center") {
           const body = code.slice(i, e);
-          const g = /\\includegraphics\s*(?:\[([^\]]*)\])?\s*\{([^}]*)\}/.exec(body);
-          const others = body.replace(/\\begin\s*\{(?:figure|center)\}(?:\[[^\]]*\])?|\\end\s*\{(?:figure|center)\}|\\centering|\\includegraphics\s*(?:\[[^\]]*\])?\s*\{[^}]*\}|\\caption\s*\{[^}]*\}|\\label\s*\{[^}]*\}/g, "").trim();
+          const g = /\\includegraphics\s*(?:<([^>]*)>)?\s*(?:\[([^\]]*)\])?\s*\{([^}]*)\}/.exec(body);
+          const others = body.replace(/\\begin\s*\{(?:figure|center)\}(?:\[[^\]]*\])?|\\end\s*\{(?:figure|center)\}|\\centering|\\includegraphics\s*(?:<[^>]*>)?\s*(?:\[[^\]]*\])?\s*\{[^}]*\}|\\caption\s*\{[^}]*\}|\\label\s*\{[^}]*\}/g, "").trim();
           if (g && !others) {
             const cap = /\\caption\s*\{/.exec(body);
             let caption = "";
@@ -179,7 +203,7 @@ export function frameBlocks(text: string, frame: Frame): Block[] {
               const ce = groupEnd(code, open);
               if (ce > 0) caption = text.slice(open + 1, ce - 1).trim();
             }
-            block = { kind: "image", from: i, to: e, text: "", path: g[2].trim(), width: widthOf(g[1] ?? ""), caption, env: name };
+            block = { kind: "image", from: i, to: e, text: "", path: g[3].trim(), width: widthOf(g[2] ?? ""), caption, env: name, ...specOf(g[1]) };
           } else if (/\\begin\s*\{tabular/.test(body)) block = { kind: "table", from: i, to: e, text: dedent(text.slice(i, e)), env: name };
           else block = { kind: "raw", from: i, to: e, text: dedent(text.slice(i, e)) };
         } else if (name === "table" || name.startsWith("tabular")) {
@@ -210,10 +234,23 @@ export function frameBlocks(text: string, frame: Frame): Block[] {
         next = i + command[0].length;
         block = { kind: "special", from: i, to: next, text: "", special: name };
       } else if (name === "includegraphics") {
-        const g = /^\\includegraphics\s*(?:\[([^\]]*)\])?\s*\{([^}]*)\}/.exec(code.slice(i, end));
+        const g = /^\\includegraphics\s*(?:<([^>]*)>)?\s*(?:\[([^\]]*)\])?\s*\{([^}]*)\}/.exec(code.slice(i, end));
         if (g) {
           next = i + g[0].length;
-          block = { kind: "image", from: i, to: next, text: "", path: g[2].trim(), width: widthOf(g[1] ?? ""), caption: "" };
+          block = { kind: "image", from: i, to: next, text: "", path: g[3].trim(), width: widthOf(g[2] ?? ""), caption: "", ...specOf(g[1]) };
+        }
+      } else if (REVEAL_COMMANDS.includes(name)) {
+        // `\uncover<2->{…}` alone on its line: the block inside, shown at some steps only.
+        const m = /^\\[A-Za-z]+\s*<([^>]*)>\s*\{/.exec(code.slice(i, end));
+        const open = m ? i + m[0].length - 1 : -1;
+        const ge = open >= 0 ? groupEnd(code, open) : -1;
+        const nl = code.indexOf("\n", ge);
+        if (m && ge > 0 && ge <= end && !code.slice(ge, nl < 0 || nl > end ? end : nl).trim()) {
+          const one = bodyBlocks(text, code, open + 1, ge - 1);
+          if (one.length === 1 && !one[0].reveal) {
+            next = ge;
+            block = { ...one[0], from: i, to: ge, reveal: { form: "command", name, overlay: m[1] } };
+          }
         }
       }
     }
@@ -230,6 +267,11 @@ export function frameBlocks(text: string, frame: Frame): Block[] {
   }
   flushText(end);
   return out;
+}
+
+/** The overlay written on a block (`<2->`), as when it is shown. */
+function specOf(overlay: string | undefined): { reveal?: Reveal } {
+  return overlay === undefined ? {} : { reveal: { form: "spec", name: "", overlay } };
 }
 
 /** The width of a picture as a share of the text (`0.7`), from its options; `""` when they say something else. */
@@ -269,6 +311,15 @@ export function indentUnit(text: string): string {
  * (put before each line but the first), `unit` for a level deeper.
  */
 export function blockCode(b: Block, indent = "", unit = "\t"): string {
+  const r = b.reveal;
+  if (r?.form === "env") return `\\begin{${r.name}}<${r.overlay}>\n${indent}${unit}${bareCode(b, indent + unit, unit)}\n${indent}\\end{${r.name}}`;
+  if (r?.form === "command") return `\\${r.name}<${r.overlay}>{${bareCode(b, indent, unit)}}`;
+  return bareCode(b, indent, unit);
+}
+
+/** The LaTeX of a block itself, an overlay on it kept. */
+function bareCode(b: Block, indent: string, unit: string): string {
+  const spec = b.reveal?.form === "spec" ? `<${b.reveal.overlay}>` : "";
   // The lines of a text on lines of their own, `depth` levels in.
   const lines = (s: string, depth = 1) =>
     dedent(s)
@@ -301,7 +352,7 @@ export function blockCode(b: Block, indent = "", unit = "\t"): string {
     }
     case "image": {
       const width = b.width ? `width=${b.width}\\textwidth` : "width=0.7\\textwidth";
-      const graphic = `\\includegraphics[${width}]{${b.path ?? ""}}`;
+      const graphic = `\\includegraphics${spec}[${width}]{${b.path ?? ""}}`;
       if (!b.caption && b.env !== "figure") return b.env === "center" ? `\\begin{center}\n${one}${graphic}\n${indent}\\end{center}` : graphic;
       return [`\\begin{figure}`, `${one}\\centering`, `${one}${graphic}`, ...(b.caption ? [`${one}\\caption{${b.caption}}`] : []), `${indent}\\end{figure}`].join("\n");
     }
@@ -317,8 +368,26 @@ export function blockCode(b: Block, indent = "", unit = "\t"): string {
       return `\\begin{${env}}\n${lines(b.text)}\n${indent}\\end{${env}}`;
     }
     case "box":
-      return `\\begin{${b.env ?? "block"}}{${b.title ?? ""}}\n${lines(b.text)}\n${indent}\\end{${b.env ?? "block"}}`;
+      return `\\begin{${b.env ?? "block"}}${spec}{${b.title ?? ""}}\n${lines(b.text)}\n${indent}\\end{${b.env ?? "block"}}`;
   }
+}
+
+/** The step a block is shown from, and whether at that step only; null when shown always or otherwise. */
+export function revealStep(b: Block): { step: number; only: boolean } | null {
+  const m = /^\s*(\d+)\s*(-?)\s*$/.exec(b.reveal?.overlay ?? "");
+  return m ? { step: Number(m[1]), only: !m[2] } : null;
+}
+
+/**
+ * A block shown from step `step` on (at that step only when `only`), or
+ * always (`step` 1 or less): around it (`uncoverenv`, the room it takes
+ * kept at the steps before), or on a box or a picture.
+ */
+export function setReveal(b: Block, step: number, only = false): Block {
+  if (step <= 1 && !only) return { ...b, reveal: undefined };
+  const overlay = only ? `${step}` : `${step}-`;
+  if (b.reveal) return { ...b, reveal: { ...b.reveal, overlay } };
+  return { ...b, reveal: b.kind === "box" || b.kind === "image" ? { form: "spec", name: "", overlay } : { form: "env", name: "uncoverenv", overlay } };
 }
 
 /** A list shows one point a click: `[<+->]`, or each point from the next step (`<1->`, `<2->`…). */
