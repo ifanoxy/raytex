@@ -16,7 +16,17 @@ export interface DeckLook {
   ratio: string;
   /** The navigation symbols drawn (no `\setbeamertemplate{navigation symbols}{}`). */
   navigation: boolean;
+  /** The main colour chosen over the theme's (`#1e63d6`), or null: the theme's own. */
+  main: string | null;
+  /** The size of the text: `10pt`, `11pt` (Beamer's own), `12pt`… */
+  size: string;
 }
+
+/** The sizes of the text a deck can have (options of the class). */
+export const TEXT_SIZES = ["8pt", "9pt", "10pt", "11pt", "12pt", "14pt"];
+
+/** The main colours offered (any other can be chosen). */
+export const MAIN_COLORS = ["#1e63d6", "#2e3192", "#00838f", "#2e7d32", "#c62828", "#ad1457", "#6a1b9a", "#ef6c00", "#37474f"];
 
 /** The themes shown first (drawn on the slide), then the others. */
 export const MAIN_THEMES = ["default", "Madrid", "Boadilla", "CambridgeUS", "AnnArbor", "Warsaw", "Berlin", "Copenhagen", "Singapore", "Frankfurt", "PaloAlto", "Hannover"];
@@ -72,6 +82,10 @@ function uncommented(text: string): string {
 }
 
 const NAVIGATION = /\\setbeamertemplate\s*\{navigation symbols\}\s*\{\s*\}/;
+/** The main colour chosen: its definition, and the structure of the slides in it. */
+const MAIN_DEFINE = /^[ \t]*\\definecolor\s*\{rtmain\}[^\n]*\n?/gm;
+const MAIN_LINE = /\\setbeamercolor\s*\{structure\}\s*\{\s*fg\s*=\s*rtmain\s*\}/;
+const MAIN_LINES = /^[ \t]*\\setbeamercolor\s*\{structure\}\s*\{\s*fg\s*=\s*rtmain\s*\}[^\n]*\n?/gm;
 
 /** The look the preamble of a deck gives it. */
 export function readLook(text: string): DeckLook {
@@ -79,7 +93,11 @@ export function readLook(text: string): DeckLook {
   const last = (re: RegExp) => [...pre.matchAll(re)].pop()?.[1]?.trim();
   const cls = /\\documentclass\s*(?:\[([^\]]*)\])?\s*\{beamer\}/.exec(pre);
   const ratio = /(?:^|,)\s*aspectratio\s*=\s*(\d+)\s*(?:,|$)/.exec(cls?.[1] ?? "")?.[1];
+  const main = /\\definecolor\s*\{rtmain\}\s*\{HTML\}\s*\{([0-9A-Fa-f]{6})\}/.exec(pre)?.[1];
+  const size = /(?:^|,)\s*(\d+pt)\s*(?:,|$)/.exec(cls?.[1] ?? "")?.[1];
   return {
+    main: main && MAIN_LINE.test(pre) ? `#${main.toLowerCase()}` : null,
+    size: size ?? "11pt",
     theme: last(/\\usetheme\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g) ?? "default",
     color: last(/\\usecolortheme\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g) ?? "default",
     font: last(/\\usefonttheme\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}/g) ?? "default",
@@ -124,14 +142,29 @@ export function writeLook(text: string, look: Partial<DeckLook>): string {
   set("usetheme", look.theme, true);
   set("usecolortheme", look.color, false);
   set("usefonttheme", look.font, false);
-  if (look.ratio !== undefined && cls) {
+  if ((look.ratio !== undefined || look.size !== undefined) && cls) {
     const c = /\\documentclass\s*(?:\[([^\]]*)\])?\s*\{beamer\}/.exec(pre)!;
-    const options = (c[1] ?? "")
+    let options = (c[1] ?? "")
       .split(",")
       .map((o) => o.trim())
-      .filter((o) => o && !/^aspectratio\s*=/.test(o));
-    options.unshift(`aspectratio=${look.ratio}`);
-    pre = `${pre.slice(0, c.index)}\\documentclass[${options.join(",")}]{beamer}${pre.slice(c.index + c[0].length)}`;
+      .filter(Boolean);
+    if (look.ratio !== undefined) options = [`aspectratio=${look.ratio}`, ...options.filter((o) => !/^aspectratio\s*=/.test(o))];
+    if (look.size !== undefined) {
+      // 11 pt is Beamer's own: no option for it.
+      options = options.filter((o) => !/^\d+pt$/.test(o));
+      if (look.size !== "11pt") options.unshift(look.size);
+    }
+    const written = options.length ? `[${options.join(",")}]` : "";
+    pre = `${pre.slice(0, c.index)}\\documentclass${written}{beamer}${pre.slice(c.index + c[0].length)}`;
+  }
+  if (look.main !== undefined) {
+    pre = pre.replace(MAIN_DEFINE, "").replace(MAIN_LINES, "");
+    if (look.main) {
+      // After the themes: it is laid over their colours.
+      const themes = [...uncommented(pre).matchAll(/^[ \t]*\\use(?:color|font|inner|outer)?theme\b[^\n]*\n?/gm)].pop();
+      const at = themes ? themes.index! + themes[0].length : afterClass();
+      pre = `${pre.slice(0, at)}\\definecolor{rtmain}{HTML}{${look.main.replace("#", "").toUpperCase()}}\n\\setbeamercolor{structure}{fg=rtmain}\n${pre.slice(at)}`;
+    }
   }
   if (look.navigation !== undefined) {
     const has = NAVIGATION.exec(uncommented(pre));
@@ -149,8 +182,9 @@ export function writeLook(text: string, look: Partial<DeckLook>): string {
   return pre + text.slice(end);
 }
 
-/** A document of one slide, to see a look on: the preamble given that look, and the slide. */
-export function lookSample(text: string, frame: string, look: Partial<DeckLook>): string {
+/** A document of a few slides, to see a look on: the preamble given that look, and the slides. */
+export function lookSample(text: string, frames: string | string[], look: Partial<DeckLook>): string {
   const end = preambleEnd(text);
-  return `${writeLook(text.slice(0, end), look)}\\begin{document}\n${frame}\n\\end{document}\n`;
+  const body = (typeof frames === "string" ? [frames] : frames).join("\n");
+  return `${writeLook(text.slice(0, end), look)}\\begin{document}\n${body}\n\\end{document}\n`;
 }

@@ -582,7 +582,7 @@ export function gridCode(g: Grid, unit = "\t"): string {
     ...(r.rule ? [`${unit}${r.rule}`] : []),
     `${unit}${Array.from({ length: width }, (_, k) => r.cells[k] ?? "")
       .join(" & ")
-      .trimEnd()} \\\\`,
+      .trim()} \\\\`,
   ]);
   const table = [`\\begin{tabular}{${g.spec}}`, ...lines, ...(g.end ? [`${unit}${g.end}`] : []), "\\end{tabular}"];
   return g.center ? ["\\begin{center}", ...table.map((l) => `${unit}${l}`), "\\end{center}"].join("\n") : table.join("\n");
@@ -716,4 +716,146 @@ export function splitBlock(text: string, blocks: Block[], i: number, first: Bloc
 export function splitInText(text: string, j: number, first: Block, second: Block): string {
   const blocks = textBlocks(text);
   return blocks[j] ? applied(text, splitBlock(text, blocks, j, first, second, indentUnit(text))) : text;
+}
+
+// ------------------------------------------------------------ tables
+
+/** The columns of a table: the alignment of each (`l`, `c`, `r`, `p{3cm}`…), the bars before each and after the last. */
+export interface Columns {
+  aligns: string[];
+  bars: number[];
+}
+
+/** The columns a spec writes (`|l|c|`), or null when it says more than that (`@{}`, `>{…}`). */
+export function specColumns(spec: string): Columns | null {
+  const aligns: string[] = [];
+  const bars: number[] = [0];
+  let i = 0;
+  while (i < spec.length) {
+    const c = spec[i];
+    if (c === " ") i++;
+    else if (c === "|") {
+      bars[bars.length - 1]++;
+      i++;
+    } else if ("lcrX".includes(c)) {
+      aligns.push(c);
+      bars.push(0);
+      i++;
+    } else if ("pmb".includes(c) && spec[i + 1] === "{") {
+      const e = spec.indexOf("}", i);
+      if (e < 0) return null;
+      aligns.push(spec.slice(i, e + 1));
+      bars.push(0);
+      i = e + 1;
+    } else return null;
+  }
+  return aligns.length ? { aligns, bars } : null;
+}
+
+/** The spec of columns. */
+export function columnsSpec(c: Columns): string {
+  return c.aligns.map((a, k) => "|".repeat(c.bars[k]) + a).join("") + "|".repeat(c.bars[c.aligns.length] ?? 0);
+}
+
+const widthOfGrid = (g: Grid) => Math.max(1, ...g.rows.map((r) => r.cells.length), specColumns(g.spec)?.aligns.length ?? 0);
+
+/** A row of empty cells put before row `at` (`rows.length`: at the end), its rule like that of the rows around it. */
+export function gridAddRow(g: Grid, at: number): Grid {
+  const n = widthOfGrid(g);
+  const ruled = g.rows.length > 1 && g.rows.slice(1).every((r) => r.rule);
+  const rows = [...g.rows];
+  rows.splice(at, 0, { rule: ruled && at > 0 ? g.rows[Math.min(at, g.rows.length - 1)].rule || "\\hline" : "", cells: Array(n).fill("") });
+  return { ...g, rows };
+}
+
+/** Row `at` taken out (the last one stays). */
+export function gridRemoveRow(g: Grid, at: number): Grid {
+  if (g.rows.length <= 1) return g;
+  const rows = g.rows.filter((_, k) => k !== at);
+  // The rule that was before it stays before the row that takes its place.
+  if (g.rows[at]?.rule && rows[at] && !rows[at].rule) rows[at] = { ...rows[at], rule: g.rows[at].rule };
+  return { ...g, rows };
+}
+
+/** An empty column put before column `at` (`columns`: at the end), centred, its bars like those between the others. */
+export function gridAddColumn(g: Grid, at: number): Grid {
+  const cols = specColumns(g.spec);
+  if (!cols) return gridColumns(g, 1);
+  const n = cols.aligns.length;
+  const k = Math.max(0, Math.min(at, n));
+  // Bars between the columns: as they are between the others (as around a single one).
+  const inner = n > 1 ? cols.bars.slice(1, n).every((b) => b > 0) : cols.bars[0] > 0 && cols.bars[n] > 0;
+  const aligns = [...cols.aligns.slice(0, k), "c", ...cols.aligns.slice(k)];
+  const bars = [...cols.bars];
+  bars.splice(k < n ? k + 1 : n, 0, inner ? 1 : 0);
+  return { ...g, spec: columnsSpec({ aligns, bars }), rows: g.rows.map((r) => ({ ...r, cells: [...r.cells.slice(0, k), "", ...r.cells.slice(k)] })) };
+}
+
+/** Column `at` taken out (the last one stays). */
+export function gridRemoveColumn(g: Grid, at: number): Grid {
+  const cols = specColumns(g.spec);
+  const n = cols?.aligns.length ?? widthOfGrid(g);
+  if (n <= 1 || at < 0 || at >= n) return g;
+  let spec = g.spec;
+  if (cols) {
+    const bars = [...cols.bars];
+    // The bar after it goes with it; after the last column, the one before it.
+    bars.splice(at < n - 1 ? at + 1 : at, 1);
+    spec = columnsSpec({ aligns: cols.aligns.filter((_, k) => k !== at), bars });
+  }
+  return { ...g, spec, rows: g.rows.map((r) => ({ ...r, cells: r.cells.filter((_, k) => k !== at) })) };
+}
+
+/** Column `at` aligned on the left, the centre or the right. */
+export function gridAlign(g: Grid, at: number, align: "l" | "c" | "r"): Grid {
+  const cols = specColumns(g.spec);
+  if (!cols || !"lcr".includes(cols.aligns[at] ?? "")) return g;
+  return { ...g, spec: columnsSpec({ ...cols, aligns: cols.aligns.map((a, k) => (k === at ? align : a)) }) };
+}
+
+/** The lines of a table: none, one under its first row, between every row, or a grid. */
+export type TableLines = "none" | "header" | "rows" | "grid";
+
+/** The lines a table has; null when they are none of those. */
+export function gridLines(g: Grid): TableLines | null {
+  const cols = specColumns(g.spec);
+  const barred = !!cols && cols.bars.every((b) => b > 0);
+  const unbarred = !cols || cols.bars.every((b) => b === 0);
+  const all = g.rows.every((r) => r.rule) && !!g.end;
+  if (all && barred) return "grid";
+  if (all && unbarred) return "rows";
+  if (!unbarred) return null;
+  if (!g.end && g.rows.every((r, k) => (k === 1 ? !!r.rule : !r.rule)) && g.rows.length > 1) return "header";
+  if (!g.end && g.rows.every((r) => !r.rule)) return "none";
+  return null;
+}
+
+/** A table given those lines (`\hline` and bars). */
+export function setGridLines(g: Grid, lines: TableLines): Grid {
+  const cols = specColumns(g.spec);
+  const spec = cols ? columnsSpec({ aligns: cols.aligns, bars: cols.bars.map(() => (lines === "grid" ? 1 : 0)) }) : g.spec;
+  const every = lines === "rows" || lines === "grid";
+  return {
+    ...g,
+    spec,
+    rows: g.rows.map((r, k) => ({ ...r, rule: every || (lines === "header" && k === 1) ? "\\hline" : "" })),
+    end: every ? "\\hline" : "",
+  };
+}
+
+const bold = /^\\textbf\{([^]*)\}$/;
+
+/** The first row of a table is its head: each of its cells in bold. */
+export const gridHeader = (g: Grid) => g.rows.length > 1 && g.rows[0].cells.length > 0 && g.rows[0].cells.every((c) => !c.trim() || bold.test(c.trim()));
+
+/** The first row made the head of the table (its cells in bold), or a row like the others. */
+export function setGridHeader(g: Grid, on: boolean): Grid {
+  const first = g.rows[0];
+  if (!first) return g;
+  const cells = first.cells.map((c) => {
+    const v = c.trim();
+    if (on) return v && !bold.test(v) ? `\\textbf{${v}}` : v;
+    return bold.exec(v)?.[1] ?? v;
+  });
+  return { ...g, rows: [{ ...first, cells }, ...g.rows.slice(1)] };
 }

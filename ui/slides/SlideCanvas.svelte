@@ -148,6 +148,7 @@
             {path}
             {dir}
             {lang}
+            {unit}
             selected={i === selected}
             focusPart={focus?.index === i ? focus.part : null}
             onchange={(edit) => onchange(i, edit)}

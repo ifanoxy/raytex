@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { addToText, alignOf, blockCode, editInText, splitBlock, textBlocks, deleteBlock, duplicateBlock, frameBlocks, gridCode, gridColumns, indentUnit, insertBlock, moveBlock, moveBlockTo, moveToColumn, newBlock, oneByOne, replaceBlock, revealStep, setAlign, setOneByOne, setReveal, stepSize, tableGrid } from "./blocks.ts";
+import { addToText, alignOf, blockCode, columnsSpec, gridAddColumn, gridAddRow, gridAlign, gridHeader, gridLines, gridRemoveColumn, gridRemoveRow, setGridHeader, setGridLines, specColumns, editInText, splitBlock, textBlocks, deleteBlock, duplicateBlock, frameBlocks, gridCode, gridColumns, indentUnit, insertBlock, moveBlock, moveBlockTo, moveToColumn, newBlock, oneByOne, replaceBlock, revealStep, setAlign, setOneByOne, setReveal, stepSize, tableGrid } from "./blocks.ts";
 import { parseDeck } from "./deck.ts";
 
 const DECK = `\\documentclass{beamer}
@@ -284,4 +284,48 @@ test("blocks inside a block (a column, the body of a box), and a block cut in tw
   const twice = apply(deck, duplicateBlock(deck, blocks, 0));
   assert.equal(frameBlocks(twice, parseDeck(twice).frames[0]).length, 2);
   assert.equal(addToText("Un", newBlock("text", "fr")), "Un\n\nUn paragraphe de texte.");
+});
+
+test("a table managed: rows and columns put anywhere or taken out, aligned, its lines, its head", () => {
+  assert.deepEqual(specColumns("|l|c|"), { aligns: ["l", "c"], bars: [1, 1, 1] });
+  assert.deepEqual(specColumns("lp{3cm}r"), { aligns: ["l", "p{3cm}", "r"], bars: [0, 0, 0, 0] });
+  assert.equal(specColumns("@{}ll@{}"), null);
+  assert.equal(columnsSpec({ aligns: ["l", "c"], bars: [1, 1, 1] }), "|l|c|");
+  const g = tableGrid("\\begin{tabular}{ll}\na & b \\\\\nc & d \\\\\n\\end{tabular}")!;
+  // Rows: before the second, at the end, the first taken out.
+  assert.deepEqual(gridAddRow(g, 1).rows.map((r) => r.cells), [["a", "b"], ["", ""], ["c", "d"]]);
+  assert.deepEqual(gridAddRow(g, 2).rows.map((r) => r.cells), [["a", "b"], ["c", "d"], ["", ""]]);
+  assert.deepEqual(gridRemoveRow(g, 0).rows.map((r) => r.cells), [["c", "d"]]);
+  assert.deepEqual(gridRemoveRow(gridRemoveRow(g, 0), 0).rows.length, 1);
+  // Columns: first, between, last; taken out.
+  assert.deepEqual([gridAddColumn(g, 0).spec, gridAddColumn(g, 0).rows[0].cells], ["cll", ["", "a", "b"]]);
+  assert.deepEqual([gridAddColumn(g, 1).spec, gridAddColumn(g, 1).rows[1].cells], ["lcl", ["c", "", "d"]]);
+  assert.deepEqual([gridAddColumn(g, 2).spec, gridAddColumn(g, 2).rows[0].cells], ["llc", ["a", "b", ""]]);
+  assert.deepEqual([gridRemoveColumn(g, 0).spec, gridRemoveColumn(g, 0).rows[0].cells], ["l", ["b"]]);
+  // A grid keeps its bars around a column added or taken out.
+  const barred = setGridLines(g, "grid");
+  assert.equal(barred.spec, "|l|l|");
+  assert.equal(gridAddColumn(barred, 2).spec, "|l|l|c|");
+  assert.equal(gridAddColumn(barred, 0).spec, "|c|l|l|");
+  assert.equal(gridRemoveColumn(gridAddColumn(barred, 2), 2).spec, "|l|l|");
+  assert.equal(gridRemoveColumn(barred, 0).spec, "|l|");
+  // Aligned; its lines; its head in bold.
+  assert.equal(gridAlign(g, 1, "r").spec, "lr");
+  assert.equal(gridLines(g), "none");
+  assert.equal(gridLines(barred), "grid");
+  assert.equal(gridLines(setGridLines(g, "rows")), "rows");
+  assert.equal(gridLines(setGridLines(g, "header")), "header");
+  assert.equal(gridCode(setGridLines(g, "header"), "  "), "\\begin{tabular}{ll}\n  a & b \\\\\n  \\hline\n  c & d \\\\\n\\end{tabular}");
+  assert.equal(gridHeader(g), false);
+  const head = setGridHeader(g, true);
+  assert.deepEqual(head.rows[0].cells, ["\\textbf{a}", "\\textbf{b}"]);
+  assert.equal(gridHeader(head), true);
+  assert.deepEqual(setGridHeader(head, false).rows[0].cells, ["a", "b"]);
+  // A row added between ruled rows is ruled too.
+  assert.deepEqual(gridAddRow(setGridLines(g, "rows"), 1).rows.map((r) => r.rule), ["\\hline", "\\hline", "\\hline"]);
+});
+
+test("a row beginning with an empty cell begins with its &", () => {
+  const g = tableGrid("\\begin{tabular}{ll}\na & b \\\\\n\\end{tabular}")!;
+  assert.equal(gridCode(gridAddColumn(g, 0), "  "), "\\begin{tabular}{cll}\n  & a & b \\\\\n\\end{tabular}");
 });

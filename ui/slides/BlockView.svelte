@@ -13,7 +13,7 @@
   import { t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { closePdf, loadPdf } from "$lib/pdf/pdfjs";
-  import { addToText, type Block, editInText, gridCode, newBlock, revealStep, splitInText, tableGrid, textBlocks } from "$lib/slides/blocks";
+  import { addToText, alignOf, type Block, editInText, type Grid, gridAddRow, gridCode, newBlock, revealStep, specColumns, splitInText, tableGrid, textBlocks } from "$lib/slides/blocks";
   import { join } from "$lib/utils";
   import { drag } from "./drag.svelte";
   import Icon from "../components/common/Icon.svelte";
@@ -27,6 +27,7 @@
     path,
     dir,
     lang,
+    unit = "\t",
     selected = false,
     nested = false,
     focusPart = null,
@@ -42,6 +43,8 @@
     path: string | null;
     dir: string | null;
     lang: "fr" | "en";
+    /** The indentation of a level in the document. */
+    unit?: string;
     selected?: boolean;
     /** Inside a box or a column: no columns there to drop into. */
     nested?: boolean;
@@ -225,6 +228,59 @@
   }
 
   const grid = $derived(block.kind === "table" ? tableGrid(block.text) : null);
+
+  // ------------------------------------------------------------ tables
+
+  /** The cell that has (or last had) the caret: the rows and columns are put around it. */
+  let cell = $state<{ r: number; c: number } | null>(null);
+  let cellRefs: (RichText | null)[] = $state([]);
+  let cellWanted: { r: number; c: number } | null = null;
+
+  /** The table changed, written at the indentation of the document. */
+  function editGrid(edit: (g: Grid) => Grid) {
+    onchange((b) => {
+      const g = tableGrid(b.text);
+      return g ? { ...b, text: gridCode(edit(g), unit) } : b;
+    });
+  }
+
+  /** What a cell says. */
+  function setCell(r: number, c: number, v: string) {
+    editGrid((g) => ({ ...g, rows: g.rows.map((x, n) => (n === r ? { ...x, cells: Array.from({ length: Math.max(x.cells.length, c + 1) }, (_, q) => (q === c ? v : (x.cells[q] ?? ""))) } : x)) }));
+  }
+
+  /** The caret put in a cell (a row more at the end when it is below the last one). */
+  function toCell(r: number, c: number, grow: boolean) {
+    if (!grid) return;
+    const width = Math.max(1, specColumns(grid.spec)?.aligns.length ?? 0, ...grid.rows.map((x) => x.cells.length));
+    if (r >= grid.rows.length) {
+      if (!grow) return;
+      cellWanted = { r, c };
+      editGrid((g) => gridAddRow(g, g.rows.length));
+      return;
+    }
+    cellRefs[r * width + c]?.focusAt("end");
+  }
+  $effect(() => {
+    void grid;
+    const want = cellWanted;
+    if (!want || !grid || want.r >= grid.rows.length) return;
+    const width = Math.max(1, specColumns(grid.spec)?.aligns.length ?? 0, ...grid.rows.map((x) => x.cells.length));
+    void tick().then(() => {
+      cellRefs[want.r * width + want.c]?.focusAt("end");
+      cellWanted = null;
+    });
+  });
+
+  /** Tab in the last cell: a row more, and the caret in its first cell. */
+  function tableKey(e: KeyboardEvent) {
+    if (e.key !== "Tab" || e.shiftKey || !grid || !cell) return;
+    const width = Math.max(1, specColumns(grid.spec)?.aligns.length ?? 0, ...grid.rows.map((x) => x.cells.length));
+    if (cell.r === grid.rows.length - 1 && cell.c === width - 1) {
+      e.preventDefault();
+      toCell(grid.rows.length, 0, true);
+    }
+  }
   const BOX_COLORS: Record<string, string> = { block: "#3333b3", alertblock: "#c62828", exampleblock: "#2e7d32" };
 </script>
 
@@ -305,6 +361,7 @@
               {path}
               {dir}
               {lang}
+              {unit}
               nested
               onchange={(edit) => onchange((b) => ({ ...b, columns: b.columns?.map((c, n) => (n === k ? { ...c, text: inText(c.text, j, edit) } : c)) }))}
               onsplit={(first, second) => onchange((b) => ({ ...b, columns: b.columns?.map((c, n) => (n === k ? { ...c, text: splitInText(c.text, j, first, second) } : c)) }))}
@@ -329,29 +386,42 @@
       <textarea class="formula-code" rows={Math.max(1, block.text.split("\n").length)} value={block.text} spellcheck="false" autofocus={formulaOpen} aria-label={t("slides.rich.formula")} oninput={formulaTyped} onblur={() => (formulaOpen = false)}></textarea>
     {/if}
   {:else if block.kind === "table" && grid}
-    <table class="grid">
-      <tbody>
-        {#each grid.rows as row, r (r)}
-          <tr>
-            {#each Array.from({ length: Math.max(1, ...grid.rows.map((x) => x.cells.length)) }, (_, c) => c) as c (c)}
-              <td>
-                <RichText
-                  value={row.cells[c] ?? ""}
-                  {path}
-                  single
-                  onchange={(v) =>
-                    onchange((b) => {
-                      const g = tableGrid(b.text);
-                      if (!g) return b;
-                      return { ...b, text: gridCode({ ...g, rows: g.rows.map((x, n) => (n === r ? { ...x, cells: Array.from({ length: Math.max(x.cells.length, c + 1) }, (_, q) => (q === c ? v : (x.cells[q] ?? ""))) } : x)) }) };
-                    })}
-                />
-              </td>
-            {/each}
-          </tr>
-        {/each}
-      </tbody>
-    </table>
+    {@const cols = specColumns(grid.spec)}
+    {@const width = Math.max(1, cols?.aligns.length ?? 0, ...grid.rows.map((x) => x.cells.length))}
+    <div class="table-row" style:text-align={alignOf(block) === "center" ? "center" : alignOf(block) === "right" ? "right" : "left"}>
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <table class="grid" data-cell={cell ? `${cell.r}:${cell.c}` : undefined} onkeydown={tableKey}>
+        <tbody>
+          {#each grid.rows as row, r (r)}
+            <tr class:ruled={!!row.rule} class:last={r === grid.rows.length - 1 && !!grid.end}>
+              {#each Array.from({ length: width }, (_, c) => c) as c (c)}
+                <td
+                  onpointerdown={() => (cell = { r, c })}
+                  class:bar-left={(cols?.bars[c] ?? 0) > 0}
+                  class:bar-right={c === width - 1 && (cols?.bars[width] ?? 0) > 0}
+                  class:current={cell?.r === r && cell?.c === c}
+                  style:text-align={cols?.aligns[c] === "c" ? "center" : cols?.aligns[c] === "r" ? "right" : "left"}
+                >
+                  <RichText
+                    bind:this={cellRefs[r * width + c]}
+                    value={row.cells[c] ?? ""}
+                    {path}
+                    single
+                    onfocus={() => ((cell = { r, c }), ontext?.())}
+                    onenter={(before, after) => {
+                      // What was typed in it is written first, then the caret goes below.
+                      setCell(r, c, `${before}${after}`);
+                      toCell(r + 1, c, true);
+                    }}
+                    onchange={(v) => setCell(r, c, v)}
+                  />
+                </td>
+              {/each}
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
   {:else if block.kind === "box"}
     <div class="box" style:--box={BOX_COLORS[block.env ?? "block"] ?? "#3333b3"}>
       <div class="box-title">
@@ -364,6 +434,7 @@
             {path}
             {dir}
             {lang}
+            {unit}
             nested
             onchange={(edit) => onchange((b) => ({ ...b, text: inText(b.text, j, edit) }))}
             onsplit={(first, second) => onchange((b) => ({ ...b, text: splitInText(b.text, j, first, second) }))}
@@ -559,14 +630,32 @@
     line-height: 1.45;
     resize: vertical;
   }
+  .table-row {
+    width: 100%;
+  }
   .grid {
+    display: inline-table;
     border-collapse: collapse;
-    margin: 0 auto;
   }
   .grid td {
-    min-width: 3em;
-    padding: 0.15em 0.5em;
-    border: 1px solid #c8c8d4;
+    min-width: 2.6em;
+    padding: 0.12em 0.45em;
+    border: 1px dotted #d4d4de;
+  }
+  .grid tr.ruled td {
+    border-top: 1px solid #333;
+  }
+  .grid tr.last td {
+    border-bottom: 1px solid #333;
+  }
+  .grid td.bar-left {
+    border-left: 1px solid #333;
+  }
+  .grid td.bar-right {
+    border-right: 1px solid #333;
+  }
+  .grid td.current {
+    background: rgba(51, 51, 179, 0.07);
   }
   .box {
     border-radius: 4px;

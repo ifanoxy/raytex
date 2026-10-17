@@ -5,7 +5,7 @@
   // left, centred or on the right, smaller or larger; what its kind has; the
   // step it appears at; copied, deleted. Each writes plain LaTeX.
   import { t } from "$lib/i18n.svelte";
-  import { alignOf, type Block, gridCode, gridColumns, oneByOne, revealStep, setAlign, setOneByOne, setReveal, stepSize, tableGrid } from "$lib/slides/blocks";
+  import { alignOf, type Block, type Grid, gridAddColumn, gridAddRow, gridAlign, gridCode, gridHeader, gridLines, gridRemoveColumn, gridRemoveRow, oneByOne, revealStep, setAlign, setGridHeader, setGridLines, setOneByOne, setReveal, stepSize, type TableLines, tableGrid } from "$lib/slides/blocks";
   import { INLINE_COLORS } from "$lib/slides/rich";
   import type { RichTool } from "$lib/slides/rich";
   import Icon from "../components/common/Icon.svelte";
@@ -34,6 +34,22 @@
   const words = $derived(["text", "list", "box", "columns", "table"].includes(block.kind));
   const stepChoices = $derived(Array.from({ length: Math.max(3, steps) }, (_, k) => k + 2));
   let colors = $state(false);
+  let open = $state<"row" | "column" | null>(null);
+
+  /**
+   * The table changed around its cell that has (or last had) the caret
+   * (else its last one), written at the indentation of the document.
+   */
+  function table(edit: (g: Grid, at: { r: number; c: number }) => Grid) {
+    open = null;
+    const said = document.querySelector<HTMLElement>(".slides-mode .paper .block.selected table")?.dataset.cell;
+    onchange((b) => {
+      const g = tableGrid(b.text);
+      if (!g) return b;
+      const [r, c] = said ? said.split(":").map(Number) : [g.rows.length - 1, Math.max(0, ...g.rows.map((x) => x.cells.length)) - 1];
+      return { ...b, text: gridCode(edit(g, { r, c }), unit) };
+    });
+  }
   const widthOf = (b: Block) => Number(b.width || "0.7");
 
   /**
@@ -65,6 +81,8 @@
     { id: "right", icon: "align-right", key: "slides.tools.right" },
   ] as const;
 </script>
+
+<svelte:window onpointerdown={(e) => (open || colors) && !(e.target as HTMLElement).closest(".block-tools .menu-wrap, .block-tools .colors") && ((open = null), (colors = false))} />
 
 <!-- The text keeps its caret and its selection: the tools take no focus. -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -131,16 +149,46 @@
       return { ...b, columns: [...(b.columns ?? []).map((c) => ({ ...c, width: w })), { width: w, text: "" }] };
     })}><Icon name="plus" size={14} /><span>{t("slides.table.column")}</span></button>
   {:else if grid}
+    {@const lines = gridLines(grid)}
     <span class="group">
-      <button class="tool labelled" data-action="add-row" title={t("slides.table.addRow")} onclick={() => onchange((b) => {
-        const g = tableGrid(b.text);
-        return g ? { ...b, text: gridCode({ ...g, rows: [...g.rows, { rule: "", cells: [] }] }, unit) } : b;
-      })}><Icon name="plus" size={14} /><span>{t("slides.table.row")}</span></button>
-      <button class="tool labelled" data-action="add-table-column" title={t("slides.addColumn")} onclick={() => onchange((b) => {
-        const g = tableGrid(b.text);
-        return g ? { ...b, text: gridCode(gridColumns(g, 1), unit) } : b;
-      })}><Icon name="plus" size={14} /><span>{t("slides.table.column")}</span></button>
+      <span class="menu-wrap">
+        <button class="tool labelled" data-action="row-menu" onclick={() => (open = open === "row" ? null : "row")}><Icon name="table" size={14} /><span>{t("slides.table.row")}</span><Icon name="chevron-down" size={11} /></button>
+        {#if open === "row"}
+          <span class="drop" role="menu">
+            <button role="menuitem" data-action="row-above" onclick={() => table((g, at) => gridAddRow(g, at.r))}>{t("slides.table.rowAbove")}</button>
+            <button role="menuitem" data-action="row-below" onclick={() => table((g, at) => gridAddRow(g, at.r + 1))}>{t("slides.table.rowBelow")}</button>
+            <button role="menuitem" data-action="row-delete" disabled={grid.rows.length <= 1} onclick={() => table((g, at) => gridRemoveRow(g, at.r))}>{t("slides.table.rowDelete")}</button>
+          </span>
+        {/if}
+      </span>
+      <span class="menu-wrap">
+        <button class="tool labelled" data-action="column-menu" onclick={() => (open = open === "column" ? null : "column")}><Icon name="layout" size={14} /><span>{t("slides.table.column")}</span><Icon name="chevron-down" size={11} /></button>
+        {#if open === "column"}
+          <span class="drop" role="menu">
+            <button role="menuitem" data-action="column-left" onclick={() => table((g, at) => gridAddColumn(g, at.c))}>{t("slides.table.columnLeft")}</button>
+            <button role="menuitem" data-action="column-right" onclick={() => table((g, at) => gridAddColumn(g, at.c + 1))}>{t("slides.table.columnRight")}</button>
+            <button role="menuitem" data-action="column-delete" onclick={() => table((g, at) => gridRemoveColumn(g, at.c))}>{t("slides.table.columnDelete")}</button>
+            <span class="drop-sep"></span>
+            <span class="drop-row">
+              {#each ALIGNS as a (a.id)}
+                <button class="tool" data-column-align={a.id} title={t(a.key)} aria-label={t(a.key)} onclick={() => table((g, at) => gridAlign(g, at.c, a.id === "left" ? "l" : a.id === "center" ? "c" : "r"))}><Icon name={a.icon} size={14} /></button>
+              {/each}
+            </span>
+          </span>
+        {/if}
+      </span>
     </span>
+    <select class="input mini" data-table-lines value={lines ?? "other"} aria-label={t("slides.table.lines")} title={t("slides.table.lines")} onchange={(e) => {
+      const v = (e.currentTarget as HTMLSelectElement).value as TableLines;
+      table((g) => setGridLines(g, v));
+    }}>
+      <option value="none">{t("slides.table.linesNone")}</option>
+      <option value="header">{t("slides.table.linesHeader")}</option>
+      <option value="rows">{t("slides.table.linesRows")}</option>
+      <option value="grid">{t("slides.table.linesGrid")}</option>
+      {#if !lines}<option value="other" disabled>{t("slides.table.linesOther")}</option>{/if}
+    </select>
+    <button class="tool labelled" class:on={gridHeader(grid)} data-action="table-head" title={t("slides.table.headHint")} onclick={() => table((g) => setGridHeader(g, !gridHeader(g)))}><Icon name="bold" size={13} /><span>{t("slides.table.head")}</span></button>
   {/if}
   {#if block.kind !== "pause"}
     <select class="input mini" data-tools-reveal value={block.reveal ? (rs ? String(rs.step) : "other") : "1"} aria-label={t("slides.reveal.label")} title={t("slides.reveal.label")} onchange={(e) => {
@@ -237,8 +285,51 @@
     padding: 0 4px;
     font-size: 12px;
   }
-  .colors {
+  .colors,
+  .menu-wrap {
     position: relative;
+  }
+  .drop {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 4px);
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 190px;
+    padding: 4px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--bg-elev-2);
+    box-shadow: var(--shadow);
+  }
+  .drop > button {
+    height: 28px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text);
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .drop > button:hover {
+    background: var(--bg-hover);
+  }
+  .drop > button:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .drop-sep {
+    height: 1px;
+    margin: 4px 2px;
+    background: var(--border);
+  }
+  .drop-row {
+    display: flex;
+    gap: 2px;
+    padding: 0 4px;
   }
   .swatches {
     position: absolute;

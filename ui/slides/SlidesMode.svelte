@@ -27,7 +27,7 @@
   import PageCanvas from "./PageCanvas.svelte";
   import PresenterView from "./PresenterView.svelte";
   import SlideCanvas from "./SlideCanvas.svelte";
-  import ThemePanel from "./ThemePanel.svelte";
+  import ThemeStudio from "./ThemeStudio.svelte";
 
   let { host }: { host: SlidesHost } = $props();
 
@@ -297,7 +297,7 @@
     if (target.closest("input, textarea, select, .cm-editor, [contenteditable='true'], [role='dialog']")) return;
     const mod = e.metaKey || e.ctrlKey;
     if (e.key === "Escape") {
-      if (layoutsOpen || exportsOpen || themeOpen || moreOpen) layoutsOpen = exportsOpen = themeOpen = moreOpen = false;
+      if (layoutsOpen || exportsOpen || moreOpen) layoutsOpen = exportsOpen = moreOpen = false;
       else block = -1;
     } else if ((e.key === "Delete" || e.key === "Backspace") && block >= 0) {
       e.preventDefault();
@@ -357,6 +357,11 @@
     }
   }
   const frameText = $derived(frame && told ? told.text.slice(frame.from, frame.to) : "");
+  /** The title page of the deck, to see a look on (made when it has none). */
+  const titleFrame = $derived.by(() => {
+    const f = deck.frames.find((x) => x.titlePage);
+    return f && told ? told.text.slice(f.from, f.to) : "\\begin{frame}\n  \\titlepage\n\\end{frame}";
+  });
   /** The code of the slide typed: written in its place, while it is still one slide. */
   let codeProblem = $state(false);
   function codeChanged(text: string) {
@@ -418,7 +423,7 @@
   onkeydown={key}
   onpointerdown={(e) => {
     const target = e.target as HTMLElement;
-    if (!target.closest(".menu-wrap")) layoutsOpen = exportsOpen = themeOpen = moreOpen = false;
+    if (!target.closest(".menu-wrap")) layoutsOpen = exportsOpen = moreOpen = false;
   }}
 />
 
@@ -478,12 +483,7 @@
     </div>
     <span class="spacer"></span>
     {#if told?.building}<span class="status"><span class="spinner"></span>{t("slides.building")}</span>{:else if told?.failed}<span class="status err"><Icon name="alert-circle" size={13} />{t("slides.failed")}</span>{/if}
-    <div class="menu-wrap">
-      <button class="btn small" data-action="theme" class:on={themeOpen} disabled={!deck.beamer} onclick={() => (themeOpen = !themeOpen)}><Icon name="palette" size={13} />{t("slides.look")}</button>
-      {#if themeOpen && told?.path}
-        <div class="theme-pop"><ThemePanel text={told.text} path={told.path} {frameText} onlook={setLook} /></div>
-      {/if}
-    </div>
+    <button class="btn small" data-action="theme" class:on={themeOpen} disabled={!deck.beamer} onclick={() => (themeOpen = !themeOpen)}><Icon name="palette" size={13} />{t("slides.look")}</button>
     <div class="menu-wrap">
       <button class="btn small" data-action="exports" disabled={!deck.beamer} onclick={() => (exportsOpen = !exportsOpen)}><Icon name="download" size={13} />{t("slides.export")}<Icon name="chevron-down" size={12} /></button>
       {#if exportsOpen}
@@ -591,6 +591,20 @@
         <textarea bind:value={notesField} placeholder={t("slides.notesPlaceholder")} disabled={!frame} onfocus={() => (notesEditing = true)} onblur={saveNotes}></textarea>
       </label>
     </aside>
+  {/if}
+
+  {#if themeOpen && told?.path}
+    <ThemeStudio
+      text={told.text}
+      path={told.path}
+      {frameText}
+      {titleFrame}
+      onapply={(look) => {
+        themeOpen = false;
+        setLook(look);
+      }}
+      onclose={() => (themeOpen = false)}
+    />
   {/if}
 
   {#if drag.carried}
@@ -723,20 +737,6 @@
   .menu-label {
     padding: 6px 10px 2px;
     font-size: 11px;
-  }
-  .theme-pop {
-    position: absolute;
-    z-index: 40;
-    top: calc(100% + 6px);
-    right: 0;
-    width: 440px;
-    max-height: min(76vh, 760px);
-    overflow: auto;
-    padding: 14px;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-lg);
-    background: var(--bg-elev-2);
-    box-shadow: var(--shadow);
   }
   .layouts {
     position: absolute;

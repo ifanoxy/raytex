@@ -2108,34 +2108,88 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     document.querySelector<HTMLButtonElement>('.slides-mode .context [data-action="delete-block"]')!.click();
     await until(() => kinds().join() === "list,box,columns", 10_000, "copy deleted");
     check("slides mode: an element copied and deleted", (slideText().match(/\\begin\{alertblock\}/g)?.length ?? 0) === 1);
+    // A table: a cell written and Enter for the row below (a row more), a
+    // column put on the left of a cell, a row taken out, its lines, its head.
+    document.querySelector<HTMLButtonElement>('.slides-mode .bar [data-component="table"]')!.click();
+    await until(() => kinds().join() === "list,box,columns,table", 10_000, "table added");
+    const cellsOf = () => [...blockEl("table").querySelectorAll<HTMLElement>("td")];
+    const fromMenu = async (menu: string, item: string) => {
+      document.querySelector<HTMLButtonElement>(`.slides-mode .context [data-action="${menu}"]`)!.click();
+      await until(() => !!document.querySelector(`.slides-mode .context [data-action="${item}"]`), 5_000, `menu ${menu}`);
+      document.querySelector<HTMLButtonElement>(`.slides-mode .context [data-action="${item}"]`)!.click();
+    };
+    const cellText = (k: number) => cellsOf()[k].querySelector<HTMLElement>(".rich")!;
+    pointer("pointerdown", cellsOf()[3], 0, 0);
+    cellText(3).focus();
+    getSelection()!.selectAllChildren(cellText(3));
+    document.execCommand("insertText", false, "42");
+    press(cellText(3), "Enter");
+    await until(() => cellsOf().length === 6, 10_000, "row below the last made");
+    await until(() => document.activeElement === cellText(5), 5_000, "caret in the cell below");
+    document.execCommand("insertText", false, "7");
+    cellText(5).blur();
+    pointer("pointerdown", cellsOf()[0], 0, 0);
+    cellText(0).focus();
+    await fromMenu("column-menu", "column-left");
+    await until(() => cellsOf().length === 9, 10_000, "column on the left");
+    pointer("pointerdown", cellsOf()[6], 0, 0);
+    await fromMenu("row-menu", "row-above");
+    await until(() => cellsOf().length === 12, 10_000, "row put above");
+    pointer("pointerdown", cellsOf()[6], 0, 0);
+    await fromMenu("row-menu", "row-delete");
+    await until(() => cellsOf().length === 9, 10_000, "row taken out");
+    const lines = document.querySelector<HTMLSelectElement>(".slides-mode .context [data-table-lines]")!;
+    lines.value = "grid";
+    lines.dispatchEvent(new Event("change", { bubbles: true }));
+    await until(() => /\\begin\{tabular\}\{\|c\|l\|l\|\}/.test(slideText()), 10_000, "table in a grid");
+    document.querySelector<HTMLButtonElement>('.slides-mode .context [data-action="table-head"]')!.click();
+    await until(() => /\\textbf\{(Nom|Name)\}/.test(slideText()), 10_000, "head of the table");
+    const tableCode = /\\begin\{tabular\}[^]*?\\end\{tabular\}/.exec(slideText())?.[0] ?? "";
+    check(
+      "slides mode: a table managed, cells, Enter, a column put, a row taken out, its lines, its head",
+      /42 \\\\[^]*7 \\\\/.test(tableCode) && (tableCode.match(/\\\\/g)?.length ?? 0) === 3 && (tableCode.match(/\\hline/g)?.length ?? 0) === 4 && /\\textbf\{(Nom|Name)\}/.test(tableCode) && !/^( +\t|\t+ )/m.test(tableCode),
+      tableCode,
+    );
+    await until(() => !build.running, 120_000, "table built");
     // A picture dropped from the system, copied into the project.
     const end = document.querySelector<HTMLElement>(`.slides-mode .gap[data-drop="before:${kinds().length}"]`)!;
     end.scrollIntoView({ block: "nearest" });
     const at = end.getBoundingClientRect();
     root()!.dispatchEvent(new CustomEvent("raytex-files", { detail: { paths: [`${dir}/Photo de l'expérience.png`], x: at.left + 40, y: at.top + at.height / 2 } }));
-    await until(() => kinds().join() === "list,box,columns,image", 15_000, "picture dropped");
+    await until(() => kinds().join() === "list,box,columns,table,image", 15_000, "picture dropped");
     const copiedPicture = await ipc.pathExists(`${project.info!.main!.replace(/[\\/][^\\/]*$/, "")}/figures/photo-de-l-experience.png`);
     await until(() => !!blockEl("image").querySelector("img"), 10_000, "picture shown on the slide");
     check("slides mode: a picture dropped from the system, copied into the project and shown", copiedPicture && slideText().includes("{figures/photo-de-l-experience}"), slideText());
-    // The look: themes drawn on the slide, one chosen, its colours, the shape 4:3.
+    // The look, chosen on real slides: themes drawn on the slide, the choice
+    // drawn on the title page and the slide, nothing written before Apply.
     action("theme");
-    await until(() => !!document.querySelector('.slides-mode .theme[data-theme="Warsaw"] canvas'), 120_000, "themes drawn");
-    document.querySelector<HTMLButtonElement>('.slides-mode .theme[data-theme="Warsaw"]')!.click();
-    await until(() => deckNow().includes("\\usetheme{Warsaw}"), 10_000, "theme chosen");
-    document.querySelector<HTMLButtonElement>('.slides-mode [data-color="whale"]')!.click();
-    await until(() => deckNow().includes("\\usecolortheme{whale}"), 10_000, "colours chosen");
-    document.querySelector<HTMLButtonElement>('.slides-mode [data-ratio="43"]')!.click();
-    await until(() => /\\documentclass\[aspectratio=43\]\{beamer\}/.test(deckNow()), 10_000, "shape chosen");
-    const drawnThemes = document.querySelectorAll(".slides-mode .theme canvas").length;
-    action("theme");
+    await until(() => !!document.querySelector('.theme-studio .theme[data-theme="Warsaw"] canvas') && document.querySelectorAll(".theme-studio .preview canvas").length === 2, 120_000, "themes drawn");
+    const lookBefore = deckNow();
+    const studio = (selector: string) => document.querySelector<HTMLElement>(`.theme-studio ${selector}`)!;
+    studio('.theme[data-theme="Warsaw"]').click();
+    studio('[data-color="whale"]').click();
+    studio('[data-main="#c62828"]').click();
+    studio('[data-size="12pt"]').click();
+    studio('[data-ratio="43"]').click();
+    await pause(300);
+    const untouched = deckNow() === lookBefore;
+    await until(() => !document.querySelector(".theme-studio .status"), 60_000, "choice drawn");
+    const drawnThemes = document.querySelectorAll(".theme-studio .theme canvas").length;
+    studio('[data-action="apply-look"]').click();
+    await until(() => !document.querySelector(".theme-studio") && deckNow().includes("\\usetheme{Warsaw}"), 10_000, "look applied");
     await until(() => {
       const b = document.querySelector<HTMLElement>(".slides-mode .side .render canvas")?.getBoundingClientRect();
       return !build.running && !!b && Math.abs(b.width / b.height - 4 / 3) < 0.05;
     }, 120_000, "deck built in 4:3");
     check(
-      "slides mode: themes drawn on the slide, one chosen with its colours and its shape",
-      !deckNow().includes("\\usetheme{Madrid}") && !deckNow().includes("beaver") && drawnThemes >= 3,
-      `${drawnThemes} drawn`,
+      "slides mode: a look chosen on real slides (theme, colours, main colour, size, shape), written only once applied",
+      untouched &&
+        /\\documentclass\[12pt,aspectratio=43\]\{beamer\}/.test(deckNow()) &&
+        deckNow().includes("\\usecolortheme{whale}") &&
+        deckNow().includes("\\definecolor{rtmain}{HTML}{C62828}") &&
+        !deckNow().includes("\\usetheme{Madrid}") &&
+        drawnThemes >= 3,
+      `${untouched} ${drawnThemes} drawn`,
     );
     // Presenting: the window of the presentation opens and draws the page the
     // presenter's view says; the arrows move from step to step; Escape ends it.
