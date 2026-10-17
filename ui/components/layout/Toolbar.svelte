@@ -11,6 +11,7 @@
   import { viewer } from "$lib/state/viewer.svelte";
   import { type MenuItem, ui } from "$lib/state/ui.svelte";
   import { appWindow } from "$lib/state/window.svelte";
+  import { editor } from "$lib/state/editor.svelte";
   import { basename, formatDuration, prettyKey, relative, samePath } from "$lib/utils";
   import Icon from "../common/Icon.svelte";
   import MenuBar from "./MenuBar.svelte";
@@ -95,6 +96,8 @@
       { label: t("view.pdf"), icon: "panel-right", keys: shortcut("view.pdf"), checked: ui.pdfVisible, run: () => ui.setVisible("pdf", !ui.pdfVisible) },
       { label: t("view.console"), icon: "panel-bottom", keys: shortcut("view.panel"), checked: ui.bottomVisible, run: () => ui.setVisible("bottom", !ui.bottomVisible) },
       { separator: true },
+      actionItem("view.slides"),
+      { separator: true },
       { label: t("view.darkTheme"), icon: "moon", checked: app.theme === "dark", run: () => runAction("view.theme") },
       actionItem("view.zoomIn"),
       actionItem("view.zoomOut"),
@@ -104,6 +107,13 @@
   const status = $derived(build.status);
   const errors = $derived(build.outcome?.diagnostics.filter((d) => d.severity === "error").length ?? 0);
   const live = $derived(app.settings?.build.autoBuild === "onIdle");
+  /** The main document is a Beamer deck: the slides mode is offered in the bar. */
+  const deck = $derived.by(() => {
+    void editor.mainEdits;
+    void editor.revision;
+    const main = project.info?.main;
+    return !!main && /\\documentclass\s*(?:\[[^\]]*\])?\s*\{\s*beamer\s*\}/.test(editor.headOf(main, 3000) ?? "");
+  });
 </script>
 
 <!-- The top bar is also the title bar: its empty parts move the window. -->
@@ -182,6 +192,13 @@
       <span class="ellipsis">{project.info.main ? basename(project.info.main) : t("toolbar.noMain")}</span>
     </button>
     {/if}
+  {/if}
+
+  {#if deck}
+    <button class="chip slides" onclick={() => runAction("view.slides")} title={t("slides.chipHint")}>
+      <Icon name="presentation" size={13} />
+      <span>{t("slides.chip")}</span>
+    </button>
   {/if}
 
   <div class="spacer"></div>

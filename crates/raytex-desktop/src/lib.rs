@@ -197,6 +197,7 @@ pub fn run() {
             commands::export::export_window_open,
             commands::export::export_window_close,
             commands::export::export_window_shown,
+            commands::slides::slides_window_open,
             commands::lighter::pdf_pictures,
             commands::lighter::pdf_weights,
             commands::lighter::pdf_weights_cancel,

@@ -5,7 +5,7 @@
 // It answers every IPC command with small, realistic data: a demo thesis
 // project, a TeX Live installation, diagnostics, a build and a PDF.
 
-import { emit } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import type * as T from "../lib/types";
 import type { CommandDraft, CommandSpec, CustomCommand } from "../lib/commands";
@@ -1101,6 +1101,10 @@ export function installMocks() {
     },
     { shouldMockEvents: true },
   );
+  // Events told to one window are dropped by the mocks of Tauri: they are sent to all.
+  const internals = (window as unknown as { __TAURI_INTERNALS__: { invoke: (cmd: string, args?: unknown, options?: unknown) => Promise<unknown> } }).__TAURI_INTERNALS__;
+  const invoke = internals.invoke.bind(internals);
+  internals.invoke = (cmd, args, options) => invoke(cmd === "plugin:event|emit_to" ? "plugin:event|emit" : cmd, args, options);
 }
 
 /**
@@ -1152,4 +1156,51 @@ export async function demoExport(theme: "light" | "dark" = "dark", failing = fal
   await emit("export-window:state", { ...state, phase: "copying" });
   await sleep(500);
   await emit("export-window:state", { ...state, phase: "done", result: "PDF exporté : memoire.pdf" });
+}
+
+/** A deck for the window of the slides mode shown in a plain browser: changes asked are made at once, as the main window would. */
+export async function demoSlides() {
+  let text = String.raw`\documentclass[aspectratio=169]{beamer}
+\usetheme{Madrid}
+\title{Étude de la chaleur}
+\author{Camille Martin}
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\section{Introduction}
+\begin{frame}{Le problème}
+  \begin{itemize}
+    \item<1-> L'équation de la chaleur
+    \item<2-> Ses conditions aux limites
+  \end{itemize}
+  \note{Commencer par un exemple concret}
+\end{frame}
+
+\begin{frame}{La méthode}
+  Des différences finies, pas à pas.
+\end{frame}
+
+\section{Résultats}
+\begin{frame}{Ce que l'on voit}
+  Une courbe qui s'aplatit.
+\end{frame}
+
+\end{document}
+`;
+  let version = 1;
+  let built = 1;
+  const send = () =>
+    emit("slides-window:state", { path: `${ROOT}/slides.tex`, text, version, pdf: `${ROOT}/build/main.pdf`, nav: null, built, building: false, failed: false, cursorLine: null, lang: "fr", theme: "dark" });
+  await listen<{ version: number; changes: { from: number; to: number; insert: string }[] }>("slides-window:edit", (e) => {
+    text = [...e.payload.changes].sort((a, b) => b.from - a.from).reduce((out, c) => out.slice(0, c.from) + c.insert + out.slice(c.to), text);
+    version++;
+    built++;
+    void send();
+  });
+  await listen("slides-window:ready", () => void send());
+  await sleep(300);
+  await send();
 }

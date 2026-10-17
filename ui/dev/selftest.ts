@@ -27,6 +27,7 @@ import { fileSelection } from "../lib/state/selection.svelte";
 import { media } from "../lib/state/media.svelte";
 import { pdfExport } from "../lib/state/pdfexport.svelte";
 import { answerKey } from "../lib/state/answerkey.svelte";
+import type { SlidesReport, SlidesTest } from "../lib/slideswindow";
 import { bringPicture } from "../lib/state/pictures";
 import { colors } from "../lib/state/colors.svelte";
 import { fonts } from "../lib/state/fonts.svelte";
@@ -1946,6 +1947,44 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     const sizes = madeKey ? [(await ipc.readBinaryFile(subjectPdf)).byteLength, (await ipc.readBinaryFile(keyPdf)).byteLength] : [];
     check("answer key: both exported", madeKey && sizes[0] > 1000 && sizes[1] > sizes[0], `${madeSubject} ${madeKey} ${sizes.join(" / ")}`);
     check("answer key: the document unchanged", flagOn());
+
+    // ---------------------------------------------------------- slides mode
+    // A deck from its template: the window of the slides mode shows its
+    // slides drawn, and adds, duplicates, moves, titles and notes them in
+    // the text the main window keeps, which builds again.
+    check("deck project", await project.createEmpty(`${projectsDir}/expose`, "Exposé"));
+    await templates.apply(templates.list.find((x) => x.id === "beamer")!);
+    await until(() => !build.running && samePath(build.outcome?.plan.root, project.info?.main), 120_000, "deck build");
+    let report: SlidesReport | null = null;
+    const offReport = await ipc.on("slides-window:report", (r) => (report = r));
+    const shown = () => report as SlidesReport | null;
+    void runAction("view.slides");
+    await until(() => !!shown()?.frames.length && shown()!.pages > 0 && shown()!.drawn, 30_000, "slides window");
+    const slides = (a: SlidesTest) => ipc.tell("slides", "slides-window:test", a);
+    const first = shown()!.frames.length;
+    const firstPages = shown()!.pages;
+    await scene("slides-mode");
+    await slides({ kind: "select", index: 1 });
+    await slides({ kind: "add", layout: "two-columns" });
+    await until(() => shown()!.frames.length === first + 1, 10_000, "slide added");
+    await slides({ kind: "duplicate" });
+    await until(() => shown()!.frames.length === first + 2, 10_000, "slide duplicated");
+    await slides({ kind: "title", text: "Plan de l'exposé" });
+    await until(() => shown()!.frames.includes("Plan de l'exposé"), 10_000, "slide titled");
+    await slides({ kind: "notes", text: "Annoncer les deux parties" });
+    await until(() => shown()!.notes === "Annoncer les deux parties", 10_000, "slide noted");
+    await slides({ kind: "move", from: shown()!.selected, to: 1 });
+    await until(() => shown()!.frames[1] === "Plan de l'exposé", 10_000, "slide moved");
+    const deckText = editor.textOf(project.info!.main!) ?? "";
+    check(
+      "slides mode: slides added, duplicated, titled, noted, moved in the text",
+      (deckText.match(/\\begin\{frame\}/g)?.length ?? 0) === first + 2 && deckText.includes("\\begin{columns}") && deckText.includes("\\note{Annoncer les deux parties}") && deckText.indexOf("Plan de l'exposé") < deckText.indexOf("\\begin{columns}"),
+      JSON.stringify(shown()),
+    );
+    await until(() => shown()!.pages >= firstPages + 2 && !build.running, 120_000, "deck built again");
+    check("slides mode: the PDF built again is shown", shown()!.drawn && shown()!.pages >= firstPages + 2, `${firstPages} → ${shown()!.pages}`);
+    await slides({ kind: "close" });
+    offReport();
   } catch (e) {
     results.failure = String(e);
   }

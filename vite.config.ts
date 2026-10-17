@@ -33,8 +33,9 @@ export default defineConfig({
     target: "es2022",
     sourcemap: false,
     chunkSizeWarningLimit: 2000,
-    // Two pages: the application, and the window that follows an export.
-    rollupOptions: { input: { main: "index.html", export: "export.html" } },
+    // Three pages: the application, the window that follows an export, and
+    // the window of the slides mode.
+    rollupOptions: { input: { main: "index.html", export: "export.html", slides: "slides.html" } },
   },
   resolve: {
     alias: { $lib: "/ui/lib" },

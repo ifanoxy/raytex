@@ -4,6 +4,8 @@ All notable changes to RayTeX are documented here. The format follows [Keep a Ch
 
 ## [Unreleased]
 
+- **Slides mode** (being built for 0.6): *View › Slides mode*, or the **Slides** button of the top bar when the document is a Beamer deck, opens a window of its own: the slides as thumbnails on the left (with their sections), added from a layout (title and list, two columns, picture, title only, new part, blank), duplicated, deleted, moved by dragging; the slide chosen large in the middle with its steps (reveals), its notes under it (`\note{…}`), its title on the right. The text stays in the main window: every change is made there (undone with Ctrl+Z) and the deck is built again; the slide where the cursor of the editor is is followed.
+
 ## [0.5.4] — 2026-10-17
 
 - Fixed, what was typed in the title page window as it opened (or in a studio opened again from its chip) was replaced by what the document had once it was read: the fields show once the document is read, and a studio shows what it changes at once.

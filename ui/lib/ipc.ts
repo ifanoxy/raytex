@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type * as T from "./types";
 import type { BibDraft, BibField, Bibliography } from "./bibliography";
+import type { SlidesCommand, SlidesEdit, SlidesReport, SlidesState, SlidesTest } from "./slideswindow";
 import type { ExportWindowCommand, ExportWindowReport, ExportWindowState } from "./exportwindow";
 import type { PdfWeights } from "./pdfweight";
 import type { ExportOptions, ExportPlan } from "./export";
@@ -122,6 +123,8 @@ export const exportPdfCancel = () => call<void>("export_pdf_cancel");
 export const exportWindowOpen = (title: string) => call<void>("export_window_open", { title });
 export const exportWindowClose = () => call<void>("export_window_close");
 export const exportWindowShown = () => call<boolean>("export_window_shown");
+/** Opens the window of the slides mode (or brings it to the front). */
+export const slidesWindowOpen = (title: string) => call<void>("slides_window_open", { title });
 /** Says something to one window of the application. */
 export function tell<K extends keyof Events>(window: string, event: K, payload: Events[K]): Promise<void> {
   return emitTo(window, event, payload);
@@ -291,6 +294,13 @@ export interface Events {
   "export-window:command": ExportWindowCommand;
   "export-window:ready": null;
   "export-window:report": ExportWindowReport;
+  /** Between the main window and the window of the slides mode (see `slideswindow.ts`). */
+  "slides-window:state": SlidesState;
+  "slides-window:edit": SlidesEdit;
+  "slides-window:command": SlidesCommand;
+  "slides-window:ready": null;
+  "slides-window:test": SlidesTest;
+  "slides-window:report": SlidesReport;
   "export:step": { name: string; command: string };
   "export:output": { lines: T.OutputLine[] };
   "tex:status": T.TexStatus;

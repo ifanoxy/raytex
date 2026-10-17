@@ -15,6 +15,7 @@ pub mod language;
 pub mod lighter;
 pub mod media;
 pub mod project;
+pub mod slides;
 pub mod spell;
 pub mod synctex;
 pub mod tex;
