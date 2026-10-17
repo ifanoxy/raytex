@@ -14,6 +14,7 @@
   import { type DeckEdit, deleteFrame, duplicateFrame, framePages, insertFrame, type Layout, LAYOUTS, moveFrame, pagesOf, parseDeck, setNotes, setTitle } from "$lib/slides/deck";
   import type { SlidesHost, SlidesState } from "$lib/slides/host";
   import Icon from "../components/common/Icon.svelte";
+  import FrameCode from "./FrameCode.svelte";
   import PageCanvas from "./PageCanvas.svelte";
 
   let { host }: { host: SlidesHost } = $props();
@@ -178,17 +179,49 @@
     observer.observe(stage);
     return () => observer.disconnect();
   });
-  /** The width of the slide that fits the stage (a page of 16:9 or 4:3 drawn whole). */
-  let ratio = $state(16 / 9);
+  /** The shape of the pages of the deck; the slides are always shown lying down (16:9, 4:3…). */
+  let pageRatio = $state(16 / 9);
   $effect(() => {
     const d = doc;
     if (!d) return;
     void d.getPage(1).then((p) => {
       const v = p.getViewport({ scale: 1 });
-      ratio = v.width / v.height;
+      pageRatio = v.width / v.height;
     });
   });
-  const slideWidth = $derived(Math.max(0, Math.min(stageSize.width - 32, (stageSize.height - 24) * ratio)));
+  const frameRatio = $derived(pageRatio >= 1 ? pageRatio : 16 / 9);
+  const slideWidth = $derived(Math.max(0, Math.min(stageSize.width - 32, (stageSize.height - 24) * frameRatio)));
+
+  // --------------------------------------------- the interface, or the code
+
+  const VIEW_KEY = "raytex.slides.view";
+  let view = $state<"interface" | "code">(
+    (() => {
+      try {
+        return localStorage.getItem(VIEW_KEY) === "code" ? "code" : "interface";
+      } catch {
+        return "interface";
+      }
+    })(),
+  );
+  function show(v: "interface" | "code") {
+    view = v;
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* not remembered */
+    }
+  }
+  const frameText = $derived(frame && told ? told.text.slice(frame.from, frame.to) : "");
+  /** The code of the slide typed: written in its place, while it is still one slide. */
+  let codeProblem = $state(false);
+  function codeChanged(text: string) {
+    if (!told || !frame) return;
+    const one = /^\s*\\begin\s*\{frame\}/.test(text) && /\\end\s*\{frame\}\s*$/.test(text) && (text.match(/\\begin\s*\{frame\}/g)?.length ?? 0) === 1;
+    codeProblem = !one;
+    if (!one || text === frameText) return;
+    host.edit({ version: told.version, changes: [{ from: frame.from, to: frame.to, insert: text.trim() }] });
+  }
 
   const sections = $derived(deck.frames.map((f, i) => (i === 0 || f.section !== deck.frames[i - 1].section ? f.section : null)));
 </script>
@@ -248,7 +281,7 @@
         >
           <span class="number">{i + 1}</span>
           <span class="picture">
-            {#if doc}<PageCanvas {doc} page={pagesOf(pages, deck.frames.length, i)[0]} width={150} {revision} />{:else}<span class="blank"></span>{/if}
+            {#if doc}<PageCanvas {doc} page={pagesOf(pages, deck.frames.length, i)[0]} width={150} height={150 / frameRatio} {revision} />{:else}<span class="blank" style:height="{150 / frameRatio}px"></span>{/if}
           </span>
           <span class="name ellipsis" title={f.title}>{f.titlePage ? t("slides.titlePage") : f.title || t("slides.untitled")}</span>
         </button>
@@ -259,7 +292,7 @@
     <main class="center">
       <div class="stage" bind:this={stage}>
         {#if doc && frame && range}
-          <div class="slide-box"><PageCanvas {doc} page={shownPage} width={slideWidth} {revision} /></div>
+          <div class="slide-box"><PageCanvas {doc} page={shownPage} width={slideWidth} height={slideWidth / frameRatio} {revision} /></div>
         {:else if frame}
           <div class="waiting faint">{told?.building ? t("slides.building") : t("slides.notBuilt")}</div>
         {/if}
@@ -277,8 +310,15 @@
       </label>
     </main>
 
-    <aside class="side">
-      {#if frame}
+    <aside class="side" class:code={view === "code"}>
+      <div class="views" role="tablist" aria-label={t("slides.views")}>
+        <button role="tab" class:on={view === "interface"} aria-selected={view === "interface"} data-view="interface" onclick={() => show("interface")}><Icon name="layout" size={13} />{t("slides.interface")}</button>
+        <button role="tab" class:on={view === "code"} aria-selected={view === "code"} data-view="code" onclick={() => show("code")}><Icon name="code" size={13} />{t("slides.code")}</button>
+      </div>
+      {#if frame && view === "code" && told?.path}
+        <FrameCode text={frameText} path={told.path} onchange={codeChanged} />
+        {#if codeProblem}<p class="problem">{t("slides.codeProblem")}</p>{/if}
+      {:else if frame}
         <label class="field">
           <span>{t("slides.title")}</span>
           <input class="input" bind:value={titleField} disabled={frame.titlePage} onfocus={() => (editing = "title")} onblur={saveTitle} onkeydown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} />
@@ -293,7 +333,7 @@
 <style>
   .slides-mode {
     display: grid;
-    grid-template-columns: 196px minmax(0, 1fr) 300px;
+    grid-template-columns: 196px minmax(0, 1fr) var(--side, 300px);
     grid-template-rows: 40px minmax(0, 1fr);
     height: 100%;
     min-height: 0;
@@ -529,6 +569,40 @@
     color: var(--text);
     font: inherit;
     font-size: 13px;
+  }
+  .slides-mode:has(.side.code) {
+    --side: 440px;
+  }
+  .views {
+    display: flex;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-input);
+  }
+  .views button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 26px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .views button.on {
+    background: var(--accent);
+    color: var(--accent-contrast);
+    font-weight: 600;
+  }
+  .problem {
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--warning);
   }
   .side {
     display: flex;

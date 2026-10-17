@@ -1996,7 +1996,21 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     );
     await until(() => pagesShown() >= firstPages + 2 && !build.running, 120_000, "deck built again");
     check("slides mode: the PDF built again is shown", root()?.dataset.drawn === "yes" && pagesShown() >= firstPages + 2, `${firstPages} → ${pagesShown()}`);
-    // One undo in the editor puts back what the mode did last.
+    // Lying down always, and the slide written in its code.
+    const box = document.querySelector<HTMLElement>(".slides-mode .thumb .box")!.getBoundingClientRect();
+    check("slides mode: slides shown lying down", box.width > box.height * 1.2, `${box.width} × ${box.height}`);
+    document.querySelector<HTMLButtonElement>('.slides-mode [data-view="code"]')!.click();
+    await until(() => !!document.querySelector(".slides-mode .frame-code .cm-editor"), 5_000, "code of the slide");
+    const code = EditorView.findFromDOM(document.querySelector<HTMLElement>(".slides-mode .frame-code .cm-editor")!)!;
+    const titleAt = code.state.doc.toString().indexOf("Plan de l'exposé");
+    code.dispatch({ changes: { from: titleAt, to: titleAt + "Plan de l'exposé".length, insert: "Sommaire" }, userEvent: "input.type" });
+    await until(() => slideNames()[1] === "Sommaire" && (editor.textOf(project.info!.main!) ?? "").includes("{Sommaire}"), 10_000, "slide written in its code");
+    // A slide that would no longer be one is not written.
+    const before = editor.textOf(project.info!.main!) ?? "";
+    code.dispatch({ changes: { from: code.state.doc.length - "\\end{frame}".length, to: code.state.doc.length }, userEvent: "delete.backward" });
+    await until(() => !!document.querySelector(".slides-mode .problem"), 5_000, "broken slide refused");
+    check("slides mode: the code of a slide written, a broken one refused", (editor.textOf(project.info!.main!) ?? "") === before && slideNames()[1] === "Sommaire");
+    document.querySelector<HTMLButtonElement>('.slides-mode [data-view="interface"]')!.click();
     action("leave");
     await until(() => ui.mode === "editor" && !root() && !!document.querySelector(".work:not(.hidden)"), 5_000, "back to the editor");
     check("slides mode: back to the editor", ui.mode === "editor" && !!editor.view);
