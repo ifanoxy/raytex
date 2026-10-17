@@ -1,57 +1,65 @@
-// The slides mode seen from the main window: its window opened, told the
-// text of the deck, each build and where the cursor is, and the changes it
-// asks for made in the editor (undone like any other). Loaded when the
-// slides mode is opened, followed only while its window is.
+// The slides mode seen from the application: the window becomes the slides
+// mode (the editor stays behind it, hidden), which is told the text of the
+// deck and each build, and whose changes are made in the editor (undone
+// like any other). Loaded when the slides mode is opened, followed only
+// while it is shown.
 
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { i18n, t } from "../i18n.svelte";
-import * as ipc from "../ipc";
-import { SLIDES_LABEL, type SlidesCommand, type SlidesEdit, type SlidesState } from "../slideswindow";
+import { i18n } from "../i18n.svelte";
+import type { SlidesCommand, SlidesEdit, SlidesHost, SlidesState } from "../slides/host";
 import { debounce, join, samePath } from "../utils";
 import { app } from "./app.svelte";
 import { build } from "./build.svelte";
 import { editor } from "./editor.svelte";
 import { project } from "./project.svelte";
+import { ui } from "./ui.svelte";
 
 class SlidesLink {
-  private listening = false;
+  private listeners = new Set<(state: SlidesState) => void>();
   private stop: (() => void) | null = null;
   private version = 0;
   private lastText: string | null = null;
   private built = 0;
   private lastPdf = "";
-  private readonly sendSoon = debounce(() => this.send(), 120);
+  private readonly sendSoon = debounce(() => this.send(), 80);
 
-  /** Opens the window of the slides mode (or brings it to the front). */
-  async start() {
-    await this.listen();
-    this.watch();
-    await ipc.slidesWindowOpen(t("slides.windowTitle", { name: project.info?.name ?? "" }));
-  }
-
-  private async listen() {
-    if (this.listening) return;
-    this.listening = true;
-    await ipc.on("slides-window:ready", () => {
+  /** What the slides mode is given. */
+  readonly host: SlidesHost = {
+    subscribe: (listener) => {
+      this.listeners.add(listener);
       this.watch();
-      this.send();
-    });
-    await ipc.on("slides-window:edit", (e) => void this.apply(e));
-    await ipc.on("slides-window:command", (c) => void this.command(c));
+      listener(this.state());
+      return () => this.listeners.delete(listener);
+    },
+    edit: (e) => void this.apply(e),
+    command: (c) => void this.command(c),
+  };
+
+  /** The window becomes the slides mode. */
+  open() {
+    // Keys go to the slides, not to the editor left behind.
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    ui.mode = "slides";
+    // No PDF of the deck yet: it is built, its slides are drawn as soon as it is.
+    const path = project.info?.main;
+    if (path && !build.running && !(build.outcome?.pdf && samePath(build.outcome.plan.root, path))) void build.run({ auto: true });
   }
 
-  /** Follows the text, the builds and the cursor while the window is open. */
+  /** Back to the editor. */
+  leave() {
+    ui.mode = "editor";
+    editor.focus();
+  }
+
+  /** Follows the text and the builds while the mode is shown. */
   private watch() {
     if (this.stop) return;
     this.stop = $effect.root(() => {
       $effect(() => {
         void editor.mainEdits;
         void editor.revision;
-        void editor.cursor;
         void build.running;
         void build.outcome;
         void build.status;
-        void app.theme;
         void i18n.lang;
         this.sendSoon();
       });
@@ -84,19 +92,19 @@ class SlidesLink {
       failed: build.status === "failed",
       cursorLine: path && samePath(editor.active, path) ? editor.cursor.line : null,
       lang: i18n.lang === "fr" ? "fr" : "en",
-      theme: app.theme,
     };
   }
 
   private send() {
-    void ipc.tell(SLIDES_LABEL, "slides-window:state", this.state()).catch(() => {});
+    const state = this.state();
+    for (const listener of this.listeners) listener(state);
   }
 
   /** A change asked for on the version told: made in the editor, then built. */
   private async apply(edit: SlidesEdit) {
     const path = project.info?.main;
     if (!path) return;
-    // Made on another text (typed meanwhile): the window is told the text as it is.
+    // Made on another text: the mode is told the text as it is.
     if (edit.version !== this.version) return this.send();
     await editor.rewrite(path, (text) => [...edit.changes].sort((a, b) => b.from - a.from).reduce((out, c) => out.slice(0, c.from) + c.insert + out.slice(c.to), text));
     this.send();
@@ -109,11 +117,12 @@ class SlidesLink {
       this.stop?.();
       this.stop = null;
     } else if (c.kind === "build") void build.run();
+    else if (c.kind === "leave") this.leave();
     else if (c.kind === "reveal" && path) {
+      this.leave();
       await editor.open(path);
       editor.reveal(path, null, c.line);
       editor.focus();
-      void getCurrentWindow().setFocus().catch(() => {});
     }
   }
 }

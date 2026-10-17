@@ -150,7 +150,7 @@ export const actions: Action[] = [
   { id: "view.search", title: "action.searchProject", category: "view", keys: "Mod-Shift-f", icon: "search", when: hasProject, run: () => searchStore.focus(false) },
   { id: "view.replaceProject", title: "action.replaceProject", category: "view", keys: "Mod-Shift-r", icon: "edit", when: hasProject, run: () => searchStore.focus(true) },
   { id: "view.symbols", title: "action.showSymbols", category: "view", icon: "sigma", run: () => ui.showSidebar("symbols") },
-  { id: "view.slides", title: "action.slidesMode", category: "view", icon: "presentation", when: hasProject, run: () => void openSlides() },
+  { id: "view.slides", title: "action.slidesMode", category: "view", icon: "presentation", when: hasProject, run: () => void toggleSlides() },
   { id: "view.snippets", title: "action.showSnippets", category: "view", icon: "snippets", run: () => ui.showSidebar("snippets") },
   { id: "view.commands", title: "action.showCommands", category: "view", icon: "macro", run: () => ui.showSidebar("commands") },
   { id: "view.bibliography", title: "action.showBibliography", category: "view", icon: "book", run: () => ui.showSidebar("bibliography") },
@@ -312,10 +312,11 @@ function openAnswers() {
   ui.openOverlay("pdfChoice");
 }
 
-/** The window of the slides mode: its code loaded when it is opened. */
-async function openSlides() {
+/** The window becomes the slides mode, or the editor again: its code loaded when it is opened. */
+async function toggleSlides() {
   const { slides } = await import("./state/slides.svelte");
-  await slides.start();
+  if (ui.mode === "slides") slides.leave();
+  else slides.open();
 }
 
 async function openAccessible() {

@@ -101,6 +101,8 @@ class UiStore {
   commandsRevision = $state(0);
   /** What the page studio opens on. */
   layoutTab = $state<"margins" | "styles" | "paragraphs">("margins");
+  /** What the window shows: the editor, or the slides of a Beamer deck (the editor stays behind, hidden). */
+  mode = $state<"editor" | "slides">("editor");
   toasts = $state<Toast[]>([]);
   dialog = $state<DialogState | null>(null);
   /** Package or file to highlight in the packages panel. */

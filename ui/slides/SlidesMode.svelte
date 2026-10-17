@@ -1,20 +1,22 @@
 <script lang="ts">
-  // The slides mode: the slides of a Beamer deck as thumbnails on the left
-  // (added from a layout, duplicated, deleted, moved by dragging), the slide
-  // chosen large in the middle with its steps and the notes of the speaker
-  // under it, and its title on the right. The text stays in the main window
-  // (its editor, its undo, its builds): this window shows it and asks for
-  // changes.
+  // The slides mode: the window shows the slides of a Beamer deck as
+  // thumbnails on the left (added from a layout, duplicated, deleted, moved
+  // by dragging or with Alt and the arrows), the slide chosen large in the
+  // middle with its steps and the notes of the speaker under it, and its
+  // title on the right. The text stays with the application (its editor,
+  // left behind, its undo, its builds): the mode is given a host that tells
+  // it the text and makes the changes it asks for.
   import { onDestroy, onMount } from "svelte";
   import type { PDFDocumentProxy } from "pdfjs-dist";
   import { i18n, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { closePdf, loadPdf } from "$lib/pdf/pdfjs";
   import { type DeckEdit, deleteFrame, duplicateFrame, framePages, insertFrame, type Layout, LAYOUTS, moveFrame, pagesOf, parseDeck, setNotes, setTitle } from "$lib/slides/deck";
-  import { SLIDES_LABEL, type SlidesState, type SlidesTest } from "$lib/slideswindow";
-  import { getCurrentWindow } from "@tauri-apps/api/window";
+  import type { SlidesHost, SlidesState } from "$lib/slides/host";
   import Icon from "../components/common/Icon.svelte";
   import PageCanvas from "./PageCanvas.svelte";
+
+  let { host }: { host: SlidesHost } = $props();
 
   let told = $state<SlidesState | null>(null);
   let selected = $state(0);
@@ -32,38 +34,31 @@
 
   // ------------------------------------------------------- what is told
 
-  let unlisten: (() => void) | null = null;
-  onMount(async () => {
-    unlisten = await ipc.on("slides-window:state", (next) => {
+  let stopListening: (() => void) | null = null;
+  onMount(() => {
+    stopListening = host.subscribe((next) => {
       const first = told === null;
       const rebuilt = !told || told.built !== next.built || told.pdf !== next.pdf;
-      const cursorMoved = !told || told.cursorLine !== next.cursorLine;
       told = next;
-      i18n.lang = next.lang;
-      document.documentElement.dataset.theme = next.theme;
-      document.documentElement.lang = next.lang;
+      if (i18n.lang !== next.lang) i18n.lang = next.lang;
       if (rebuilt) void reload(next);
-      // The slide the cursor of the editor is in, when it moves there.
-      if ((first || cursorMoved) && next.cursorLine !== null) {
-        const at = deck.frames.findIndex((f) => {
+      // The slide the cursor of the editor was in.
+      if (first && next.cursorLine !== null) {
+        const at = parseDeck(next.text).frames.findIndex((f) => {
           const end = f.line + (next.text.slice(f.from, f.to).match(/\n/g)?.length ?? 0);
           return next.cursorLine! >= f.line && next.cursorLine! <= end;
         });
         if (at >= 0) select(at);
       }
-      if (selected >= deck.frames.length) selected = Math.max(0, deck.frames.length - 1);
+      const count = parseDeck(next.text).frames.length;
+      if (selected >= count) selected = Math.max(0, count - 1);
     });
-    await ipc.tell("main", "slides-window:ready", null).catch(() => {});
-    window.addEventListener("beforeunload", closed);
   });
   onDestroy(() => {
-    unlisten?.();
+    stopListening?.();
+    host.command({ kind: "closed" });
     closePdf(doc);
   });
-
-  function closed() {
-    void ipc.tell("main", "slides-window:command", { kind: "closed" }).catch(() => {});
-  }
 
   /** The PDF and the `.nav` of a new build. */
   async function reload(s: SlidesState) {
@@ -84,13 +79,13 @@
   /** A change of the text, asked of the main window on the version it told. */
   function apply(edit: DeckEdit | null) {
     if (!edit || !told) return;
-    void ipc.tell("main", "slides-window:edit", { version: told.version, changes: [{ from: edit.from, to: edit.to, insert: edit.insert }] });
+    host.edit({ version: told.version, changes: [{ from: edit.from, to: edit.to, insert: edit.insert }] });
     select(edit.select);
   }
 
   function replaceAll(text: string, at: number) {
     if (!told) return;
-    void ipc.tell("main", "slides-window:edit", { version: told.version, changes: [{ from: 0, to: told.text.length, insert: text }] });
+    host.edit({ version: told.version, changes: [{ from: 0, to: told.text.length, insert: text }] });
     select(at);
   }
 
@@ -149,10 +144,20 @@
     if (moved) replaceAll(moved.text, moved.select);
   }
 
+  /** The slide chosen moved up or down by one. */
+  function shift(by: number) {
+    if (!told) return;
+    const moved = moveFrame(told.text, deck, selected, selected + by);
+    if (moved) replaceAll(moved.text, moved.select);
+  }
+
   function key(e: KeyboardEvent) {
     const target = e.target as HTMLElement;
-    if (target.closest("input, textarea")) return;
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (target.closest("input, textarea, select, .cm-editor, [role='dialog']")) return;
+    if (e.altKey && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      e.preventDefault();
+      shift(e.key === "ArrowDown" ? 1 : -1);
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       select(Math.max(0, Math.min(deck.frames.length - 1, selected + (e.key === "ArrowDown" ? 1 : -1))));
     } else if (e.key === "ArrowRight" && range && shownPage < range[1]) step++;
@@ -185,55 +190,15 @@
   });
   const slideWidth = $derived(Math.max(0, Math.min(stageSize.width - 32, (stageSize.height - 24) * ratio)));
 
-  // ------------------------------------------------------ the self-test
-
-  // Driven from the main window by the self-test, which reads what is shown (not in a release).
-  if (import.meta.env.DEV || import.meta.env.MODE === "selftest") {
-    onMount(() => {
-      const off = ipc.on("slides-window:test", (a) => test(a));
-      return () => void off.then((f) => f());
-    });
-    $effect(() => {
-      void told;
-      void doc;
-      void revision;
-      void notesField;
-      const report = {
-        frames: deck.frames.map((f) => (f.titlePage ? "#title" : f.title)),
-        selected,
-        pages: doc?.numPages ?? 0,
-        drawn: !!doc && !!stage?.querySelector("canvas"),
-        notes: frame?.notes.map((n) => n.text).join("\n\n") ?? "",
-        version: told?.version ?? 0,
-      };
-      void ipc.tell("main", "slides-window:report", report).catch(() => {});
-    });
-  }
-
-  function test(a: SlidesTest) {
-    if (a.kind === "select") select(a.index);
-    else if (a.kind === "add") add(a.layout as Layout);
-    else if (a.kind === "duplicate") duplicate();
-    else if (a.kind === "delete") remove();
-    else if (a.kind === "move") {
-      dragged = a.from;
-      drop(a.to);
-    } else if (a.kind === "title") {
-      titleField = a.text;
-      saveTitle();
-    } else if (a.kind === "notes") {
-      notesField = a.text;
-      saveNotes();
-    } else if (a.kind === "close") void getCurrentWindow().close();
-  }
-
   const sections = $derived(deck.frames.map((f, i) => (i === 0 || f.section !== deck.frames[i - 1].section ? f.section : null)));
 </script>
 
 <svelte:window onkeydown={key} />
 
-<div class="slides-mode" data-window={SLIDES_LABEL}>
+<div class="slides-mode" data-pages={doc?.numPages ?? 0} data-drawn={doc && frame ? "yes" : "no"}>
   <header class="bar">
+    <button class="btn small" data-action="leave" title={t("slides.leaveHint")} onclick={() => host.command({ kind: "leave" })}><Icon name="arrow-left" size={13} />{t("slides.leave")}</button>
+    <span class="sep"></span>
     <div class="add">
       <button class="btn small primary" onclick={() => (layoutsOpen = !layoutsOpen)} disabled={!deck.beamer}><Icon name="plus" size={14} />{t("slides.new")}</button>
       {#if layoutsOpen}
@@ -247,11 +212,13 @@
         </div>
       {/if}
     </div>
-    <button class="icon-btn" title={t("slides.duplicate")} aria-label={t("slides.duplicate")} disabled={!frame} onclick={duplicate}><Icon name="copy" size={15} /></button>
-    <button class="icon-btn" title={t("slides.delete")} aria-label={t("slides.delete")} disabled={!frame} onclick={remove}><Icon name="trash" size={15} /></button>
+    <button class="icon-btn" data-action="duplicate" title={t("slides.duplicate")} aria-label={t("slides.duplicate")} disabled={!frame} onclick={duplicate}><Icon name="copy" size={15} /></button>
+    <button class="icon-btn" data-action="up" title={t("slides.up")} aria-label={t("slides.up")} disabled={!frame || selected === 0} onclick={() => shift(-1)}><Icon name="chevron-up" size={15} /></button>
+    <button class="icon-btn" data-action="down" title={t("slides.down")} aria-label={t("slides.down")} disabled={!frame || selected >= deck.frames.length - 1} onclick={() => shift(1)}><Icon name="chevron-down" size={15} /></button>
+    <button class="icon-btn" data-action="delete" title={t("slides.delete")} aria-label={t("slides.delete")} disabled={!frame} onclick={remove}><Icon name="trash" size={15} /></button>
     <span class="spacer"></span>
     {#if told?.building}<span class="status"><span class="spinner"></span>{t("slides.building")}</span>{:else if told?.failed}<span class="status err"><Icon name="alert-circle" size={13} />{t("slides.failed")}</span>{/if}
-    <button class="btn small" onclick={() => void ipc.tell("main", "slides-window:command", { kind: "build" })}><Icon name="play" size={13} />{t("slides.build")}</button>
+
   </header>
 
   {#if told && !deck.beamer}
@@ -317,7 +284,7 @@
           <input class="input" bind:value={titleField} disabled={frame.titlePage} onfocus={() => (editing = "title")} onblur={saveTitle} onkeydown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()} />
         </label>
         {#if frame.options}<p class="faint options">{t("slides.options", { options: frame.options })}</p>{/if}
-        <button class="btn small" onclick={() => void ipc.tell("main", "slides-window:command", { kind: "reveal", line: frame!.line })}><Icon name="code" size={13} />{t("slides.reveal")}</button>
+        <button class="btn small" data-action="reveal" onclick={() => host.command({ kind: "reveal", line: frame!.line })}><Icon name="code" size={13} />{t("slides.reveal")}</button>
       {/if}
     </aside>
   {/if}
@@ -327,8 +294,9 @@
   .slides-mode {
     display: grid;
     grid-template-columns: 196px minmax(0, 1fr) 300px;
-    grid-template-rows: 44px minmax(0, 1fr);
-    height: 100vh;
+    grid-template-rows: 40px minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
     background: var(--bg);
     color: var(--text);
   }
@@ -343,6 +311,12 @@
   }
   .spacer {
     flex: 1;
+  }
+  .sep {
+    width: 1px;
+    height: 20px;
+    margin: 0 4px;
+    background: var(--border);
   }
   .status {
     display: flex;

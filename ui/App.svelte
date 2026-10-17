@@ -227,6 +227,14 @@
     ui.sidebarWidth = Math.min(560, Math.max(190, ui.sidebarWidth + dx));
   }
 
+  /** The window shows the slides of the deck: the mode is loaded when it is first opened. */
+  const slidesMode = $derived(ui.mode === "slides" && hasProject);
+  const slidesView = $derived(
+    slidesMode
+      ? Promise.all([import("./slides/SlidesMode.svelte"), import("$lib/state/slides.svelte")]).then(([mode, link]) => ({ View: mode.default, host: link.slides.host }))
+      : null,
+  );
+
   function resizePdf(dx: number) {
     if (!workEl) return;
     const width = workEl.getBoundingClientRect().width;
@@ -242,11 +250,11 @@
 <div class="app" class:no-project={!hasProject}>
   <div class="top">
     <Toolbar />
-    {#if hasProject && ui.formatBarVisible}<FormatBar />{/if}
+    {#if hasProject && ui.formatBarVisible && !slidesMode}<FormatBar />{/if}
   </div>
   <div class="main">
-    <ActivityBar />
-    {#if hasProject && ui.sidebarVisible}
+    {#if !slidesMode}<ActivityBar />{/if}
+    {#if hasProject && ui.sidebarVisible && !slidesMode}
       <div class="sidebar" style:width="{ui.sidebarWidth}px">
         <Sidebar />
       </div>
@@ -263,7 +271,13 @@
       {:else if !hasProject}
         <Welcome />
       {:else}
-        <div class="work" bind:this={workEl}>
+        <!-- The slides mode takes the place of the editor and the PDF, left behind, hidden. -->
+        {#if slidesMode}
+          {#await slidesView then view}
+            {#if view}<div class="slides-pane"><view.View host={view.host} /></div>{/if}
+          {/await}
+        {/if}
+        <div class="work" class:hidden={slidesMode} bind:this={workEl}>
           <div class="editor-pane" style:flex={ui.pdfVisible ? `${1 - ui.pdfRatio} 1 0` : "1 1 0"}>
             <EditorArea />
           </div>
@@ -329,6 +343,16 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
+  }
+  /* The slides mode in place of the editor; the editor stays, hidden (its document and its undo). */
+  .slides-pane {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .work.hidden {
+    display: none;
   }
   .work {
     flex: 1;

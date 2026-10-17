@@ -96,7 +96,7 @@
       { label: t("view.pdf"), icon: "panel-right", keys: shortcut("view.pdf"), checked: ui.pdfVisible, run: () => ui.setVisible("pdf", !ui.pdfVisible) },
       { label: t("view.console"), icon: "panel-bottom", keys: shortcut("view.panel"), checked: ui.bottomVisible, run: () => ui.setVisible("bottom", !ui.bottomVisible) },
       { separator: true },
-      actionItem("view.slides"),
+      { ...actionItem("view.slides"), checked: ui.mode === "slides" },
       { separator: true },
       { label: t("view.darkTheme"), icon: "moon", checked: app.theme === "dark", run: () => runAction("view.theme") },
       actionItem("view.zoomIn"),
@@ -195,7 +195,7 @@
   {/if}
 
   {#if deck}
-    <button class="chip slides" onclick={() => runAction("view.slides")} title={t("slides.chipHint")}>
+    <button class="chip slides" class:on={ui.mode === "slides"} aria-pressed={ui.mode === "slides"} onclick={() => runAction("view.slides")} title={t(ui.mode === "slides" ? "slides.leaveHint" : "slides.chipHint")}>
       <Icon name="presentation" size={13} />
       <span>{t("slides.chip")}</span>
     </button>
@@ -335,6 +335,11 @@
     font-size: 12px;
     cursor: pointer;
   }
+  .chip.slides.on {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
   .chip :global(.icon) {
     color: var(--accent);
   }
@@ -424,8 +429,14 @@
       display: none;
     }
   }
+  /* Short of room: the slides mode is offered by its picture alone. */
+  @media (max-width: 1440px) {
+    .chip.slides span {
+      display: none;
+    }
+  }
   @media (max-width: 1100px) {
-    .chip,
+    .chip:not(.slides),
     .live,
     .view-btn span,
     .palette-btn span {
