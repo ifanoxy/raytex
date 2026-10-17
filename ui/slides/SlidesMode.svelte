@@ -14,14 +14,18 @@
   import * as ipc from "$lib/ipc";
   import { closePdf, loadPdf, pageTexts } from "$lib/pdf/pdfjs";
   import { type DeckEdit, deleteFrame, duplicateFrame, framePages, insertFrame, type Layout, LAYOUTS, moveFrame, pagesOf, parseDeck, setNotes, setTitle } from "$lib/slides/deck";
-  import { type Block, type BlockEdit, frameBlocks, indentUnit, replaceBlock } from "$lib/slides/blocks";
+  import { addToColumn, type Block, type BlockEdit, deleteBlock, duplicateBlock, frameBlocks, indentUnit, insertBlock, moveBlockTo, moveToColumn, newBlock, replaceBlock } from "$lib/slides/blocks";
   import type { Frame } from "$lib/slides/deck";
-  import { blockAt, type Box, partAt, partsOf, type Placement, placeBlocks, withPart } from "$lib/slides/place";
+  import { choosePicture, isPicture, pictureFor } from "$lib/slides/pictures";
+  import { blockAt, type Box, dropTarget, type DropTarget, partAt, partsOf, type Placement, placeBlocks, withPart } from "$lib/slides/place";
   import type { SlidesHost, SlidesState } from "$lib/slides/host";
   import { type DeckExport, exportNames, exportText } from "$lib/slides/exports";
   import { type DeckLook, preambleEnd, writeLook } from "$lib/slides/theme";
   import Icon from "../components/common/Icon.svelte";
   import BlockPanel from "./BlockPanel.svelte";
+  import ComponentBar, { BLOCK_TYPE, type Component, COMPONENT_TYPE } from "./ComponentBar.svelte";
+  import SlideTools from "./SlideTools.svelte";
+  import TextTools from "./TextTools.svelte";
   import FrameCode from "./FrameCode.svelte";
   import PresenterView from "./PresenterView.svelte";
   import ThemePanel from "./ThemePanel.svelte";
@@ -243,6 +247,143 @@
     }
   }
 
+  // ------------------------------------------ dragged, dropped, the tools
+
+  /** What is dragged over the slide: a component, or block `n` moved. */
+  let dragComponent = $state<Component | null>(null);
+  let dragBlock = $state<number | null>(null);
+  /** Where it would go. */
+  let dropAt = $state<DropTarget | null>(null);
+
+  const carried = (e: DragEvent) => {
+    const types = [...(e.dataTransfer?.types ?? [])];
+    return types.includes(COMPONENT_TYPE) || types.includes(BLOCK_TYPE) || dragComponent !== null || dragBlock !== null;
+  };
+  function componentOf(e: DragEvent): Component | null {
+    try {
+      const raw = e.dataTransfer?.getData(COMPONENT_TYPE);
+      return raw ? (JSON.parse(raw) as Component) : null;
+    } catch {
+      return null;
+    }
+  }
+  const blockOf = (e: DragEvent) => {
+    const raw = e.dataTransfer?.getData(BLOCK_TYPE);
+    return raw ? Number(raw) : null;
+  };
+
+  function dragOverSlide(e: DragEvent) {
+    if (!carried(e)) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = dragBlock !== null ? "move" : "copy";
+    const p = pointOf(e);
+    dropAt = p ? dropTarget(placement, blocks, p.x, p.y, pageSize, dragBlock ?? -1) : null;
+  }
+
+  function dropOnSlide(e: DragEvent) {
+    if (!carried(e)) return;
+    e.preventDefault();
+    const p = pointOf(e);
+    const moving = blockOf(e) ?? dragBlock;
+    const target = p ? dropTarget(placement, blocks, p.x, p.y, pageSize, moving ?? -1) : null;
+    const component = componentOf(e) ?? dragComponent;
+    dropAt = null;
+    dragComponent = null;
+    dragBlock = null;
+    if (target) put(target, component, moving);
+  }
+
+  /** A component added, or block `moving` moved, where it was dropped. */
+  function put(target: DropTarget, component: Component | null, moving: number | null) {
+    if (component) {
+      const made = newBlock(component.kind, lang, component.variant);
+      blockEdit((tx, f, bs) => {
+        if (target.kind === "between") return insertBlock(tx, f, bs, Math.min(target.before, bs.length) - 1, made);
+        const c = bs[target.block];
+        return c?.kind === "columns" ? { ...replaceBlock(tx, bs, target.block, addToColumn(c, target.column, made, unit)), select: target.block } : null;
+      });
+    } else if (moving !== null) {
+      blockEdit((tx, _f, bs) => (target.kind === "column" ? moveToColumn(tx, bs, moving, target.block, target.column, unit) : moveBlockTo(tx, bs, moving, target.before)));
+    }
+  }
+
+  /** A component added with a click: after the block chosen, else at the end. */
+  function addComponent(c: Component) {
+    const made = newBlock(c.kind, lang, c.variant);
+    const after = block >= 0 ? block : blocks.length - 1;
+    blockEdit((tx, f, bs) => insertBlock(tx, f, bs, Math.min(after, bs.length - 1), made));
+  }
+
+  /** The block chosen, changed by one of its tools. */
+  function toolChange(edit: (b: Block) => Block) {
+    const i = block;
+    const kind = blocks[i]?.kind;
+    blockEdit((tx, _f, bs) => (bs[i]?.kind === kind ? replaceBlock(tx, bs, i, edit(bs[i])) : null));
+  }
+
+  async function toolPicture() {
+    if (!told?.path) return;
+    const chosen = await choosePicture(told.path, told.text);
+    if (chosen) toolChange((b) => ({ ...b, path: chosen }));
+  }
+
+  /** The block chosen written in place: its first part (the body of a box). */
+  function writeBlock() {
+    const b = blocks[block];
+    const parts = b ? partsOf(b) : null;
+    if (!b || !parts || !marked) return;
+    const part = b.kind === "box" ? 1 : 0;
+    const heights = placement?.texts.filter((_, k) => placement!.owner[k] === block).map((x) => x.height) ?? [];
+    const lines = b.kind === "text" || b.kind === "formula" || b.kind === "columns" || (b.kind === "box" && part === 1);
+    inplace = { block, part, kind: b.kind, box: marked, size: heights.length ? Math.min(...heights) : 11, text: parts[part], lines };
+  }
+
+  // Pictures dropped from the system: the application hands them to the slide.
+  let rootEl = $state<HTMLElement | null>(null);
+  /** A point of the screen on the page shown, in its points (null: not on it). */
+  function pointAt(x: number, y: number): { x: number; y: number } | null {
+    const canvas = rootEl?.querySelector<HTMLCanvasElement>(".slide-box canvas");
+    const r = canvas?.getBoundingClientRect();
+    if (!r?.width || x < r.left || x > r.right || y < r.top || y > r.bottom) return null;
+    return { x: ((x - r.left) / r.width) * pageSize.width, y: ((y - r.top) / r.height) * pageSize.height };
+  }
+  async function dropFiles(paths: string[], x: number, y: number) {
+    dropAt = null;
+    const pictures = paths.filter(isPicture);
+    if (!pictures.length || !told?.path) return;
+    const p = pointAt(x, y);
+    const target: DropTarget = p ? dropTarget(placement, blocks, p.x, p.y, pageSize) : { kind: "between", before: blocks.length, line: { x: 0, y: 0, width: 0, height: 0 } };
+    // Put at one place one after the other: in their order.
+    for (const file of target.kind === "between" ? [...pictures].reverse() : pictures) {
+      const path = await pictureFor(file, told.path, told.text);
+      if (path) put(target, { kind: "image", variant: path }, null);
+    }
+  }
+  $effect(() => {
+    const el = rootEl;
+    if (!el) return;
+    const over = (e: Event) => {
+      const { x, y } = (e as CustomEvent<{ x: number; y: number }>).detail;
+      const p = pointAt(x, y);
+      dropAt = p ? dropTarget(placement, blocks, p.x, p.y, pageSize) : null;
+    };
+    const dropped = (e: Event) => {
+      const { paths, x, y } = (e as CustomEvent<{ paths: string[]; x: number; y: number }>).detail;
+      void dropFiles(paths, x, y);
+    };
+    const left = () => (dropAt = null);
+    el.addEventListener("raytex-files-over", over);
+    el.addEventListener("raytex-files", dropped);
+    el.addEventListener("raytex-files-leave", left);
+    return () => {
+      el.removeEventListener("raytex-files-over", over);
+      el.removeEventListener("raytex-files", dropped);
+      el.removeEventListener("raytex-files-leave", left);
+    };
+  });
+
+  let inplaceField = $state<HTMLInputElement | HTMLTextAreaElement | null>(null);
+
   /** The field opened on the slide takes the keys at once. */
   function focusField(el: HTMLElement) {
     el.focus();
@@ -438,7 +579,7 @@
   }}
 />
 
-<div class="slides-mode" data-pages={doc?.numPages ?? 0} data-drawn={doc && frame ? "yes" : "no"} data-placed={placed.filter(Boolean).length}>
+<div class="slides-mode" bind:this={rootEl} data-pages={doc?.numPages ?? 0} data-drawn={doc && frame ? "yes" : "no"} data-placed={placed.filter(Boolean).length}>
   {#if presenting !== null && doc && told?.pdf}
     <PresenterView {doc} pdf={told.pdf} built={told.built} {pages} frames={deck.frames} start={presenting} ratio={frameRatio} {revision} onend={endPresenting} />
   {/if}
@@ -517,10 +658,19 @@
     </nav>
 
     <main class="center">
+      <ComponentBar onadd={addComponent} ondrag={(c) => (dragComponent = c)} />
       <div class="stage" bind:this={stage}>
         {#if doc && frame && range}
           <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-          <div class="slide-box" title={t("slides.slideHint")} onclick={pickOnSlide} ondblclick={writeOnSlide}>
+          <div
+            class="slide-box"
+            title={t("slides.slideHint")}
+            onclick={pickOnSlide}
+            ondblclick={writeOnSlide}
+            ondragover={dragOverSlide}
+            ondragleave={(e) => !(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node) && (dropAt = null)}
+            ondrop={dropOnSlide}
+          >
             <PageCanvas {doc} page={shownPage} width={slideWidth} height={slideWidth / frameRatio} {revision} />
             {#if marked && view === "interface"}
               <span
@@ -529,7 +679,44 @@
                 style:top="{drawnAt.top + marked.y * drawnAt.scale - 4}px"
                 style:width="{marked.width * drawnAt.scale + 8}px"
                 style:height="{marked.height * drawnAt.scale + 8}px"
-              ></span>
+              >
+                <span
+                  class="grip"
+                  draggable="true"
+                  title={t("slides.tools.drag")}
+                  role="button"
+                  tabindex="-1"
+                  ondragstart={(e) => {
+                    e.dataTransfer?.setData(BLOCK_TYPE, String(block));
+                    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+                    dragBlock = block;
+                  }}
+                  ondragend={() => ((dragBlock = null), (dropAt = null))}><Icon name="grip" size={12} /></span>
+              </span>
+              {#if blocks[block] && !inplace && !dropAt}
+                {@const above = drawnAt.top + marked.y * drawnAt.scale - 46}
+                <div class="tools-at" style:left="{Math.max(0, drawnAt.left + marked.x * drawnAt.scale - 4)}px" style:top="{above >= -8 ? above : drawnAt.top + (marked.y + marked.height) * drawnAt.scale + 10}px">
+                  <SlideTools
+                    block={blocks[block]}
+                    steps={range ? range[1] - range[0] + 1 : 1}
+                    {unit}
+                    {lang}
+                    writable={!!partsOf(blocks[block])}
+                    onchange={toolChange}
+                    onduplicate={() => blockEdit((tx, _f, bs) => (bs[block] ? duplicateBlock(tx, bs, block) : null))}
+                    ondelete={() => blockEdit((tx, _f, bs) => (bs[block] ? deleteBlock(tx, bs, block) : null))}
+                    onwrite={writeBlock}
+                    onpicture={toolPicture}
+                  />
+                </div>
+              {/if}
+            {/if}
+            {#if dropAt}
+              {#if dropAt.kind === "between"}
+                <span class="drop-line" style:left="{drawnAt.left + dropAt.line.x * drawnAt.scale}px" style:top="{drawnAt.top + dropAt.line.y * drawnAt.scale - 1}px" style:width="{dropAt.line.width * drawnAt.scale}px"></span>
+              {:else}
+                <span class="drop-box" style:left="{drawnAt.left + dropAt.box.x * drawnAt.scale - 3}px" style:top="{drawnAt.top + dropAt.box.y * drawnAt.scale - 3}px" style:width="{dropAt.box.width * drawnAt.scale + 6}px" style:height="{dropAt.box.height * drawnAt.scale + 6}px"></span>
+              {/if}
             {/if}
             {#if inplace}
               {@const w = inplace}
@@ -545,8 +732,10 @@
                 onclick={(e) => e.stopPropagation()}
                 ondblclick={(e) => e.stopPropagation()}
               >
+                <div class="inplace-tools"><TextTools target={() => inplaceField} /></div>
                 {#if w.lines}
                   <textarea
+                    bind:this={inplaceField}
                     use:focusField
                     rows={Math.max(2, w.text.split("\n").length)}
                     value={w.text}
@@ -555,7 +744,7 @@
                     onblur={(e) => closeInplace(e.currentTarget.value, true)}
                   ></textarea>
                 {:else}
-                  <input use:focusField value={w.text} aria-label={t("slides.writeHere")} onkeydown={inplaceKey} onblur={(e) => closeInplace(e.currentTarget.value, true)} />
+                  <input bind:this={inplaceField} use:focusField value={w.text} aria-label={t("slides.writeHere")} onkeydown={inplaceKey} onblur={(e) => closeInplace(e.currentTarget.value, true)} />
                 {/if}
               </div>
             {/if}
@@ -830,6 +1019,44 @@
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
     border-radius: 3px;
     cursor: pointer;
+  }
+  .grip {
+    position: absolute;
+    top: -11px;
+    left: -11px;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    pointer-events: auto;
+    cursor: grab;
+  }
+  .tools-at {
+    position: absolute;
+    z-index: 6;
+  }
+  .drop-line {
+    position: absolute;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+    pointer-events: none;
+  }
+  .drop-box {
+    position: absolute;
+    border: 2px dashed var(--accent);
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    pointer-events: none;
+  }
+  .inplace-tools {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: -2px;
   }
   .inplace {
     position: absolute;

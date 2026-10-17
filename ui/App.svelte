@@ -182,8 +182,19 @@
 
   /** Files dropped from the system (Finder, Explorer…). */
   async function onDrop(e: { type: string; paths?: string[]; position?: { x: number; y: number } }) {
-    if (e.type !== "drop" || !e.paths?.length || !e.position) return;
     const ratio = window.devicePixelRatio || 1;
+    // In the slides mode, pictures go on the slide, where they are dropped (the mode shows where).
+    const slides = ui.mode === "slides" ? document.querySelector<HTMLElement>(".slides-mode") : null;
+    if (slides) {
+      const at = e.position ? { x: e.position.x / ratio, y: e.position.y / ratio } : null;
+      if (e.type === "leave" || !at) slides.dispatchEvent(new CustomEvent("raytex-files-leave"));
+      else if (e.type === "over" || e.type === "enter") slides.dispatchEvent(new CustomEvent("raytex-files-over", { detail: at }));
+      else if (e.type === "drop" && e.paths?.length && (document.elementFromPoint(at.x, at.y) as HTMLElement | null)?.closest(".slides-mode .stage")) {
+        slides.dispatchEvent(new CustomEvent("raytex-files", { detail: { paths: e.paths, ...at } }));
+        return;
+      }
+    }
+    if (e.type !== "drop" || !e.paths?.length || !e.position) return;
     const target = document.elementFromPoint(e.position.x / ratio, e.position.y / ratio) as HTMLElement | null;
     if (!project.info) {
       // A LaTeX file alone opens in light mode; a folder as a project.

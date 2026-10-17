@@ -4,15 +4,12 @@
   // picture and its width, columns, a formula, the cells of a table, a box
   // and its title), moved, taken out; blocks added after the one chosen. A
   // block changed is written back alone, when its field is left.
-  import { open } from "@tauri-apps/plugin-dialog";
   import { t } from "$lib/i18n.svelte";
-  import { DIRECT, safeStem, stemOf } from "$lib/images";
-  import * as ipc from "$lib/ipc";
-  import { pictureFolder } from "$lib/pictures";
-  import { graphicsPaths } from "$lib/preamble";
-  import { type Block, type BlockEdit, type BlockKind, deleteBlock, type Grid, gridCode, gridColumns, insertBlock, moveBlock, newBlock, oneByOne, replaceBlock, revealStep, setOneByOne, setReveal, tableGrid } from "$lib/slides/blocks";
+  import { type Block, type BlockEdit, type BlockKind, deleteBlock, type Grid, gridCode, gridColumns, insertBlock, moveBlock, moveBlockTo, newBlock, oneByOne, replaceBlock, revealStep, setOneByOne, setReveal, tableGrid } from "$lib/slides/blocks";
   import type { Frame } from "$lib/slides/deck";
-  import { dirname, join, relative } from "$lib/utils";
+  import { choosePicture } from "$lib/slides/pictures";
+  import { BLOCK_TYPE, type Component, COMPONENT_TYPE } from "./ComponentBar.svelte";
+  import TextTools from "./TextTools.svelte";
   import Icon from "../components/common/Icon.svelte";
 
   type Make = (text: string, frame: Frame, blocks: Block[]) => BlockEdit | null;
@@ -60,6 +57,49 @@
     const kind = blocks[i]?.kind;
     onedit((tx, _f, bs) => (bs[i]?.kind === kind ? replaceBlock(tx, bs, i, edit(bs[i])) : null));
   }
+
+  // ------------------------------------------------- dragged in the list
+
+  /** Where what is dragged over the list would go: before block `n` (`blocks.length`: at the end). */
+  let dropBefore = $state<number | null>(null);
+  let moving: number | null = null;
+  const carried = (e: DragEvent) => [...(e.dataTransfer?.types ?? [])].some((t) => t === COMPONENT_TYPE || t === BLOCK_TYPE) || moving !== null;
+
+  function overRow(e: DragEvent, i: number) {
+    if (!carried(e)) return;
+    e.preventDefault();
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    dropBefore = e.clientY < r.top + r.height / 2 ? i : i + 1;
+  }
+
+  function dropRow(e: DragEvent) {
+    if (!carried(e) || dropBefore === null) return;
+    e.preventDefault();
+    const before = dropBefore;
+    dropBefore = null;
+    let component: Component | null = null;
+    try {
+      const raw = e.dataTransfer?.getData(COMPONENT_TYPE);
+      component = raw ? (JSON.parse(raw) as Component) : null;
+    } catch {
+      component = null;
+    }
+    const raw = e.dataTransfer?.getData(BLOCK_TYPE);
+    const from = raw ? Number(raw) : moving;
+    moving = null;
+    if (component) {
+      const made = newBlock(component.kind, lang, component.variant);
+      onedit((tx, f, bs) => insertBlock(tx, f, bs, Math.min(before, bs.length) - 1, made));
+    } else if (from !== null) onedit((tx, _f, bs) => moveBlockTo(tx, bs, from, before));
+  }
+
+  /** The last text field of the open block written in: what its tools act on. */
+  let lastField: HTMLInputElement | HTMLTextAreaElement | null = null;
+  const isWords = (el: Element | null): el is HTMLInputElement | HTMLTextAreaElement =>
+    (el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && el.type === "text")) && !el.classList.contains("mono") && !!el.closest(".block-panel .fields");
+  /** The field the tools act on: the one being written in (the tools take no focus), else the last one. */
+  const wordsField = () => (isWords(document.activeElement) ? document.activeElement : lastField?.isConnected ? lastField : null);
+  const WORDS = ["text", "list", "box", "columns"];
 
   let adding = $state(false);
   function add(kind: BlockKind) {
@@ -122,19 +162,10 @@
   // -------------------------------------------------------------- pictures
 
   /** A picture chosen: its path from the deck, copied into the project when it is not in it. */
-  async function choosePicture(i: number) {
+  async function pickPicture(i: number) {
     if (!path) return;
-    const picked = await open({ multiple: false, title: t("slides.image.chooseTitle"), filters: [{ name: "Images", extensions: DIRECT }] });
-    if (typeof picked !== "string") return;
-    const root = dirname(path);
-    let file = picked;
-    if (relative(root, picked) === picked.replace(/\\/g, "/")) {
-      const ext = picked.split(".").pop() ?? "png";
-      file = await ipc.importImage(picked, join(root, pictureFolder([], graphicsPaths(text))), `${safeStem(stemOf(picked))}.${ext}`).catch(() => "");
-      if (!file) return;
-    }
-    const chosen = relative(root, file).replace(/\.(png|jpe?g|pdf|eps)$/i, "");
-    change(i, (b) => ({ ...b, path: chosen }));
+    const chosen = await choosePicture(path, text);
+    if (chosen) change(i, (b) => ({ ...b, path: chosen }));
   }
 
   // ---------------------------------------------------------------- tables
@@ -159,10 +190,37 @@
 <div class="block-panel">
   <span class="label faint">{t("slides.blocks")}</span>
   {#if !blocks.length}<p class="faint none">{t("slides.noBlocks")}</p>{/if}
-  <div class="blocks" role="list">
+  <div
+    class="blocks"
+    role="list"
+    ondragover={(e) => !blocks.length && carried(e) && (e.preventDefault(), (dropBefore = 0))}
+    ondragleave={(e) => !(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node) && (dropBefore = null)}
+    ondrop={dropRow}
+  >
     {#each blocks as b, i (i)}
-      <div class="block" class:open={i === selected} data-block={i} data-kind={b.kind} role="listitem">
+      <div
+        class="block"
+        class:open={i === selected}
+        class:drop-before={dropBefore === i}
+        class:drop-after={dropBefore === blocks.length && i === blocks.length - 1}
+        data-block={i}
+        data-kind={b.kind}
+        role="listitem"
+        ondragover={(e) => overRow(e, i)}
+      >
         <div class="head">
+          <span
+            class="handle"
+            draggable="true"
+            role="button"
+            tabindex="-1"
+            title={t("slides.tools.drag")}
+            ondragstart={(e) => {
+              e.dataTransfer?.setData(BLOCK_TYPE, String(i));
+              if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+              moving = i;
+            }}
+            ondragend={() => ((moving = null), (dropBefore = null))}><Icon name="grip" size={12} /></span>
           <button class="name" aria-expanded={i === selected} onclick={() => (selected = selected === i ? -1 : i)}>
             <Icon name={ICONS[b.kind]} size={13} />
             <span class="kind">{t(`slides.block.${b.kind}`)}</span>
@@ -179,7 +237,11 @@
           </span>
         </div>
         {#if i === selected}
-          <div class="fields">
+          <div
+            class="fields"
+            onfocusin={(e) => isWords(e.target as Element) && (lastField = e.target as HTMLInputElement | HTMLTextAreaElement)}
+          >
+            {#if WORDS.includes(b.kind)}<TextTools target={wordsField} commit />{/if}
             {#if b.kind === "text"}
               <textarea class="input area" rows="4" value={b.text} onchange={field(i, (x, v) => ({ ...x, text: v }))}></textarea>
             {:else if b.kind === "list"}
@@ -203,7 +265,7 @@
             {:else if b.kind === "image"}
               <div class="row">
                 <input class="input mono" value={b.path} aria-label={t("slides.image.file")} onchange={field(i, (x, v) => ({ ...x, path: v.trim() }))} />
-                <button class="btn small" onclick={() => choosePicture(i)}>{t("slides.image.choose")}</button>
+                <button class="btn small" onclick={() => pickPicture(i)}>{t("slides.image.choose")}</button>
               </div>
               <label class="range">
                 <span>{t("slides.width")}</span>
@@ -328,6 +390,20 @@
   }
   .block.open {
     border-color: var(--accent);
+  }
+  .block.drop-before {
+    box-shadow: 0 -3px 0 var(--accent);
+  }
+  .block.drop-after {
+    box-shadow: 0 3px 0 var(--accent);
+  }
+  .handle {
+    display: grid;
+    place-items: center;
+    width: 16px;
+    margin-left: 4px;
+    color: var(--text-faint);
+    cursor: grab;
   }
   .head {
     display: flex;

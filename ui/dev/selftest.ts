@@ -2087,6 +2087,70 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     enter(field()!);
     await until(() => slideNames()[1] === "Plan", 10_000, "title written in the text");
     check("slides mode: the title written on the slide", titleWas === "Sommaire", titleWas);
+    // Components dragged onto the slide: an alert at the bottom, a list in the
+    // right column; the tools of the block chosen (centred, larger, copied,
+    // deleted); moved in the list; a word in bold; a picture dropped from the system.
+    const canvasBox = () => slideBox().querySelector("canvas")!.getBoundingClientRect();
+    const dragOnto = async (component: string, x: number, y: number) => {
+      const carrier = new DataTransfer();
+      const from = document.querySelector<HTMLElement>(`.slides-mode [data-component="${component}"]`)!;
+      from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: carrier }));
+      const over = new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: carrier, clientX: x, clientY: y });
+      slideBox().dispatchEvent(over);
+      await pause(50);
+      dropSeen = `${over.defaultPrevented} ${!!over.dataTransfer} [${[...(carrier.types ?? [])].join()}] line ${!!document.querySelector(".slides-mode .drop-line")} box ${!!document.querySelector(".slides-mode .drop-box")} at ${x},${y} canvas ${JSON.stringify(canvasBox())}`;
+      slideBox().dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: carrier, clientX: x, clientY: y }));
+      from.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: carrier }));
+    };
+    let dropSeen = "";
+    await until(() => !build.running && Number(root()?.dataset.placed) > 0, 120_000, "slide placed");
+    await dragOnto("box-alertblock", canvasBox().left + canvasBox().width / 2, canvasBox().top + canvasBox().height * 0.88);
+    await until(() => kinds().join() === "columns,box" && slideText().includes("\\begin{alertblock}"), 10_000, "alert dropped").catch((e) => {
+      throw new Error(`${e} (${dropSeen}; blocks ${kinds().join()}; placed ${root()?.dataset.placed})`);
+    });
+    await until(() => !build.running && Number(root()?.dataset.placed) >= 2, 120_000, "alert placed");
+    document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="columns"] .name')!.click();
+    await until(() => !!document.querySelector(".slides-mode .marked"), 10_000, "columns outlined");
+    const cols = document.querySelector<HTMLElement>(".slides-mode .marked")!.getBoundingClientRect();
+    await dragOnto("list", canvasBox().left + canvasBox().width * 0.75, cols.top + cols.height / 2);
+    await until(() => /\\begin\{column\}[^]*\\begin\{column\}[^]*\\begin\{itemize\}[^]*\\end\{column\}\s*\\end\{columns\}/.test(slideText()), 10_000, "list dropped in the right column");
+    check("slides mode: components dragged between blocks and into a column", kinds().join() === "columns,box");
+    // The tools of the alert.
+    document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="box"] .name')!.click();
+    await until(() => !!document.querySelector('.slides-mode .slide-tools [data-align="center"]'), 30_000, "tools of the block");
+    document.querySelector<HTMLButtonElement>('.slides-mode .slide-tools [data-align="center"]')!.click();
+    await until(() => /\\begin\{center\}\s*\\begin\{alertblock\}/.test(slideText()), 10_000, "alert centred");
+    document.querySelector<HTMLButtonElement>('.slides-mode .slide-tools [data-size="1"]')!.click();
+    await until(() => /\\begin\{center\}\s*\\begin\{large\}\s*\\begin\{alertblock\}/.test(slideText()), 10_000, "alert larger");
+    document.querySelector<HTMLButtonElement>('.slides-mode .slide-tools [data-action="duplicate-block"]')!.click();
+    await until(() => kinds().join() === "columns,box,box", 10_000, "alert copied");
+    document.querySelector<HTMLButtonElement>('.slides-mode .slide-tools [data-action="delete-block"]')!.click();
+    await until(() => kinds().join() === "columns,box", 10_000, "copy deleted");
+    check("slides mode: the tools of a block, centred, larger, copied, deleted", (slideText().match(/\\begin\{alertblock\}/g)?.length ?? 0) === 1 && slideText().includes("\\begin{large}"));
+    // Moved above the columns in the list, a word in bold.
+    const carrier = new DataTransfer();
+    const handle = document.querySelectorAll<HTMLElement>(".slides-mode .block .handle")[1];
+    const firstRow = document.querySelectorAll<HTMLElement>(".slides-mode .block")[0];
+    const firstBox = firstRow.getBoundingClientRect();
+    handle.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: carrier }));
+    firstRow.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: carrier, clientX: firstBox.left + 20, clientY: firstBox.top + 3 }));
+    firstRow.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: carrier, clientX: firstBox.left + 20, clientY: firstBox.top + 3 }));
+    handle.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: carrier }));
+    await until(() => kinds().join() === "box,columns", 10_000, "alert moved up in the list");
+    if (!document.querySelector('.slides-mode .block.open[data-kind="box"]')) document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="box"] .name')!.click();
+    await until(() => !!document.querySelector('.slides-mode .block.open[data-kind="box"] textarea'), 5_000, "alert opened");
+    const body = document.querySelector<HTMLTextAreaElement>('.slides-mode .block.open[data-kind="box"] textarea')!;
+    body.focus();
+    body.setSelectionRange(0, body.value.indexOf(" "));
+    document.querySelector<HTMLButtonElement>('.slides-mode .block.open .text-tools [data-tool="bold"]')!.click();
+    await until(() => slideText().includes("\\textbf{"), 10_000, "a word in bold");
+    check("slides mode: a block moved in the list, a word set in bold", kinds().join() === "box,columns" && slideText().indexOf("alertblock") < slideText().indexOf("\\begin{columns}"));
+    // A picture dropped from the system, copied into the project.
+    await until(() => !build.running && Number(root()?.dataset.placed) >= 2, 120_000, "slide placed again");
+    root()!.dispatchEvent(new CustomEvent("raytex-files", { detail: { paths: [`${dir}/Photo de l'expérience.png`], x: canvasBox().left + canvasBox().width / 2, y: canvasBox().top + canvasBox().height * 0.9 } }));
+    await until(() => kinds().join() === "box,columns,image", 15_000, "picture dropped");
+    const copiedPicture = await ipc.pathExists(`${project.info!.main!.replace(/[\\/][^\\/]*$/, "")}/figures/photo-de-l-experience.png`);
+    check("slides mode: a picture dropped from the system, copied into the project", copiedPicture && slideText().includes("{figures/photo-de-l-experience}"), slideText());
     // The look: themes drawn on the slide, one chosen, its colours, the shape 4:3.
     const deckNow = () => editor.textOf(project.info!.main!) ?? "";
     document.querySelector<HTMLButtonElement>('.slides-mode [data-view="look"]')!.click();

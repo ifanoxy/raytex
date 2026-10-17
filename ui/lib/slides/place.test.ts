@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { frameBlocks } from "./blocks.ts";
 import { parseDeck } from "./deck.ts";
-import { blockAt, blockWords, type PageText, partAt, partsOf, placeBlocks, shownWords, withPart } from "./place.ts";
+import { blockAt, blockWords, dropTarget, type PageText, partAt, partsOf, placeBlocks, shownWords, withPart } from "./place.ts";
 
 const DECK = `\\documentclass{beamer}
 \\begin{document}
@@ -64,4 +64,31 @@ test("the part of a block written on the slide where it is clicked", () => {
   assert.equal(partAt(placement, blocks, 300, 140), null);
   assert.deepEqual(withPart(blocks[1], 1, " Les résultats ").items?.map((it) => it.text), ["Le \\textbf{contexte}", "Les résultats"]);
   assert.equal(withPart(blocks[3], 0, "Important").title, "Important");
+});
+
+test("where a thing dropped on the slide goes", () => {
+  const deck = "\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}{T}\n  Haut du texte\n  \\begin{columns}\n    \\begin{column}{0.5\\textwidth}\n      Gauche\n    \\end{column}\n    \\begin{column}{0.5\\textwidth}\n    \\end{column}\n  \\end{columns}\n  Bas du texte\n\\end{frame}\n\\end{document}\n";
+  const blocks = frameBlocks(deck, parseDeck(deck).frames[0]);
+  const placement = placeBlocks([text("T", 10), text("Haut du texte", 50), text("Gauche", 100), text("Bas du texte", 160)], blocks, "T", PAGE);
+  // Between the first text and the columns, at the end.
+  const between = dropTarget(placement, blocks, 100, 75, PAGE);
+  assert.equal(between.kind === "between" && between.before, 1);
+  assert.ok(between.kind === "between" && between.line.y > 60 && between.line.y < 100);
+  assert.deepEqual(dropTarget(placement, blocks, 100, 230, PAGE).kind === "between" && (dropTarget(placement, blocks, 100, 230, PAGE) as { before: number }).before, 3);
+  // In the empty right column.
+  const right = dropTarget(placement, blocks, 350, 104, PAGE);
+  assert.deepEqual(right.kind === "column" && [right.block, right.column], [1, 1]);
+  assert.deepEqual((dropTarget(placement, blocks, 40, 104, PAGE) as { column: number }).column, 0);
+  // The columns being moved are no target.
+  assert.equal(dropTarget(placement, blocks, 350, 104, PAGE, 1).kind, "between");
+});
+
+test("columns whose room is guessed are no target of a drop", () => {
+  const deck = "\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}{T}\n  \\begin{columns}\n    \\begin{column}{0.5\\textwidth}\n      Gauche\n    \\end{column}\n  \\end{columns}\n\\end{frame}\n\\end{document}\n";
+  const blocks = frameBlocks(deck, parseDeck(deck).frames[0]);
+  // Its words not on the page: a room guessed, from the title to the bottom.
+  const placement = placeBlocks([text("T", 10)], blocks, "T", PAGE);
+  assert.deepEqual(placement.guessed, [true]);
+  assert.ok(placement.boxes[0] && placement.boxes[0].height > 100);
+  assert.equal(dropTarget(placement, blocks, 100, 200, PAGE).kind, "between");
 });

@@ -81,6 +81,8 @@ export interface Placement {
   owner: number[];
   /** Where the title of the slide is. */
   title: Box | null;
+  /** The boxes guessed (a block without words, given the room between the blocks around it). */
+  guessed: boolean[];
 }
 
 /**
@@ -157,7 +159,8 @@ export function placeBlocks(texts: PageText[], blocks: Block[], title: string, p
     }
     i = j - 1;
   }
-  return { boxes: out, texts: shown, owner, title: titleTexts.length ? union(titleTexts) : null };
+  const guessed = blocks.map((_, i) => !shown.some((_, k) => owner[k] === i));
+  return { boxes: out, texts: shown, owner, title: titleTexts.length ? union(titleTexts) : null, guessed };
 }
 
 /** The block at a point of the page: the one it is in, else the nearest one above or below. */
@@ -245,4 +248,45 @@ export function partAt(placement: Placement, blocks: Block[], x: number, y: numb
   if (part < 0) return null;
   const mine = placement.texts.filter((t, k) => placement.owner[k] === i && (parts.length === 1 || partOf(parts, t) === part));
   return { block: i, part, box: union(mine), size: Math.min(...mine.map((t) => t.height)) };
+}
+
+// ------------------------------------------------------------ dropped
+
+/** Where a thing dropped on the slide goes: between two blocks (before block `before`), or at the end of a column. */
+export type DropTarget = { kind: "between"; before: number; line: Box } | { kind: "column"; block: number; column: number; box: Box };
+
+/** The column of a columns block a point is in: the room of each, shared by their widths. */
+function columnAt(b: Block, box: Box, page: { width: number }, x: number): { column: number; box: Box } {
+  const cols = b.columns ?? [];
+  const right = Math.max(box.x + box.width, page.width * 0.94);
+  const widths = cols.map((c) => Number(c.width) || 1 / Math.max(1, cols.length));
+  const total = widths.reduce((a, w) => a + w, 0) || 1;
+  let left = box.x;
+  for (let k = 0; k < cols.length; k++) {
+    const w = ((right - box.x) * widths[k]) / total;
+    if (x < left + w || k === cols.length - 1) return { column: k, box: { x: left, y: box.y, width: w, height: box.height } };
+    left += w;
+  }
+  return { column: 0, box };
+}
+
+/** Where a thing dropped at a point of the page goes (`moving`: the block being moved, which is no target). */
+export function dropTarget(placement: Placement | null, blocks: Block[], x: number, y: number, page: { width: number; height: number }, moving = -1): DropTarget {
+  const boxes = placement?.boxes ?? [];
+  for (let i = 0; i < blocks.length; i++) {
+    const b = boxes[i];
+    // Columns seen by their words only: a room guessed for them is no target.
+    if (i === moving || blocks[i].kind !== "columns" || !b || placement?.guessed[i]) continue;
+    if (x >= b.x - 6 && x <= Math.max(b.x + b.width, page.width * 0.94) && y >= b.y - 6 && y <= b.y + b.height + 6) return { kind: "column", block: i, ...columnAt(blocks[i], b, page, x) };
+  }
+  const placed = boxes.map((b, i) => (b && i !== moving ? { b, i } : null)).filter((p): p is { b: Box; i: number } => !!p);
+  const next = placed.find(({ b }) => b.y + b.height / 2 > y);
+  const before = next ? next.i : blocks.length;
+  const above = placed.filter(({ i }) => i < before);
+  const prevBottom = above.length ? Math.max(...above.map(({ b }) => b.y + b.height)) : null;
+  const top = next ? next.b.y : null;
+  const lineY = prevBottom !== null && top !== null ? (prevBottom + top) / 2 : top !== null ? top - 4 : (prevBottom ?? page.height * 0.18) + 4;
+  const left = placed.length ? Math.min(...placed.map(({ b }) => b.x)) : page.width * 0.06;
+  const right = placed.length ? Math.max(...placed.map(({ b }) => b.x + b.width)) : page.width * 0.94;
+  return { kind: "between", before, line: { x: left, y: lineY, width: Math.max(right - left, page.width * 0.3), height: 0 } };
 }

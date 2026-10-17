@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { blockCode, deleteBlock, frameBlocks, gridCode, gridColumns, indentUnit, insertBlock, moveBlock, newBlock, oneByOne, replaceBlock, revealStep, setOneByOne, setReveal, tableGrid } from "./blocks.ts";
+import { alignOf, blockCode, deleteBlock, duplicateBlock, frameBlocks, gridCode, gridColumns, indentUnit, insertBlock, moveBlock, moveBlockTo, moveToColumn, newBlock, oneByOne, replaceBlock, revealStep, setAlign, setOneByOne, setReveal, stepSize, tableGrid } from "./blocks.ts";
 import { parseDeck } from "./deck.ts";
 
 const DECK = `\\documentclass{beamer}
@@ -202,4 +202,65 @@ test("blocks shown at some steps only: around them, by a command, on them", () =
   assert.equal(blockCode(setReveal(blocks[2], 3)), "\\begin{alertblock}<3->{Attention}\n\tSeulement là\n\\end{alertblock}");
   assert.equal(blockCode(setReveal(blocks[1], 1)), "Une phrase");
   assert.equal(setReveal(blocks[1], 2, true).reveal?.overlay, "2");
+});
+
+test("blocks set apart, sized, copied, moved, put in a column", () => {
+  const deck = `\\documentclass{beamer}
+\\begin{document}
+\\begin{frame}{Mise en page}
+  \\begin{center}
+    Un texte centré
+  \\end{center}
+  \\begin{Large}
+    \\begin{itemize}
+      \\item Grand
+    \\end{itemize}
+  \\end{Large}
+  \\begin{flushright}
+    \\includegraphics[width=0.3\\textwidth]{logo}
+  \\end{flushright}
+  \\begin{columns}
+    \\begin{column}{0.48\\textwidth}
+      Gauche
+    \\end{column}
+    \\begin{column}{0.48\\textwidth}
+    \\end{column}
+  \\end{columns}
+  Fin
+\\end{frame}
+\\end{document}
+`;
+  const f = parseDeck(deck).frames[0];
+  const blocks = frameBlocks(deck, f);
+  assert.deepEqual(blocks.map((b) => [b.kind, b.align, b.size]), [["text", "center", undefined], ["list", undefined, "Large"], ["image", "right", undefined], ["columns", undefined, undefined], ["text", undefined, undefined]]);
+  for (const i of [0, 1, 2, 3]) assert.equal(apply(deck, replaceBlock(deck, blocks, i, blocks[i])), deck, `block ${i}`);
+  assert.equal(alignOf(blocks[2]), "right");
+  // Centred, larger, smaller.
+  assert.equal(blockCode(setAlign(blocks[4], "center"), "  ", "  "), "\\begin{center}\n    Fin\n  \\end{center}");
+  assert.equal(blockCode(setAlign(blocks[0], "left")), "Un texte centré");
+  assert.equal(stepSize(blocks[1], 1).size, "LARGE");
+  assert.equal(stepSize(stepSize(newBlock("text", "en"), 1), -1).size, undefined);
+  assert.equal(blockCode(setAlign(blocks[2], "center")), "\\begin{center}\n\t\\includegraphics[width=0.3\\textwidth]{logo}\n\\end{center}");
+  // Centred and larger at once, read back as one block.
+  const both = blockCode(stepSize(setAlign(blocks[4], "center"), 1), "  ", "  ");
+  assert.equal(both, "\\begin{center}\n    \\begin{large}\n      Fin\n    \\end{large}\n  \\end{center}");
+  const again = deck.replace("  Fin\n", `  ${both}\n`);
+  const read = frameBlocks(again, parseDeck(again).frames[0])[4];
+  assert.deepEqual([read.kind, read.align, read.size, read.text], ["text", "center", "large", "Fin"]);
+  assert.equal(apply(again, replaceBlock(again, frameBlocks(again, parseDeck(again).frames[0]), 4, read)), again);
+  // Copied right after; moved to the end, then first.
+  const copied = apply(deck, duplicateBlock(deck, blocks, 4));
+  assert.ok(copied.includes("  Fin\n  Fin\n\\end{frame}"));
+  const last = apply(deck, moveBlockTo(deck, blocks, 0, blocks.length)!);
+  assert.deepEqual(frameBlocks(last, parseDeck(last).frames[0]).map((b) => b.text.split("\n")[0] || b.kind), ["list", "image", "columns", "Fin", "Un texte centré"]);
+  const first = apply(deck, moveBlockTo(deck, blocks, 4, 0)!);
+  assert.equal(frameBlocks(first, parseDeck(first).frames[0])[0].text, "Fin");
+  assert.equal(moveBlockTo(deck, blocks, 1, 2), null);
+  // Into the empty column: the text "Fin" taken out and written there.
+  const moved = apply(deck, moveToColumn(deck, blocks, 4, 3, 1, "  ")!);
+  const cols = frameBlocks(moved, parseDeck(moved).frames[0]);
+  assert.equal(cols.length, 4);
+  assert.deepEqual(cols[3].columns?.map((c) => c.text), ["Gauche", "Fin"]);
+  assert.deepEqual(newBlock("columns", "fr", "3").columns?.length, 3);
+  assert.equal(newBlock("box", "en", "alertblock").env, "alertblock");
 });

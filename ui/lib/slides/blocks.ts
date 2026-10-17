@@ -47,6 +47,10 @@ export interface Block {
    * (`\uncover<2->{…}`), or on it (`\begin{block}<2->`, `\includegraphics<2->`).
    */
   reveal?: Reveal;
+  /** Set apart on its line: centred, to the right, to the left (`\begin{center}`, `flushright`, `flushleft`). */
+  align?: "center" | "right" | "left";
+  /** Its size, when it is not the normal one (`\begin{large}`…). */
+  size?: string;
 }
 
 export interface Reveal {
@@ -63,6 +67,10 @@ const CODES = ["lstlisting", "verbatim", "minted"];
 const SPECIALS = ["titlepage", "maketitle", "tableofcontents", "sectionpage", "subsectionpage", "partpage"];
 const REVEAL_ENVS = ["uncoverenv", "visibleenv", "onlyenv", "invisibleenv"];
 const REVEAL_COMMANDS = ["uncover", "visible", "only", "onslide", "invisible"];
+const ALIGNS: Record<string, "center" | "right" | "left"> = { center: "center", flushright: "right", flushleft: "left" };
+const ALIGN_ENVS = { center: "center", right: "flushright", left: "flushleft" } as const;
+/** The sizes of text, from the smallest; `normalsize` is none. */
+export const SIZES = ["tiny", "scriptsize", "footnotesize", "small", "normalsize", "large", "Large", "LARGE", "huge", "Huge"];
 
 /** The end of the group opened at `open` (`{` or `[`), or -1. */
 function groupEnd(code: string, open: number): number {
@@ -205,7 +213,11 @@ function bodyBlocks(text: string, code: string, from: number, end: number): Bloc
             }
             block = { kind: "image", from: i, to: e, text: "", path: g[3].trim(), width: widthOf(g[2] ?? ""), caption, env: name, ...specOf(g[1]) };
           } else if (/\\begin\s*\{tabular/.test(body)) block = { kind: "table", from: i, to: e, text: dedent(text.slice(i, e)), env: name };
-          else block = { kind: "raw", from: i, to: e, text: dedent(text.slice(i, e)) };
+          else block = name === "center" ? wrapped(text, code, i, e, inner(), { align: "center" }) : { kind: "raw", from: i, to: e, text: dedent(text.slice(i, e)) };
+        } else if (name === "flushright" || name === "flushleft") {
+          block = wrapped(text, code, i, e, inner(), { align: ALIGNS[name] });
+        } else if (SIZES.includes(name) && name !== "normalsize") {
+          block = wrapped(text, code, i, e, inner(), { size: name });
         } else if (name === "table" || name.startsWith("tabular")) {
           block = { kind: "table", from: i, to: e, text: dedent(text.slice(i, e)), env: name };
         } else block = { kind: "raw", from: i, to: e, text: dedent(text.slice(i, e)) };
@@ -269,6 +281,15 @@ function bodyBlocks(text: string, code: string, from: number, end: number): Bloc
   return out;
 }
 
+/** The block an environment of alignment or size holds, set so (raw when it holds several, or one set already). */
+function wrapped(text: string, code: string, from: number, to: number, [a, b]: readonly [number, number], set: Pick<Block, "align" | "size">): Block {
+  const one = bodyBlocks(text, code, a, b);
+  const inner = one[0];
+  // Written around it in this order: what shows it at some steps, its alignment, its size.
+  const free = one.length === 1 && inner.kind !== "pause" && !inner.reveal && !inner.align && !(set.size && inner.size);
+  return free ? { ...inner, from, to, ...set } : { kind: "raw", from, to, text: dedent(text.slice(from, to)) };
+}
+
 /** The overlay written on a block (`<2->`), as when it is shown. */
 function specOf(overlay: string | undefined): { reveal?: Reveal } {
   return overlay === undefined ? {} : { reveal: { form: "spec", name: "", overlay } };
@@ -312,8 +333,11 @@ export function indentUnit(text: string): string {
  */
 export function blockCode(b: Block, indent = "", unit = "\t"): string {
   const r = b.reveal;
-  if (r?.form === "env") return `\\begin{${r.name}}<${r.overlay}>\n${indent}${unit}${bareCode(b, indent + unit, unit)}\n${indent}\\end{${r.name}}`;
-  if (r?.form === "command") return `\\${r.name}<${r.overlay}>{${bareCode(b, indent, unit)}}`;
+  const around = (env: string, spec: string, inner: Block) => `\\begin{${env}}${spec}\n${indent}${unit}${blockCode(inner, indent + unit, unit)}\n${indent}\\end{${env}}`;
+  if (r?.form === "env") return around(r.name, `<${r.overlay}>`, { ...b, reveal: undefined });
+  if (r?.form === "command") return `\\${r.name}<${r.overlay}>{${blockCode({ ...b, reveal: undefined }, indent, unit)}}`;
+  if (b.align && !(b.kind === "image" && b.align === "center")) return around(ALIGN_ENVS[b.align], "", { ...b, align: undefined });
+  if (b.size && b.size !== "normalsize") return around(b.size, "", { ...b, size: undefined });
   return bareCode(b, indent, unit);
 }
 
@@ -357,7 +381,7 @@ function bareCode(b: Block, indent: string, unit: string): string {
       return [`\\begin{figure}`, `${one}\\centering`, `${one}${graphic}`, ...(b.caption ? [`${one}\\caption{${b.caption}}`] : []), `${indent}\\end{figure}`].join("\n");
     }
     case "columns": {
-      const cols = (b.columns ?? []).flatMap((c) => [`${one}\\begin{column}{${c.width || "0.48"}\\textwidth}`, lines(c.text, 2), `${one}\\end{column}`]);
+      const cols = (b.columns ?? []).flatMap((c) => [`${one}\\begin{column}{${c.width || "0.48"}\\textwidth}`, ...(c.text.trim() ? [lines(c.text, 2)] : []), `${one}\\end{column}`]);
       return ["\\begin{columns}", ...cols, `${indent}\\end{columns}`].join("\n");
     }
     case "formula": {
@@ -402,21 +426,24 @@ export function setOneByOne(b: Block, on: boolean): Block {
 }
 
 /** A block of a kind, ready to fill. */
-export function newBlock(kind: BlockKind, lang: "fr" | "en"): Block {
+export function newBlock(kind: BlockKind, lang: "fr" | "en", variant = ""): Block {
   const fr = lang === "fr";
   const base = { from: 0, to: 0, text: "" };
   switch (kind) {
     case "list":
-      return { ...base, kind, ordered: false, items: [{ text: fr ? "Premier point" : "First point", overlay: "" }, { text: fr ? "Deuxième point" : "Second point", overlay: "" }], listOverlay: "" };
+      return { ...base, kind, ordered: variant === "ordered", items: [{ text: fr ? "Premier point" : "First point", overlay: "" }, { text: fr ? "Deuxième point" : "Second point", overlay: "" }], listOverlay: "" };
     case "image":
-      return { ...base, kind, path: "example-image", width: "0.7", caption: "", env: "center" };
+      return { ...base, kind, path: variant || "example-image", width: "0.7", caption: "", env: "center" };
     case "columns":
+      if (variant === "3") return { ...base, kind, columns: [fr ? "Un" : "One", fr ? "Deux" : "Two", fr ? "Trois" : "Three"].map((text) => ({ width: "0.31", text })) };
       return { ...base, kind, columns: [{ width: "0.48", text: fr ? "À gauche" : "On the left" }, { width: "0.48", text: fr ? "À droite" : "On the right" }] };
     case "formula":
       return { ...base, kind, text: "E = mc^2", numbered: false, env: "\\[" };
     case "table":
       return { ...base, kind, text: `\\begin{tabular}{ll}\n\t${fr ? "Nom & Valeur" : "Name & Value"} \\\\\n\ta & 1 \\\\\n\\end{tabular}` };
     case "box":
+      if (variant === "alertblock") return { ...base, kind, env: variant, title: fr ? "Attention" : "Warning", text: fr ? "Le point délicat." : "The tricky point." };
+      if (variant === "exampleblock") return { ...base, kind, env: variant, title: fr ? "Exemple" : "Example", text: fr ? "Un cas concret." : "A concrete case." };
       return { ...base, kind, env: "block", title: fr ? "À retenir" : "Remember", text: fr ? "Ce qu'il faut retenir." : "What to remember." };
     case "code":
       return { ...base, kind, text: "\\begin{verbatim}\nprint(42)\n\\end{verbatim}", env: "verbatim" };
@@ -567,4 +594,82 @@ export function gridColumns(g: Grid, by: 1 | -1): Grid {
   const after = g.spec.slice(last.index! + 1).replace(/^\{[^}]*\}/, "");
   const spec = (g.spec.slice(0, last.index!) + after).replace(/\|\|$/, "|");
   return { ...g, spec, rows: g.rows.map((r) => ({ ...r, cells: r.cells.slice(0, letters.length - 1) })) };
+}
+
+// ------------------------------------------------- set apart, moved, copied
+
+/** How a block is set on its line: a picture centred by its own environment, a table by its grid, the others by theirs. */
+export function alignOf(b: Block): "center" | "right" | "left" {
+  if (b.kind === "image" && (b.env === "center" || b.env === "figure")) return "center";
+  if (b.kind === "table" && !b.align && tableGrid(b.text)?.center) return "center";
+  return b.align ?? "left";
+}
+
+/** A block set centred, to the right or to the left (its own way for a picture and a table). */
+export function setAlign(b: Block, align: "center" | "right" | "left", unit = "\t"): Block {
+  if (b.kind === "image") {
+    if (align === "center") return { ...b, align: undefined, env: b.caption ? "figure" : "center" };
+    return { ...b, env: b.caption ? "figure" : undefined, align: align === "right" ? "right" : undefined };
+  }
+  const g = b.kind === "table" ? tableGrid(b.text) : null;
+  if (g && align !== "right") return { ...b, align: undefined, text: gridCode({ ...g, center: align === "center" }, unit) };
+  return { ...b, align: align === "left" ? undefined : align };
+}
+
+/** A block a size larger (`by` 1) or smaller (-1). */
+export function stepSize(b: Block, by: 1 | -1): Block {
+  const at = SIZES.indexOf(b.size ?? "normalsize");
+  const next = SIZES[Math.max(0, Math.min(SIZES.length - 1, (at < 0 ? 4 : at) + by))];
+  return { ...b, size: next === "normalsize" ? undefined : next };
+}
+
+/** The one change that turns `before` into `after` (what they begin and end with left alone). */
+export function editBetween(before: string, after: string, select: number): BlockEdit {
+  let start = 0;
+  while (start < before.length && start < after.length && before[start] === after[start]) start++;
+  let end = 0;
+  while (end < before.length - start && end < after.length - start && before[before.length - 1 - end] === after[after.length - 1 - end]) end++;
+  return { from: start, to: before.length - end, insert: after.slice(start, after.length - end), select };
+}
+
+const applied = (text: string, e: { from: number; to: number; insert: string }) => text.slice(0, e.from) + e.insert + text.slice(e.to);
+
+/** Block `i` written a second time, right after it. */
+export function duplicateBlock(text: string, blocks: Block[], i: number): BlockEdit {
+  const b = blocks[i];
+  return { from: b.to, to: b.to, insert: `\n${indentAt(text, b.from)}${text.slice(b.from, b.to)}`, select: i + 1 };
+}
+
+/** Block `from` moved before block `to` (`blocks.length`: after the last one). */
+export function moveBlockTo(text: string, blocks: Block[], from: number, to: number): BlockEdit | null {
+  if (to === from || to === from + 1 || !blocks[from]) return null;
+  const b = blocks[from];
+  const cut = deleteBlock(text, blocks, from);
+  const piece = text.slice(b.from, b.to);
+  const without = applied(text, cut);
+  const shift = (p: number) => (p >= cut.to ? p - (cut.to - cut.from) : p);
+  let out: string;
+  if (to < blocks.length) {
+    const at = shift(blocks[to].from);
+    out = `${without.slice(0, at)}${piece}\n${indentAt(text, blocks[to].from)}${without.slice(at)}`;
+  } else {
+    const last = blocks[blocks.length - 1];
+    const at = shift(last.to);
+    out = `${without.slice(0, at)}\n${indentAt(text, last.from)}${piece}${without.slice(at)}`;
+  }
+  return editBetween(text, out, to > from ? to - 1 : to);
+}
+
+/** A columns block with `block` added at the end of its column `k`. */
+export function addToColumn(b: Block, k: number, block: Block, unit = "\t"): Block {
+  const code = blockCode(block, "", unit);
+  return { ...b, columns: b.columns?.map((c, n) => (n === k ? { ...c, text: c.text.trim() ? `${c.text}\n${code}` : code } : c)) };
+}
+
+/** Block `i` taken from where it is and put at the end of column `k` of block `j`. */
+export function moveToColumn(text: string, blocks: Block[], i: number, j: number, k: number, unit = "\t"): BlockEdit | null {
+  if (i === j || !blocks[i] || blocks[j]?.kind !== "columns") return null;
+  const into = replaceBlock(text, blocks, j, addToColumn(blocks[j], k, blocks[i], unit));
+  const out = [deleteBlock(text, blocks, i), into].sort((x, y) => y.from - x.from).reduce(applied, text);
+  return editBetween(text, out, i < j ? j - 1 : j);
 }
