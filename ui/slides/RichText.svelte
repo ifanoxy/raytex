@@ -43,14 +43,21 @@
   let given = "";
   let timer: ReturnType<typeof setTimeout> | undefined;
 
-  const read = (): string => (el ? inlineLatex(fromNodes(el.childNodes)) : given);
+  /** What the text says now; the line break WebKit leaves at the end of an emptied text is not one. */
+  const read = (): string => {
+    if (!el) return given;
+    const nodes = fromNodes(el.childNodes);
+    while (nodes.length && nodes[nodes.length - 1].t === "br") nodes.pop();
+    return inlineLatex(nodes);
+  };
 
   /** Draws the text (not while it is typed in). */
   function draw(latex: string) {
     if (!el) return;
     const nodes = parseInline(latex);
     given = inlineLatex(nodes);
-    el.innerHTML = inlineHtml(nodes);
+    // Empty: one line, as the browsers make it (WebKit makes an empty text taller).
+    el.innerHTML = nodes.length ? inlineHtml(nodes) : "<br>";
     void drawMath();
   }
 
@@ -121,8 +128,9 @@
       if (e.shiftKey) return;
       if (onenter) {
         const [before, after] = around();
-        given = before;
         clearTimeout(timer);
+        // What goes on in the next one leaves this one at once.
+        draw(before);
         onenter(before, after);
       } else el?.blur();
     } else if (e.key === "Enter" && e.shiftKey) {
@@ -257,7 +265,7 @@
   <div
     bind:this={el}
     class="rich {className}"
-    class:empty={!focused && !value.trim()}
+    class:empty={!!placeholder && !focused && !value.trim()}
     contenteditable="true"
     role="textbox"
     tabindex="0"
@@ -313,6 +321,10 @@
     content: attr(data-placeholder);
     color: #9a9aa6;
     pointer-events: none;
+  }
+  /* The placeholder and the line of an empty text on one line. */
+  .rich.empty :global(br:only-child) {
+    display: none;
   }
   .rich :global(.rt-alert) {
     color: #d32f2f;

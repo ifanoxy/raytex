@@ -414,9 +414,12 @@
 
   const sections = $derived(deck.frames.map((f, i) => (i === 0 || f.section !== deck.frames[i - 1].section ? f.section : null)));
   let sideWidth = $state(340);
-  const renderWidth = $derived(Math.max(180, sideWidth - 26));
+  const renderWidth = $derived(Math.max(180, Math.floor((sideWidth - 26) / 2) * 2));
   let thumbsWidth = $state(186);
-  const thumbWidth = $derived(Math.max(110, thumbsWidth - 38));
+  /** The width of a thumbnail: the room of the column, its borders and paddings taken out (even: no blur). */
+  const thumbWidth = $derived(Math.max(110, Math.floor((thumbsWidth - 28) / 2) * 2));
+  /** The slides were added or taken out since the last build: their pages are not those of the PDF. */
+  const thumbsStale = $derived(pages.length > 0 && pages.length !== deck.frames.length);
 </script>
 
 <svelte:window
@@ -515,11 +518,15 @@
             onpointerdown={(e) => drag.start(e, { kind: "slide", value: String(i), label: f.title || t("slides.untitled") }, (p, k) => void dropped(p, k))}
             onclick={() => select(i)}
           >
-            <span class="number">{i + 1}</span>
-            <span class="picture" style:width="{thumbWidth}px" style:height="{thumbWidth / frameRatio}px">
-              {#if doc}<PageCanvas {doc} page={pagesOf(pages, deck.frames.length, i)[0]} width={thumbWidth} height={thumbWidth / frameRatio} {revision} />{/if}
+            <span class="picture" style:height="{thumbWidth / frameRatio}px">
+              {#if doc && !thumbsStale}
+                <PageCanvas {doc} page={pagesOf(pages, deck.frames.length, i)[0]} width={thumbWidth} height={thumbWidth / frameRatio} {revision} />
+              {:else}
+                <!-- Not built yet as it is: its title, until the deck is built again. -->
+                <span class="card"><span class="ellipsis">{f.titlePage ? t("slides.titlePage") : f.title || t("slides.untitled")}</span></span>
+              {/if}
             </span>
-            <span class="name ellipsis" title={f.title}>{f.titlePage ? t("slides.titlePage") : f.title || t("slides.untitled")}</span>
+            <span class="caption"><span class="number">{i + 1}</span><span class="name ellipsis" title={f.title}>{f.titlePage ? t("slides.titlePage") : f.title || t("slides.untitled")}</span></span>
           </button>
           <span class="thumb-tools">
             <button class="icon-btn tiny" data-action="duplicate" title={t("slides.duplicate")} aria-label={t("slides.duplicate")} onclick={() => deckChange((text, d) => duplicateFrame(text, d, i))}><Icon name="copy" size={12} /></button>
@@ -819,7 +826,10 @@
     padding: 10px 8px 16px;
     border-right: 1px solid var(--border);
     background: var(--bg-elev);
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    /* The room of the scrollbar kept: the width of the thumbnails does not change when it shows. */
+    scrollbar-gutter: stable;
   }
   .section {
     margin: 6px 4px 2px;
@@ -835,11 +845,11 @@
     border-top-color: var(--accent);
   }
   .thumb {
-    display: grid;
-    grid-template-columns: 14px 1fr;
-    gap: 3px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     width: 100%;
-    padding: 5px 4px;
+    padding: 4px;
     border: 2px solid transparent;
     border-radius: var(--radius);
     background: none;
@@ -858,21 +868,37 @@
   .thumb.moving {
     opacity: 0.4;
   }
-  .number {
-    grid-row: 1 / 3;
-    font-size: 11px;
-    color: var(--text-faint);
-  }
   .picture {
+    position: relative;
     display: block;
+    width: 100%;
     border-radius: 3px;
-    background: var(--bg-input);
+    background: #fff;
     overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   }
-  .name {
-    grid-column: 2;
+  .number {
+    margin-right: 6px;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .card {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    padding: 0 8px;
+    color: #555;
+    font-size: 11px;
+  }
+  .caption {
+    display: flex;
+    min-width: 0;
+    padding: 0 2px;
     font-size: 11.5px;
     color: var(--text-muted);
+  }
+  .name {
+    min-width: 0;
   }
   .thumb-tools {
     position: absolute;
@@ -924,7 +950,9 @@
     border-left: 1px solid var(--border);
     background: var(--bg-elev);
     min-height: 0;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
   .views {
     display: flex;

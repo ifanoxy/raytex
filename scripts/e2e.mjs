@@ -8,6 +8,7 @@
 //   node scripts/e2e.mjs fixes files        # some groups
 //   E2E_OUT=out node scripts/e2e.mjs        # where logs and screenshots go
 //   E2E_SHOTS=0 node scripts/e2e.mjs        # no screenshots (they are of the whole screen)
+//   E2E_SHOTS=window node scripts/e2e.mjs   # macOS: only the window of the application
 //   E2E_BUILT=1 node scripts/e2e.mjs        # the built application, not the development one
 //   E2E_KEEP=1 node scripts/e2e.mjs         # the copy of the project is kept (what was exported)
 //
@@ -39,6 +40,8 @@ const TIMEOUT_MS = Number(process.env.E2E_TIMEOUT_MS ?? 20 * 60_000);
 // The screenshots are of the whole screen: on a personal computer they
 // show whatever else is open, and can be turned off.
 const SHOTS = process.env.E2E_SHOTS !== "0";
+// E2E_SHOTS=window (macOS): only the window of the application the scenes run, nothing else of the screen.
+const WINDOW_SHOTS = process.env.E2E_SHOTS === "window" && process.platform === "darwin";
 const BUILT = process.env.E2E_BUILT === "1";
 
 mkdirSync(out, { recursive: true });
@@ -57,6 +60,25 @@ function screenshot(file) {
   } else if (process.platform === "darwin") {
     spawnSync("screencapture", ["-x", file], { stdio: "ignore" });
   }
+}
+
+/** The window of the application started from process `root` (another RayTeX open is left out), or null. */
+function appWindow(root) {
+  const pids = new Set([root]);
+  const table = spawnSync("ps", ["-A", "-o", "pid=,ppid="], { encoding: "utf8" }).stdout ?? "";
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const line of table.split("\n")) {
+      const [pid, ppid] = line.trim().split(/\s+/).map(Number);
+      if (pids.has(ppid) && !pids.has(pid)) {
+        pids.add(pid);
+        grew = true;
+      }
+    }
+  }
+  const jxa = 'ObjC.import("CoreGraphics"); const ns = ObjC.castRefToObject($.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, 0)); const out = []; for (let i = 0; i < ns.count; i++) { const w = ns.objectAtIndex(i); out.push([ObjC.unwrap(w.objectForKey("kCGWindowNumber")), ObjC.unwrap(w.objectForKey("kCGWindowOwnerPID")), ObjC.unwrap(w.objectForKey("kCGWindowLayer"))]); } JSON.stringify(out)';
+  const listed = spawnSync("osascript", ["-l", "JavaScript", "-e", jxa], { encoding: "utf8" }).stdout || "[]";
+  return JSON.parse(listed).find(([, pid, layer]) => pids.has(pid) && layer === 0)?.[0] ?? null;
 }
 
 function killTree(child) {
@@ -163,7 +185,10 @@ async function run(group) {
     for (const m of text.matchAll(/scene: ([a-z0-9-]+)/g)) {
       if (seen.has(m[1])) continue;
       seen.add(m[1]);
-      if (SHOTS) screenshot(join(out, `${group}-${m[1]}.png`));
+      if (WINDOW_SHOTS) {
+        const id = appWindow(child.pid);
+        if (id) spawnSync("screencapture", ["-x", "-o", `-l${id}`, join(out, `${group}-${m[1]}.png`)], { stdio: "ignore" });
+      } else if (SHOTS) screenshot(join(out, `${group}-${m[1]}.png`));
     }
     const end = new RegExp(`${group} scenes (PASSED|FAILED)|selftest: FAILED`).exec(text);
     if (end && !verdict) verdict = end[1] ?? "FAILED";

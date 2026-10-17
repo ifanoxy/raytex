@@ -295,7 +295,7 @@
     <button class="remove" title={t("slides.blockDelete")} aria-label={t("slides.blockDelete")} onclick={() => onchange(() => null)}><Icon name="x" size={11} /></button>
   {/if}
   {#if block.reveal}
-    <span class="step-chip" title={rs ? t("slides.reveal.chip", { n: rs.step }) : block.reveal.overlay}>{rs ? t("slides.canvas.step", { n: rs.step }) + (rs.only ? "" : "+") : block.reveal.overlay}</span>
+    <span class="step-chip" title={rs ? t("slides.reveal.chip", { n: rs.step }) : block.reveal.overlay}>{rs ? `${rs.step}${rs.only ? "" : "+"}` : block.reveal.overlay}</span>
   {/if}
 
   {#if block.kind === "text"}
@@ -310,9 +310,11 @@
       onfocus={() => ontext?.()}
     />
   {:else if block.kind === "list"}
-    <svelte:element this={block.ordered ? "ol" : "ul"} class="items">
+    <svelte:element this={block.ordered ? "ol" : "ul"} class="items" class:center={block.align === "center"} class:right={block.align === "right"}>
       {#each block.items ?? [] as item, k (k)}
         <li>
+          <!-- The mark next to its text, wherever the text is set (as Beamer puts it). -->
+          <span class="mark" aria-hidden="true">{block.ordered ? `${k + 1}.` : "•"}</span>
           <RichText
             bind:this={texts[k]}
             value={item.text}
@@ -392,9 +394,9 @@
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <table class="grid" data-cell={cell ? `${cell.r}:${cell.c}` : undefined} onkeydown={tableKey}>
         <tbody>
-          {#each grid.rows as row, r (r)}
+          {#each grid.rows as row, r (`${r}:${grid.rows.length}x${width}`)}
             <tr class:ruled={!!row.rule} class:last={r === grid.rows.length - 1 && !!grid.end}>
-              {#each Array.from({ length: width }, (_, c) => c) as c (c)}
+              {#each Array.from({ length: width }, (_, c) => c) as c (`${c}:${grid.rows.length}x${width}`)}
                 <td
                   onpointerdown={() => (cell = { r, c })}
                   class:bar-left={(cols?.bars[c] ?? 0) > 0}
@@ -472,8 +474,8 @@
   }
   .remove {
     position: absolute;
-    top: -0.5em;
-    right: -0.5em;
+    top: 0.1em;
+    right: 0.1em;
     z-index: 3;
     display: grid;
     place-items: center;
@@ -490,28 +492,60 @@
     opacity: 1;
   }
   .step-chip {
+    /* In the margin, under the handle (its em is 0.6 of the slide's). */
     position: absolute;
-    top: -0.9em;
-    right: 0;
+    top: 2.6em;
+    left: -2.5em;
     z-index: 2;
-    padding: 0 0.5em;
-    border-radius: 0.7em;
-    background: #3333b3;
+    min-width: 1.9em;
+    padding: 0 0.3em;
+    border-radius: 0.8em;
+    background: var(--slide-accent, #3333b3);
     color: #fff;
-    font-size: 0.55em;
+    font-size: 0.6em;
     font-weight: 600;
     line-height: 1.6em;
+    text-align: center;
     pointer-events: none;
+  }
+  .nested > .step-chip {
+    top: 0;
+    left: auto;
+    right: 0;
   }
   .items {
     margin: 0;
-    padding-left: 1.4em;
+    padding: 0 0 0 0.5em;
+    list-style: none;
   }
   .items li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45em;
     margin: 0.15em 0;
   }
-  ul.items li::marker {
+  .items li > :global(.rich-wrap) {
+    flex: 1;
+    min-width: 0;
+  }
+  .items.center li {
+    justify-content: center;
+  }
+  .items.right li {
+    justify-content: flex-end;
+  }
+  .items.center li > :global(.rich-wrap),
+  .items.right li > :global(.rich-wrap) {
+    flex: 0 1 auto;
+  }
+  .mark {
+    flex: none;
+    min-width: 0.7em;
     color: var(--slide-accent, #3333b3);
+    text-align: right;
+  }
+  ul.items .mark {
+    font-size: 1.1em;
   }
   .picture-row {
     width: 100%;

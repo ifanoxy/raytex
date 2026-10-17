@@ -2076,6 +2076,7 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     document.querySelector<HTMLButtonElement>('.slides-mode .context [data-tool="b"]')!.click();
     word.blur();
     await until(() => slideText().includes("\\textbf{Le} contexte"), 10_000, "a word in bold");
+    await scene("slides-written");
     check("slides mode: written on the slide, points and Enter, a word in bold", /\\begin\{itemize\}[^]*précis[^]*\\textbf\{Le\} contexte[^]*\\end\{itemize\}/.test(slideText()), slideText());
     pointer("pointerdown", blockEl("list"), 0, 0);
     await until(() => !!document.querySelector('.slides-mode .context [data-align="center"]'), 5_000, "tools of the list");
@@ -2099,6 +2100,7 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     await until(() => /\\begin\{column\}[^]*\\begin\{column\}[^]*\\\[[^]*\\end\{column\}\s*\\end\{columns\}/.test(slideText()), 10_000, "formula dropped in the right column");
     await dragTo(blockEl("list").querySelector<HTMLElement>(".handle")!, () => document.querySelector<HTMLElement>('.slides-mode .gap[data-drop="before:0"]')!);
     await until(() => kinds().join() === "list,box,columns", 10_000, "list moved first");
+    await scene("slides-dragged");
     check("slides mode: elements dragged between others and into a column, moved by their handle", kinds().join() === "list,box,columns" && slideText().indexOf("uncoverenv") < slideText().indexOf("alertblock"));
     // Copied and deleted by their tools; the delete key too.
     pointer("pointerdown", blockEl("box"), 0, 0);
@@ -2144,6 +2146,7 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     await until(() => /\\begin\{tabular\}\{\|c\|l\|l\|\}/.test(slideText()), 10_000, "table in a grid");
     document.querySelector<HTMLButtonElement>('.slides-mode .context [data-action="table-head"]')!.click();
     await until(() => /\\textbf\{(Nom|Name)\}/.test(slideText()), 10_000, "head of the table");
+    await scene("slides-table");
     const tableCode = /\\begin\{tabular\}[^]*?\\end\{tabular\}/.exec(slideText())?.[0] ?? "";
     check(
       "slides mode: a table managed, cells, Enter, a column put, a row taken out, its lines, its head",
@@ -2164,6 +2167,7 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     // drawn on the title page and the slide, nothing written before Apply.
     action("theme");
     await until(() => !!document.querySelector('.theme-studio .theme[data-theme="Warsaw"] canvas') && document.querySelectorAll(".theme-studio .preview canvas").length === 2, 120_000, "themes drawn");
+    await scene("slides-theme");
     const lookBefore = deckNow();
     const studio = (selector: string) => document.querySelector<HTMLElement>(`.theme-studio ${selector}`)!;
     studio('.theme[data-theme="Warsaw"]').click();
@@ -2198,6 +2202,7 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     await pause(150);
     action("present");
     await until(() => !!presenter() && presenter()!.dataset.drawn === "1", 20_000, "presentation drawn");
+    await scene("slides-presenter");
     const opened = await ipc.presentShown();
     document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
     await until(() => presenter()?.dataset.drawn === "2", 10_000, "next step drawn");

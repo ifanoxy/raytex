@@ -689,6 +689,8 @@ async function simulateBuild(only: string | null = null) {
 /** The sets of the TikZ whiteboard kept during this session of the simulated engine. */
 let mockSets: { id: string; name: string; code: string }[] = [{ id: "m1", name: "Capteur", code: "\\draw[thick] (0,0) rectangle (2,1);\n\\draw[->] (2,0.5) -- (3,0.5);\n\\node at (1,0.5) {$S$};" }];
 
+const deckMode = () => new URLSearchParams(location.search).has("deck");
+
 /** A Beamer deck in place of the main file (`?deck` in the address): to look at the slides mode. */
 const DECK = String.raw`\documentclass[aspectratio=169]{beamer}
 \usetheme{Madrid}
@@ -756,6 +758,11 @@ export function installMocks() {
         case "save_project_config":
           return { ...info(), config: a.config };
         case "read_text_file": {
+          // The deck built for real, when it is there (`public/dev/`, not in git): its .nav.
+          if (deckMode() && String(a.path).endsWith(".nav")) {
+            const nav = await fetch("/dev/deck.nav").then((r) => (r.ok ? r.text() : null)).catch(() => null);
+            if (nav) return { text: nav, lossy: false, modified: Date.now() };
+          }
           const text = files[a.path as string];
           if (text === undefined) throw new Error(`${a.path}: no such file`);
           return { text, lossy: false, modified: Date.now() };
@@ -764,7 +771,11 @@ export function installMocks() {
           files[a.path as string] = a.text as string;
           return Date.now();
         case "read_binary_file":
-          if (String(a.path).endsWith(".pdf")) return pdfBytes();
+          if (String(a.path).endsWith(".pdf")) {
+            // The deck built for real (`public/dev/deck.pdf`, not in git), else a page drawn here.
+            const real = deckMode() ? await fetch("/dev/deck.pdf").then((r) => (r.ok && r.headers.get("content-type")?.includes("pdf") ? r.arrayBuffer() : null)).catch(() => null) : null;
+            return real ?? pdfBytes();
+          }
           // A picture from elsewhere on the computer (the image window): something to draw and to weigh.
           if (/\.(png|jpe?g)$/i.test(String(a.path))) return samplePicture(String(a.path));
           throw new Error("not found");

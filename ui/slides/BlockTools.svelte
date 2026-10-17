@@ -211,8 +211,8 @@
     display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px;
-    padding: 3px 5px;
+    gap: 3px;
+    padding: 3px 4px;
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-lg);
     background: var(--bg-elev-2);
@@ -231,7 +231,7 @@
   select + .group,
   .group + .tool,
   .tool + select {
-    padding-left: 5px;
+    padding-left: 4px;
     border-left: 1px solid var(--border);
   }
   .tool {
@@ -281,6 +281,7 @@
   }
   .mini {
     width: auto;
+    max-width: 130px;
     height: 26px;
     padding: 0 4px;
     font-size: 12px;

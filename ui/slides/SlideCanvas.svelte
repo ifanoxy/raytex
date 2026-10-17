@@ -189,7 +189,8 @@
     font-family: "Latin Modern Sans", "CMU Sans Serif", "Helvetica Neue", Arial, sans-serif;
   }
   .frame-title {
-    padding: 0.55em 1.2em 0.45em;
+    /* Its text where the text of the slide begins. */
+    padding: 0.38em calc(1.31em + 1px) 0.31em;
     border-radius: 4px 4px 0 0;
     background: color-mix(in srgb, var(--slide-accent, #3333b3) 12%, #fff);
     color: var(--slide-accent, #3333b3);
@@ -260,6 +261,11 @@
     font-size: 12px;
     font-weight: 600;
     color: var(--text-muted);
+  }
+  @media (max-width: 1500px) {
+    .context .what {
+      display: none;
+    }
   }
   .context .hint {
     font-size: 12px;

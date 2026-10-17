@@ -1,8 +1,10 @@
 <script lang="ts">
   // A page of the PDF of the deck, drawn as wide as asked, or fitted in a
   // box when its height is given too (a page standing up stays whole in a
-  // frame lying down), sharp on a screen of high density; drawn again when
-  // the PDF or the size changes.
+  // frame lying down), sharp on a screen of high density. Drawn apart and
+  // then shown at once: the page shown stays until the new one is ready (no
+  // white between two builds); not drawn again for a size that hardly
+  // changed.
   import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 
   let { doc, page, width, height = 0, revision = 0 }: { doc: PDFDocumentProxy | null; page: number; width: number; height?: number; revision?: number } = $props();
@@ -10,33 +12,45 @@
   let canvas = $state<HTMLCanvasElement | null>(null);
   let drawn = $state({ width: 0, height: 0 });
   let task: RenderTask | null = null;
+  /** What the canvas shows: the page, its document, its build, its size. */
+  let shown = { doc: null as PDFDocumentProxy | null, page: 0, revision: -1, width: 0, height: 0 };
 
   $effect(() => {
     void revision;
     const d = doc;
     const c = canvas;
-    const w = width;
-    const h = height;
+    const w = Math.round(width);
+    const h = Math.round(height);
     const n = page;
     if (!d || !c || w <= 0 || n < 1 || n > d.numPages) {
       // A page the PDF does not have (yet): nothing drawn.
       drawn = { width: 0, height: 0 };
+      shown = { ...shown, doc: null };
       return;
     }
+    // The same page at nearly the same size: kept as it is.
+    if (shown.doc === d && shown.page === n && shown.revision === revision && Math.abs(shown.width - w) < 3 && Math.abs(shown.height - h) < 3) return;
     let gone = false;
     void (async () => {
-      const p = await d.getPage(n);
-      if (gone) return;
+      const p = await d.getPage(n).catch(() => null);
+      if (gone || !p) return;
       const base = p.getViewport({ scale: 1 });
       const ratio = Math.max(1, window.devicePixelRatio || 1);
       const scale = h > 0 ? Math.min(w / base.width, h / base.height) : w / base.width;
       const viewport = p.getViewport({ scale: scale * ratio });
-      drawn = { width: base.width * scale, height: base.height * scale };
+      // Drawn on a canvas of its own, then copied at once on the one shown.
+      const off = document.createElement("canvas");
+      off.width = Math.ceil(viewport.width);
+      off.height = Math.ceil(viewport.height);
       task?.cancel();
-      c.width = Math.ceil(viewport.width);
-      c.height = Math.ceil(viewport.height);
-      task = p.render({ canvas: c, viewport });
-      await task.promise.catch(() => {});
+      task = p.render({ canvas: off, viewport });
+      const ok = await task.promise.then(() => true).catch(() => false);
+      if (gone || !ok) return;
+      c.width = off.width;
+      c.height = off.height;
+      c.getContext("2d")?.drawImage(off, 0, 0);
+      drawn = { width: base.width * scale, height: base.height * scale };
+      shown = { doc: d, page: n, revision, width: w, height: h };
     })();
     return () => {
       gone = true;
