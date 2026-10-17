@@ -2126,6 +2126,27 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
       if (!closed) await pause(100);
     }
     check("slides mode: presented in a window of its own, step by step, then ended", opened && closed && !presenter(), `${opened} ${closed}`);
+    // Exported apart: handouts four to a page, the slides with their notes.
+    const { exportText } = await import("$lib/slides/exports");
+    const { loadPdf, closePdf } = await import("$lib/pdf/pdfjs");
+    const framesNow = parseDeck(deckNow()).frames.length;
+    const pagesOf = async (file: string) => {
+      const doc = await loadPdf(await ipc.readBinaryFile(file));
+      const n = doc.numPages;
+      closePdf(doc);
+      return n;
+    };
+    const handout = `${projectsDir}/expose-handout.pdf`;
+    const withNotes = `${projectsDir}/expose-notes.pdf`;
+    const madeHandout = await pdfExport.start(handout, undefined, null, { name: "handout-4", text: exportText(deckNow(), { kind: "handout", perPage: 4 }) });
+    const madeNotes = madeHandout && (await pdfExport.start(withNotes, undefined, null, { name: "notes", text: exportText(deckNow(), { kind: "notes" }) }));
+    const handoutPages = madeHandout ? await pagesOf(handout) : 0;
+    const notesPages = madeNotes ? await pagesOf(withNotes) : 0;
+    check(
+      "slides mode: exported as handouts four to a page and with the notes, the deck untouched",
+      handoutPages === Math.ceil(framesNow / 4) && notesPages > pagesShown() && !deckNow().includes("handout") && !deckNow().includes("show notes"),
+      `${framesNow} slides, handout ${handoutPages}, notes ${notesPages} (slides ${pagesShown()})`,
+    );
     action("leave");
     await until(() => ui.mode === "editor" && !root() && !!document.querySelector(".work:not(.hidden)"), 5_000, "back to the editor");
     check("slides mode: back to the editor", ui.mode === "editor" && !!editor.view);

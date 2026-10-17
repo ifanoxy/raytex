@@ -6,7 +6,7 @@
 
 import { i18n } from "../i18n.svelte";
 import type { SlidesCommand, SlidesEdit, SlidesHost, SlidesState } from "../slides/host";
-import { debounce, join, samePath } from "../utils";
+import { basename, debounce, dirname, join, samePath } from "../utils";
 import { app } from "./app.svelte";
 import { build } from "./build.svelte";
 import { editor } from "./editor.svelte";
@@ -117,6 +117,15 @@ class SlidesLink {
       this.stop?.();
       this.stop = null;
     } else if (c.kind === "build") void build.run();
+    else if (c.kind === "export" && path) {
+      // Where, then built apart and followed in the window of the export.
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const stem = basename(path).replace(/\.[^.]+$/, "");
+      const dest = await save({ defaultPath: join(dirname(path), `${stem}${c.suffix}.pdf`), filters: [{ name: "PDF", extensions: ["pdf"] }] });
+      if (!dest) return;
+      const { pdfExport } = await import("./pdfexport.svelte");
+      await pdfExport.start(dest, undefined, null, { name: c.name, text: c.text });
+    }
     else if (c.kind === "leave") this.leave();
     else if (c.kind === "reveal" && path) {
       this.leave();

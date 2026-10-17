@@ -18,6 +18,7 @@
   import type { Frame } from "$lib/slides/deck";
   import { blockAt, type Box, partAt, partsOf, type Placement, placeBlocks, withPart } from "$lib/slides/place";
   import type { SlidesHost, SlidesState } from "$lib/slides/host";
+  import { type DeckExport, exportNames, exportText } from "$lib/slides/exports";
   import { type DeckLook, preambleEnd, writeLook } from "$lib/slides/theme";
   import Icon from "../components/common/Icon.svelte";
   import BlockPanel from "./BlockPanel.svelte";
@@ -323,7 +324,7 @@
       select(Math.max(0, Math.min(deck.frames.length - 1, selected + (e.key === "ArrowDown" ? 1 : -1))));
     } else if (e.key === "ArrowRight" && range && shownPage < range[1]) step++;
     else if (e.key === "ArrowLeft" && step > 0) step--;
-    else if (e.key === "Escape" && layoutsOpen) layoutsOpen = false;
+    else if (e.key === "Escape" && (layoutsOpen || exportsOpen)) layoutsOpen = exportsOpen = false;
     else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "d") {
       e.preventDefault();
       duplicate();
@@ -410,6 +411,14 @@
     (document.activeElement as HTMLElement | null)?.blur?.();
     presenting = page;
   }
+  let exportsOpen = $state(false);
+  /** An export of the deck, built apart from a text of its own. */
+  function exportDeck(e: DeckExport) {
+    exportsOpen = false;
+    if (!told) return;
+    host.command({ kind: "export", ...exportNames(e, lang), text: exportText(told.text, e) });
+  }
+
   /** The presentation ended at a page: its slide is chosen. */
   function endPresenting(page: number) {
     presenting = null;
@@ -420,7 +429,14 @@
   const sections = $derived(deck.frames.map((f, i) => (i === 0 || f.section !== deck.frames[i - 1].section ? f.section : null)));
 </script>
 
-<svelte:window onkeydown={key} onpointerdown={(e) => layoutsOpen && !(e.target as HTMLElement).closest(".bar .add") && (layoutsOpen = false)} />
+<svelte:window
+  onkeydown={key}
+  onpointerdown={(e) => {
+    const target = e.target as HTMLElement;
+    if (layoutsOpen && !target.closest(".bar .add:not(.exports)")) layoutsOpen = false;
+    if (exportsOpen && !target.closest(".bar .exports")) exportsOpen = false;
+  }}
+/>
 
 <div class="slides-mode" data-pages={doc?.numPages ?? 0} data-drawn={doc && frame ? "yes" : "no"} data-placed={placed.filter(Boolean).length}>
   {#if presenting !== null && doc && told?.pdf}
@@ -447,6 +463,19 @@
     <button class="icon-btn" data-action="down" title={t("slides.down")} aria-label={t("slides.down")} disabled={!frame || selected >= deck.frames.length - 1} onclick={() => shift(1)}><Icon name="chevron-down" size={15} /></button>
     <button class="icon-btn" data-action="delete" title={t("slides.delete")} aria-label={t("slides.delete")} disabled={!frame} onclick={remove}><Icon name="trash" size={15} /></button>
     <span class="spacer"></span>
+    <div class="add exports">
+      <button class="btn small" data-action="exports" disabled={!deck.beamer} onclick={() => (exportsOpen = !exportsOpen)}><Icon name="download" size={13} />{t("slides.export")}<Icon name="chevron-down" size={12} /></button>
+      {#if exportsOpen}
+        <div class="menu" role="menu">
+          <button role="menuitem" data-export="slides" onclick={() => exportDeck({ kind: "slides" })}>{t("slides.export.slides")}</button>
+          <button role="menuitem" data-export="notes" onclick={() => exportDeck({ kind: "notes" })}>{t("slides.export.notes")}</button>
+          <span class="menu-label faint">{t("slides.export.handouts")}</span>
+          {#each [1, 2, 4] as n (n)}
+            <button role="menuitem" data-export="handout-{n}" onclick={() => exportDeck({ kind: "handout", perPage: n, paper: lang === "fr" ? "a4paper" : "letterpaper" })}>{t("slides.export.handout", { n })}</button>
+          {/each}
+        </div>
+      {/if}
+    </div>
     <button class="btn small primary" data-action="present" title={t("slides.presentHint")} disabled={!doc || !told?.pdf} onclick={() => present(range?.[0] ?? 1)}><Icon name="play" size={13} />{t("slides.present")}</button>
     {#if told?.building}<span class="status"><span class="spinner"></span>{t("slides.building")}</span>{:else if told?.failed}<span class="status err"><Icon name="alert-circle" size={13} />{t("slides.failed")}</span>{/if}
 
@@ -627,6 +656,38 @@
     border-radius: var(--radius-lg);
     background: var(--bg-elev-2);
     box-shadow: var(--shadow);
+  }
+  .menu {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 6px);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 230px;
+    padding: 4px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elev-2);
+    box-shadow: var(--shadow);
+  }
+  .menu button {
+    height: 28px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text);
+    font-size: 12.5px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .menu button:hover {
+    background: var(--bg-hover);
+  }
+  .menu-label {
+    padding: 6px 10px 2px;
+    font-size: 11px;
   }
   .layout {
     display: flex;

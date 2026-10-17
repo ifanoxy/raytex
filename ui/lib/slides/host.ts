@@ -39,7 +39,9 @@ export type SlidesCommand =
   /** Back to the editor. */
   | { kind: "leave" }
   /** The mode is no longer shown. */
-  | { kind: "closed" };
+  | { kind: "closed" }
+  /** Export a PDF built apart from `text` (the deck untouched): where is asked, `suffix` ends the name proposed. */
+  | { kind: "export"; name: string; text: string; suffix: string };
 
 /** The application, as the slides mode sees it. */
 export interface SlidesHost {
