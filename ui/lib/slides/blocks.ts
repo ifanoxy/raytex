@@ -473,16 +473,22 @@ export function replaceBlock(text: string, blocks: Block[], i: number, next: Blo
   return { from: b.from, to: b.to, insert: blockCode(next, indentAt(text, b.from), indentUnit(text)), select: i };
 }
 
+/** What is between two blocks one after the other: a line, a blank line between two texts (else they are one). */
+const gap = (a: Block | undefined, b: Block | undefined) => (a?.kind === "text" && b?.kind === "text" ? "\n\n" : "\n");
+
 /** A block added after block `after` (-1: first), on a line of its own. */
-export function insertBlock(text: string, frame: Frame, blocks: Block[], after: number, block: Block): BlockEdit {
+export function insertBlock(text: string, frame: Frame, blocks: Block[], after: number, given: Block): BlockEdit {
   const anchor = blocks[after];
+  // A plain table is written at the indentation of the document.
+  const grid = given.kind === "table" ? tableGrid(given.text) : null;
+  const block = grid ? { ...given, text: gridCode(grid, indentUnit(text)) } : given;
   // After a block: at the end of its line; else at the start of the body (after the title).
   const at = anchor ? anchor.to : blocks[0] ? blocks[0].from : frame.bodyTo;
   const unit = indentUnit(text);
   const indent = anchor ? indentAt(text, anchor.from) : blocks[0] ? indentAt(text, blocks[0].from) : `${indentAt(text, frame.from)}${unit}`;
   const code = blockCode(block, indent, unit);
-  if (anchor) return { from: at, to: at, insert: `\n${indent}${code}`, select: after + 1 };
-  if (blocks[0]) return { from: at, to: at, insert: `${code}\n${indent}`, select: 0 };
+  if (anchor) return { from: at, to: at, insert: `${gap(anchor, block)}${indent}${code}`, select: after + 1 };
+  if (blocks[0]) return { from: at, to: at, insert: `${code}${gap(block, blocks[0])}${indent}`, select: 0 };
   // An empty slide: before `\end{frame}`, on its own line.
   const before = text.slice(0, at).replace(/[ \t]*$/, "");
   const lineStart = before.length;
@@ -637,7 +643,7 @@ const applied = (text: string, e: { from: number; to: number; insert: string }) 
 /** Block `i` written a second time, right after it. */
 export function duplicateBlock(text: string, blocks: Block[], i: number): BlockEdit {
   const b = blocks[i];
-  return { from: b.to, to: b.to, insert: `\n${indentAt(text, b.from)}${text.slice(b.from, b.to)}`, select: i + 1 };
+  return { from: b.to, to: b.to, insert: `${gap(b, b)}${indentAt(text, b.from)}${text.slice(b.from, b.to)}`, select: i + 1 };
 }
 
 /** Block `from` moved before block `to` (`blocks.length`: after the last one). */
@@ -651,19 +657,18 @@ export function moveBlockTo(text: string, blocks: Block[], from: number, to: num
   let out: string;
   if (to < blocks.length) {
     const at = shift(blocks[to].from);
-    out = `${without.slice(0, at)}${piece}\n${indentAt(text, blocks[to].from)}${without.slice(at)}`;
+    out = `${without.slice(0, at)}${piece}${gap(b, blocks[to])}${indentAt(text, blocks[to].from)}${without.slice(at)}`;
   } else {
     const last = blocks[blocks.length - 1];
     const at = shift(last.to);
-    out = `${without.slice(0, at)}\n${indentAt(text, last.from)}${piece}${without.slice(at)}`;
+    out = `${without.slice(0, at)}${gap(last, b)}${indentAt(text, last.from)}${piece}${without.slice(at)}`;
   }
   return editBetween(text, out, to > from ? to - 1 : to);
 }
 
 /** A columns block with `block` added at the end of its column `k`. */
 export function addToColumn(b: Block, k: number, block: Block, unit = "\t"): Block {
-  const code = blockCode(block, "", unit);
-  return { ...b, columns: b.columns?.map((c, n) => (n === k ? { ...c, text: c.text.trim() ? `${c.text}\n${code}` : code } : c)) };
+  return { ...b, columns: b.columns?.map((c, n) => (n === k ? { ...c, text: addToText(c.text, block, unit) } : c)) };
 }
 
 /** Block `i` taken from where it is and put at the end of column `k` of block `j`. */
@@ -672,4 +677,43 @@ export function moveToColumn(text: string, blocks: Block[], i: number, j: number
   const into = replaceBlock(text, blocks, j, addToColumn(blocks[j], k, blocks[i], unit));
   const out = [deleteBlock(text, blocks, i), into].sort((x, y) => y.from - x.from).reduce(applied, text);
   return editBetween(text, out, i < j ? j - 1 : j);
+}
+
+// ------------------------------------------------ blocks inside a block
+
+/** The blocks of a text of its own (the body of a box, a column), its places counted from its start. */
+export function textBlocks(text: string): Block[] {
+  return bodyBlocks(text, mask(text), 0, text.length);
+}
+
+/** A text of its own with its block `j` changed (the body of a box, a column): written in it alone. */
+export function editInText(text: string, j: number, edit: (b: Block) => Block | null): string {
+  const blocks = textBlocks(text);
+  const b = blocks[j];
+  if (!b) return text;
+  const next = edit(b);
+  if (!next) {
+    const cut = deleteBlock(text, blocks, j);
+    return dedent(applied(text, cut));
+  }
+  return applied(text, replaceBlock(text, blocks, j, next));
+}
+
+/** A text of its own with `block` added at its end. */
+export function addToText(text: string, block: Block, unit = "\t"): string {
+  const code = blockCode(block, "", unit);
+  return text.trim() ? `${text.trimEnd()}${gap(textBlocks(text).at(-1), block)}${code}` : code;
+}
+
+/** Block `i` cut in two blocks (`first` in its place, `second` after it), as one change. */
+export function splitBlock(text: string, blocks: Block[], i: number, first: Block, second: Block, unit = "\t"): BlockEdit {
+  const b = blocks[i];
+  const indent = indentAt(text, b.from);
+  return { from: b.from, to: b.to, insert: `${blockCode(first, indent, unit)}${gap(first, second)}${indent}${blockCode(second, indent, unit)}`, select: i + 1 };
+}
+
+/** A text of its own with its block `j` cut in two blocks. */
+export function splitInText(text: string, j: number, first: Block, second: Block): string {
+  const blocks = textBlocks(text);
+  return blocks[j] ? applied(text, splitBlock(text, blocks, j, first, second, indentUnit(text))) : text;
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { alignOf, blockCode, deleteBlock, duplicateBlock, frameBlocks, gridCode, gridColumns, indentUnit, insertBlock, moveBlock, moveBlockTo, moveToColumn, newBlock, oneByOne, replaceBlock, revealStep, setAlign, setOneByOne, setReveal, stepSize, tableGrid } from "./blocks.ts";
+import { addToText, alignOf, blockCode, editInText, splitBlock, textBlocks, deleteBlock, duplicateBlock, frameBlocks, gridCode, gridColumns, indentUnit, insertBlock, moveBlock, moveBlockTo, moveToColumn, newBlock, oneByOne, replaceBlock, revealStep, setAlign, setOneByOne, setReveal, stepSize, tableGrid } from "./blocks.ts";
 import { parseDeck } from "./deck.ts";
 
 const DECK = `\\documentclass{beamer}
@@ -250,7 +250,7 @@ test("blocks set apart, sized, copied, moved, put in a column", () => {
   assert.equal(apply(again, replaceBlock(again, frameBlocks(again, parseDeck(again).frames[0]), 4, read)), again);
   // Copied right after; moved to the end, then first.
   const copied = apply(deck, duplicateBlock(deck, blocks, 4));
-  assert.ok(copied.includes("  Fin\n  Fin\n\\end{frame}"));
+  assert.ok(copied.includes("  Fin\n\n  Fin\n\\end{frame}"));
   const last = apply(deck, moveBlockTo(deck, blocks, 0, blocks.length)!);
   assert.deepEqual(frameBlocks(last, parseDeck(last).frames[0]).map((b) => b.text.split("\n")[0] || b.kind), ["list", "image", "columns", "Fin", "Un texte centré"]);
   const first = apply(deck, moveBlockTo(deck, blocks, 4, 0)!);
@@ -263,4 +263,25 @@ test("blocks set apart, sized, copied, moved, put in a column", () => {
   assert.deepEqual(cols[3].columns?.map((c) => c.text), ["Gauche", "Fin"]);
   assert.deepEqual(newBlock("columns", "fr", "3").columns?.length, 3);
   assert.equal(newBlock("box", "en", "alertblock").env, "alertblock");
+});
+
+test("blocks inside a block (a column, the body of a box), and a block cut in two", () => {
+  const body = "Avant\n\\begin{itemize}\n  \\item Un\n  \\item Deux\n\\end{itemize}";
+  assert.deepEqual(textBlocks(body).map((b) => b.kind), ["text", "list"]);
+  const two = editInText(body, 1, (b) => ({ ...b, items: [...(b.items ?? []), { text: "Trois", overlay: "" }] }));
+  assert.equal(two, "Avant\n\\begin{itemize}\n  \\item Un\n  \\item Deux\n  \\item Trois\n\\end{itemize}");
+  assert.equal(editInText(body, 0, () => null), "\\begin{itemize}\n  \\item Un\n  \\item Deux\n\\end{itemize}");
+  assert.equal(addToText("", newBlock("text", "en")), "A paragraph of text.");
+  assert.equal(addToText("Un", newBlock("pause", "en")), "Un\n\\pause");
+  const deck = "\\documentclass{beamer}\n\\begin{document}\n\\begin{frame}{T}\n  Un deux\n\\end{frame}\n\\end{document}\n";
+  const blocks = frameBlocks(deck, parseDeck(deck).frames[0]);
+  const cut = apply(deck, splitBlock(deck, blocks, 0, { ...blocks[0], text: "Un" }, { ...newBlock("text", "fr"), text: "deux" }));
+  assert.ok(cut.includes("\\begin{frame}{T}\n  Un\n\n  deux\n\\end{frame}"));
+  // Two texts stay two blocks, however they were brought together.
+  assert.deepEqual(frameBlocks(cut, parseDeck(cut).frames[0]).map((b) => b.text), ["Un", "deux"]);
+  const after = apply(deck, insertBlock(deck, parseDeck(deck).frames[0], blocks, 0, { ...newBlock("text", "fr"), text: "trois" }));
+  assert.deepEqual(frameBlocks(after, parseDeck(after).frames[0]).map((b) => b.text), ["Un deux", "trois"]);
+  const twice = apply(deck, duplicateBlock(deck, blocks, 0));
+  assert.equal(frameBlocks(twice, parseDeck(twice).frames[0]).length, 2);
+  assert.equal(addToText("Un", newBlock("text", "fr")), "Un\n\nUn paragraphe de texte.");
 });

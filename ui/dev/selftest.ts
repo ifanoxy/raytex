@@ -1948,9 +1948,12 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     check("answer key: the document unchanged", flagOn());
 
     // ---------------------------------------------------------- slides mode
-    // A deck from its template: the window becomes the slides mode, which
-    // shows its slides drawn, and adds, duplicates, titles, notes and moves
-    // them in the text the editor keeps (behind it), which builds again.
+    // A deck from its template: the window becomes the slides mode (offered
+    // first, it is optional). Its slides are added, copied, titled, noted and
+    // moved; the slide is written where it is drawn (points, Enter, bold), its
+    // elements added from the bar or dragged there, moved by their handle,
+    // into a column, set by their tools; a picture dropped from the system;
+    // its code, its look; presented; exported; and left.
     check("deck project", await project.createEmpty(`${projectsDir}/expose`, "Exposé"));
     await templates.apply(templates.list.find((x) => x.id === "beamer")!);
     await until(() => !build.running && samePath(build.outcome?.plan.root, project.info?.main), 120_000, "deck build");
@@ -1958,206 +1961,164 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     const slideNames = () => [...document.querySelectorAll<HTMLElement>(".slides-mode .thumb .name")].map((n) => n.textContent?.trim() ?? "");
     const pagesShown = () => Number(root()?.dataset.pages ?? 0);
     const action = (name: string) => document.querySelector<HTMLButtonElement>(`.slides-mode [data-action="${name}"]`)!.click();
-    const fill = (el: HTMLInputElement | HTMLTextAreaElement, text: string) => {
-      el.dispatchEvent(new FocusEvent("focus"));
-      el.value = text;
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-      el.dispatchEvent(new FocusEvent("blur"));
+    const deckNow = () => editor.textOf(project.info!.main!) ?? "";
+    const { parseDeck } = await import("$lib/slides/deck");
+    const slideText = (k = 1) => {
+      const f = parseDeck(deckNow()).frames[k];
+      return f ? deckNow().slice(f.from, f.to) : "";
     };
+    const kinds = () => [...document.querySelectorAll<HTMLElement>(".slides-mode .paper .body > .block")].map((b) => b.dataset.kind);
+    const blockEl = (kind: string) => document.querySelector<HTMLElement>(`.slides-mode .paper .body > .block[data-kind="${kind}"]`)!;
+    // What a person does: a press moved and let go (the slides mode drags with the pointer).
+    const pointer = (type: string, target: EventTarget, x: number, y: number) => target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerId: 1 }));
+    const dragTo = async (from: HTMLElement, to: () => HTMLElement) => {
+      from.scrollIntoView({ block: "nearest" });
+      const a = from.getBoundingClientRect();
+      pointer("pointerdown", from, a.left + 4, a.top + 4);
+      pointer("pointermove", window, a.left + 24, a.top + 24);
+      await pause(60);
+      to().scrollIntoView({ block: "nearest" });
+      await pause(60);
+      const b = to().getBoundingClientRect();
+      pointer("pointermove", window, b.left + Math.min(30, b.width / 2), b.top + b.height / 2);
+      await pause(60);
+      pointer("pointerup", window, b.left + Math.min(30, b.width / 2), b.top + b.height / 2);
+    };
+    /** Typed at the end of a text of the slide, as by the keyboard. */
+    const typeAtEnd = (el: HTMLElement, text: string) => {
+      el.focus();
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      r.collapse(false);
+      getSelection()!.removeAllRanges();
+      getSelection()!.addRange(r);
+      document.execCommand("insertText", false, text);
+    };
+    const press = (el: HTMLElement, key: string) => el.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
     // Optional: not installed, it is offered first, and installed on yes.
     void runAction("view.slides");
     await until(() => ui.dialog?.title === t("slides.install.title"), 5_000, "slides mode offered");
     ui.closeDialog(true);
-    await until(() => slideNames().length > 0 && pagesShown() > 0 && root()?.dataset.drawn === "yes" && !!root()?.querySelector(".stage canvas"), 30_000, "slides mode");
+    await until(() => slideNames().length > 0 && pagesShown() > 0 && root()?.dataset.drawn === "yes" && !!root()?.querySelector(".side .render canvas"), 30_000, "slides mode");
     check("slides mode: offered, installed on yes", app.settings?.general.slidesMode === true);
     check("slides mode: in the same window, the editor hidden", ui.mode === "slides" && !document.querySelector(".work:not(.hidden)") && !document.querySelector(".format-bar"));
     const first = slideNames().length;
     const firstPages = pagesShown();
     await scene("slides-mode");
+    // A slide from a layout after the second one, copied, titled, noted, moved up.
     document.querySelector<HTMLButtonElement>('.slides-mode .thumb[data-index="1"]')!.click();
     await pause(150);
-    document.querySelector<HTMLButtonElement>(".slides-mode .add .btn")!.click();
+    action("new-slide");
     await pause(150);
     document.querySelector<HTMLButtonElement>('.slides-mode .layout[data-layout="two-columns"]')!.click();
     await until(() => slideNames().length === first + 1, 10_000, "slide added");
-    action("duplicate");
+    document.querySelector<HTMLButtonElement>(`.slides-mode .thumb-slot:has(.thumb.active) [data-action="duplicate"]`)!.click();
     await until(() => slideNames().length === first + 2, 10_000, "slide duplicated");
-    fill(document.querySelector<HTMLInputElement>(".slides-mode .side input")!, "Plan de l'exposé");
+    const titleField = document.querySelector<HTMLElement>(".slides-mode .frame-title .rich")!;
+    titleField.focus();
+    getSelection()!.selectAllChildren(titleField);
+    document.execCommand("insertText", false, "Plan de l'exposé");
+    titleField.blur();
     await until(() => slideNames().includes("Plan de l'exposé"), 10_000, "slide titled");
-    fill(document.querySelector<HTMLTextAreaElement>(".slides-mode .notes textarea")!, "Annoncer les deux parties");
-    await until(() => (editor.textOf(project.info!.main!) ?? "").includes("\\note{Annoncer les deux parties}"), 10_000, "slide noted");
-    // Up to the second place, with the buttons.
-    const at = slideNames().indexOf("Plan de l'exposé");
-    for (let i = at; i > 1; i--) {
-      action("up");
-      await until(() => slideNames().indexOf("Plan de l'exposé") === i - 1, 10_000, "slide moved up");
-    }
-    const deckText = editor.textOf(project.info!.main!) ?? "";
+    const notes = document.querySelector<HTMLTextAreaElement>(".slides-mode .notes textarea")!;
+    notes.dispatchEvent(new FocusEvent("focus"));
+    notes.value = "Annoncer les deux parties";
+    notes.dispatchEvent(new Event("input", { bubbles: true }));
+    notes.dispatchEvent(new FocusEvent("blur"));
+    await until(() => deckNow().includes("\\note{Annoncer les deux parties}"), 10_000, "slide noted");
+    // Up to the second place: its thumbnail dragged there.
+    await dragTo(document.querySelector<HTMLElement>(`.slides-mode .thumb[data-index="${slideNames().indexOf("Plan de l'exposé")}"]`)!, () => document.querySelector<HTMLElement>('.slides-mode .thumb-slot[data-drop="slide:1"]')!);
+    await until(() => slideNames()[1] === "Plan de l'exposé", 10_000, "slide moved up");
     check(
-      "slides mode: slides added, duplicated, titled, noted, moved in the text",
-      (deckText.match(/\\begin\{frame\}/g)?.length ?? 0) === first + 2 && deckText.includes("\\begin{columns}") && slideNames()[1] === "Plan de l'exposé" && deckText.indexOf("Plan de l'exposé") < deckText.indexOf("\\begin{columns}"),
+      "slides mode: slides added, copied, titled, noted, moved by dragging",
+      (deckNow().match(/\\begin\{frame\}/g)?.length ?? 0) === first + 2 && deckNow().indexOf("Plan de l'exposé") < deckNow().indexOf("\\begin{columns}"),
       slideNames().join(" | "),
     );
     await until(() => pagesShown() >= firstPages + 2 && !build.running, 120_000, "deck built again");
-    check("slides mode: the PDF built again is shown", root()?.dataset.drawn === "yes" && pagesShown() >= firstPages + 2, `${firstPages} → ${pagesShown()}`);
-    // Lying down always, and the slide written in its code.
-    const box = document.querySelector<HTMLElement>(".slides-mode .thumb .box")!.getBoundingClientRect();
-    check("slides mode: slides shown lying down", box.width > box.height * 1.2, `${box.width} × ${box.height}`);
+    check("slides mode: the real slide built again is shown", root()?.dataset.drawn === "yes" && pagesShown() >= firstPages + 2, `${firstPages} → ${pagesShown()}`);
+    const render = document.querySelector<HTMLElement>(".slides-mode .side .render canvas")!.getBoundingClientRect();
+    const paper = document.querySelector<HTMLElement>(".slides-mode .paper")!.getBoundingClientRect();
+    check("slides mode: slides shown lying down", render.width > render.height * 1.2 && paper.width > paper.height * 1.2, `${render.width} × ${render.height}`);
+    // Its code: written as in the editor; a slide no longer one is not written.
+    document.querySelector<HTMLElement>('.slides-mode .thumb[data-index="1"]')!.click();
     document.querySelector<HTMLButtonElement>('.slides-mode [data-view="code"]')!.click();
     await until(() => !!document.querySelector(".slides-mode .frame-code .cm-editor"), 5_000, "code of the slide");
     const code = EditorView.findFromDOM(document.querySelector<HTMLElement>(".slides-mode .frame-code .cm-editor")!)!;
     const titleAt = code.state.doc.toString().indexOf("Plan de l'exposé");
     code.dispatch({ changes: { from: titleAt, to: titleAt + "Plan de l'exposé".length, insert: "Sommaire" }, userEvent: "input.type" });
-    await until(() => slideNames()[1] === "Sommaire" && (editor.textOf(project.info!.main!) ?? "").includes("{Sommaire}"), 10_000, "slide written in its code");
-    // A slide that would no longer be one is not written.
-    const before = editor.textOf(project.info!.main!) ?? "";
+    await until(() => slideNames()[1] === "Sommaire" && deckNow().includes("{Sommaire}"), 10_000, "slide written in its code");
+    const before = deckNow();
     code.dispatch({ changes: { from: code.state.doc.length - "\\end{frame}".length, to: code.state.doc.length }, userEvent: "delete.backward" });
     await until(() => !!document.querySelector(".slides-mode .problem"), 5_000, "broken slide refused");
-    check("slides mode: the code of a slide written, a broken one refused", (editor.textOf(project.info!.main!) ?? "") === before && slideNames()[1] === "Sommaire");
-    document.querySelector<HTMLButtonElement>('.slides-mode [data-view="interface"]')!.click();
-    // The content of the slide in blocks: a list added after its columns,
-    // its first point changed and a point added right after (the second
-    // change waits for the text the first one gave), shown one point a
-    // click; seen on the slide, chosen by a click on it; moved, taken out.
-    const { parseDeck } = await import("$lib/slides/deck");
-    const slideText = () => {
-      const text = editor.textOf(project.info!.main!) ?? "";
-      const f = parseDeck(text).frames[1];
-      return f ? text.slice(f.from, f.to) : "";
-    };
-    const kinds = () => [...document.querySelectorAll<HTMLElement>(".slides-mode .block")].map((b) => b.dataset.kind);
-    const commit = (el: HTMLInputElement | HTMLTextAreaElement, text: string) => {
-      el.focus();
-      el.value = text;
-      el.dispatchEvent(new Event("change", { bubbles: true }));
-    };
+    check("slides mode: the code of a slide written, a broken one refused", deckNow() === before && slideNames()[1] === "Sommaire");
+    document.querySelector<HTMLButtonElement>('.slides-mode [data-view="render"]')!.click();
+    // Written on the slide: a list added from the bar, its first point typed
+    // on, Enter for a new point; a word in bold; its tools.
     await until(() => kinds().join() === "columns", 5_000, "blocks of the slide");
-    action("add-block");
-    await pause(100);
-    document.querySelector<HTMLButtonElement>('.slides-mode [data-add="list"]')!.click();
-    await until(() => kinds().join() === "columns,list" && !!document.querySelector('.slides-mode .block.open[data-kind="list"]'), 10_000, "list added");
-    commit(document.querySelector<HTMLInputElement>(".slides-mode .block.open .item input")!, "Le contexte");
-    action("add-item");
-    await until(() => document.querySelectorAll(".slides-mode .block.open .item").length === 3, 10_000, "point added");
-    document.querySelector<HTMLInputElement>(".slides-mode .block.open .check input")!.click();
+    document.querySelector<HTMLButtonElement>('.slides-mode .bar [data-component="list"]')!.click();
+    await until(() => kinds().join() === "columns,list", 10_000, "list added");
+    await until(() => document.activeElement?.closest('.block[data-kind="list"]') !== null && !!document.activeElement?.closest(".rich"), 5_000, "caret in the list");
+    const point = () => [...blockEl("list").querySelectorAll<HTMLElement>("li .rich")];
+    typeAtEnd(point()[0], " précis");
+    press(point()[0], "Enter");
+    await until(() => point().length === 3, 10_000, "new point");
+    await until(() => document.activeElement === point()[1], 5_000, "caret in the new point");
+    typeAtEnd(point()[1], "Le contexte");
+    point()[1].blur();
+    await until(() => /\\item [^\n]* précis\s*\\item Le contexte/.test(slideText()), 10_000, "points written");
+    const word = point()[1];
+    word.focus();
+    const range = document.createRange();
+    range.setStart(word.firstChild!, 0);
+    range.setEnd(word.firstChild!, 2);
+    getSelection()!.removeAllRanges();
+    getSelection()!.addRange(range);
+    document.querySelector<HTMLButtonElement>('.slides-mode .context [data-tool="b"]')!.click();
+    word.blur();
+    await until(() => slideText().includes("\\textbf{Le} contexte"), 10_000, "a word in bold");
+    check("slides mode: written on the slide, points and Enter, a word in bold", /\\begin\{itemize\}[^]*précis[^]*\\textbf\{Le\} contexte[^]*\\end\{itemize\}/.test(slideText()), slideText());
+    pointer("pointerdown", blockEl("list"), 0, 0);
+    await until(() => !!document.querySelector('.slides-mode .context [data-align="center"]'), 5_000, "tools of the list");
+    document.querySelector<HTMLButtonElement>('.slides-mode .context [data-list="one-by-one"]')!.click();
     await until(() => slideText().includes("[<+->]"), 10_000, "one point a click");
-    const listed = slideText();
-    check(
-      "slides mode: the content of a slide in blocks, a list added and filled",
-      /\\end\{columns\}\s*\\begin\{itemize\}\[<\+->\]\s*\\item Le contexte\s*\\item [^\n]+\s*\\item [^\n]+\s*\\end\{itemize\}/.test(listed),
-      listed,
-    );
-    // Seen on the slide once built, then chosen by a click on it.
-    await until(() => !build.running && root()?.dataset.drawn === "yes", 120_000, "deck built with its list");
-    await until(() => !!document.querySelector(".slides-mode .marked"), 30_000, "block shown on the slide").catch((e) => {
-      throw new Error(`${e} (placed ${root()?.dataset.placed}, pages ${pagesShown()}, open ${document.querySelector<HTMLElement>(".slides-mode .block.open")?.dataset.kind}, view ${document.querySelector<HTMLElement>(".slides-mode .views .on")?.dataset.view})`);
-    });
-    const mark = document.querySelector<HTMLElement>(".slides-mode .marked")!.getBoundingClientRect();
-    document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="list"] .name')!.click();
-    await until(() => !document.querySelector(".slides-mode .block.open"), 5_000, "block closed");
-    document.querySelector<HTMLElement>(".slides-mode .slide-box")!.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: mark.left + mark.width / 2, clientY: mark.top + Math.min(mark.height / 2, 20) }));
-    await until(() => !!document.querySelector('.slides-mode .block.open[data-kind="list"]'), 10_000, "block chosen on the slide");
-    check("slides mode: a block shown on the slide, a click on the slide chooses it", !!document.querySelector('.slides-mode .block.open[data-kind="list"]') && mark.width > 20 && mark.height > 10, `${mark.width} × ${mark.height}`);
-    // Written on the slide: a double click on its first point opens a field over it.
-    const slideBox = () => document.querySelector<HTMLElement>(".slides-mode .slide-box")!;
-    const field = () => document.querySelector<HTMLInputElement>(".slides-mode .inplace input");
-    const enter = (el: HTMLInputElement) => el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    slideBox().dispatchEvent(new MouseEvent("dblclick", { bubbles: true, clientX: mark.left + mark.width / 2, clientY: mark.top + 10 }));
-    await until(() => !!field(), 5_000, "point written on the slide");
-    const pointWas = field()!.value;
-    field()!.value = "Le contexte précis";
-    enter(field()!);
-    await until(() => slideText().includes("\\item Le contexte précis"), 10_000, "point written in the text");
-    check("slides mode: a point of a list written on the slide", pointWas === "Le contexte" && !field(), pointWas);
-    // Shown from a step on: around the list, its chip saying so.
-    const reveal = document.querySelector<HTMLSelectElement>('.slides-mode .block.open[data-kind="list"] [data-reveal]')!;
-    reveal.value = "4";
+    document.querySelector<HTMLButtonElement>('.slides-mode .context [data-align="center"]')!.click();
+    await until(() => /\\begin\{center\}\s*\\begin\{itemize\}/.test(slideText()), 10_000, "list centred");
+    document.querySelector<HTMLButtonElement>('.slides-mode .context [data-size="1"]')!.click();
+    await until(() => /\\begin\{center\}\s*\\begin\{large\}\s*\\begin\{itemize\}/.test(slideText()), 10_000, "list larger");
+    const reveal = document.querySelector<HTMLSelectElement>(".slides-mode .context [data-tools-reveal]")!;
+    reveal.value = "3";
     reveal.dispatchEvent(new Event("change", { bubbles: true }));
-    await until(() => slideText().includes("\\begin{uncoverenv}<4->") && document.querySelector('.slides-mode .block[data-kind="list"] .step-chip')?.textContent === "4+", 10_000, "list shown from step 4");
-    check("slides mode: a block shown from a step on", /\\begin\{uncoverenv\}<4->\s*\\begin\{itemize\}[\s\S]*\\end\{itemize\}\s*\\end\{uncoverenv\}/.test(slideText()));
-    document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="list"] [data-action="block-up"]')!.click();
-    await until(() => kinds().join() === "list,columns", 10_000, "block moved up");
-    const moved = slideText();
-    document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="list"] [data-action="block-delete"]')!.click();
-    await until(() => kinds().join() === "columns", 10_000, "block taken out");
-    check("slides mode: blocks moved and taken out", moved.indexOf("\\begin{itemize}") < moved.indexOf("\\begin{columns}") && !slideText().includes("itemize") && slideText().includes("\\begin{columns}"));
-    // The title, written on the slide (top left in the theme of the template).
-    await until(() => Number(root()?.dataset.placed) > 0, 10_000, "blocks placed again");
-    const canvas = slideBox().querySelector("canvas")!.getBoundingClientRect();
-    slideBox().dispatchEvent(new MouseEvent("dblclick", { bubbles: true, clientX: canvas.left + canvas.width * 0.06, clientY: canvas.top + canvas.height * 0.05 }));
-    await until(() => !!field(), 5_000, "title written on the slide");
-    const titleWas = field()!.value;
-    field()!.value = "Plan";
-    enter(field()!);
-    await until(() => slideNames()[1] === "Plan", 10_000, "title written in the text");
-    check("slides mode: the title written on the slide", titleWas === "Sommaire", titleWas);
-    // Components dragged onto the slide: an alert at the bottom, a list in the
-    // right column; the tools of the block chosen (centred, larger, copied,
-    // deleted); moved in the list; a word in bold; a picture dropped from the system.
-    const canvasBox = () => slideBox().querySelector("canvas")!.getBoundingClientRect();
-    const dragOnto = async (component: string, x: number, y: number) => {
-      const carrier = new DataTransfer();
-      const from = document.querySelector<HTMLElement>(`.slides-mode [data-component="${component}"]`)!;
-      from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: carrier }));
-      const over = new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: carrier, clientX: x, clientY: y });
-      slideBox().dispatchEvent(over);
-      await pause(50);
-      dropSeen = `${over.defaultPrevented} ${!!over.dataTransfer} [${[...(carrier.types ?? [])].join()}] line ${!!document.querySelector(".slides-mode .drop-line")} box ${!!document.querySelector(".slides-mode .drop-box")} at ${x},${y} canvas ${JSON.stringify(canvasBox())}`;
-      slideBox().dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: carrier, clientX: x, clientY: y }));
-      from.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: carrier }));
-    };
-    let dropSeen = "";
-    await until(() => !build.running && Number(root()?.dataset.placed) > 0, 120_000, "slide placed");
-    await dragOnto("box-alertblock", canvasBox().left + canvasBox().width / 2, canvasBox().top + canvasBox().height * 0.88);
-    await until(() => kinds().join() === "columns,box" && slideText().includes("\\begin{alertblock}"), 10_000, "alert dropped").catch((e) => {
-      throw new Error(`${e} (${dropSeen}; blocks ${kinds().join()}; placed ${root()?.dataset.placed})`);
-    });
-    await until(() => !build.running && Number(root()?.dataset.placed) >= 2, 120_000, "alert placed");
-    document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="columns"] .name')!.click();
-    await until(() => !!document.querySelector(".slides-mode .marked"), 10_000, "columns outlined");
-    const cols = document.querySelector<HTMLElement>(".slides-mode .marked")!.getBoundingClientRect();
-    await dragOnto("list", canvasBox().left + canvasBox().width * 0.75, cols.top + cols.height / 2);
-    await until(() => /\\begin\{column\}[^]*\\begin\{column\}[^]*\\begin\{itemize\}[^]*\\end\{column\}\s*\\end\{columns\}/.test(slideText()), 10_000, "list dropped in the right column");
-    check("slides mode: components dragged between blocks and into a column", kinds().join() === "columns,box");
-    // The tools of the alert.
-    document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="box"] .name')!.click();
-    await until(() => !!document.querySelector('.slides-mode .slide-tools [data-align="center"]'), 30_000, "tools of the block");
-    document.querySelector<HTMLButtonElement>('.slides-mode .slide-tools [data-align="center"]')!.click();
-    await until(() => /\\begin\{center\}\s*\\begin\{alertblock\}/.test(slideText()), 10_000, "alert centred");
-    document.querySelector<HTMLButtonElement>('.slides-mode .slide-tools [data-size="1"]')!.click();
-    await until(() => /\\begin\{center\}\s*\\begin\{large\}\s*\\begin\{alertblock\}/.test(slideText()), 10_000, "alert larger");
-    document.querySelector<HTMLButtonElement>('.slides-mode .slide-tools [data-action="duplicate-block"]')!.click();
-    await until(() => kinds().join() === "columns,box,box", 10_000, "alert copied");
-    document.querySelector<HTMLButtonElement>('.slides-mode .slide-tools [data-action="delete-block"]')!.click();
-    await until(() => kinds().join() === "columns,box", 10_000, "copy deleted");
-    check("slides mode: the tools of a block, centred, larger, copied, deleted", (slideText().match(/\\begin\{alertblock\}/g)?.length ?? 0) === 1 && slideText().includes("\\begin{large}"));
-    // Moved above the columns in the list, a word in bold.
-    const carrier = new DataTransfer();
-    const handle = document.querySelectorAll<HTMLElement>(".slides-mode .block .handle")[1];
-    const firstRow = document.querySelectorAll<HTMLElement>(".slides-mode .block")[0];
-    const firstBox = firstRow.getBoundingClientRect();
-    handle.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: carrier }));
-    firstRow.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: carrier, clientX: firstBox.left + 20, clientY: firstBox.top + 3 }));
-    firstRow.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: carrier, clientX: firstBox.left + 20, clientY: firstBox.top + 3 }));
-    handle.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: carrier }));
-    await until(() => kinds().join() === "box,columns", 10_000, "alert moved up in the list");
-    if (!document.querySelector('.slides-mode .block.open[data-kind="box"]')) document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="box"] .name')!.click();
-    await until(() => !!document.querySelector('.slides-mode .block.open[data-kind="box"] textarea'), 5_000, "alert opened");
-    const body = document.querySelector<HTMLTextAreaElement>('.slides-mode .block.open[data-kind="box"] textarea')!;
-    body.focus();
-    body.setSelectionRange(0, body.value.indexOf(" "));
-    document.querySelector<HTMLButtonElement>('.slides-mode .block.open .text-tools [data-tool="bold"]')!.click();
-    await until(() => slideText().includes("\\textbf{"), 10_000, "a word in bold");
-    check("slides mode: a block moved in the list, a word set in bold", kinds().join() === "box,columns" && slideText().indexOf("alertblock") < slideText().indexOf("\\begin{columns}"));
+    await until(() => slideText().includes("\\begin{uncoverenv}<3->"), 10_000, "list from step 3");
+    check("slides mode: the tools of an element, one point a click, centred, larger, from a step", /\\begin\{uncoverenv\}<3->\s*\\begin\{center\}\s*\\begin\{large\}\s*\\begin\{itemize\}\[<\+->\]/.test(slideText()), slideText());
+    // Dragged: an alert from the bar before the columns, a formula into the right column, the list moved first.
+    document.querySelector<HTMLButtonElement>('.slides-mode .bar [data-action="more"]')!.click();
+    await until(() => !!document.querySelector('.slides-mode .menu [data-component="box-alertblock"]'), 5_000, "more components");
+    await dragTo(document.querySelector<HTMLElement>('.slides-mode .menu [data-component="box-alertblock"]')!, () => document.querySelector<HTMLElement>('.slides-mode .gap[data-drop="before:0"]')!);
+    await until(() => kinds().join() === "box,columns,list" && slideText().includes("\\begin{alertblock}"), 10_000, "alert dropped first");
+    await dragTo(document.querySelector<HTMLElement>('.slides-mode .bar [data-component="formula"]')!, () => document.querySelector<HTMLElement>('.slides-mode .paper [data-drop="column:1:1"]')!);
+    await until(() => /\\begin\{column\}[^]*\\begin\{column\}[^]*\\\[[^]*\\end\{column\}\s*\\end\{columns\}/.test(slideText()), 10_000, "formula dropped in the right column");
+    await dragTo(blockEl("list").querySelector<HTMLElement>(".handle")!, () => document.querySelector<HTMLElement>('.slides-mode .gap[data-drop="before:0"]')!);
+    await until(() => kinds().join() === "list,box,columns", 10_000, "list moved first");
+    check("slides mode: elements dragged between others and into a column, moved by their handle", kinds().join() === "list,box,columns" && slideText().indexOf("uncoverenv") < slideText().indexOf("alertblock"));
+    // Copied and deleted by their tools; the delete key too.
+    pointer("pointerdown", blockEl("box"), 0, 0);
+    await until(() => !!document.querySelector('.slides-mode .context [data-action="duplicate-block"]'), 5_000, "tools of the alert");
+    document.querySelector<HTMLButtonElement>('.slides-mode .context [data-action="duplicate-block"]')!.click();
+    await until(() => kinds().join() === "list,box,box,columns", 10_000, "alert copied");
+    document.querySelector<HTMLButtonElement>('.slides-mode .context [data-action="delete-block"]')!.click();
+    await until(() => kinds().join() === "list,box,columns", 10_000, "copy deleted");
+    check("slides mode: an element copied and deleted", (slideText().match(/\\begin\{alertblock\}/g)?.length ?? 0) === 1);
     // A picture dropped from the system, copied into the project.
-    await until(() => !build.running && Number(root()?.dataset.placed) >= 2, 120_000, "slide placed again");
-    root()!.dispatchEvent(new CustomEvent("raytex-files", { detail: { paths: [`${dir}/Photo de l'expérience.png`], x: canvasBox().left + canvasBox().width / 2, y: canvasBox().top + canvasBox().height * 0.9 } }));
-    await until(() => kinds().join() === "box,columns,image", 15_000, "picture dropped");
+    const end = document.querySelector<HTMLElement>(`.slides-mode .gap[data-drop="before:${kinds().length}"]`)!;
+    end.scrollIntoView({ block: "nearest" });
+    const at = end.getBoundingClientRect();
+    root()!.dispatchEvent(new CustomEvent("raytex-files", { detail: { paths: [`${dir}/Photo de l'expérience.png`], x: at.left + 40, y: at.top + at.height / 2 } }));
+    await until(() => kinds().join() === "list,box,columns,image", 15_000, "picture dropped");
     const copiedPicture = await ipc.pathExists(`${project.info!.main!.replace(/[\\/][^\\/]*$/, "")}/figures/photo-de-l-experience.png`);
-    check("slides mode: a picture dropped from the system, copied into the project", copiedPicture && slideText().includes("{figures/photo-de-l-experience}"), slideText());
+    await until(() => !!blockEl("image").querySelector("img"), 10_000, "picture shown on the slide");
+    check("slides mode: a picture dropped from the system, copied into the project and shown", copiedPicture && slideText().includes("{figures/photo-de-l-experience}"), slideText());
     // The look: themes drawn on the slide, one chosen, its colours, the shape 4:3.
-    const deckNow = () => editor.textOf(project.info!.main!) ?? "";
-    document.querySelector<HTMLButtonElement>('.slides-mode [data-view="look"]')!.click();
+    action("theme");
     await until(() => !!document.querySelector('.slides-mode .theme[data-theme="Warsaw"] canvas'), 120_000, "themes drawn");
     document.querySelector<HTMLButtonElement>('.slides-mode .theme[data-theme="Warsaw"]')!.click();
     await until(() => deckNow().includes("\\usetheme{Warsaw}"), 10_000, "theme chosen");
@@ -2165,17 +2126,17 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     await until(() => deckNow().includes("\\usecolortheme{whale}"), 10_000, "colours chosen");
     document.querySelector<HTMLButtonElement>('.slides-mode [data-ratio="43"]')!.click();
     await until(() => /\\documentclass\[aspectratio=43\]\{beamer\}/.test(deckNow()), 10_000, "shape chosen");
+    const drawnThemes = document.querySelectorAll(".slides-mode .theme canvas").length;
+    action("theme");
     await until(() => {
-      const b = document.querySelector<HTMLElement>(".slides-mode .slide-box")?.getBoundingClientRect();
+      const b = document.querySelector<HTMLElement>(".slides-mode .side .render canvas")?.getBoundingClientRect();
       return !build.running && !!b && Math.abs(b.width / b.height - 4 / 3) < 0.05;
     }, 120_000, "deck built in 4:3");
-    const drawnThemes = document.querySelectorAll(".slides-mode .theme canvas").length;
     check(
       "slides mode: themes drawn on the slide, one chosen with its colours and its shape",
-      !deckNow().includes("\\usetheme{Madrid}") && !deckNow().includes("beaver") && document.querySelector<HTMLElement>(".slides-mode .theme.on")?.dataset.theme === "Warsaw" && drawnThemes >= 3,
+      !deckNow().includes("\\usetheme{Madrid}") && !deckNow().includes("beaver") && drawnThemes >= 3,
       `${drawnThemes} drawn`,
     );
-    document.querySelector<HTMLButtonElement>('.slides-mode [data-view="interface"]')!.click();
     // Presenting: the window of the presentation opens and draws the page the
     // presenter's view says; the arrows move from step to step; Escape ends it.
     const presenter = () => document.querySelector<HTMLElement>(".slides-mode .presenter");
