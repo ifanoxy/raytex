@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { frameBlocks } from "./blocks.ts";
 import { parseDeck } from "./deck.ts";
-import { blockAt, blockWords, type PageText, placeBlocks, shownWords } from "./place.ts";
+import { blockAt, blockWords, type PageText, partAt, partsOf, placeBlocks, shownWords, withPart } from "./place.ts";
 
 const DECK = `\\documentclass{beamer}
 \\begin{document}
@@ -35,7 +35,8 @@ test("the words a piece of LaTeX shows", () => {
 test("the blocks found on the page by their words, a picture between them", () => {
   const blocks = frameBlocks(DECK, parseDeck(DECK).frames[0]);
   const texts = [text("Plan de l’exposé", 12), text("Une introduction courte", 50), text("Le contexte", 70), text("La méthode", 85), text("À retenir", 190), text("La méthode compte", 205), text("Alwin Exposé 3/5", 246)];
-  const boxes = placeBlocks(texts, blocks, "Plan de l'exposé", PAGE);
+  const { boxes, title } = placeBlocks(texts, blocks, "Plan de l'exposé", PAGE);
+  assert.equal(title?.y, 12);
   assert.deepEqual(boxes[0], { x: 30, y: 50, width: 115, height: 10 });
   assert.deepEqual(boxes[1], { x: 30, y: 70, width: 55, height: 25 });
   assert.equal(boxes[3]?.y, 190);
@@ -47,4 +48,20 @@ test("the blocks found on the page by their words, a picture between them", () =
   assert.equal(blockAt(boxes, 100, 140), 2);
   assert.equal(blockAt(boxes, 40, 210), 3);
   assert.equal(blockAt(boxes, 40, 20), -1);
+});
+
+test("the part of a block written on the slide where it is clicked", () => {
+  const blocks = frameBlocks(DECK, parseDeck(DECK).frames[0]);
+  const texts = [text("Plan de l’exposé", 12), text("Une introduction courte", 50), text("Le contexte", 70), text("La méthode", 85), text("À retenir", 190), text("La méthode compte", 205)];
+  const placement = placeBlocks(texts, blocks, "Plan de l'exposé", PAGE);
+  assert.deepEqual(partsOf(blocks[1]), ["Le \\textbf{contexte}", "La méthode"]);
+  assert.equal(partsOf(blocks[2]), null);
+  // The second point of the list, alone.
+  assert.deepEqual(partAt(placement, blocks, 40, 88), { block: 1, part: 1, box: { x: 30, y: 85, width: 50, height: 10 }, size: 10 });
+  // The title of the box, then its body.
+  assert.equal(partAt(placement, blocks, 35, 193)?.part, 0);
+  assert.equal(partAt(placement, blocks, 35, 208)?.part, 1);
+  assert.equal(partAt(placement, blocks, 300, 140), null);
+  assert.deepEqual(withPart(blocks[1], 1, " Les résultats ").items?.map((it) => it.text), ["Le \\textbf{contexte}", "Les résultats"]);
+  assert.equal(withPart(blocks[3], 0, "Important").title, "Important");
 });

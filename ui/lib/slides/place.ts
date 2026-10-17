@@ -72,12 +72,22 @@ const union = (boxes: Box[]): Box => {
   return { x, y, width: Math.max(...boxes.map((b) => b.x + b.width)) - x, height: Math.max(...boxes.map((b) => b.y + b.height)) - y };
 };
 
+/** The blocks of a slide on its page. */
+export interface Placement {
+  /** Where each block is (`null`: nowhere to be seen, a pause). */
+  boxes: (Box | null)[];
+  /** The texts drawn (the band of the theme at the bottom left out), and the block each is of (-1: none). */
+  texts: PageText[];
+  owner: number[];
+  /** Where the title of the slide is. */
+  title: Box | null;
+}
+
 /**
- * Where each block is on the page (`null`: nowhere to be seen, a pause),
- * from the texts drawn on it; `title` is the title of the slide, whose
- * texts are no block's.
+ * Where each block is on the page, from the texts drawn on it; `title` is
+ * the title of the slide, whose texts are no block's.
  */
-export function placeBlocks(texts: PageText[], blocks: Block[], title: string, page: { width: number; height: number }): (Box | null)[] {
+export function placeBlocks(texts: PageText[], blocks: Block[], title: string, page: { width: number; height: number }): Placement {
   const sets = blocks.map((b) => new Set(blockWords(b)));
   const titleSet = new Set(words(title));
   // How rare a word is among the blocks: a word of one block only says more.
@@ -147,7 +157,7 @@ export function placeBlocks(texts: PageText[], blocks: Block[], title: string, p
     }
     i = j - 1;
   }
-  return out;
+  return { boxes: out, texts: shown, owner, title: titleTexts.length ? union(titleTexts) : null };
 }
 
 /** The block at a point of the page: the one it is in, else the nearest one above or below. */
@@ -173,4 +183,66 @@ export function blockAt(boxes: (Box | null)[], x: number, y: number): number {
     }
   });
   return best;
+}
+
+// ------------------------------------------------- written on the slide
+
+/** The parts of a block written apart on the slide: the points of a list, the columns, the title and the body of a box; `null` when it is not written there. */
+export function partsOf(b: Block): string[] | null {
+  switch (b.kind) {
+    case "list":
+      return b.items?.some((it) => it.text.includes("\n")) ? null : (b.items ?? []).map((it) => it.text);
+    case "columns":
+      return (b.columns ?? []).map((c) => c.text);
+    case "box":
+      return [b.title ?? "", b.text];
+    case "text":
+    case "formula":
+      return [b.text];
+    default:
+      return null;
+  }
+}
+
+/** Block `b` with its part `k` written `text`. */
+export function withPart(b: Block, k: number, text: string): Block {
+  switch (b.kind) {
+    case "list":
+      return { ...b, items: b.items?.map((it, n) => (n === k ? { ...it, text: text.trim() } : it)) };
+    case "columns":
+      return { ...b, columns: b.columns?.map((c, n) => (n === k ? { ...c, text } : c)) };
+    case "box":
+      return k === 0 ? { ...b, title: text.trim() } : { ...b, text };
+    default:
+      return { ...b, text };
+  }
+}
+
+/** The part of block `i` a text drawn is of (by its words), or -1. */
+function partOf(parts: string[], t: PageText): number {
+  const ws = words(t.str);
+  let best = -1;
+  let bestFound = 0;
+  parts.forEach((p, k) => {
+    const set = new Set(shownWords(p));
+    const found = ws.filter((w) => set.has(w)).length / Math.max(1, ws.length);
+    if (found > bestFound) {
+      best = k;
+      bestFound = found;
+    }
+  });
+  return bestFound >= 0.5 ? best : -1;
+}
+
+/** The part of a block written on the slide at a point, and where it is drawn; null where nothing of it is. */
+export function partAt(placement: Placement, blocks: Block[], x: number, y: number): { block: number; part: number; box: Box; size: number } | null {
+  const hit = placement.texts.findIndex((t, k) => placement.owner[k] >= 0 && x >= t.x - 3 && x <= t.x + t.width + 3 && y >= t.y - 3 && y <= t.y + t.height + 3);
+  if (hit < 0) return null;
+  const i = placement.owner[hit];
+  const parts = partsOf(blocks[i]);
+  if (!parts) return null;
+  const part = parts.length === 1 ? 0 : partOf(parts, placement.texts[hit]);
+  if (part < 0) return null;
+  const mine = placement.texts.filter((t, k) => placement.owner[k] === i && (parts.length === 1 || partOf(parts, t) === part));
+  return { block: i, part, box: union(mine), size: Math.min(...mine.map((t) => t.height)) };
 }

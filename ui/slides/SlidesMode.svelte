@@ -14,9 +14,9 @@
   import * as ipc from "$lib/ipc";
   import { closePdf, loadPdf, pageTexts } from "$lib/pdf/pdfjs";
   import { type DeckEdit, deleteFrame, duplicateFrame, framePages, insertFrame, type Layout, LAYOUTS, moveFrame, pagesOf, parseDeck, setNotes, setTitle } from "$lib/slides/deck";
-  import { type Block, type BlockEdit, frameBlocks, indentUnit } from "$lib/slides/blocks";
+  import { type Block, type BlockEdit, frameBlocks, indentUnit, replaceBlock } from "$lib/slides/blocks";
   import type { Frame } from "$lib/slides/deck";
-  import { blockAt, type Box, placeBlocks } from "$lib/slides/place";
+  import { blockAt, type Box, partAt, partsOf, type Placement, placeBlocks, withPart } from "$lib/slides/place";
   import type { SlidesHost, SlidesState } from "$lib/slides/host";
   import Icon from "../components/common/Icon.svelte";
   import BlockPanel from "./BlockPanel.svelte";
@@ -137,14 +137,15 @@
   }
 
   /** Where the blocks are on the slide: found by their words in the texts of its last step (all shown). */
-  let placed = $state<(Box | null)[]>([]);
+  let placement = $state<Placement | null>(null);
+  const placed = $derived(placement?.boxes ?? []);
   $effect(() => {
     const d = doc;
     const r = range;
     const bs = blocks;
     const f = frame;
     void revision;
-    placed = [];
+    placement = null;
     if (!d || !r || !f || r[1] > d.numPages) return;
     let gone = false;
     void (async () => {
@@ -158,7 +159,7 @@
         const height = it.height || Math.hypot(it.transform[2], it.transform[3]);
         return [{ str: it.str, x, y: y - height, width: it.width, height }];
       });
-      placed = placeBlocks(texts, bs, `${f.title} ${f.subtitle}`, { width: viewport.width, height: viewport.height });
+      placement = placeBlocks(texts, bs, `${f.title} ${f.subtitle}`, { width: viewport.width, height: viewport.height });
     })();
     return () => {
       gone = true;
@@ -167,16 +168,74 @@
   /** Where the block chosen is on the slide, in points of the page. */
   const marked = $derived(placed[block] ?? null);
 
+  /** Where a click falls on the page, in its points (null: not on it). */
+  function pointOf(e: MouseEvent): { x: number; y: number } | null {
+    const canvas = (e.currentTarget as HTMLElement).querySelector("canvas");
+    if (!canvas) return null;
+    const r = canvas.getBoundingClientRect();
+    if (!r.width || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return null;
+    return { x: ((e.clientX - r.left) / r.width) * pageSize.width, y: ((e.clientY - r.top) / r.height) * pageSize.height };
+  }
+
   /** A click on the slide: the block it falls on is chosen. */
   function pickOnSlide(e: MouseEvent) {
-    const canvas = (e.currentTarget as HTMLElement).querySelector("canvas");
-    if (!canvas) return;
-    const r = canvas.getBoundingClientRect();
-    if (!r.width || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
-    const at = blockAt(placed, ((e.clientX - r.left) / r.width) * pageSize.width, ((e.clientY - r.top) / r.height) * pageSize.height);
+    const p = pointOf(e);
+    if (!p || inplace) return;
+    const at = blockAt(placed, p.x, p.y);
     if (at < 0) return;
     block = at;
     if (view !== "interface") show("interface");
+  }
+
+  // ------------------------------------------------- written on the slide
+
+  /** A text of the slide written where it is drawn: a part of a block, or the title. */
+  let inplace = $state<{ block: number; part: number; kind: string; box: Box; size: number; text: string; lines: boolean } | null>(null);
+
+  /** A double click on a text of the slide: it is written there. */
+  function writeOnSlide(e: MouseEvent) {
+    const p = pointOf(e);
+    if (!p || !placement || !frame) return;
+    const t = placement.title;
+    if (t && !frame.titlePage && p.x >= t.x - 3 && p.x <= t.x + t.width + 3 && p.y >= t.y - 3 && p.y <= t.y + t.height + 3) {
+      inplace = { block: -1, part: 0, kind: "title", box: t, size: t.height, text: frame.title, lines: false };
+      return;
+    }
+    const found = partAt(placement, blocks, p.x, p.y);
+    if (!found) return;
+    const b = blocks[found.block];
+    block = found.block;
+    const lines = b.kind === "text" || b.kind === "formula" || b.kind === "columns" || (b.kind === "box" && found.part === 1);
+    inplace = { ...found, kind: b.kind, text: partsOf(b)![found.part], lines };
+  }
+
+  /** What was written on the slide, written in the text (`keep`: false when it is given up). */
+  function closeInplace(value: string, keep: boolean) {
+    const w = inplace;
+    inplace = null;
+    if (!w || !keep || value.trim() === w.text.trim() || !told) return;
+    if (w.block < 0) {
+      if (frame) apply(setTitle(told.text, deck, selected, value));
+      return;
+    }
+    blockEdit((tx, _f, bs) => (bs[w.block]?.kind === w.kind ? replaceBlock(tx, bs, w.block, withPart(bs[w.block], w.part, value)) : null));
+  }
+
+  function inplaceKey(e: KeyboardEvent) {
+    const field = e.currentTarget as HTMLInputElement | HTMLTextAreaElement;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeInplace(field.value, false);
+    } else if (e.key === "Enter" && (!inplace?.lines || e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      closeInplace(field.value, true);
+    }
+  }
+
+  /** The field opened on the slide takes the keys at once. */
+  function focusField(el: HTMLElement) {
+    el.focus();
+    (el as HTMLInputElement).select?.();
   }
 
   const lang = $derived(i18n.lang === "fr" ? "fr" : "en");
@@ -385,7 +444,7 @@
       <div class="stage" bind:this={stage}>
         {#if doc && frame && range}
           <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-          <div class="slide-box" onclick={pickOnSlide}>
+          <div class="slide-box" title={t("slides.slideHint")} onclick={pickOnSlide} ondblclick={writeOnSlide}>
             <PageCanvas {doc} page={shownPage} width={slideWidth} height={slideWidth / frameRatio} {revision} />
             {#if marked && view === "interface"}
               <span
@@ -395,6 +454,34 @@
                 style:width="{marked.width * drawnAt.scale + 8}px"
                 style:height="{marked.height * drawnAt.scale + 8}px"
               ></span>
+            {/if}
+            {#if inplace}
+              {@const w = inplace}
+              {@const left = drawnAt.left + w.box.x * drawnAt.scale - 6}
+              {@const width = Math.min(slideWidth - left - 4, Math.max(w.box.width * drawnAt.scale + 40, 220))}
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div
+                class="inplace"
+                style:left="{left}px"
+                style:top="{drawnAt.top + w.box.y * drawnAt.scale - 6}px"
+                style:width="{width}px"
+                style:font-size="{Math.max(12, Math.min(26, w.size * drawnAt.scale * 0.85))}px"
+                onclick={(e) => e.stopPropagation()}
+                ondblclick={(e) => e.stopPropagation()}
+              >
+                {#if w.lines}
+                  <textarea
+                    use:focusField
+                    rows={Math.max(2, w.text.split("\n").length)}
+                    value={w.text}
+                    aria-label={t("slides.writeHere")}
+                    onkeydown={inplaceKey}
+                    onblur={(e) => closeInplace(e.currentTarget.value, true)}
+                  ></textarea>
+                {:else}
+                  <input use:focusField value={w.text} aria-label={t("slides.writeHere")} onkeydown={inplaceKey} onblur={(e) => closeInplace(e.currentTarget.value, true)} />
+                {/if}
+              </div>
             {/if}
           </div>
         {:else if frame}
@@ -631,6 +718,29 @@
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
     border-radius: 3px;
     cursor: pointer;
+  }
+  .inplace {
+    position: absolute;
+    z-index: 5;
+    display: flex;
+    padding: 3px;
+    border: 2px solid var(--accent);
+    border-radius: 5px;
+    background: #fff;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+  .inplace input,
+  .inplace textarea {
+    flex: 1;
+    min-width: 0;
+    padding: 2px 4px;
+    border: 0;
+    outline: none;
+    background: none;
+    color: #1a1a1a;
+    font: inherit;
+    font-family: var(--font-mono);
+    resize: vertical;
   }
   .marked {
     position: absolute;

@@ -2208,6 +2208,8 @@ const en = {
   "slides.table.addRow": "Add a row",
   "slides.table.removeRow": "Remove the last row",
   "slides.table.removeColumn": "Remove the last column",
+  "slides.slideHint": "Click: choose a block · Double-click a text: write it in place",
+  "slides.writeHere": "Text of the slide (Enter to write, Escape to cancel)",
   "slides.box.block": "Block",
   "slides.box.alertblock": "Alert",
   "slides.box.exampleblock": "Example",

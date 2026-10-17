@@ -2054,12 +2054,33 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     document.querySelector<HTMLElement>(".slides-mode .slide-box")!.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: mark.left + mark.width / 2, clientY: mark.top + Math.min(mark.height / 2, 20) }));
     await until(() => !!document.querySelector('.slides-mode .block.open[data-kind="list"]'), 10_000, "block chosen on the slide");
     check("slides mode: a block shown on the slide, a click on the slide chooses it", !!document.querySelector('.slides-mode .block.open[data-kind="list"]') && mark.width > 20 && mark.height > 10, `${mark.width} × ${mark.height}`);
+    // Written on the slide: a double click on its first point opens a field over it.
+    const slideBox = () => document.querySelector<HTMLElement>(".slides-mode .slide-box")!;
+    const field = () => document.querySelector<HTMLInputElement>(".slides-mode .inplace input");
+    const enter = (el: HTMLInputElement) => el.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    slideBox().dispatchEvent(new MouseEvent("dblclick", { bubbles: true, clientX: mark.left + mark.width / 2, clientY: mark.top + 10 }));
+    await until(() => !!field(), 5_000, "point written on the slide");
+    const pointWas = field()!.value;
+    field()!.value = "Le contexte précis";
+    enter(field()!);
+    await until(() => slideText().includes("\\item Le contexte précis"), 10_000, "point written in the text");
+    check("slides mode: a point of a list written on the slide", pointWas === "Le contexte" && !field(), pointWas);
     document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="list"] [data-action="block-up"]')!.click();
     await until(() => kinds().join() === "list,columns", 10_000, "block moved up");
     const moved = slideText();
     document.querySelector<HTMLButtonElement>('.slides-mode .block[data-kind="list"] [data-action="block-delete"]')!.click();
     await until(() => kinds().join() === "columns", 10_000, "block taken out");
     check("slides mode: blocks moved and taken out", moved.indexOf("\\begin{itemize}") < moved.indexOf("\\begin{columns}") && !slideText().includes("itemize") && slideText().includes("\\begin{columns}"));
+    // The title, written on the slide (top left in the theme of the template).
+    await until(() => Number(root()?.dataset.placed) > 0, 10_000, "blocks placed again");
+    const canvas = slideBox().querySelector("canvas")!.getBoundingClientRect();
+    slideBox().dispatchEvent(new MouseEvent("dblclick", { bubbles: true, clientX: canvas.left + canvas.width * 0.06, clientY: canvas.top + canvas.height * 0.05 }));
+    await until(() => !!field(), 5_000, "title written on the slide");
+    const titleWas = field()!.value;
+    field()!.value = "Plan";
+    enter(field()!);
+    await until(() => slideNames()[1] === "Plan", 10_000, "title written in the text");
+    check("slides mode: the title written on the slide", titleWas === "Sommaire", titleWas);
     action("leave");
     await until(() => ui.mode === "editor" && !root() && !!document.querySelector(".work:not(.hidden)"), 5_000, "back to the editor");
     check("slides mode: back to the editor", ui.mode === "editor" && !!editor.view);

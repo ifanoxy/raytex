@@ -2210,6 +2210,8 @@ const fr: Record<keyof typeof en, string> = {
   "slides.table.addRow": "Ajouter une ligne",
   "slides.table.removeRow": "Retirer la dernière ligne",
   "slides.table.removeColumn": "Retirer la dernière colonne",
+  "slides.slideHint": "Clic : choisir un bloc · Double-clic sur un texte : l'écrire sur place",
+  "slides.writeHere": "Texte de la diapositive (Entrée pour écrire, Échap pour annuler)",
   "slides.box.block": "Bloc",
   "slides.box.alertblock": "Alerte",
   "slides.box.exampleblock": "Exemple",
