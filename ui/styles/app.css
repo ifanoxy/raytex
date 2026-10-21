@@ -667,9 +667,27 @@ kbd {
   background: var(--bg-active);
 }
 .lbt-diag-keys {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-top: 6px;
   font-size: 11px;
   color: var(--text-faint);
+}
+.lbt-diag-copy {
+  margin-left: auto;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.lbt-diag-copy:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .cm-vim-panel {
   padding: 2px 10px;

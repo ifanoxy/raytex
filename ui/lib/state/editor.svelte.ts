@@ -11,7 +11,7 @@
 import { acceptCompletion, closeBrackets, closeBracketsKeymap, snippet } from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap, indentWithTab, redo, redoDepth, undo, undoDepth } from "@codemirror/commands";
 import { bracketMatching, foldGutter, foldKeymap, indentOnInput, indentUnit } from "@codemirror/language";
-import { type Diagnostic as CmDiagnostic, lintGutter, lintKeymap, setDiagnostics } from "@codemirror/lint";
+import { type Diagnostic as CmDiagnostic, lintKeymap, setDiagnostics } from "@codemirror/lint";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { findExtension } from "../editor/find.svelte";
 import { ChangeSet, Compartment, EditorSelection, EditorState, type Extension, Prec, type StateEffect, type Text, type TransactionSpec } from "@codemirror/state";
@@ -36,6 +36,8 @@ import { latexCompletion } from "../editor/completion";
 import { docPath, hooks } from "../editor/context";
 import { deleteDollarPair, handleDollar } from "../editor/dollar";
 import { flash, flashField } from "../editor/flash";
+import { focusKeepingScroll, keepScrollOnFocus } from "../editor/focus";
+import { problemsGutter } from "../editor/lint-tips";
 import { codeChips, type ChipKind } from "../editor/chips";
 import { expandTrigger } from "../editor/macros";
 import type { Triggered } from "../editor/trigger";
@@ -189,12 +191,21 @@ function renderDiagnostic(d: Diagnostic): HTMLElement {
     hint.innerHTML = `<strong>${inlineMarkdown(d.hint.title)}</strong> ${inlineMarkdown(suggestionOf(d) ?? d.hint.explanation)}`;
     root.appendChild(hint);
   }
-  if (d.fixes.length) {
-    const keys = document.createElement("div");
-    keys.className = "lbt-diag-keys";
-    keys.textContent = t("fix.quickFixHint", { keys: prettyKey("Alt-Enter") });
-    root.appendChild(keys);
-  }
+  const foot = document.createElement("div");
+  foot.className = "lbt-diag-keys";
+  if (d.fixes.length) foot.append(t("fix.quickFixHint", { keys: prettyKey("Alt-Enter") }));
+  // The message copied as it is (its text can also be chosen).
+  const copy = document.createElement("button");
+  copy.type = "button";
+  copy.className = "lbt-diag-copy";
+  copy.textContent = t("diag.copy");
+  copy.onmousedown = (e) => e.preventDefault();
+  copy.onclick = () => {
+    const text = [d.message, d.hint ? `${d.hint.title} ${suggestionOf(d) ?? d.hint.explanation}` : ""].filter(Boolean).join("\n");
+    void navigator.clipboard.writeText(text).then(() => (copy.textContent = t("diag.copied")));
+  };
+  foot.append(copy);
+  root.appendChild(foot);
   return root;
 }
 
@@ -291,7 +302,7 @@ class EditorStore {
   private configKey = "";
   private syncListeners: Listener[] = [];
   private saveListeners: Listener[] = [];
-  private lastMacroRefresh = new Map<string, number>();
+  private macroTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   private syncTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -414,7 +425,7 @@ class EditorStore {
         [
           e?.lineNumbers !== false ? [lineNumbers(), highlightActiveLineGutter()] : [],
           e?.folding !== false ? foldGutter({ openText: "▾", closedText: "▸" }) : [],
-          lintGutter({ hoverTime: 250 }),
+          problemsGutter(250),
           gutterClicks(),
         ],
       ],
@@ -498,6 +509,7 @@ class EditorStore {
         { key: "Escape", run: () => true },
       ]),
       EditorView.updateListener.of((u) => this.onViewUpdate(u)),
+      Prec.highest(keepScrollOnFocus),
       EditorView.domEventHandlers({
         mousedown: (e, view) => this.onMouseDown(e, view),
         paste: (e, view) => this.onPaste(e, view),
@@ -587,7 +599,7 @@ class EditorStore {
   }
 
   focus() {
-    requestAnimationFrame(() => this.view?.focus());
+    requestAnimationFrame(() => this.view && focusKeepingScroll(this.view));
   }
 
   /** Flags of the shown document used by the toolbar and the start card. */
@@ -735,10 +747,16 @@ class EditorStore {
     } catch {
       return; // no project open (loose file): no diagnostics
     }
-    const now = Date.now();
-    if (m.kind === "tex" && now - (this.lastMacroRefresh.get(key) ?? 0) > 2000) {
-      this.lastMacroRefresh.set(key, now);
-      void refreshMacros(m.path);
+    // At most once a second while typing, and always after the last change
+    // (a definition just finished is not missed).
+    if (m.kind === "tex" && !this.macroTimers.has(key)) {
+      this.macroTimers.set(
+        key,
+        setTimeout(() => {
+          this.macroTimers.delete(key);
+          void refreshMacros(m.path);
+        }, 1000),
+      );
     }
     for (const fn of this.syncListeners) fn(m.path);
   }

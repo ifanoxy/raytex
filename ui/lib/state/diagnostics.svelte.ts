@@ -183,8 +183,8 @@ class DiagnosticsStore {
       else if (d.severity === "warning") warnings++;
       else infos++;
     };
-    this.build.forEach(count);
-    for (const key of Object.keys(this.lint)) this.live(key).forEach(count);
+    // As the list shows them: one mistake said by two checks counts once.
+    for (const group of this.grouped) group.items.forEach(count);
     return { errors, warnings, infos };
   }
 }

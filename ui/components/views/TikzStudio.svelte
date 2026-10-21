@@ -10,13 +10,15 @@
   import { closeBrackets, closeBracketsKeymap, snippet, startCompletion } from "@codemirror/autocomplete";
   import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
   import { indentUnit } from "@codemirror/language";
-  import { type Diagnostic as CmDiagnostic, lintGutter, setDiagnostics } from "@codemirror/lint";
+  import { type Diagnostic as CmDiagnostic, setDiagnostics } from "@codemirror/lint";
   import { EditorState } from "@codemirror/state";
   import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
   import { onDestroy, onMount } from "svelte";
   import { latexCompletion } from "$lib/editor/completion";
   import { docPath } from "$lib/editor/context";
   import { latex } from "$lib/editor/latex";
+  import { keepScrollOnFocus } from "$lib/editor/focus";
+  import { problemsGutter } from "$lib/editor/lint-tips";
   import { editorTheme } from "$lib/editor/theme";
   import { type MessageKey, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
@@ -271,7 +273,8 @@
           editorTheme(s?.fontFamily || "var(--font-mono)", Math.max(12, (s?.fontSize ?? 14) - 1), s?.lineHeight ?? 1.55),
           latex(),
           lineNumbers(),
-          lintGutter(),
+          problemsGutter(),
+          keepScrollOnFocus,
           history(),
           drawSelection(),
           highlightActiveLine(),

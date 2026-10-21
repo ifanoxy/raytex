@@ -345,27 +345,79 @@ pub async fn math_at(
     .await
 }
 
-/// User macros usable by the math renderer (`\\R` → `\\mathbb{R}`).
+/// A command of the project as the math renderer draws it.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MathMacro {
+    /// `\\R`.
+    pub name: String,
+    /// What it stands for, with `#1`… for its arguments.
+    pub body: String,
+    /// Its number of arguments.
+    pub args: u8,
+    /// The default of its optional first argument.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default: Option<String>,
+    /// The delimiters of `\\DeclarePairedDelimiter` (`\\abs*`, `\\abs[\\big]` too).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paired: Option<[String; 2]>,
+}
+
+/// User macros usable by the math renderer (`\\R` → `\\mathbb{R}`, an
+/// optional first argument, `\\DeclareMathOperator`, `\\DeclarePairedDelimiter`).
 #[tauri::command]
-pub async fn math_macros(
-    app: AppHandle,
-    path: String,
-) -> CmdResult<std::collections::BTreeMap<String, String>> {
+pub async fn math_macros(app: AppHandle, path: String) -> CmdResult<Vec<MathMacro>> {
     let p = abs(&path);
     blocking(&app, move |_, state| {
         let project = state.project();
         let Some(pr) = project.as_ref() else {
-            return Default::default();
+            return Vec::new();
         };
         let root = pr.ws.root_for(&p);
         pr.ws
             .command_definitions(&root)
             .into_iter()
-            .filter(|(d, _)| !d.body.is_empty() && !d.name.contains('@') && !d.first_optional)
-            .map(|(d, _)| (format!("\\{}", d.name), d.body.clone()))
+            .filter_map(|(d, _)| math_macro(d))
             .collect()
     })
     .await
+}
+
+fn math_macro(d: &raytex_core::syntax::CommandDef) -> Option<MathMacro> {
+    use raytex_core::syntax::MathForm;
+    if d.name.contains('@') {
+        return None;
+    }
+    let name = format!("\\{}", d.name);
+    match &d.form {
+        MathForm::Paired { left, right } => Some(MathMacro {
+            name,
+            body: String::new(),
+            args: 1,
+            default: None,
+            paired: Some([left.clone(), right.clone()]),
+        }),
+        MathForm::Operator { limits } if !d.body.is_empty() => Some(MathMacro {
+            name,
+            body: format!(
+                "\\operatorname{}{{{}}}",
+                if *limits { "*" } else { "" },
+                d.body
+            ),
+            args: 0,
+            default: None,
+            paired: None,
+        }),
+        // An optional first argument the renderer cannot follow (`o`, `s` of xparse).
+        _ if d.body.is_empty() || (d.first_optional && d.default.is_none()) => None,
+        _ => Some(MathMacro {
+            name,
+            body: d.body.clone(),
+            args: d.args,
+            default: d.default.clone(),
+            paired: None,
+        }),
+    }
 }
 
 /// The commands and the environments the project of a file defines.

@@ -44,3 +44,11 @@ test("a problem known by its line only meets the problems of that line", () => {
   const list = [line, problem("info", "lint", "align nécessite amsmath", at(2, 0, 13), [fix]), problem("info", "lint", "ailleurs", at(7, 0, 4), [fix])];
   assert.deepEqual(oneEach(list).map((d) => d.message), ["Environment align undefined", "ailleurs"]);
 });
+
+test("a reference never defined, said by LaTeX and by the live checks: once; two by LaTeX on a line: both", () => {
+  const coded = (source: Diagnostic["source"], message: string, range: Diagnostic["range"], line?: number): Diagnostic => ({ ...problem("warning", source, message, range, []), code: "undefined-reference", ...(line ? { line } : {}) });
+  const list = [coded("latex", "Reference `a' undefined", at(4, 5, 6)), coded("lint", "Label non défini : « a »", at(4, 5, 6))];
+  assert.deepEqual(oneEach(list).map((d) => d.source), ["latex"]);
+  const two = [coded("latex", "Reference `a' undefined", null, 5), coded("latex", "Reference `b' undefined", null, 5)];
+  assert.equal(oneEach(two).length, 2);
+});

@@ -1560,6 +1560,22 @@
     }
   },
   {
+    "id": "biber-silent",
+    "match": "(Biber s'est arrêté sans écrire d'erreur|Biber stopped without writing an error)",
+    "title": {
+      "en": "Biber stopped short",
+      "fr": "Biber s'est arrêté net"
+    },
+    "explanation": {
+      "en": "Biber stopped before it could say why. When its copy unpacked in the temporary folder is cut (the usual cause), RayTeX removes it and runs Biber again by itself: this time that did not help, or the copy was not found. Its last lines are in the details and in the Output tab.",
+      "fr": "Biber s'est arrêté avant de pouvoir dire pourquoi. Quand sa copie décompressée dans le dossier temporaire est abîmée (la cause habituelle), RayTeX la retire et relance Biber de lui-même : cette fois cela n'a pas suffi, ou la copie n'a pas été trouvée. Ses dernières lignes figurent dans les détails et dans l'onglet Sortie."
+    },
+    "more": {
+      "en": "Reinstalling Biber with the tools of the distribution (TeX Live Utility, `tlmgr`, MiKTeX Console) gives it back whole.",
+      "fr": "Réinstaller Biber avec les outils de la distribution (TeX Live Utility, `tlmgr`, MiKTeX Console) le rend entier."
+    }
+  },
+  {
     "id": "engine-no-log",
     "match": "(s'est arrêté sans rien écrire dans son journal|stopped without writing anything in its log)",
     "title": {

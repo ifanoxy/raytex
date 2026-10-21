@@ -338,11 +338,36 @@ pub struct CommandDef {
     pub body: String,
     /// Whether it is a math operator (`\DeclareMathOperator`).
     pub math: bool,
+    /// The default of the optional first argument (`\newcommand{\v}[2][x]`,
+    /// `O{x}` of `\NewDocumentCommand`), whitespace squashed.
+    pub default: Option<String>,
+    /// How a formula draws it, when not by its body alone.
+    pub form: MathForm,
     /// The arguments as they are written, `[]{}{}`; `None` when the
     /// definition does not tell them (delimited parameters, a `\let`).
     pub signature: Option<String>,
     /// Span of the name.
     pub span: Span,
+}
+
+/// How a command defined for formulas is drawn.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum MathForm {
+    /// By its body.
+    #[default]
+    Body,
+    /// `\DeclareMathOperator`.
+    Operator {
+        /// The starred one: limits under and over.
+        limits: bool,
+    },
+    /// `\DeclarePairedDelimiter{\abs}{\lvert}{\rvert}`: its argument between the two.
+    Paired {
+        /// The opening delimiter.
+        left: String,
+        /// The closing delimiter.
+        right: String,
+    },
 }
 
 /// A user-defined environment.

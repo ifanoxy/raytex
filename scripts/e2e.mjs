@@ -30,7 +30,7 @@ import { homedir, tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const groups = process.argv.slice(2).length ? process.argv.slice(2) : ["workflow", "fixes", "files", "projects", "media"];
+const groups = process.argv.slice(2).length ? process.argv.slice(2) : ["workflow", "fixes", "files", "projects", "media", "editor"];
 const out = resolve(process.env.E2E_OUT ?? join(root, "e2e-output"));
 const windows = process.platform === "win32";
 // Compiling the application the first time can be long (25 min on a CI
@@ -190,6 +190,8 @@ async function run(group) {
         if (id) spawnSync("screencapture", ["-x", "-o", `-l${id}`, join(out, `${group}-${m[1]}.png`)], { stdio: "ignore" });
       } else if (SHOTS) screenshot(join(out, `${group}-${m[1]}.png`));
     }
+    // The window of the application left for another one (macOS): it comes back by itself.
+    if (/away: Finder/.test(plain) && process.platform === "darwin") spawnSync("open", ["-a", "Finder"], { stdio: "ignore" });
     const end = new RegExp(`${group} scenes (PASSED|FAILED)|selftest: FAILED`).exec(text);
     if (end && !verdict) verdict = end[1] ?? "FAILED";
   };

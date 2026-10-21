@@ -1208,6 +1208,8 @@ const en = {
   "fix.nothingHere": "No problem to fix here",
   "fix.showProblem": "Show in Problems",
   "fix.quickFixHint": "{keys}: fix",
+  "diag.copy": "Copy",
+  "diag.copied": "Copied",
   "problems.fixAll": "Fix all ({n})",
   "problems.fixAllHint": "Apply the suggested fix of every problem shown, then compile again",
   "problems.fixedN": "{n} problem(s) fixed",

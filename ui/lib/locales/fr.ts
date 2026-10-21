@@ -1210,6 +1210,8 @@ const fr: Record<keyof typeof en, string> = {
   "fix.nothingHere": "Aucun problème à corriger ici",
   "fix.showProblem": "Voir dans les problèmes",
   "fix.quickFixHint": "{keys} : corriger",
+  "diag.copy": "Copier",
+  "diag.copied": "Copié",
   "problems.fixAll": "Tout corriger ({n})",
   "problems.fixAllHint": "Appliquer la correction proposée pour chaque problème affiché, puis recompiler",
   "problems.fixedN": "{n} problème(s) corrigé(s)",

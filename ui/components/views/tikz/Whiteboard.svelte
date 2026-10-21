@@ -22,7 +22,7 @@
   // the canvas (their text may contain $maths$, rendered by KaTeX).
   import { onMount } from "svelte";
   import { expressionCss, BASE_COLORS, DVIPS_COLORS } from "$lib/colors";
-  import { mathHtml } from "$lib/editor/math-preview";
+  import { mathHtml, textHtml } from "$lib/editor/math-preview";
   import { plural, t } from "$lib/i18n.svelte";
   import { editor } from "$lib/state/editor.svelte";
   import { ui } from "$lib/state/ui.svelte";
@@ -818,7 +818,7 @@
     };
   }
 
-  /** HTML of a node's text: `$…$` parts rendered by KaTeX. */
+  /** HTML of a node's text: `$…$` parts and commands (`\\textbf`, the project's own) rendered by KaTeX. */
   const nodeHtml = $state<Record<string, string>>({});
   $effect(() => {
     for (const s of drawing.shapes) {
@@ -826,11 +826,16 @@
       const key = s.text;
       if (nodeHtml[key] !== undefined) continue;
       nodeHtml[key] = escapeHtml(key);
-      if (key.includes("$")) {
+      if (key.includes("$") || key.includes("\\")) {
         const parts = key.split("$");
         // With the commands of the project, like the formulas of the document.
-        void Promise.all(parts.map((part, i) => (i % 2 ? mathHtml(part, editor.active) : Promise.resolve(escapeHtml(part.replace(/\\\\/g, " "))))))
-          .then((html) => (nodeHtml[key] = html.join("")))
+        const html = (part: string, i: number) => {
+          if (i % 2) return mathHtml(part, editor.active);
+          const text = part.replace(/\\\\/g, " ");
+          return text.includes("\\") ? textHtml(text, editor.active) : Promise.resolve(escapeHtml(text));
+        };
+        void Promise.all(parts.map(html))
+          .then((all) => (nodeHtml[key] = all.join("")))
           .catch(() => {});
       }
     }

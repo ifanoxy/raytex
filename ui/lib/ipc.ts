@@ -13,6 +13,7 @@ import type { Change, ChangesPdf, Comparison, HistoryView, Moment } from "./hist
 import type { CommandDraft, CommandSpec, CustomCommand } from "./commands";
 import type { PagePreview } from "./layout";
 import type { ShapeSet } from "./tikz/model";
+import type { MathMacro } from "./editor/katex-macros";
 
 const call = <R>(cmd: string, args?: Record<string, unknown>) => invoke<R>(cmd, args);
 
@@ -161,7 +162,7 @@ export const renameSymbol = (path: string, line: number, character: number, newN
   call<T.TextEdit[]>("rename_symbol", { path, line, character, newName });
 export const applyEdits = (edits: T.TextEdit[]) => call<string[]>("apply_edits", { edits });
 export const mathAt = (path: string, line: number, character: number) => call<T.MathAt | null>("math_at", { path, line, character });
-export const mathMacros = (path: string) => call<Record<string, string>>("math_macros", { path });
+export const mathMacros = (path: string) => call<MathMacro[]>("math_macros", { path });
 /** The commands and environments the project of `path` defines. */
 export const customCommands = (path: string) => call<CustomCommand[]>("custom_commands", { path });
 /** The entries of the `.bib` files of the project of a file, with how much each is cited. */

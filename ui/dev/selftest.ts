@@ -10,8 +10,11 @@ import { runAction } from "$lib/actions";
 import { refused } from "$lib/policy";
 import { acceptCompletion, currentCompletions, setSelectedCompletion, startCompletion } from "@codemirror/autocomplete";
 import { undo } from "@codemirror/commands";
+import { Transaction } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { displayHtml, refreshMacros, textHtml } from "../lib/editor/math-preview";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { i18n, t } from "../lib/i18n.svelte";
 import { keyLang, NAMES } from "../lib/answerkey";
 import * as ipc from "../lib/ipc";
@@ -134,6 +137,7 @@ export async function runSelfTest() {
   else if (ok && which === "projects" && assets) ok = await projectsScenes(log, assets);
   else if (ok && which === "fixes" && assets) ok = await fixesScenes(log, assets);
   else if (ok && which === "files" && assets) ok = await filesScenes(log, assets);
+  else if (ok && which === "editor" && assets) ok = await editorScenes(log, assets);
   else {
     if (ok && which && which !== "media") await scenes(log);
     if (ok && which && (which === "media" || which === "all") && assets) ok = await mediaScenes(log, assets);
@@ -2362,6 +2366,218 @@ async function fixesScenes(log: (msg: string) => void, dir: string): Promise<boo
   log(JSON.stringify(results, null, 2));
   const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));
   log(`fixes scenes ${ok ? "PASSED" : "FAILED"}`);
+  return ok;
+}
+
+/**
+ * The editor itself: a click after the window was left and the text scrolled
+ * keeps the text where it is; the window of the problems of a line stays by
+ * its line when the problems are given again, and its text can be chosen.
+ */
+async function editorScenes(log: (msg: string) => void, dir: string): Promise<boolean> {
+  const scene = async (name: string, holdMs = 1500) => {
+    await pause(500);
+    log(`scene: ${name}`);
+    await pause(holdMs);
+  };
+  const results: Record<string, unknown> = {};
+  const check = (name: string, value: boolean, detail: unknown = "") => {
+    results[name] = value ? "ok" : `FAILED ${typeof detail === "string" ? detail : JSON.stringify(detail)}`;
+  };
+  const frames = (n = 2) => new Promise<void>((done) => {
+    const step = (left: number) => (left ? requestAnimationFrame(() => step(left - 1)) : done());
+    step(n);
+  });
+  try {
+    check("created", await project.createEmpty(`${dir}/editeur-${Date.now()}`, "Éditeur"));
+    const main = project.info!.main!;
+    await until(() => editor.active === main && !!editor.view, 5_000, "main open");
+    const view = editor.view!;
+    const body = Array.from({ length: 300 }, (_, i) => `Paragraphe ${i + 1}, une ligne de texte assez longue pour remplir la largeur de l'éditeur.`).join("\n\n");
+    // Commands of the project, in the preamble and in a file of their own.
+    const preamble = [
+      "\\usepackage{amssymb,mathtools,xspace,tikz}",
+      "\\newcommand{\\R}{\\ensuremath{\\mathbb{R}}\\xspace}",
+      "\\DeclareMathOperator{\\Tr}{Tr}",
+      "\\newcommand{\\point}[1]{\\fill (#1) circle (2pt);}",
+      "\\input{macros}",
+    ].join("\n");
+    const macrosFile = `${main.replace(/[\\/][^\\/]+$/, "")}/macros.tex`;
+    await ipc.createFile(macrosFile, "\\newcommand{\\vect}[2][u]{\\vec{#1}_{#2}}\n\\DeclarePairedDelimiter{\\abs}{\\lvert}{\\rvert}\n");
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: `\\documentclass{article}\n${preamble}\n\\begin{document}\n${body}\n\\ref{nulle-part}\n\\end{document}\n` } });
+    await editor.saveAll({ auto: true, silent: true });
+
+    // ------------------------------------- the commands of the project in previews
+    await editor.flush();
+    await refreshMacros(main);
+    const drawnWell = (html: string) => !html.includes("katex-error");
+    const formula = await displayHtml("\\abs{x} + \\vect{i} + \\vect[v]{j} + \\Tr A \\in \\R", main);
+    check("formula preview: the project's commands", drawnWell(formula) && formula.includes("mathbb") && formula.includes("mop"), formula.slice(0, 300));
+    const cell = await textHtml("Pour $x \\in \\R$, $\\abs*{\\frac12}$ et \\textbf{gras}", main);
+    check("table cell preview: the project's commands", drawnWell(cell), cell.slice(0, 300));
+    const unopened = await displayHtml("\\vect{x} \\in \\R", macrosFile);
+    check("preview of a file never opened: the project's commands", drawnWell(unopened) && unopened.includes("mathbb"), unopened.slice(0, 300));
+    const tikz = await ipc.previewSnippet({
+      path: main,
+      job: "tikz",
+      classOptions: "tikz,border=6pt",
+      projectPreamble: true,
+      packages: ["tikz"],
+      body: "\\begin{tikzpicture}\\point{0,0}\\node at (1,0) {$\\abs{x} \\in \\R$, $\\vect{i}$};\\end{tikzpicture}",
+    });
+    check("TikZ preview: the project's commands", !!tikz.pdf && !tikz.diagnostics.some((d) => d.severity === "error"), tikz.diagnostics.map((d) => d.message).join(" | "));
+
+    // ---------------------------------------- a click after the window was left
+    const scroller = view.scrollDOM;
+    const moves: string[] = [];
+    const t0 = Date.now();
+    scroller.addEventListener("scroll", () => moves.push(`${Date.now() - t0}:${Math.round(scroller.scrollTop)}`));
+    const docView = (view as unknown as { docView: { scrollIntoView: (t: { range: { head: number } }) => void } }).docView;
+    const scrolledTo: string[] = [];
+    const original = docView.scrollIntoView.bind(docView);
+    docView.scrollIntoView = (target) => {
+      scrolledTo.push(`${Date.now() - t0}:line ${view.state.doc.lineAt(target.range.head).number}`);
+      original(target);
+    };
+    // What happens around a click: the transactions, the focus, the selection of the page.
+    const events: string[] = [];
+    const lineOf = (pos: number) => view.state.doc.lineAt(Math.min(pos, view.state.doc.length)).number;
+    const viewAny = view as unknown as { dispatchTransactions: (trs: readonly import("@codemirror/state").Transaction[], v: EditorView) => void };
+    const dispatchOriginal = viewAny.dispatchTransactions;
+    viewAny.dispatchTransactions = (trs, v) => {
+      for (const tr of trs) {
+        if (tr.selection || tr.scrollIntoView) events.push(`${Date.now() - t0}:tr ${tr.annotation(Transaction.userEvent) ?? "-"} sel ${tr.selection ? lineOf(tr.selection.main.head) : "-"}${tr.scrollIntoView ? " scroll" : ""}`);
+      }
+      dispatchOriginal.call(view, trs, v);
+    };
+    view.contentDOM.addEventListener("focus", () => events.push(`${Date.now() - t0}:focus`));
+    view.contentDOM.addEventListener("blur", () => events.push(`${Date.now() - t0}:blur`));
+    document.addEventListener("selectionchange", () => {
+      const sel = getSelection();
+      const node = sel?.focusNode;
+      if (!node || !view.contentDOM.contains(node)) return events.push(`${Date.now() - t0}:dom selection outside`);
+      try {
+        events.push(`${Date.now() - t0}:dom selection line ${lineOf(view.posAtDOM(node, sel!.focusOffset))}`);
+      } catch {
+        /* not drawn */
+      }
+    });
+    view.dispatch({ selection: { anchor: view.state.doc.line(20).from }, scrollIntoView: true });
+    view.focus();
+    await pause(400);
+    const click = async (what: string) => {
+      const before = scroller.scrollTop;
+      const r = scroller.getBoundingClientRect();
+      const y = r.top + r.height / 2;
+      const x = view.contentDOM.getBoundingClientRect().left + 60;
+      const target = document.elementFromPoint(x, y) ?? view.contentDOM;
+      const expected = view.state.doc.lineAt(view.lineBlockAtHeight(y - view.documentTop).from).number;
+      const opts = { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, buttons: 1, detail: 1, view: window };
+      moves.length = 0;
+      scrolledTo.length = 0;
+      events.length = 0;
+      events.push(`active ${document.activeElement === view.contentDOM ? "editor" : document.activeElement?.tagName}, hasFocus ${view.hasFocus}`);
+      target.dispatchEvent(new MouseEvent("mousedown", opts));
+      await pause(60);
+      target.dispatchEvent(new MouseEvent("mouseup", { ...opts, buttons: 0 }));
+      target.dispatchEvent(new MouseEvent("click", { ...opts, buttons: 0 }));
+      await pause(700);
+      await frames();
+      const line = view.state.doc.lineAt(view.state.selection.main.head).number;
+      results[`${what} detail`] = { before: Math.round(before), after: Math.round(scroller.scrollTop), line, expected, moves: moves.slice(0, 12), scrolledTo, events: events.slice(0, 24), focus: document.hasFocus(), viewFocus: view.hasFocus };
+      check(`${what}: the text stays`, Math.abs(scroller.scrollTop - before) < 30, `${Math.round(before)} -> ${Math.round(scroller.scrollTop)}`);
+      check(`${what}: the caret where clicked`, Math.abs(line - expected) <= 2, `${line} / ${expected}`);
+    };
+    // Scrolled and clicked while the window stayed.
+    scroller.scrollTop = 4000;
+    await pause(400);
+    await click("stayed");
+    // The window left for another application, then come back to.
+    log("away: Finder");
+    const left = await until(() => !document.hasFocus(), 6_000, "window left").then(() => true, () => false);
+    results["window left"] = left;
+    await pause(1200);
+    await getCurrentWindow().setFocus();
+    await until(() => document.hasFocus(), 6_000, "window back").catch(() => {});
+    await pause(500);
+    scroller.scrollTop = 9000;
+    await pause(400);
+    await click("came back");
+    // A click elsewhere (a field of the window), the text scrolled, a click in it.
+    const elsewhere = document.createElement("input");
+    document.body.append(elsewhere);
+    elsewhere.focus();
+    await pause(300);
+    scroller.scrollTop = 6000;
+    await pause(400);
+    await click("focus elsewhere");
+    elsewhere.remove();
+    // The editor hidden (the slides mode, another view) and shown again.
+    view.dispatch({ selection: { anchor: view.state.doc.line(30).from }, scrollIntoView: true });
+    await pause(300);
+    const work = document.querySelector<HTMLElement>(".work");
+    work?.classList.add("hidden");
+    await pause(200);
+    editor.activate(main);
+    view.dispatch({ effects: EditorView.scrollIntoView(view.state.doc.line(40).from, { y: "center" }) });
+    await pause(300);
+    work?.classList.remove("hidden");
+    await pause(500);
+    scroller.scrollTop = 12000;
+    await pause(400);
+    await click("shown again");
+
+    // ---------------------------------------------- the window of the problems
+    await build.run();
+    await until(() => build.running, 10_000, "build start");
+    await until(() => !build.running, 120_000, "build end");
+    const markLine = view.state.doc.lineAt(view.state.doc.toString().indexOf("\\ref{nulle-part}")).number;
+    view.dispatch({ effects: EditorView.scrollIntoView(view.state.doc.line(markLine).from, { y: "center" }) });
+    await until(() => !!view.dom.querySelector(".cm-gutter-lint .cm-lint-marker"), 10_000, "a mark in the gutter");
+    await pause(400);
+    await frames();
+    const marker = [...view.dom.querySelectorAll<HTMLElement>(".cm-gutter-lint .cm-lint-marker")].at(-1)!;
+    const mr = marker.getBoundingClientRect();
+    marker.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, clientX: mr.left + 4, clientY: mr.top + 4 }));
+    await until(() => (document.querySelector(".lbt-gutter-tip")?.getBoundingClientRect().top ?? -1e4) > -1000, 3_000, "the window of the problems").catch(() => {});
+    const tip = () => document.querySelector<HTMLElement>(".lbt-gutter-tip");
+    const placed = () => {
+      const r = tip()?.getBoundingClientRect();
+      return r ? { top: Math.round(r.top), left: Math.round(r.left) } : null;
+    };
+    const first = placed();
+    check("problems window by its line", !!first && Math.abs(first.top - mr.bottom) < 30 && Math.abs(first.left - mr.left) < 60, { first, mark: [Math.round(mr.left), Math.round(mr.bottom)] });
+    await scene("problems-window");
+    // The problems given again (as after a check or a build): the marks are made anew.
+    const { forEachDiagnostic, setDiagnostics } = await import("@codemirror/lint");
+    const again: import("@codemirror/lint").Diagnostic[] = [];
+    forEachDiagnostic(view.state, (d, from, to) => again.push({ ...d, from, to }));
+    view.dispatch(setDiagnostics(view.state, again));
+    await pause(300);
+    await frames();
+    const second = placed();
+    check("marks made anew", !marker.isConnected);
+    // Said by LaTeX and by the live checks: one problem in the list and in the counts.
+    const references = diagnostics.grouped.flatMap((g) => g.items).filter((d) => d.code === "undefined-reference");
+    check("a reference never defined counted once", references.length === 1, references.map((d) => d.source).join(" "));
+    check("problems window stays by its line", !!second && !!first && Math.abs(second.top - first.top) < 4 && Math.abs(second.left - first.left) < 4, { first, second });
+    // Its text chosen and copied.
+    const message = tip()?.querySelector(".lbt-diag-message");
+    const sel = getSelection();
+    if (message && sel) sel.selectAllChildren(message);
+    check("its text can be chosen", (sel?.toString().length ?? 0) > 5, sel?.toString());
+    check("copy button", !!tip()?.querySelector(".lbt-diag-copy"));
+    await scene("problems-window-chosen");
+    // Away from the mark and the window: it closes.
+    window.dispatchEvent(new MouseEvent("mousemove", { clientX: 5, clientY: 5 }));
+    await pause(200);
+    check("problems window closes", !tip());
+  } catch (e) {
+    results.failure = String(e);
+  }
+  log(JSON.stringify(results, null, 2));
+  const ok = !results.failure && Object.values(results).every((r) => typeof r !== "string" || !r.startsWith("FAILED"));
+  log(`editor scenes ${ok ? "PASSED" : "FAILED"}`);
   return ok;
 }
 

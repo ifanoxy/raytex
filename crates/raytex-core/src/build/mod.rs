@@ -436,6 +436,9 @@ struct Runner<'a, 'b> {
     /// The PDF holds pictures put back and this build draws them all: it
     /// is made again, even when nothing changed.
     redraw: bool,
+    /// Problems of the tools run between the passes (kept through the
+    /// passes that follow, whose log replaces the report).
+    notes: Vec<Diagnostic>,
 }
 
 /// Runs a build.
@@ -496,6 +499,7 @@ pub fn run(
         healed: false,
         figures: pictures.is_some(),
         redraw: put_back && pictures.is_none(),
+        notes: Vec::new(),
     };
     let mut report = match (plan.engine, plan.tool) {
         (Engine::Tectonic, _) => r.tectonic(),
@@ -505,6 +509,7 @@ pub fn run(
         _ => r.smart(),
     };
 
+    report.diagnostics.append(&mut r.notes);
     // Bibliography logs.
     let blg = plan.out_dir.join(format!("{}.blg", plan.job));
     if let Some(tool) = r.ran_bib
@@ -882,6 +887,52 @@ impl Runner<'_, '_> {
         report.fatal = true;
     }
 
+    /// Biber failed and its log says no error: it stopped before it could.
+    fn biber_stopped_silently(&self, code: Option<i32>) -> bool {
+        if self.cancelled() || code.is_none_or(|c| c == 0) {
+            return false;
+        }
+        let blg = self.plan.out_dir.join(format!("{}.blg", self.plan.job));
+        let log = std::fs::read_to_string(blg).unwrap_or_default();
+        !log.contains("ERROR - ") && !log.contains("FATAL")
+    }
+
+    /// Removes the copy of Biber unpacked in the temporary folder (the
+    /// folder `biber --cache` names, only when it is that one:
+    /// `…/par-…/cache-…` in the temporary folder). True when removed.
+    fn clear_biber_cache(&self) -> bool {
+        let Ok(out) = process::output(
+            &self.ctx.dist.cmd("biber").arg("--cache"),
+            Duration::from_secs(30),
+        ) else {
+            return false;
+        };
+        biber_cache_dir(&out.stdout, &std::env::temp_dir())
+            .is_some_and(|cache| std::fs::remove_dir_all(cache).is_ok())
+    }
+
+    fn biber_silent(&self, code: Option<i32>) -> Diagnostic {
+        let last = self.last_output.last().cloned().unwrap_or_default();
+        let mut d = Diagnostic::new(
+            Severity::Error,
+            Source::Biber,
+            format!(
+                "{} ({} {}). {last}",
+                self.t(
+                    "Biber s'est arrêté sans écrire d'erreur dans son journal",
+                    "Biber stopped without writing an error in its log"
+                ),
+                self.t("code", "code"),
+                code.unwrap_or(-1),
+            )
+            .trim_end_matches([' ', '.'])
+            .to_owned(),
+        )
+        .with_code("biber-silent");
+        d.raw = Some(self.last_output.join("\n"));
+        d
+    }
+
     fn read_log(&self) -> LogReport {
         let plan = self.plan;
         match std::fs::read(&plan.log) {
@@ -970,7 +1021,7 @@ impl Runner<'_, '_> {
                         || report.undefined_citations && state.bcf.is_none())
                 {
                     if self.ctx.dist.tool("biber").is_none() {
-                        report.diagnostics.push(
+                        self.notes.push(
                             Diagnostic::new(
                                 Severity::Error,
                                 Source::Build,
@@ -992,8 +1043,20 @@ impl Runner<'_, '_> {
                             .cwd(&plan.root_dir)
                             .arg(format!("--output-directory={}", plan.out_dir.display()))
                             .arg(&plan.job);
-                        let code = self.step("Biber".into(), cmd);
+                        let mut code = self.step("Biber".into(), cmd.clone());
                         self.ran_bib = Some(BibTool::Biber);
+                        if self.biber_stopped_silently(code) {
+                            // Its copy unpacked in the temporary folder is
+                            // cut (macOS empties old temporary files bit by
+                            // bit): put away, Biber unpacks itself again.
+                            if self.clear_biber_cache() {
+                                code = self.step("Biber (2)".into(), cmd);
+                            }
+                            if self.biber_stopped_silently(code) {
+                                let d = self.biber_silent(code);
+                                self.notes.push(d);
+                            }
+                        }
                         // Done only when it went through: otherwise the
                         // next build runs it again.
                         state.bcf = if code == Some(0) { h } else { None };
@@ -1692,6 +1755,23 @@ pub fn clean(out_dir: &Path, job: &str) -> usize {
 /// error (`! I can't find file …`), else the last line that is not the
 /// banner, a file read or one of MiKTeX's reminders ("major issue: … checked
 /// for updates", "security risk").
+/// The folder `biber --cache` printed, when it is Biber's own copy
+/// unpacked in the temporary folder `temp` (`…/par-…/cache-…`), and nothing else.
+fn biber_cache_dir(printed: &str, temp: &Path) -> Option<PathBuf> {
+    let cache = PathBuf::from(printed.lines().map(str::trim).find(|l| !l.is_empty())?);
+    let real = |p: &Path| std::fs::canonicalize(p).ok();
+    let named = |p: &Path, prefix: &str| {
+        p.file_name()
+            .is_some_and(|n| n.to_string_lossy().starts_with(prefix))
+    };
+    let inside = real(&cache)?.starts_with(real(temp)?);
+    (cache.is_dir()
+        && named(&cache, "cache-")
+        && cache.parent().is_some_and(|p| named(p, "par-"))
+        && inside)
+        .then_some(cache)
+}
+
 pub(crate) fn telling_line<S: AsRef<str>>(lines: &[S]) -> Option<String> {
     let lines = || lines.iter().map(AsRef::as_ref);
     lines()
@@ -1770,6 +1850,32 @@ fn miktex_log_reason(log: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_bibers_own_cache_is_taken_away() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("par-616c77696e").join("cache-dcc15f9f");
+        std::fs::create_dir_all(&cache).unwrap();
+        let printed = format!("{}\n", cache.display());
+        assert_eq!(biber_cache_dir(&printed, temp.path()), Some(cache.clone()));
+        // Anything else is left: another name, another place, nothing printed.
+        let other = temp.path().join("par-616c77696e").join("data");
+        std::fs::create_dir_all(&other).unwrap();
+        assert_eq!(
+            biber_cache_dir(&other.display().to_string(), temp.path()),
+            None
+        );
+        let elsewhere = tempfile::tempdir().unwrap();
+        assert_eq!(biber_cache_dir(&printed, elsewhere.path()), None);
+        assert_eq!(biber_cache_dir("", temp.path()), None);
+        assert_eq!(
+            biber_cache_dir(
+                &temp.path().join("par-x/cache-gone").display().to_string(),
+                temp.path()
+            ),
+            None
+        );
+    }
 
     #[test]
     fn the_telling_line_of_an_output() {

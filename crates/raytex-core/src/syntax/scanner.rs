@@ -450,9 +450,8 @@ impl<'a> Scanner<'a> {
             "DeclareMathAccent" | "DeclareMathAlphabet" | "DeclareSymbolFontAlphabet" => {
                 self.declared_symbol(true, Some("{}"))
             }
-            "DeclareMathRadical" | "DeclarePairedDelimiter" | "DeclarePairedDelimiterX" => {
-                self.declared_symbol(true, None)
-            }
+            "DeclarePairedDelimiter" => self.paired_delimiter(),
+            "DeclareMathRadical" | "DeclarePairedDelimiterX" => self.declared_symbol(true, None),
             "DeclareTextSymbol" | "DeclareTextSymbolDefault" => {
                 self.declared_symbol(false, Some(""))
             }
@@ -851,23 +850,29 @@ impl<'a> Scanner<'a> {
 
     fn new_command(&mut self, math: bool) {
         let mut cur = self.cursor();
-        cur.star();
+        let starred = cur.star();
         let Some(name) = cur.command_name() else {
             return;
         };
-        let (args, first_optional, body) = if math {
-            (0, false, cur.group(SHORT_ARG))
+        let (args, default, body) = if math {
+            (0, None, cur.group(SHORT_ARG))
         } else {
             let args = cur
                 .optional(SHORT_ARG)
                 .and_then(|s| self.slice(&s).trim().parse::<u8>().ok());
             let default = cur.optional(LONG_ARG);
-            (args.unwrap_or(0), default.is_some(), cur.group(LONG_ARG))
+            (args.unwrap_or(0), default, cur.group(LONG_ARG))
         };
         let Some(body) = body else { return };
         self.pos = self.after_definition(&name, cur.pos);
+        let first_optional = default.is_some();
         let signature = counted_signature(args, first_optional);
         self.push_command(name, args, first_optional, &body, math, Some(signature));
+        let def = self.idx.command_defs.last_mut().expect("just pushed");
+        def.default = default.map(|d| squash_whitespace(&self.text[d]));
+        if math {
+            def.form = MathForm::Operator { limits: starred };
+        }
     }
 
     /// Where to continue after a definition: after its body, or inside it
@@ -899,6 +904,8 @@ impl<'a> Scanner<'a> {
             definition,
             body,
             math,
+            default: None,
+            form: MathForm::Body,
             signature,
             span: name,
         });
@@ -917,8 +924,14 @@ impl<'a> Scanner<'a> {
         };
         let (args, first_optional) = xparse_arity(self.slice(&spec));
         let signature = xparse_signature(self.slice(&spec));
+        let default = xparse_default(self.slice(&spec));
         self.pos = self.after_definition(&name, cur.pos);
         self.push_command(name, args, first_optional, &body, false, signature);
+        self.idx
+            .command_defs
+            .last_mut()
+            .expect("just pushed")
+            .default = default;
     }
 
     fn def(&mut self) {
@@ -988,6 +1001,8 @@ impl<'a> Scanner<'a> {
             definition: "\\newif".into(),
             body: String::new(),
             math: false,
+            default: None,
+            form: MathForm::Body,
             signature: Some(String::new()),
             span: name.clone(),
         });
@@ -999,6 +1014,8 @@ impl<'a> Scanner<'a> {
                 definition: format!("\\newif\\{full}"),
                 body: String::new(),
                 math: false,
+                default: None,
+                form: MathForm::Body,
                 signature: Some(String::new()),
                 span: name.clone(),
             });
@@ -1359,6 +1376,26 @@ impl<'a> Scanner<'a> {
         };
         let empty = name.end..name.end;
         self.push_command(name, 0, false, &empty, math, signature.map(str::to_owned));
+    }
+
+    /// `\DeclarePairedDelimiter{\abs}{\lvert}{\rvert}`: defined like the
+    /// other declared symbols, its delimiters kept for formulas when they
+    /// are in braces (the usual way).
+    fn paired_delimiter(&mut self) {
+        let mut cur = self.cursor();
+        let Some(name) = cur.command_name() else {
+            return;
+        };
+        let delimiters = (cur.group(SHORT_ARG), cur.group(SHORT_ARG));
+        let empty = name.end..name.end;
+        self.push_command(name, 0, false, &empty, true, None);
+        if let (Some(left), Some(right)) = delimiters {
+            let form = MathForm::Paired {
+                left: self.slice(&left).trim().to_owned(),
+                right: self.slice(&right).trim().to_owned(),
+            };
+            self.idx.command_defs.last_mut().expect("just pushed").form = form;
+        }
     }
 
     fn left_right(&mut self, delta: i32) {
@@ -1913,6 +1950,29 @@ fn xparse_arity(spec: &str) -> (u8, bool) {
     (count.min(9), first_optional.unwrap_or(false))
 }
 
+/// The default of the first argument of an xparse spec `O{x} m m`, when
+/// the others are plain arguments (what a formula preview can follow).
+fn xparse_default(spec: &str) -> Option<String> {
+    let rest = spec
+        .trim_start()
+        .strip_prefix('O')?
+        .trim_start()
+        .strip_prefix('{')?;
+    let mut depth = 1usize;
+    let end = rest.char_indices().find_map(|(i, c)| {
+        match c {
+            '{' => depth += 1,
+            '}' => depth -= 1,
+            _ => {}
+        }
+        (depth == 0).then_some(i)
+    })?;
+    rest[end + 1..]
+        .chars()
+        .all(|c| c == 'm' || c.is_whitespace())
+        .then(|| squash_whitespace(&rest[..end]))
+}
+
 fn keyval<'s>(fields: &'s str, key: &str) -> Option<&'s str> {
     let mut depth = 0usize;
     let bytes = fields.as_bytes();
@@ -2362,6 +2422,32 @@ See \cref{sec:intro, fig:x} and \cite[p.~3]{knuth84,lamport}.
         assert_eq!(idx.command_defs[0].name, "foo");
         assert_eq!(idx.command_defs[0].args, 2);
         assert_eq!(idx.environment_defs[0].name, "bc");
+    }
+
+    #[test]
+    fn what_formulas_need_of_definitions() {
+        let src = "\\newcommand{\\vect}[2][u]{\\vec{#1}_{#2}}\\DeclareMathOperator*{\\argmax}{arg\\,max}\\DeclareMathOperator{\\Tr}{Tr}\\DeclarePairedDelimiter{\\abs}{\\lvert}{\\rvert}\\NewDocumentCommand{\\pt}{O{A} m}{#1(#2)}\\NewDocumentCommand{\\st}{s m}{#2}";
+        let idx = scan(src);
+        let def = |n: &str| idx.command_defs.iter().find(|d| d.name == n).unwrap();
+        assert_eq!(def("vect").default.as_deref(), Some("u"));
+        assert_eq!((def("vect").args, def("vect").first_optional), (2, true));
+        assert_eq!(def("argmax").form, MathForm::Operator { limits: true });
+        assert_eq!(def("Tr").form, MathForm::Operator { limits: false });
+        assert_eq!(def("Tr").body, "Tr");
+        assert_eq!(
+            def("abs").form,
+            MathForm::Paired {
+                left: "\\lvert".into(),
+                right: "\\rvert".into()
+            }
+        );
+        // Delimiters without braces: defined all the same, drawn as a symbol.
+        let plain = scan("\\DeclarePairedDelimiter\\norm\\lVert\\rVert");
+        assert_eq!(plain.command_defs[0].name, "norm");
+        assert_eq!(plain.command_defs[0].form, MathForm::Body);
+        assert_eq!(def("pt").default.as_deref(), Some("A"));
+        assert_eq!(def("st").default, None);
+        assert_eq!(def("st").form, MathForm::Body);
     }
 
     #[test]

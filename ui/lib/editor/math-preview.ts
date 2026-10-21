@@ -8,6 +8,7 @@ import { type EditorState, StateEffect, StateField, type Text } from "@codemirro
 import { EditorView, type Tooltip, ViewPlugin, type ViewUpdate, showTooltip } from "@codemirror/view";
 import * as ipc from "../ipc";
 import { docPath, hooks } from "./context";
+import { type KatexMacro, katexMacros } from "./katex-macros";
 
 interface Formula {
   from: number;
@@ -122,6 +123,7 @@ async function katex() {
  */
 export async function mathHtml(latex: string, path?: string | null): Promise<string> {
   const k = await katex();
+  await known(path);
   const tex = latex.replace(/\$\{\d+(?::[^}]*)?\}/g, "\\square").replace(/\\\\([{}])/g, "\\$1");
   return k.renderToString(tex, { throwOnError: false, displayMode: false, ...(path ? { strict: "ignore" as const, macros: macrosOf(path) } : {}) });
 }
@@ -129,29 +131,49 @@ export async function mathHtml(latex: string, path?: string | null): Promise<str
 /** HTML of a displayed formula (grid editor preview), with the macros of the document `path`. */
 export async function displayHtml(latex: string, path?: string | null): Promise<string> {
   const k = await katex();
+  await known(path);
   return k.renderToString(latex, { throwOnError: false, displayMode: true, strict: "ignore", macros: macrosOf(path) });
 }
 
 /** HTML of text-mode LaTeX (a table cell): formulas, `\\textbf`, `\\emph`…, with the macros of `path`. */
 export async function textHtml(latex: string, path?: string | null): Promise<string> {
   const k = await katex();
+  await known(path);
   return k.renderToString(`\\text{${latex}}`, { throwOnError: false, strict: "ignore", macros: macrosOf(path) });
 }
 
-const macrosByPath = new Map<string, Record<string, string>>();
+const macrosByPath = new Map<string, Record<string, KatexMacro>>();
 
 /** A copy of the macros of a document (KaTeX adds the ones a formula defines). */
-function macrosOf(path?: string | null): Record<string, string> {
+function macrosOf(path?: string | null): Record<string, KatexMacro> {
   return { ...((path && macrosByPath.get(path)) || {}) };
 }
 
-/** Refreshes the macros of a document (called after each synchronisation). */
-export async function refreshMacros(path: string) {
+/** Asked once at a time for a document (the cells of a table drawn together). */
+const asked = new Map<string, Promise<void>>();
+
+/** The macros of a document asked for the first time it is drawn (a table of a file never opened). */
+async function known(path?: string | null) {
+  if (!path || macrosByPath.has(path)) return;
+  if (!asked.has(path)) asked.set(path, fetchMacros(path).finally(() => asked.delete(path)));
+  await asked.get(path);
+}
+
+async function fetchMacros(path: string) {
   try {
-    macrosByPath.set(path, await ipc.mathMacros(path));
+    macrosByPath.set(path, katexMacros(await ipc.mathMacros(path)));
   } catch {
     /* no project */
   }
+}
+
+/**
+ * Refreshes the macros of a document (called after its synchronisation),
+ * and of the others drawn already: a command defined in one file of a
+ * project is known in all of them.
+ */
+export async function refreshMacros(path: string) {
+  await Promise.all([path, ...[...macrosByPath.keys()].filter((p) => p !== path)].map(fetchMacros));
 }
 
 const setPreview = StateEffect.define<Tooltip | null>();
