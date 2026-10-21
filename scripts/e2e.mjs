@@ -4,7 +4,7 @@
 // ui/dev/selftest.ts on a fresh copy of tests/e2e/rapport, takes a
 // screenshot at each scene and stops at the verdict.
 //
-//   node scripts/e2e.mjs                    # workflow, fixes, files, projects, media
+//   node scripts/e2e.mjs                    # workflow, fixes, files, projects, media, editor
 //   node scripts/e2e.mjs fixes files        # some groups
 //   E2E_OUT=out node scripts/e2e.mjs        # where logs and screenshots go
 //   E2E_SHOTS=0 node scripts/e2e.mjs        # no screenshots (they are of the whole screen)

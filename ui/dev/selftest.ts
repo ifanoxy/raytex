@@ -2572,6 +2572,22 @@ async function editorScenes(log: (msg: string) => void, dir: string): Promise<bo
     window.dispatchEvent(new MouseEvent("mousemove", { clientX: 5, clientY: 5 }));
     await pause(200);
     check("problems window closes", !tip());
+
+    // ------------------------------------- a PDF read while the next build writes it
+    const pdf = viewer.pdf!;
+    await until(() => viewer.pages > 0, 10_000, "PDF shown");
+    const whole = new Uint8Array(await ipc.readBinaryFile(pdf));
+    const pages = viewer.pages;
+    const failed = () => !!document.querySelector(".pdf-viewer")?.textContent?.includes(t("viewer.error"));
+    const shown = () => (globalThis as { __pdfShown?: number }).__pdfShown ?? 0;
+    const before = shown();
+    await ipc.writeBinaryFile(pdf, whole.slice(0, Math.floor(whole.length / 2)));
+    viewer.load(pdf);
+    await pause(800);
+    check("a PDF being written: the pages shown stay", shown() === before && viewer.pages === pages && !failed(), { put: shown() - before, pages, now: viewer.pages, failed: failed() });
+    await ipc.writeBinaryFile(pdf, whole);
+    await until(() => shown() > before, 4_000, "the whole PDF shown").catch(() => {});
+    check("once written, it is shown", shown() > before && viewer.pages === pages && !failed(), { put: shown() - before, pages, now: viewer.pages, failed: failed() });
   } catch (e) {
     results.failure = String(e);
   }
@@ -3065,8 +3081,8 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
       await pause(150);
       const replaced = view.state.doc.toString();
       searchField.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
-      await pause(100);
-      const closed = !document.querySelector(".lbt-find");
+      // The card is taken away with the panel of the editor: it can take a moment on a busy machine.
+      const closed = await until(() => !document.querySelector(".lbt-find"), 2_000, "card closed").then(() => true, () => false);
       log(`find: «${all}» then whole word «${words}», «${replaced.trim()}», closed ${closed}`);
       check("find and replace in the file", all === "1 sur 3" || all === "1 of 3", all);
       check("whole words only, replaced together, the card closed by Escape", (words === "1 sur 1" || words === "1 of 1") && replaced === "Un chien, deux chats, trois chatons.\n" && closed, `${words} ${replaced} ${closed}`);

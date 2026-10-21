@@ -13,6 +13,7 @@
   import { i18n, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { closePdf, loadPdf } from "$lib/pdf/pdfjs";
+  import { wholePdf } from "$lib/pdf/written";
   import { addToColumn, type Block, type BlockEdit, type BlockKind, deleteBlock, duplicateBlock, frameBlocks, indentUnit, insertBlock, moveBlockTo, moveToColumn, newBlock, replaceBlock, splitBlock } from "$lib/slides/blocks";
   import { type Deck, deleteFrame, duplicateFrame, type Frame, framePages, insertFrame, type Layout, LAYOUTS, moveFrame, pagesOf, parseDeck, setNotes, setTitle } from "$lib/slides/deck";
   import { type DeckExport, exportNames, exportText } from "$lib/slides/exports";
@@ -80,7 +81,8 @@
     if (s.nav) nav = (await ipc.readTextFile(s.nav).catch(() => null))?.text ?? nav;
     if (!s.pdf) return;
     const bytes = await ipc.readBinaryFile(s.pdf).catch(() => null);
-    if (!bytes) return;
+    // Cut (the next build writes it): the slides drawn stay until that build ends.
+    if (!bytes || !wholePdf(bytes)) return;
     const next = await loadPdf(bytes).catch(() => null);
     if (!next) return;
     const old = doc;

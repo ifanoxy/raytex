@@ -1,6 +1,7 @@
 // First page of a PDF as an image (template and project previews).
 
 import * as ipc from "../ipc";
+import { wholePdf } from "./written";
 
 /**
  * Renders the first page of a PDF `width` CSS pixels wide (sharp on retina
@@ -10,7 +11,10 @@ import * as ipc from "../ipc";
 export async function renderFirstPage(pdf: string, width: number): Promise<{ url: string; landscape: boolean }> {
   if (/\.png$/i.test(pdf)) return picture(pdf);
   const { closePdf, loadPdf } = await import("./pdfjs");
-  const doc = await loadPdf(await ipc.readBinaryFile(pdf));
+  const bytes = await ipc.readBinaryFile(pdf);
+  // A build is writing it: no picture this time rather than half of one.
+  if (!wholePdf(bytes)) throw new Error("PDF being written");
+  const doc = await loadPdf(bytes);
   try {
     const page = await doc.getPage(1);
     const base = page.getViewport({ scale: 1 });

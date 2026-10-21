@@ -8,6 +8,7 @@
   import { keyFor, runAction } from "$lib/actions";
   import { t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
+  import { wholePdf } from "$lib/pdf/written";
   import { answerKey } from "$lib/state/answerkey.svelte";
   import { app } from "$lib/state/app.svelte";
   import { build } from "$lib/state/build.svelte";
@@ -137,7 +138,7 @@
     scroller.scrollLeft = a.left * scroller.scrollWidth;
   }
 
-  async function load(path: string) {
+  async function load(path: string, attempt = 0) {
     const token = ++loadToken;
     loading = true;
     error = null;
@@ -154,6 +155,12 @@
         }
         return;
       }
+      // Being written by the build that follows: the pages shown stay, it is read again in a moment
+      // (and once that build ends); still not whole after three seconds, opened as it is (a PDF made elsewhere).
+      if (!wholePdf(bytes) && attempt < 10) {
+        setTimeout(() => token === loadToken && void load(path, attempt + 1), 300);
+        return;
+      }
       const next = await lib.loadPdf(bytes);
       if (token !== loadToken) {
         lib.closePdf(next);
@@ -164,6 +171,8 @@
       const old = doc;
       doc = next;
       docId++;
+      // Counted for the scenes (development builds only): what was put in place.
+      if (import.meta.env.DEV) (globalThis as { __pdfShown?: number }).__pdfShown = ((globalThis as { __pdfShown?: number }).__pdfShown ?? 0) + 1;
       missing = false;
       // A page keeps the size it had (a page more or less does not move the
       // others); a new one takes the size of the first until it is measured.
