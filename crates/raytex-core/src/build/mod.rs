@@ -901,14 +901,23 @@ impl Runner<'_, '_> {
     /// folder `biber --cache` names, only when it is that one:
     /// `…/par-…/cache-…` in the temporary folder). True when removed.
     fn clear_biber_cache(&self) -> bool {
-        let Ok(out) = process::output(
+        let temp = std::env::temp_dir();
+        let printed = process::output(
             &self.ctx.dist.cmd("biber").arg("--cache"),
             Duration::from_secs(30),
-        ) else {
-            return false;
+        )
+        .map(|out| out.stdout)
+        .unwrap_or_default();
+        // Biber too broken to say where it is: found by its own files.
+        let caches = match biber_cache_dir(&printed, &temp) {
+            Some(cache) => vec![cache],
+            None => biber_caches_in(&temp),
         };
-        biber_cache_dir(&out.stdout, &std::env::temp_dir())
-            .is_some_and(|cache| std::fs::remove_dir_all(cache).is_ok())
+        let mut cleared = false;
+        for cache in caches {
+            cleared |= std::fs::remove_dir_all(cache).is_ok();
+        }
+        cleared
     }
 
     fn biber_silent(&self, code: Option<i32>) -> Diagnostic {
@@ -1043,14 +1052,19 @@ impl Runner<'_, '_> {
                             .cwd(&plan.root_dir)
                             .arg(format!("--output-directory={}", plan.out_dir.display()))
                             .arg(&plan.job);
+                        // One Biber at a time: two started together share
+                        // the copy it unpacks in the temporary folder.
+                        let _one = ONE_BIBER.lock().unwrap_or_else(|e| e.into_inner());
                         let mut code = self.step("Biber".into(), cmd.clone());
                         self.ran_bib = Some(BibTool::Biber);
                         if self.biber_stopped_silently(code) {
-                            // Its copy unpacked in the temporary folder is
-                            // cut (macOS empties old temporary files bit by
-                            // bit): put away, Biber unpacks itself again.
-                            if self.clear_biber_cache() {
-                                code = self.step("Biber (2)".into(), cmd);
+                            // Another program unpacked it at the same
+                            // moment: once more as it is. Still silent, its
+                            // copy is cut (macOS empties old temporary files
+                            // bit by bit): put away, Biber unpacks itself again.
+                            code = self.step("Biber (2)".into(), cmd.clone());
+                            if self.biber_stopped_silently(code) && self.clear_biber_cache() {
+                                code = self.step("Biber (3)".into(), cmd);
                             }
                             if self.biber_stopped_silently(code) {
                                 let d = self.biber_silent(code);
@@ -1755,6 +1769,33 @@ pub fn clean(out_dir: &Path, job: &str) -> usize {
 /// error (`! I can't find file …`), else the last line that is not the
 /// banner, a file read or one of MiKTeX's reminders ("major issue: … checked
 /// for updates", "security risk").
+/// One Biber at a time in the application: two started together unpack
+/// themselves in the same temporary folder, and one of them can fail.
+static ONE_BIBER: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// The copies of Biber unpacked in the temporary folder `temp`:
+/// `par-…/cache-…` folders holding its own modules (`inc/lib/Biber`).
+fn biber_caches_in(temp: &Path) -> Vec<PathBuf> {
+    let dirs = |p: &Path, prefix: &str| -> Vec<PathBuf> {
+        std::fs::read_dir(p)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| {
+                p.is_dir()
+                    && p.file_name()
+                        .is_some_and(|n| n.to_string_lossy().starts_with(prefix))
+            })
+            .collect()
+    };
+    dirs(temp, "par-")
+        .iter()
+        .flat_map(|par| dirs(par, "cache-"))
+        .filter(|cache| cache.join("inc").join("lib").join("Biber").is_dir())
+        .collect()
+}
+
 /// The folder `biber --cache` printed, when it is Biber's own copy
 /// unpacked in the temporary folder `temp` (`…/par-…/cache-…`), and nothing else.
 fn biber_cache_dir(printed: &str, temp: &Path) -> Option<PathBuf> {
@@ -1875,6 +1916,11 @@ mod tests {
             ),
             None
         );
+        // Found by its files when Biber cannot say: only a copy of Biber.
+        std::fs::create_dir_all(cache.join("inc/lib/Biber")).unwrap();
+        let program = temp.path().join("par-616c77696e").join("cache-another");
+        std::fs::create_dir_all(program.join("inc/lib")).unwrap();
+        assert_eq!(biber_caches_in(temp.path()), vec![cache]);
     }
 
     #[test]
