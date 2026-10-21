@@ -172,6 +172,8 @@ pub fn run() {
             commands::files::read_binary_file,
             commands::files::write_binary_file,
             commands::files::file_modified,
+            commands::files::kept_thumbnail,
+            commands::files::keep_thumbnail,
             commands::files::path_exists,
             commands::files::create_file,
             commands::files::create_dir,

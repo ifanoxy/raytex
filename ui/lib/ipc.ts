@@ -63,6 +63,10 @@ export const readBinaryFile = (path: string) => call<ArrayBuffer>("read_binary_f
 export const writeBinaryFile = (path: string, bytes: Uint8Array) =>
   invoke<string>("write_binary_file", bytes, { headers: { "x-path": encodeURIComponent(path) } });
 export const fileModified = (path: string) => call<number>("file_modified", { path });
+/** The picture of the first page of `pdf` kept as it was at `modified` (empty when none). */
+export const keptThumbnail = (pdf: string, modified: number) => call<ArrayBuffer>("kept_thumbnail", { pdf, modified });
+export const keepThumbnail = (pdf: string, modified: number, png: Uint8Array) =>
+  invoke<void>("keep_thumbnail", png, { headers: { "x-pdf": encodeURIComponent(pdf), "x-modified": String(modified) } });
 export const pathExists = (path: string) => call<boolean>("path_exists", { path });
 export const createFile = (path: string, text?: string) => call<string>("create_file", { path, text: text ?? null });
 export const createDir = (path: string) => call<void>("create_dir", { path });

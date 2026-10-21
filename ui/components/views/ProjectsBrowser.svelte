@@ -22,22 +22,34 @@
   const cache = (globalThis as { __projectThumbs?: Map<string, string> }).__projectThumbs ?? new Map<string, string>();
   (globalThis as { __projectThumbs?: Map<string, string> }).__projectThumbs = cache;
 
+  /**
+   * The picture of a PDF as it is now: kept from an earlier session, or
+   * drawn (then kept, for the next ones).
+   */
+  async function picture(pdf: string, modified: number): Promise<string> {
+    const kept = await ipc.keptThumbnail(pdf, modified).catch(() => null);
+    if (kept?.byteLength) return URL.createObjectURL(new Blob([kept], { type: "image/png" }));
+    const { url, png } = await renderFirstPage(pdf, 170);
+    if (png) void png.arrayBuffer().then((b) => ipc.keepThumbnail(pdf, modified, new Uint8Array(b))).catch(() => {});
+    return url;
+  }
+
   async function load() {
     overview = await ipc.listProjects().catch(() => null);
+    // One after the other: a home screen of large PDFs (theses) opened all at once was heavy.
     for (const p of overview?.projects ?? []) {
       if (!p.pdf) continue;
-      const key = `${p.pdf}:${p.modified}`;
+      const modified = await ipc.fileModified(p.pdf).catch(() => 0);
+      const key = `${p.pdf}:${modified}`;
       const hit = cache.get(key);
       if (hit) {
         thumbs[p.path] = hit;
         continue;
       }
-      void renderFirstPage(p.pdf, 170)
-        .then(({ url }) => {
-          cache.set(key, url);
-          thumbs[p.path] = url;
-        })
-        .catch(() => {});
+      const url = await picture(p.pdf, modified).catch(() => null);
+      if (!url) continue;
+      cache.set(key, url);
+      thumbs[p.path] = url;
     }
   }
 

@@ -1849,6 +1849,14 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     await until(() => document.querySelectorAll(".browser .card").length >= 2, 10_000, "projects on the start screen");
     await drawn(".browser .card .page img", log, "project preview");
     results.cards = document.querySelectorAll(".browser .card").length;
+    // The picture of its PDF kept for the next sessions (not drawn again from the PDF).
+    const built = (await ipc.listProjects()).projects.find((p) => p.pdf)?.pdf;
+    let kept = false;
+    for (let i = 0; built && !kept && i < 25; i++) {
+      kept = (await ipc.keptThumbnail(built, await ipc.fileModified(built))).byteLength > 0;
+      if (!kept) await pause(200);
+    }
+    check("project preview kept for the next sessions", kept, built ?? "no PDF");
     await scene("projects-home");
 
     // ---------------------------------------------------------- light mode

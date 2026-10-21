@@ -8,7 +8,7 @@ import { wholePdf } from "./written";
  * screens). An image (the thumbnails shipped with the application) is shown
  * as it is.
  */
-export async function renderFirstPage(pdf: string, width: number): Promise<{ url: string; landscape: boolean }> {
+export async function renderFirstPage(pdf: string, width: number): Promise<{ url: string; landscape: boolean; png?: Blob }> {
   if (/\.png$/i.test(pdf)) return picture(pdf);
   const { closePdf, loadPdf } = await import("./pdfjs");
   const bytes = await ipc.readBinaryFile(pdf);
@@ -30,7 +30,7 @@ export async function renderFirstPage(pdf: string, width: number): Promise<{ url
     await page.render({ canvas, viewport }).promise;
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
     if (!blob) throw new Error("no image");
-    return { url: URL.createObjectURL(blob), landscape };
+    return { url: URL.createObjectURL(blob), landscape, png: blob };
   } finally {
     closePdf(doc);
   }

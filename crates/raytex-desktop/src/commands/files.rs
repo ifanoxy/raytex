@@ -138,6 +138,55 @@ pub(crate) fn percent_decode(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
+/// The picture of the first page of a PDF kept from an earlier session, as
+/// the PDF was at `modified` (ms): empty when there is none.
+#[tauri::command]
+pub async fn kept_thumbnail(app: AppHandle, pdf: String, modified: u64) -> CmdResult<Response> {
+    let pdf = abs(&pdf);
+    let bytes = blocking(&app, move |_, state| {
+        let file = raytex_core::projects::thumbnail_file(
+            &state.paths.cache.join("thumbs"),
+            &pdf,
+            modified,
+        );
+        std::fs::read(file).unwrap_or_default()
+    })
+    .await?;
+    Ok(Response::new(bytes))
+}
+
+/// Keeps the picture of the first page of a PDF (PNG, the raw request body;
+/// the PDF in the `x-pdf` header, its modification time in `x-modified`).
+#[tauri::command]
+pub async fn keep_thumbnail(app: AppHandle, request: Request<'_>) -> CmdResult<()> {
+    let header = |name: &str| {
+        request
+            .headers()
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .map(percent_decode)
+    };
+    let pdf = abs(&header("x-pdf").ok_or("missing x-pdf header")?);
+    let modified: u64 = header("x-modified")
+        .and_then(|m| m.parse().ok())
+        .ok_or("missing x-modified header")?;
+    let InvokeBody::Raw(bytes) = request.body() else {
+        return Err("expected raw bytes".into());
+    };
+    let png = bytes.clone();
+    blocking(&app, move |_, state| {
+        raytex_core::projects::keep_thumbnail(
+            &state.paths.cache.join("thumbs"),
+            &pdf,
+            modified,
+            &png,
+        )
+        .map(|_| ())
+        .map_err(err)
+    })
+    .await?
+}
+
 /// Modification time of a file (ms), 0 if it does not exist.
 #[tauri::command]
 pub async fn file_modified(path: String) -> CmdResult<u64> {

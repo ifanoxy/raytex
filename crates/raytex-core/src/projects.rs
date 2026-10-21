@@ -194,9 +194,77 @@ pub fn from_file(
     Ok(dir.join(main_name))
 }
 
+// ------------------------------------------- pictures of the first pages
+
+/// Pictures kept in the folder of the thumbnails: past that, the oldest go.
+const KEPT_THUMBNAILS: usize = 300;
+
+/// Where the picture of the first page of `pdf`, as it was at `modified`
+/// (milliseconds), is kept in the folder `dir`.
+pub fn thumbnail_file(dir: &Path, pdf: &Path, modified: u64) -> PathBuf {
+    dir.join(format!("{}-{modified}.png", thumbnail_stem(pdf)))
+}
+
+fn thumbnail_stem(pdf: &Path) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    pdf.hash(&mut h);
+    format!("{:016x}", h.finish())
+}
+
+/// Keeps the picture of the first page of `pdf` (as it was at `modified`):
+/// the ones of its former states go, and the oldest of all once there are too many.
+pub fn keep_thumbnail(
+    dir: &Path,
+    pdf: &Path,
+    modified: u64,
+    png: &[u8],
+) -> std::io::Result<PathBuf> {
+    std::fs::create_dir_all(dir)?;
+    let file = thumbnail_file(dir, pdf, modified);
+    let former = format!("{}-", thumbnail_stem(pdf));
+    let mut others: Vec<(std::time::SystemTime, PathBuf)> = Vec::new();
+    for entry in std::fs::read_dir(dir)?.flatten() {
+        let path = entry.path();
+        if path == file || path.extension().is_none_or(|e| e != "png") {
+            continue;
+        }
+        if entry.file_name().to_string_lossy().starts_with(&former) {
+            let _ = std::fs::remove_file(&path);
+        } else if let Ok(meta) = entry.metadata() {
+            others.push((meta.modified().unwrap_or(UNIX_EPOCH), path));
+        }
+    }
+    if others.len() >= KEPT_THUMBNAILS {
+        others.sort();
+        for (_, path) in &others[..=others.len() - KEPT_THUMBNAILS] {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+    crate::settings::write_atomic(&file, png)?;
+    Ok(file)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_thumbnail_is_kept_for_the_state_of_its_pdf() {
+        let dir = tempfile::tempdir().unwrap();
+        let (pdf, other) = (
+            Path::new("/p/thesis/build/main.pdf"),
+            Path::new("/p/notes/build/main.pdf"),
+        );
+        keep_thumbnail(dir.path(), pdf, 1000, b"old").unwrap();
+        keep_thumbnail(dir.path(), other, 5, b"other").unwrap();
+        let kept = keep_thumbnail(dir.path(), pdf, 2000, b"new").unwrap();
+        assert_eq!(std::fs::read(&kept).unwrap(), b"new");
+        assert_eq!(kept, thumbnail_file(dir.path(), pdf, 2000));
+        // Its former state is gone, the other PDF's picture stays.
+        assert!(!thumbnail_file(dir.path(), pdf, 1000).exists());
+        assert!(thumbnail_file(dir.path(), other, 5).exists());
+    }
     use crate::workspace::Workspace;
 
     #[test]

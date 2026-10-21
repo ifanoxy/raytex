@@ -64,9 +64,9 @@ class TemplatesStore {
         const lang = this.lang;
         try {
           const pdf = await ipc.templateThumbnail(tpl.id);
-          const img = await renderFirstPage(pdf, THUMB_WIDTH);
-          if (lang === this.lang) this.thumbs[tpl.id] = { state: "ready", ...img };
-          else URL.revokeObjectURL(img.url);
+          const { url, landscape } = await renderFirstPage(pdf, THUMB_WIDTH);
+          if (lang === this.lang) this.thumbs[tpl.id] = { state: "ready", url, landscape };
+          else URL.revokeObjectURL(url);
         } catch {
           if (lang === this.lang) this.thumbs[tpl.id] = { state: "failed" };
         }
