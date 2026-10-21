@@ -11,6 +11,7 @@ import { refused } from "$lib/policy";
 import { acceptCompletion, currentCompletions, setSelectedCompletion, startCompletion } from "@codemirror/autocomplete";
 import { undo } from "@codemirror/commands";
 import { Transaction } from "@codemirror/state";
+import { searchPanelOpen } from "@codemirror/search";
 import { EditorView } from "@codemirror/view";
 import { displayHtml, refreshMacros, textHtml } from "../lib/editor/math-preview";
 import { invoke } from "@tauri-apps/api/core";
@@ -2484,7 +2485,8 @@ async function editorScenes(log: (msg: string) => void, dir: string): Promise<bo
       await pause(700);
       await frames();
       const line = view.state.doc.lineAt(view.state.selection.main.head).number;
-      results[`${what} detail`] = { before: Math.round(before), after: Math.round(scroller.scrollTop), line, expected, moves: moves.slice(0, 12), scrolledTo, events: events.slice(0, 24), focus: document.hasFocus(), viewFocus: view.hasFocus };
+      const clicked = `${target.tagName}.${(target as HTMLElement).className}${view.contentDOM.contains(target) ? " (in the text)" : ""}`;
+      results[`${what} detail`] = { before: Math.round(before), after: Math.round(scroller.scrollTop), line, expected, clicked, moves: moves.slice(0, 12), scrolledTo, events: events.slice(0, 24), focus: document.hasFocus(), viewFocus: view.hasFocus };
       check(`${what}: the text stays`, Math.abs(scroller.scrollTop - before) < 30, `${Math.round(before)} -> ${Math.round(scroller.scrollTop)}`);
       check(`${what}: the caret where clicked`, Math.abs(line - expected) <= 2, `${line} / ${expected}`);
     };
@@ -2503,6 +2505,15 @@ async function editorScenes(log: (msg: string) => void, dir: string): Promise<bo
     scroller.scrollTop = 9000;
     await pause(400);
     await click("came back");
+    // A click while the window is not the active one (another application in front).
+    log("away: Finder");
+    await until(() => !document.hasFocus(), 6_000, "window left").catch(() => {});
+    scroller.scrollTop = 7000;
+    await pause(400);
+    await click("window behind");
+    await getCurrentWindow().setFocus();
+    await until(() => document.hasFocus(), 6_000, "window back").catch(() => {});
+    await pause(300);
     // A click elsewhere (a field of the window), the text scrolled, a click in it.
     const elsewhere = document.createElement("input");
     document.body.append(elsewhere);
@@ -3083,6 +3094,10 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
       searchField.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
       // The card is taken away with the panel of the editor: it can take a moment on a busy machine.
       const closed = await until(() => !document.querySelector(".lbt-find"), 2_000, "card closed").then(() => true, () => false);
+      if (!closed) {
+        const active = document.activeElement;
+        log(`find card still open: ${document.querySelectorAll(".lbt-find").length} card(s), field ${searchField.isConnected ? "in the page" : "taken away"}, panel ${searchPanelOpen(view.state) ? "open" : "closed"}, focus ${active?.tagName}.${active?.className}, menu ${!!ui.menu}, overlay ${ui.overlay}, dialog ${!!ui.dialog}, top menu ${!!document.querySelector(".menubar .open, .menubar [aria-expanded=true]")}`);
+      }
       log(`find: «${all}» then whole word «${words}», «${replaced.trim()}», closed ${closed}`);
       check("find and replace in the file", all === "1 sur 3" || all === "1 of 3", all);
       check("whole words only, replaced together, the card closed by Escape", (words === "1 sur 1" || words === "1 of 1") && replaced === "Un chien, deux chats, trois chatons.\n" && closed, `${words} ${replaced} ${closed}`);

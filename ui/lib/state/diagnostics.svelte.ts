@@ -151,8 +151,8 @@ class DiagnosticsStore {
     };
   }
 
-  /** Everything, grouped by file (general problems first). */
-  get grouped(): { file: string | null; items: Diagnostic[] }[] {
+  /** Everything, grouped by file (general problems first); worked out once for every reader. */
+  readonly grouped = $derived.by((): { file: string | null; items: Diagnostic[] }[] => {
     const groups = new Map<string, Diagnostic[]>();
     const general: Diagnostic[] = [];
     const add = (d: Diagnostic) => {
@@ -172,9 +172,9 @@ class DiagnosticsStore {
       out.push({ file, items });
     }
     return out;
-  }
+  });
 
-  get counts() {
+  readonly counts = $derived.by(() => {
     let errors = 0;
     let warnings = 0;
     let infos = 0;
@@ -186,7 +186,7 @@ class DiagnosticsStore {
     // As the list shows them: one mistake said by two checks counts once.
     for (const group of this.grouped) group.items.forEach(count);
     return { errors, warnings, infos };
-  }
+  });
 }
 
 export const diagnostics = new DiagnosticsStore();

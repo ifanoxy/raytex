@@ -171,8 +171,8 @@
       const old = doc;
       doc = next;
       docId++;
-      // Counted for the scenes (development builds only): what was put in place.
-      if (import.meta.env.DEV) (globalThis as { __pdfShown?: number }).__pdfShown = ((globalThis as { __pdfShown?: number }).__pdfShown ?? 0) + 1;
+      // Counted for the scenes (development and self-test builds only): what was put in place.
+      if (import.meta.env.DEV || import.meta.env.MODE === "selftest") (globalThis as { __pdfShown?: number }).__pdfShown = ((globalThis as { __pdfShown?: number }).__pdfShown ?? 0) + 1;
       missing = false;
       // A page keeps the size it had (a page more or less does not move the
       // others); a new one takes the size of the first until it is measured.

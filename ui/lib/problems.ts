@@ -25,31 +25,50 @@ function meet(a: Range, b: Range): boolean {
   return !before(a.end, b.start) && !before(b.end, a.start);
 }
 
+/** A place over more lines than this is compared with every problem kept (there are few). */
+const WIDE = 50;
+
+interface Kept {
+  d: Diagnostic;
+  place: Range;
+  fixes: Set<string>;
+}
+
 /**
  * The problems of one file with the repeats left out: of the problems that
- * are at the same place (their ranges meet) and offer a same fix (or that
- * the compiler and the live checks name alike), the most serious one stays (the first one given, between two of the same
- * severity). Two mistakes that a same fix mends at two places (two
- * commands of one package) both stay.
+ * are at the same place (their ranges meet) and offer a same fix, or that
+ * the compiler and the live checks name alike, the most serious one stays
+ * (the first one given, between two of the same severity). Two mistakes
+ * that a same fix mends at two places (two commands of one package) both
+ * stay. Each problem is compared with the ones of its lines only.
  */
 export function oneEach(list: Diagnostic[]): Diagnostic[] {
   const order = list.map((d, i) => ({ d, i })).sort((a, b) => RANK[a.d.severity] - RANK[b.d.severity] || a.i - b.i);
-  const kept: { d: Diagnostic; place: Range | null; fixes: Set<string> }[] = [];
+  const byLine = new Map<number, Kept[]>();
+  const wide: Kept[] = [];
+  const keep = new Set<Diagnostic>();
   for (const { d } of order) {
     const place = placeOf(d);
+    if (!place) {
+      keep.add(d);
+      continue;
+    }
     const fixes = new Set(d.fixes.map((f) => JSON.stringify(f)));
-    const repeat =
-      !!place &&
-      kept.some(
-        (k) =>
-          k.place &&
-          meet(k.place, place) &&
-          ([...fixes].some((f) => k.fixes.has(f)) ||
-            // The same mistake named alike by the compiler and by the live checks (a reference never defined).
-            (!!d.code && d.code === k.d.code && LIVE.has(d.source) !== LIVE.has(k.d.source))),
-      );
-    if (!repeat) kept.push({ d, place, fixes });
+    const same = (k: Kept) =>
+      meet(k.place, place) &&
+      ([...fixes].some((f) => k.fixes.has(f)) ||
+        // The same mistake named alike by the compiler and by the live checks (a reference never defined).
+        (!!d.code && d.code === k.d.code && LIVE.has(d.source) !== LIVE.has(k.d.source)));
+    const [first, last] = [place.start.line, place.end.line];
+    const broad = last - first > WIDE;
+    let repeat = wide.some(same);
+    if (!repeat && broad) repeat = [...byLine.values()].some((ks) => ks.some(same));
+    for (let l = first; !repeat && !broad && l <= last; l++) repeat = !!byLine.get(l)?.some(same);
+    if (repeat) continue;
+    keep.add(d);
+    const k: Kept = { d, place, fixes };
+    if (broad) wide.push(k);
+    else for (let l = first; l <= last; l++) (byLine.get(l) ?? byLine.set(l, []).get(l)!).push(k);
   }
-  const keep = new Set(kept.map((k) => k.d));
   return list.filter((d) => keep.has(d));
 }
