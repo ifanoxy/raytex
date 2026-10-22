@@ -7,12 +7,15 @@
 import { runAction } from "$lib/actions";
 import * as ipc from "$lib/ipc";
 import { app } from "$lib/state/app.svelte";
+import { build } from "$lib/state/build.svelte";
+import { diagnostics } from "$lib/state/diagnostics.svelte";
 import { editor } from "$lib/state/editor.svelte";
 import { history } from "$lib/state/history.svelte";
 import { project } from "$lib/state/project.svelte";
 import { ui } from "$lib/state/ui.svelte";
+import { viewer } from "$lib/state/viewer.svelte";
 import { t } from "$lib/i18n.svelte";
-import { samePath } from "$lib/utils";
+import { inFolder, samePath } from "$lib/utils";
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -209,6 +212,16 @@ export async function togetherScenes(log: (msg: string) => void, dir: string): P
     const notesTab = editor.tabs.find((x) => samePath(x.path, notes));
     check("two saves at once: the last text on the disk, the tab saved", onDisk === "Court.\n" && !notesTab?.dirty, { disk: onDisk.length, tab: text().length, dirty: notesTab?.dirty });
     await editor.close(notes, { force: true });
+
+    // ------------------------------- another project opened during a build
+    await editor.saveAll({ silent: true });
+    void build.run();
+    await until(() => build.running, 10_000, "a build of project A");
+    await project.open(rootB);
+    // The build of A would have ended by now.
+    await pause(3000);
+    const shownOfA = inFolder(viewer.pdf, rootA) || diagnostics.build.some((d) => inFolder(d.file, rootA));
+    check("another project opened during a build: the build stops, its page and problems not shown", samePath(project.info?.root, rootB) && !build.running && !shownOfA, { root: project.info?.root, running: build.running, pdf: viewer.pdf });
 
     // ------------------------------- settings changed twice in a row
     const size = app.settings!.editor.fontSize;

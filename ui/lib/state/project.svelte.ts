@@ -76,6 +76,8 @@ class ProjectStore {
 
   /** Makes `info` the current project (after opening or creating it). */
   private async adopt(info: ProjectInfo) {
+    // A build of the project left goes no further.
+    await build.stop();
     this.info = info;
     build.reset();
     viewer.clear();
@@ -218,6 +220,7 @@ class ProjectStore {
   /** Closes the project (asks about unsaved changes). */
   async close(): Promise<boolean> {
     if (!(await editor.closeAll())) return false;
+    await build.stop();
     await ipc.closeProject().catch(() => {});
     editor.reset();
     this.info = null;

@@ -57,6 +57,14 @@ export function relative(base: string, path: string): string {
   return p;
 }
 
+/** Whether `path` is `folder` or inside it. */
+export function inFolder(path: string | null | undefined, folder: string | null | undefined): boolean {
+  if (!path || !folder) return false;
+  const f = comparablePath(folder).replace(/\/+$/, "");
+  const p = comparablePath(path);
+  return p === f || p.startsWith(`${f}/`);
+}
+
 export function samePath(a: string | null | undefined, b: string | null | undefined): boolean {
   if (!a || !b) return false;
   return comparablePath(a) === comparablePath(b);

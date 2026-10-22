@@ -62,6 +62,9 @@ class BuildStore {
   /** Builds that ended, and those waiting for the end of the running one. */
   private ended = 0;
   private waiters: (() => void)[] = [];
+  /** Counts the projects opened (`reset`); a build tells which it began in. */
+  private projectRound = 0;
+  private startedIn = 0;
   /** The build that will complete a live one, once the text is left alone for a moment. */
   private completion: ReturnType<typeof setTimeout> | null = null;
   /** The active file, when it is a part of its document that can be compiled on its own. */
@@ -87,6 +90,7 @@ class BuildStore {
       this.forgetCompletion();
       // The engine tells which builds the user asked for (queued requests are coalesced).
       this.manual = manual;
+      this.startedIn = this.projectRound;
       editor.buildStarted();
       this.running = true;
       this.plan = plan;
@@ -298,15 +302,20 @@ class BuildStore {
     return ipc.cancelBuild();
   }
 
+  /** Stops the build under way and the one queued, and waits for their
+   *  end (a few seconds at most). */
+  async stop(): Promise<void> {
+    if (!this.running) return;
+    await this.cancel();
+    await Promise.race([this.idle(), new Promise((r) => setTimeout(r, 5_000))]);
+  }
+
   async clean() {
     const target = this.target();
     if (!target) return;
     // A build under way would write its files again, and holds them open
     // (Windows then refuses to remove them): it is stopped first.
-    if (this.running) {
-      await this.cancel();
-      await this.idle();
-    }
+    await this.stop();
     try {
       const n = await ipc.cleanBuild(target);
       ui.toast("success", t("build.cleaned", { n }));
@@ -322,6 +331,7 @@ class BuildStore {
   }
 
   reset() {
+    this.projectRound++;
     this.outcome = null;
     this.error = null;
     this.plan = null;
@@ -331,6 +341,8 @@ class BuildStore {
   }
 
   private finished(outcome: BuildOutcome | null, error: Diagnostic | null, manual: boolean, superseded = false) {
+    // Begun in the project left meanwhile (one that could not start was asked for here).
+    const ofAnother = this.running && this.startedIn !== this.projectRound;
     this.running = false;
     this.step = null;
     this.tracker.ended();
@@ -345,6 +357,8 @@ class BuildStore {
       this.references.set(outcome.plan.pdf, { steps: outcome.steps.map((st) => ({ name: st.name, durationMs: st.durationMs })), pages: outcome.pages ?? null });
     }
     for (const done of this.waiters.splice(0)) done();
+    // Its page and its problems are not those of this project.
+    if (ofAnother) return;
     const auto = !manual;
     this.manual = false;
     if (error) {
