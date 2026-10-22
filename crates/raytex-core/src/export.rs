@@ -228,7 +228,7 @@ pub fn same_file(a: &Path, b: &Path) -> bool {
 /// Adds the files a record (`.fls`) lists as read to `seen`. `pwd` is where
 /// the engine ran, unless the record says it.
 fn read_record(fls: &Path, pwd: &Path, seen: &mut BTreeSet<PathBuf>) -> Option<()> {
-    let text = String::from_utf8_lossy(&std::fs::read(fls).ok()?).into_owned();
+    let text = crate::text::decode_log(&std::fs::read(fls).ok()?);
     let mut pwd = pwd.to_path_buf();
     for line in text.lines() {
         if let Some(dir) = line.strip_prefix("PWD ") {

@@ -127,7 +127,8 @@ impl SyncTex {
         let mut seen_header = false;
         for line in reader.split(b'\n') {
             let line = line?;
-            let line = String::from_utf8_lossy(&line);
+            // Names of files in the code page of Windows there.
+            let line = crate::text::decode_log(&line);
             let line = line.trim_end_matches('\r');
             if !in_content {
                 if line.starts_with("SyncTeX Version:") {
@@ -452,6 +453,19 @@ fn parse_record(kind: u8, rest: &str, parent: u32) -> Option<Node> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A SyncTeX file written by TeX on Windows names its files in the code
+    /// page of the system: a folder with accents is found again.
+    #[test]
+    fn names_in_the_code_page_of_windows() {
+        let mut data = b"SyncTeX Version:1\nInput:1:C:/Mes th\xe8ses/main.tex\nOutput:pdf\nMagnification:1000\nUnit:1\nX Offset:0\nY Offset:0\nContent:\n".to_vec();
+        data.extend_from_slice(b"!100\n{1\n[1,1:0,0:100,100,0\nx1,1:10,10\n]\n}1\nPostamble:\n");
+        let st = SyncTex::parse(std::io::BufReader::new(data.as_slice())).unwrap();
+        assert_eq!(
+            st.inputs[0].1,
+            crate::log::normalize(Path::new("C:/Mes thèses/main.tex"))
+        );
+    }
 
     const SAMPLE: &str = "SyncTeX Version:1\nInput:1:/p/./s.tex\nInput:2:/tex/article.cls\nOutput:pdf\nMagnification:1000\nUnit:1\nX Offset:0\nY Offset:0\nContent:\n!100\n{1\n[1,10:4736286,46220574:26673152,41484288,0\n[1,10:8799518,44254494:22609920,36044800,0\n(1,3:8799518,8865054:22609920,655359,0\ng1,3:8799518,8865054\nx1,3:9330359,8865054\n)\n(1,5:8799518,10300473:22609920,455111,127431\nx1,4:10179418,10300473\nk1,4:13315918,10300473:220140\nx1,5:20000000,10300473\n)\n]\n]\n}1\n{2\n[1,11:4736286,46220574:26673152,41484288,0\n(1,11:8799518,8865054:22609920,655359,0\nx1,11:9000000,8865054\n)\n]\n}2\nPostamble:\n";
 

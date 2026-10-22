@@ -52,7 +52,7 @@ fn read_into(dir: &Path, path: &Path, data: &mut AuxData, budget: &mut usize) {
     let Ok(bytes) = std::fs::read(path) else {
         return;
     };
-    let text = String::from_utf8_lossy(&bytes);
+    let text = crate::text::decode_log(&bytes);
     {
         for line in text.lines() {
             if let Some(rest) = line.strip_prefix("\\newlabel{") {

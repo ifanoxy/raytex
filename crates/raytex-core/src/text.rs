@@ -141,9 +141,10 @@ pub fn utf16_to_byte(s: &str, units: usize) -> usize {
     s.len()
 }
 
-/// The text of a log of TeX: UTF-8, where a byte that is not (a character of
-/// an 8-bit font, written as it is: "There is no É in font cmr10") is read
-/// as Latin-1 instead of being lost.
+/// A text written by TeX (its log, its record of the files, SyncTeX): UTF-8,
+/// where a byte that is not (a character of an 8-bit font, written as it is:
+/// "There is no É in font cmr10"; the name of a file on Windows, in its code
+/// page) is read as Windows-1252 instead of being lost.
 pub fn decode_log(bytes: &[u8]) -> String {
     let mut out = String::with_capacity(bytes.len());
     let mut rest = bytes;
@@ -157,7 +158,13 @@ pub fn decode_log(bytes: &[u8]) -> String {
                 let (valid, after) = rest.split_at(e.valid_up_to());
                 out.push_str(&String::from_utf8_lossy(valid));
                 let bad = e.error_len().unwrap_or(after.len()).max(1);
-                out.extend(after[..bad].iter().map(|b| char::from(*b)));
+                // What is not UTF-8 is the code page of Windows (TeX there
+                // writes the names of files so: a folder "Thèse").
+                out.push_str(
+                    &encoding_rs::WINDOWS_1252
+                        .decode_without_bom_handling(&after[..bad])
+                        .0,
+                );
                 rest = &after[bad..];
             }
         }
@@ -212,6 +219,20 @@ pub fn squash_whitespace(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Names of files as TeX writes them on Windows (code page 1252), and
+    /// UTF-8 elsewhere, read the same.
+    #[test]
+    fn names_written_by_tex_on_windows_are_read() {
+        assert_eq!(
+            decode_log(b"C:\\Mes th\xe8ses\\c\x9cur.tex"),
+            "C:\\Mes thèses\\cœur.tex"
+        );
+        assert_eq!(
+            decode_log("Mes thèses/cœur.tex".as_bytes()),
+            "Mes thèses/cœur.tex"
+        );
+    }
 
     #[test]
     fn a_log_keeps_the_characters_of_8_bit_fonts() {

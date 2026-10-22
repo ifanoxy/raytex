@@ -240,7 +240,7 @@ pub fn compile(dist: &Distribution, req: &PreviewRequest<'_>) -> PreviewOutcome 
 
     let read_log = || {
         std::fs::read(&log_path)
-            .map(|b| String::from_utf8_lossy(&b).into_owned())
+            .map(|b| crate::text::decode_log(&b))
             .unwrap_or_default()
     };
     let mut run = match process::output(&cmd, req.timeout) {
@@ -517,7 +517,7 @@ pub fn compile_document(
     };
     run()?;
     let log = std::fs::read(out_dir.join(format!("{stem}.log")))
-        .map(|b| String::from_utf8_lossy(&b).into_owned())
+        .map(|b| crate::text::decode_log(&b))
         .unwrap_or_default();
     let rerun = log.contains("Rerun to get") || log.contains("Label(s) may have changed");
     if engine != Engine::Tectonic && (rerun || out_dir.join(format!("{stem}.toc")).is_file()) {
@@ -746,7 +746,7 @@ mod tests {
                 .unwrap()
                 .join("layout-preview.log"),
         )
-        .map(|b| String::from_utf8_lossy(&b).into_owned())
+        .map(|b| crate::text::decode_log(&b))
         .unwrap_or_default();
         let around: Vec<String> = log
             .lines()
