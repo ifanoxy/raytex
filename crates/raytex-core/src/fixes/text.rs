@@ -403,7 +403,8 @@ pub fn brace_close_at(text: &str, open: usize) -> usize {
             i += 1;
         }
         let stop = i.min(content);
-        let until = |at: usize| open + 1 + text[open + 1..at].trim_end().len();
+        // (A formula found may start before the brace: nothing is taken then.)
+        let until = |at: usize| open + 1 + text[open + 1..at.max(open + 1)].trim_end().len();
         // A group written in it that is the argument of nothing (`\frac{a{b}`,
         // `\SI{3{\metre}`) is the next argument of the command: the brace
         // closes before it. When the command takes one argument only, the

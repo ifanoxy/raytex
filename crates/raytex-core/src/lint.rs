@@ -650,7 +650,7 @@ impl Linter<'_> {
                     para = next;
                 }
                 // Closed after a blank line: the blank line is the mistake.
-                let after = &text[para..(para + 600).min(text.len())];
+                let after = &text[para..crate::text::floor_char_boundary(text, para + 600)];
                 let blank_end = para + after.len() - after.trim_start().len();
                 if blank_end < text.len() && text[blank_end..].starts_with(close) && close != "$" {
                     let start = para + 1;
@@ -2356,6 +2356,29 @@ mod tests {
             }
         }
         found
+    }
+
+    /// Texts that stopped the checks (found in the files of TeX Live): a
+    /// formula looked for before the brace it is in, and letters of several
+    /// bytes where the end of a paragraph was measured.
+    #[test]
+    fn texts_of_any_script_are_checked_without_stopping() {
+        let gmbase = "\\long\\def\\ifAllClauses\n#1% a sequence of pairs \\arg{conditionals' name without »if«}{the\n{%\n  \\ifnum\n     \\gmu@ifQUANT@iter\n     0% for the General Quantifier 0 terminates calculation (when a\n     % counter-example has just been found)\n     1% To make any calculation sense we assume 1 at the beginning\n     #1\n     {true}{} {true} {}% the sentinel(s)\n     \\gmu@delim % the delimiter\n     =\\@ne % right side of |\\Ѻifnum|\n}\n";
+        let _ = lint_text(
+            &[("gmbase.sty", gmbase)],
+            "gmbase.sty",
+            LintOptions::default(),
+        );
+        for close in ["$$", "\\["] {
+            for pad in 0..3 {
+                let main = format!(
+                    "\\documentclass{{article}}\n\\begin{{document}}\n{close} x\n{}\n\n{}\n\\end{{document}}\n",
+                    "a".repeat(pad),
+                    "語".repeat(400)
+                );
+                let _ = lint_text(&[("main.tex", &main)], "main.tex", LintOptions::default());
+            }
+        }
     }
 
     /// A class the distribution does not have yet (MiKTeX installs it at the

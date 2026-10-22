@@ -63,7 +63,10 @@ opt-level = "s"
 lto = "fat"
 codegen-units = 1
 strip = true
-panic = "abort"
+# No `panic = "abort"`: a fault in one check of the text then stops that
+# check, not the application with the work not saved (the commands run
+# apart, their locks recover, the search of a cause keeps the problem as
+# TeX gave it).
 
 [profile.release.package.raytex-core]
 opt-level = 3
