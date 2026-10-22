@@ -45,13 +45,14 @@ import { viewer } from "../lib/state/viewer.svelte";
 import { whatsNew } from "../lib/state/whatsnew.svelte";
 import { readTitlePage } from "../lib/titlepage";
 import { basename, samePath } from "../lib/utils";
+import { mark, shown, since } from "./toasts";
 
 async function until(check: () => boolean, timeoutMs: number, what: string) {
   const start = Date.now();
   while (!check()) {
     if (Date.now() - start > timeoutMs) {
       // What the application said meanwhile (an error toast explains most time-outs).
-      const toasts = ui.toasts.map((t) => `${t.kind}: ${t.message}${t.detail ? ` (${t.detail})` : ""}`);
+      const toasts = shown.slice(-5).map((t) => `${t.kind}: ${t.message}${t.detail ? ` (${t.detail})` : ""}`);
       throw new Error(`timeout: ${what}${toasts.length ? ` — ${toasts.join(" | ")}` : ""}`);
     }
     await new Promise((r) => setTimeout(r, 100));
@@ -83,6 +84,7 @@ export async function runSelfTest() {
   // time a step times out).
   const toast = ui.toast.bind(ui);
   ui.toast = (kind, message, opts) => {
+    shown.push({ kind, message, detail: opts?.detail, action: opts?.action });
     if (kind === "error" || kind === "warning") {
       const o = build.outcome;
       const detail = o ? ` [${o.engine}, success ${o.success}, pdf ${!!o.pdf}, steps ${o.steps.map((x) => `${x.name}:${x.exitCode}`).join(" ")}, ${o.diagnostics.filter((d) => d.severity === "error").map((d) => d.message).join(" | ")}]` : "";
@@ -828,10 +830,10 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     await editor.save(chapter, { silent: true, auto: true });
     const v = editor.view!;
     v.dispatch({ changes: { from: v.state.doc.length, insert: "% encore\n" } });
-    const before = ui.toasts.length;
+    const before = mark();
     await editor.externalChanges([chapter]);
     await pause(200);
-    const echo = ui.toasts.slice(before).map((t) => t.message);
+    const echo = since(before).map((t) => t.message);
     log(`macros: typed and closed ${savedTyped}, by Tab ${byTab}, snippet by Tab ${snippetByTab}, formula in text ${mathInText}, Tab kept ${tabKept}, + opens the form ${formOpens}`);
     log(`macros: splash gone ${splashGone}, recorded ${app.settings?.macros[0]?.key}, ran ${ran}, quiet in text ${quietInText}, @vv offered ${own?.apply}, beside \\vec ${beside}, toasts after own save ${JSON.stringify(echo)}`);
     ok = savedTyped && byTab && snippetByTab && mathInText && tabKept && formOpens && splashGone && ran && quietInText && own?.apply === "\\vec{${1}}" && beside === "@vv" && echo.length === 0 && (await buildOk(log, "macros")) && ok;
@@ -1207,11 +1209,12 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     await scene("pdf-archive");
     ui.closeOverlay();
     const archived = `${root}-archive-${Date.now()}.pdf`;
+    const exported = mark();
     await pdfExport.start(archived, { kind: "original" }, "a-2b");
     await until(() => pdfExport.job === null, 240_000, "PDF/A export");
     const bytes = new Uint8Array(await ipc.readBinaryFile(archived));
     const head = new TextDecoder().decode(bytes.slice(0, 8));
-    const said = ui.toasts.map((x) => x.message).find((m) => m.includes("PDF/A")) ?? "";
+    const said = since(exported).map((x) => x.message).find((m) => m.includes("PDF/A")) ?? "";
     log(`pdf/a: level offered ${level}, file ${bytes.length} bytes, ${head.trim()}, said «${said}»`);
     ok = level === "a-2b" && bytes.length > 1000 && head.startsWith("%PDF-1.7") && /PDF\/A-2B/.test(said) && /Vérifié|Checked/.test(said) && ok;
   } catch (e) {
@@ -1230,9 +1233,10 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     await scene("pdf-accessible");
     ui.closeOverlay();
     const tagged = `${root}-accessible-${Date.now()}.pdf`;
+    const exported = mark();
     await pdfExport.start(tagged, { kind: "original" }, null, null, true);
     await until(() => pdfExport.job === null, 240_000, "accessible export");
-    const said = ui.toasts.map((x) => x.message).find((m) => m.includes("PDF/UA")) ?? "";
+    const said = since(exported).map((x) => x.message).find((m) => m.includes("PDF/UA")) ?? "";
     const both = await ipc.exportPdfLighter(build.target()!, `${root}-accessible-archive-${Date.now()}.pdf`, null, null, "a-2b", null, true);
     log(`accessible: said «${said}», with PDF/A ${both.archive?.standard} ${JSON.stringify(both.archive?.problems)} UA-${both.accessible?.part} ${JSON.stringify(both.accessible?.problems)} (${both.accessible?.missingAlt} without alt)`);
     ok = /PDF\/UA-2/.test(said) && /description|alt/.test(said) && both.archive?.standard === "a-3b" && !both.archive.problems.length && both.accessible?.part === 1 && (both.accessible?.missingAlt ?? 0) >= 1 && both.accessible!.problems.every((p) => p === "alt" || p === "title") && ok;
@@ -1322,8 +1326,9 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     await scene("templates");
 
     // An empty document is not compiled.
+    const emptyAsked = mark();
     await build.run();
-    check("empty not built", build.status === "idle" && ui.toasts.some((x) => x.kind === "info"), build.status);
+    check("empty not built", build.status === "idle" && since(emptyAsked).some((x) => x.kind === "info"), build.status);
 
     // ------------------------------------------------ apply a template
     document.querySelector<HTMLButtonElement>('.card[data-template="article"]')!.click();
@@ -1363,14 +1368,14 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     check("live build", build.status === "success", build.status);
 
     // ------------------------------------- manual build with an error
-    const toasts = ui.toasts.length;
+    const toasts = mark();
     const at = editor.view!.state.doc.toString().lastIndexOf("\\end{document}");
     editor.view!.dispatch({ changes: { from: at, insert: "Un \\textbff{mot}.\n\n" }, userEvent: "input.type" });
     await build.run();
     await until(() => build.running, 10_000, "build start");
     await until(() => !build.running, 120_000, "build end");
     check("error: console closed", !ui.bottomVisible);
-    check("error: notified", ui.toasts.length > toasts && ui.toasts.some((x) => x.kind === "error"));
+    check("error: notified", since(toasts).some((x) => x.kind === "error"));
     check("error: status", build.status === "failed", build.status);
     await scene("build-error", 1500);
     press("z");
@@ -3111,10 +3116,10 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
         /* nothing kept */
       }
       reset("$");
-      const toasts = ui.toasts.length;
+      const toasts = mark();
       for (let i = 0; i < 6; i++) typeKeys("\\mathbb{R} ");
-      await until(() => ui.toasts.slice(toasts).some((x) => /mathbb/.test(x.message)), 5_000, "offer of a shortcut").catch(() => {});
-      const offer = ui.toasts.slice(toasts).find((x) => /mathbb/.test(x.message));
+      await until(() => since(toasts).some((x) => /mathbb/.test(x.message)), 5_000, "offer of a shortcut").catch(() => {});
+      const offer = since(toasts).find((x) => /mathbb/.test(x.message));
       log(`learned: ${offer?.message} [${offer?.action?.label}]`);
       check("a command typed again and again gets an offer of a shortcut", !!offer && /@bb/.test(offer.action?.label ?? ""), offer?.message);
       try {

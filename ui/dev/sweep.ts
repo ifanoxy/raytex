@@ -26,6 +26,7 @@ import { viewer } from "$lib/state/viewer.svelte";
 import { whatsNew } from "$lib/state/whatsnew.svelte";
 import { i18n, t } from "$lib/i18n.svelte";
 import { isMac } from "$lib/utils";
+import { mark, shown, since } from "./toasts";
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -251,7 +252,7 @@ export async function commandsScenes(log: (msg: string) => void, dir: string): P
         expect: async () => {
           for (let i = 0; i < 40 && (build.running || (await ipc.pathExists(`${project.root}/build/main.aux`))); i++) await pause(250);
           if (!build.running && !(await ipc.pathExists(`${project.root}/build/main.aux`))) return true;
-          return `main.aux still there (said: ${ui.toasts.at(-1)?.message ?? "nothing"}, building: ${build.running})`;
+          return `main.aux still there (said: ${shown.at(-1)?.message ?? "nothing"}, building: ${build.running})`;
         },
         done: async () => {
           await build.run();
@@ -429,7 +430,7 @@ export async function commandsScenes(log: (msg: string) => void, dir: string): P
         expect: async () => {
           await until(() => !!ui.menu, 3_000, "menu of fixes").catch(() => {});
           if (ui.menu && ui.menu.items.length > 0) return true;
-          const said = ui.toasts.at(-1)?.message ?? "nothing said";
+          const said = shown.at(-1)?.message ?? "nothing said";
           return `no menu of fixes (problem known: ${diagnostics_have("sec:intr")}, said: ${said})`;
         },
         done: () => {
@@ -563,8 +564,7 @@ export async function commandsScenes(log: (msg: string) => void, dir: string): P
       }
       await closeWindows();
       errors.length = 0;
-      const toasts = ui.toasts.length;
-      const firstToast = ui.toasts[ui.toasts.length - 1]?.id;
+      const toasts = mark();
       try {
         await spec.prepare?.();
         if (spec.unavailable) {
@@ -591,8 +591,8 @@ export async function commandsScenes(log: (msg: string) => void, dir: string): P
         })();
         await Promise.race([Promise.all([running, answered]), pause(15_000)]);
         const verdict = spec.expect ? await spec.expect() : true;
-        const newErrors = ui.toasts.filter((x, i) => x.kind === "error" && (i >= toasts || x.id !== firstToast)).map((x) => x.message);
-        const problems = [...(verdict === true ? [] : [verdict]), ...errors.map((e) => `error: ${e}`), ...(newErrors.length && ui.toasts.length > toasts ? newErrors.map((m) => `notification: ${m}`) : [])];
+        const newErrors = since(toasts).filter((x) => x.kind === "error").map((x) => x.message);
+        const problems = [...(verdict === true ? [] : [verdict]), ...errors.map((e) => `error: ${e}`), ...newErrors.map((m) => `notification: ${m}`)];
         results[id] = problems.length ? `FAILED ${problems.join(" · ")}` : "ok";
         if (problems.length) failures.push(id);
       } catch (e) {

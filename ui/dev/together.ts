@@ -16,6 +16,7 @@ import { ui } from "$lib/state/ui.svelte";
 import { viewer } from "$lib/state/viewer.svelte";
 import { t } from "$lib/i18n.svelte";
 import { inFolder, samePath } from "$lib/utils";
+import { mark, since } from "./toasts";
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -93,9 +94,9 @@ export async function togetherScenes(log: (msg: string) => void, dir: string): P
     await until(() => text().includes("ajouté ailleurs 1"), 8_000, "reloaded").catch(() => {});
     check("changed elsewhere, nothing typed: shown as it is now", text().includes("ajouté ailleurs 1") && !editor.activeTab?.dirty, { dirty: editor.activeTab?.dirty });
     view().dispatch({ changes: { from: text().indexOf("Texte."), insert: "Tapé ici. " } });
-    const toasts = ui.toasts.length;
+    const toasts = mark();
     log(`external-append: ${main} | % ajouté ailleurs 2`);
-    const warned = await until(() => ui.toasts.slice(toasts).some((x) => x.message === t("editor.changedOnDisk", { file: "main.tex" })), 8_000, "warned").then(
+    const warned = await until(() => since(toasts).some((x) => x.message === t("editor.changedOnDisk", { file: "main.tex" })), 8_000, "warned").then(
       () => true,
       () => false,
     );
@@ -186,10 +187,10 @@ export async function togetherScenes(log: (msg: string) => void, dir: string): P
     await until(() => history.loaded, 10_000, "history");
     await history.select(moment!.id);
     const changes = history.changes.map((c) => `${c.path}:${c.status}`);
-    const toasts2 = ui.toasts.length;
+    const toasts2 = mark();
     await history.restore(history.changes);
     await until(() => !history.busy, 20_000, "restored");
-    const failedToast = ui.toasts.slice(toasts2).some((x) => x.kind === "error");
+    const failedToast = since(toasts2).some((x) => x.kind === "error");
     const mainBack = (await ipc.readTextFile(main)).text === before && editor.textOf(main) === before;
     const annexeBack = await ipc.pathExists(annexe);
     const addedLeft = await ipc.pathExists(`${rootA}/nouveau.tex`);
