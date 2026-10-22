@@ -73,6 +73,12 @@ export async function runSelfTest() {
     }
     say(msg);
   };
+  // Where a warning of Svelte comes from (its message does not say).
+  const warn = console.warn.bind(console);
+  console.warn = (...args: unknown[]) => {
+    if (args.some((a) => typeof a === "string" && a.includes("derived_inert"))) say(`derived_inert from ${(new Error().stack ?? "").split("\n").slice(2, 9).map((l) => l.trim()).join(" < ")}`);
+    warn(...args);
+  };
   // Every error or warning shown, when it is shown (a toast is gone by the
   // time a step times out).
   const toast = ui.toast.bind(ui);

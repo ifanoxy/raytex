@@ -29,13 +29,21 @@
       data = { files: [], entries: [], allCited: false };
       return;
     }
+    // A reply that a newer reading replaced, or that comes once the panel
+    // is closed, is dropped.
+    let replaced = false;
     void ipc
       .bibliography(p)
       .then((b) => {
-        if (p === path) data = b;
+        if (!replaced) data = b;
       })
-      .catch(() => (data = { files: [], entries: [], allCited: false }))
-      .finally(() => (loaded = true));
+      .catch(() => {
+        if (!replaced) data = { files: [], entries: [], allCited: false };
+      })
+      .finally(() => {
+        if (!replaced) loaded = true;
+      });
+    return () => (replaced = true);
   });
 
   const unused = $derived(data.allCited ? [] : data.entries.filter((e) => !e.cited));
