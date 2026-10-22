@@ -294,7 +294,11 @@ async function buildOk(log: (msg: string) => void, what: string): Promise<boolea
   await build.run();
   await until(() => build.running, 10_000, "build start");
   await until(() => !build.running, 300_000, "build end");
-  const errors = build.outcome?.diagnostics.filter((d) => d.severity === "error").map((d) => d.message) ?? [];
+  // Each error with where it is and what TeX showed of it (an undefined command is named there).
+  const errors =
+    build.outcome?.diagnostics
+      .filter((d) => d.severity === "error")
+      .map((d) => `${d.message}${d.file ? ` [${basename(d.file)}:${d.line ?? "?"}]` : ""}${d.contextBefore || d.raw ? ` «${(d.contextBefore ?? d.raw ?? "").replace(/\s+/g, " ").slice(-160)}»` : ""}`) ?? [];
   log(`${what}: build ${build.status} (${build.outcome?.engine}, ${build.outcome?.durationMs} ms)${errors.length ? ` errors: ${errors.join(" | ")}` : ""}`);
   return build.status === "success";
 }
@@ -1573,7 +1577,7 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     check("build with the format", await buildOk(log, "with format"));
     const usedFormat = build.output.some((l) => l.stream === "cmd" && l.text.includes("-fmt="));
     results.formatBuildMs = `${Date.now() - t1} ms (format ${usedFormat ? "used" : "not used"})`;
-    // MiKTeX does not use precompiled preambles (see build::preamble).
+    // MiKTeX uses them too, once it has made the format (its first time, in the background, can take longer).
     check("format used", usedFormat || tex.active?.kind === "miktex");
 
     await editor.open(main);

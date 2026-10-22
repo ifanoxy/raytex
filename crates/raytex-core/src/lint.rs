@@ -2194,6 +2194,12 @@ mod tests {
                     ..Default::default()
                 };
                 for d in lint(&ws, &crate::log::normalize(&main), &opts) {
+                    // A package the distribution has not installed yet (a
+                    // small MiKTeX installs them as they are needed): what
+                    // is installed, not a mistake of the template.
+                    if d.code.as_deref() == Some("missing-package") {
+                        continue;
+                    }
                     found.push(format!(
                         "{} [{language}] {:?} {:?}: {}",
                         t.id, d.severity, d.code, d.message
