@@ -14,6 +14,7 @@ import type { CommandDraft, CommandSpec, CustomCommand } from "./commands";
 import type { PagePreview } from "./layout";
 import type { ShapeSet } from "./tikz/model";
 import type { MathMacro } from "./editor/katex-macros";
+import { inOrder } from "./order";
 
 const call = <R>(cmd: string, args?: Record<string, unknown>) => invoke<R>(cmd, args);
 
@@ -26,10 +27,12 @@ export const takeOpenRequests = () => call<string[]>("take_open_requests");
 /** Quits the application (after the unsaved files were dealt with). */
 export const quitApp = () => call<void>("quit_app");
 export const getSettings = () => call<T.Settings>("get_settings");
-export const saveSettings = (settings: T.Settings) => call<boolean>("save_settings", { settings });
+// The saves below one after the other: two at once could reach the disk
+// (and the engine) in the other order, the older one last.
+export const saveSettings = (settings: T.Settings) => inOrder("settings", () => call<boolean>("save_settings", { settings }));
 export const setLanguage = (lang: T.Lang) => call<void>("set_language", { lang });
 export const getSession = () => call<T.Session>("get_session");
-export const saveOpenFiles = (files: string[], active: string | null) => call<void>("save_open_files", { files, active });
+export const saveOpenFiles = (files: string[], active: string | null) => inOrder("open-files", () => call<void>("save_open_files", { files, active }));
 export const forgetRecent = (path: string) => call<void>("forget_recent", { path });
 export const openInOs = (path: string) => call<void>("open_in_os", { path });
 export const revealInOs = (path: string) => call<void>("reveal_in_os", { path });
@@ -42,7 +45,7 @@ export const closeProject = () => call<void>("close_project");
 export const projectInfo = () => call<T.ProjectInfo | null>("project_info");
 export const fileTree = () => call<T.FileNode[]>("file_tree");
 export const setMainFile = (path: string) => call<T.ProjectInfo>("set_main_file", { path });
-export const saveProjectConfig = (config: T.ProjectConfig) => call<T.ProjectInfo>("save_project_config", { config });
+export const saveProjectConfig = (config: T.ProjectConfig) => inOrder("project-config", () => call<T.ProjectInfo>("save_project_config", { config }));
 export const listTemplates = () => call<T.TemplateInfo[]>("list_templates");
 export const openLightFile = (path: string) => call<T.ProjectInfo>("open_light_file", { path });
 export const listProjects = () => call<T.ProjectsOverview>("list_projects");
@@ -58,7 +61,7 @@ export const deleteTemplate = (id: string) => call<void>("delete_template", { id
 
 // --------------------------------------------------------------- files
 export const readTextFile = (path: string) => call<T.TextFile>("read_text_file", { path });
-export const writeTextFile = (path: string, text: string) => call<number>("write_text_file", { path, text });
+export const writeTextFile = (path: string, text: string) => inOrder(`file:${path}`, () => call<number>("write_text_file", { path, text }));
 export const readBinaryFile = (path: string) => call<ArrayBuffer>("read_binary_file", { path });
 export const writeBinaryFile = (path: string, bytes: Uint8Array) =>
   invoke<string>("write_binary_file", bytes, { headers: { "x-path": encodeURIComponent(path) } });
@@ -274,7 +277,7 @@ export const tikzTemplates = () => call<T.TikzTemplate[]>("tikz_templates");
 export const tikzLibraries = () => call<string[]>("tikz_libraries");
 /** The sets of the TikZ whiteboard the user kept (shapes to draw again), and their writing. */
 export const tikzSets = () => call<ShapeSet[]>("tikz_sets");
-export const saveTikzSets = (sets: ShapeSet[]) => call<void>("save_tikz_sets", { sets });
+export const saveTikzSets = (sets: ShapeSet[]) => inOrder("tikz-sets", () => call<void>("save_tikz_sets", { sets }));
 export const previewSnippet = (request: T.SnippetRequest) => call<T.PreviewOutcome>("preview_snippet", { request });
 /** Compiles a whole document (the pages of a layout being set) next to the project of `path`. */
 export const previewPage = (request: { path: string; job: string; source: string }) => call<PagePreview>("preview_page", { request });

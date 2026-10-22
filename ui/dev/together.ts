@@ -209,6 +209,14 @@ export async function togetherScenes(log: (msg: string) => void, dir: string): P
     const notesTab = editor.tabs.find((x) => samePath(x.path, notes));
     check("two saves at once: the last text on the disk, the tab saved", onDisk === "Court.\n" && !notesTab?.dirty, { disk: onDisk.length, tab: text().length, dirty: notesTab?.dirty });
     await editor.close(notes, { force: true });
+
+    // ------------------------------- settings changed twice in a row
+    const size = app.settings!.editor.fontSize;
+    void app.update((s) => (s.editor.fontSize = size + 1));
+    await app.update((s) => (s.editor.fontSize = size + 2));
+    const kept = (await ipc.getSettings()).editor.fontSize;
+    check("settings changed twice in a row: the last kept", kept === size + 2, { asked: size + 2, kept });
+    await app.update((s) => (s.editor.fontSize = size));
   } catch (e) {
     results.failure = String(e);
   } finally {
