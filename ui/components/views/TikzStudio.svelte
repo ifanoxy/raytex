@@ -236,6 +236,8 @@
   });
 
   onDestroy(() => {
+    // Closed before the preview was due: nothing is compiled for it.
+    refreshSoon.cancel();
     if (!editing && !pristine && hasContent) media.tikzDraft = { code, packages: [...packages], libraries: [...libraries], extra, mode: mode === "templates" ? "draw" : mode };
     view?.destroy();
   });

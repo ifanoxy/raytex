@@ -176,6 +176,8 @@
   $effect(() => {
     void previewText;
     schedule();
+    // Closed before the preview was due: nothing is compiled for it.
+    return () => schedule.cancel();
   });
 
   async function compile() {

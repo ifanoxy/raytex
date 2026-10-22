@@ -4,7 +4,7 @@
   // edits the preamble (fontspec, unicode-math…) and switches the engine
   // when needed (system fonts require XeLaTeX or LuaLaTeX).
   import { open } from "@tauri-apps/plugin-dialog";
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { type MessageKey, t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { addLines, addPackages, commentOutPackages, hasPackage, loadedPackages, setStatement } from "$lib/preamble";
@@ -166,6 +166,8 @@
   // ------------------------------------------------------------ preview
 
   const schedulePreview = debounce(() => void runPreview(), 300);
+  // Closed before the preview was due: nothing is compiled for it.
+  onDestroy(() => schedulePreview.cancel());
 
   async function runPreview() {
     const s = selected;
