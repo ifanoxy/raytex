@@ -1501,12 +1501,22 @@ impl Linter<'_> {
             .filter(|a| !a.index().is_empty())
             .cloned();
         let accurate = if let Some(analyzer) = &analyzer {
+            let mut unknown = false;
             for info in analyzer.closure(class, packages.iter().map(String::as_str)) {
+                // Not in the distribution yet (MiKTeX installs it when a
+                // build asks for it): what it defines is known only for a
+                // standard class or a package of the knowledge base.
+                unknown |= !info.installed
+                    && !(if info.class {
+                        STANDARD_CLASSES.contains(&info.name.as_str())
+                    } else {
+                        kb.package(&info.name).is_some()
+                    });
                 loaded.insert(info.name.clone());
                 defined.extend(info.commands.iter().map(|c| c.name.clone()));
                 defined_envs.extend(info.environments.iter().map(|e| e.name.clone()));
             }
-            true
+            !unknown
         } else {
             // Without the distribution (it is read at startup), only judge when
             // every loaded package is known, in a standard class: the others
@@ -2346,6 +2356,34 @@ mod tests {
             }
         }
         found
+    }
+
+    /// A class the distribution does not have yet (MiKTeX installs it at the
+    /// first build): what it defines is not known, and its commands are not
+    /// said to need a package; in a standard class they still are.
+    #[test]
+    fn a_class_not_installed_yet_is_not_judged() {
+        let says = |class: &str| {
+            let dir = tempfile::tempdir().unwrap();
+            let main = dir.path().join("main.tex");
+            std::fs::write(
+                &main,
+                format!("\\documentclass{{{class}}}\n\\begin{{document}}\n\\opening{{Madame,}}\nTexte.\n\\closing{{Cordialement}}\n\\end{{document}}\n"),
+            )
+            .unwrap();
+            let mut ws = Workspace::open(dir.path());
+            let index = std::sync::Arc::new(TexmfIndex::of(&["article.cls", "letter.cls"]));
+            ws.set_packages(Some(std::sync::Arc::new(crate::tex::PackageAnalyzer::new(
+                index,
+            ))));
+            lint(&ws, &crate::log::normalize(&main), &LintOptions::default())
+                .into_iter()
+                .filter(|d| d.code.as_deref() == Some("package-required"))
+                .map(|d| d.message)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(says("scrlttr2"), Vec::<String>::new());
+        assert_eq!(says("article").len(), 2, "{:?}", says("article"));
     }
 
     /// A language of babel that the distribution does not have (MiKTeX
