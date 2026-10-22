@@ -768,8 +768,8 @@ mod tests {
                 let outcome = run(&p, &ctx, &mut |_: BuildEvent| {});
                 assert!(
                     outcome.success,
-                    "{engine:?} {standard:?}: {:?}",
-                    outcome.diagnostics
+                    "{engine:?} {standard:?}: {:?} {:?}",
+                    outcome.diagnostics, outcome.steps
                 );
                 let c = check(&p.pdf).unwrap();
                 let found = problems(&c, standard);

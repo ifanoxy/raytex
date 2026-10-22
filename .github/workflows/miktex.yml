@@ -43,6 +43,23 @@ jobs:
       # once make one of them fail (MiKTeX locks its database).
       - name: Engine tests needing TeX
         run: cargo test -p raytex-core --release -- --ignored --skip ctan --nocapture --test-threads=1
+      # What MiKTeX did (a package it could not install, an engine that stopped).
+      - name: MiKTeX logs
+        if: always()
+        shell: pwsh
+        run: |
+          foreach ($pair in @(@("user", "$env:LOCALAPPDATA\MiKTeX\miktex\log"), @("admin", "$env:ProgramData\MiKTeX\miktex\log"))) {
+            $to = "miktex-logs/$($pair[0])"
+            New-Item -ItemType Directory -Force $to | Out-Null
+            if (Test-Path $pair[1]) { Copy-Item "$($pair[1])\*.log" $to -ErrorAction SilentlyContinue }
+          }
+      - name: Upload MiKTeX logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-engine-miktex
+          path: miktex-logs/
+          retention-days: 14
 
   # The application itself: the scenes of ui/dev/selftest.ts
   # (scripts/e2e.mjs), with a screenshot at each step.

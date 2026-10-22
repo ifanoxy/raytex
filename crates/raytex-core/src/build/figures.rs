@@ -1202,8 +1202,8 @@ et la suite.
                 let outcome = run(&plan, &ctx, &mut |_: BuildEvent| {});
                 assert!(
                     outcome.success,
-                    "{engine:?} {tool:?}: {:?}",
-                    outcome.diagnostics
+                    "{engine:?} {tool:?}: {:?} {:?}",
+                    outcome.diagnostics, outcome.steps
                 );
                 let log = std::fs::read_to_string(&plan.log).unwrap_or_default();
                 let hits = log.lines().filter(|l| l.starts_with("RTXfig-hit ")).count();
