@@ -1765,10 +1765,6 @@ pub fn clean(out_dir: &Path, job: &str) -> usize {
     removed
 }
 
-/// The line of an engine's output that says why it stopped: TeX's own
-/// error (`! I can't find file …`), else the last line that is not the
-/// banner, a file read or one of MiKTeX's reminders ("major issue: … checked
-/// for updates", "security risk").
 /// One Biber at a time in the application: two started together unpack
 /// themselves in the same temporary folder, and one of them can fail.
 static ONE_BIBER: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -1813,6 +1809,10 @@ fn biber_cache_dir(printed: &str, temp: &Path) -> Option<PathBuf> {
         .then_some(cache)
 }
 
+/// The line of an engine's output that says why it stopped: TeX's own
+/// error (`! I can't find file …`), else the last line that is not the
+/// banner, a file read or one of MiKTeX's reminders ("major issue: … checked
+/// for updates", "security risk").
 pub(crate) fn telling_line<S: AsRef<str>>(lines: &[S]) -> Option<String> {
     let lines = || lines.iter().map(AsRef::as_ref);
     lines()

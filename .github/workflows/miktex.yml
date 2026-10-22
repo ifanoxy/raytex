@@ -83,7 +83,7 @@ jobs:
         # takes the window for hidden and stops drawing (no PDF, no preview).
         env:
           WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: --disable-features=CalculateNativeWinOcclusion --disable-renderer-backgrounding --disable-background-timer-throttling --disable-backgrounding-occluded-windows
-        run: node scripts/e2e.mjs workflow fixes files projects media editor
+        run: node scripts/e2e.mjs workflow fixes files projects media editor commands
       # Why MiKTeX could not install a package on the fly, when that happens.
       - name: MiKTeX logs
         if: always()

@@ -4,7 +4,7 @@
 // ui/dev/selftest.ts on a fresh copy of tests/e2e/rapport, takes a
 // screenshot at each scene and stops at the verdict.
 //
-//   node scripts/e2e.mjs                    # workflow, fixes, files, projects, media, editor
+//   node scripts/e2e.mjs                    # workflow, fixes, files, projects, media, editor, commands
 //   node scripts/e2e.mjs fixes files        # some groups
 //   E2E_OUT=out node scripts/e2e.mjs        # where logs and screenshots go
 //   E2E_SHOTS=0 node scripts/e2e.mjs        # no screenshots (they are of the whole screen)
@@ -30,7 +30,7 @@ import { homedir, tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const groups = process.argv.slice(2).length ? process.argv.slice(2) : ["workflow", "fixes", "files", "projects", "media", "editor"];
+const groups = process.argv.slice(2).length ? process.argv.slice(2) : ["workflow", "fixes", "files", "projects", "media", "editor", "commands"];
 const out = resolve(process.env.E2E_OUT ?? join(root, "e2e-output"));
 const windows = process.platform === "win32";
 // Compiling the application the first time can be long (25 min on a CI
