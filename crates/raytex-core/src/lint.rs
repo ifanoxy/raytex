@@ -20,7 +20,7 @@ use crate::log::hints::levenshtein;
 use crate::syntax::{IncludeKind, Problem, ProblemKind, context::comment_start};
 use crate::tex::{Engine, TexmfIndex};
 use crate::text::Span;
-use crate::workspace::{CitationItem, DocKind, Document, LabelItem, Workspace};
+use crate::workspace::{DocKind, Document, LabelItem, Workspace};
 
 /// Options of a lint run.
 #[derive(Debug, Clone, Default)]
@@ -84,9 +84,8 @@ struct ProjectFacts {
     labels: OnceCell<Vec<LabelItem>>,
     label_names: OnceCell<HashSet<String>>,
     label_counts: OnceCell<HashMap<String, usize>>,
-    citations: OnceCell<Vec<CitationItem>>,
+    bib_files: OnceCell<Vec<PathBuf>>,
     citation_keys: OnceCell<HashSet<String>>,
-    has_bibliography: OnceCell<bool>,
     loaded: OnceCell<(Option<String>, Vec<String>)>,
     defined: OnceCell<(HashSet<String>, HashSet<String>)>,
 }
@@ -115,23 +114,29 @@ impl ProjectFacts {
         })
     }
 
-    fn citations(&self, ws: &Workspace, root: &Path) -> &[CitationItem] {
-        self.citations.get_or_init(|| ws.citations(root))
+    fn bib_files(&self, ws: &Workspace, root: &Path) -> &[PathBuf] {
+        self.bib_files.get_or_init(|| ws.bib_files(root))
     }
 
+    /// The keys the project can cite (the entries of its bibliography and
+    /// its `\bibitem`s), without what is shown of each.
     fn citation_keys(&self, ws: &Workspace, root: &Path) -> &HashSet<String> {
         self.citation_keys.get_or_init(|| {
-            self.citations(ws, root)
+            let mut keys: HashSet<String> = self
+                .bib_files(ws, root)
                 .iter()
-                .map(|c| c.summary.key.clone())
-                .collect()
+                .filter_map(|f| ws.document(f)?.bib.as_ref())
+                .flat_map(|db| db.entries.iter().map(|e| e.key.clone()))
+                .collect();
+            for doc in ws.project_documents(root) {
+                keys.extend(doc.index.bibitems.iter().map(|b| b.name.clone()));
+            }
+            keys
         })
     }
 
     fn has_bibliography(&self, ws: &Workspace, root: &Path) -> bool {
-        *self
-            .has_bibliography
-            .get_or_init(|| !self.citations(ws, root).is_empty() || !ws.bib_files(root).is_empty())
+        !self.citation_keys(ws, root).is_empty() || !self.bib_files(ws, root).is_empty()
     }
 
     fn loaded(&self, ws: &Workspace, root: &Path) -> &(Option<String>, Vec<String>) {
@@ -921,7 +926,10 @@ impl Linter<'_> {
             }
         }
 
-        // Citations.
+        // Citations (what the project can cite read only when this file cites).
+        if doc.index.citations.is_empty() {
+            return;
+        }
         let has_bibliography = self.facts.has_bibliography(self.ws, &self.root);
         let keys = self.facts.citation_keys(self.ws, &self.root);
         for c in &doc.index.citations {
@@ -2356,6 +2364,58 @@ mod tests {
             }
         }
         found
+    }
+
+    /// A folder of documents that stand alone (exercise sheets): each one
+    /// is checked on its own, its labels are not the others'; a chapter not
+    /// brought in yet is still read with the document of its folder.
+    #[test]
+    fn documents_side_by_side_are_checked_apart() {
+        let sheet = |n: u32, other: u32| {
+            format!(
+                "\\documentclass{{article}}\n\\begin{{document}}\n\\section{{Feuille {n}}}\\label{{ex:un}}\nVoir \\ref{{ex:un}} et \\ref{{ex:f{other}}}.\n\\label{{ex:f{n}}}\n\\end{{document}}\n"
+            )
+        };
+        let (one, two) = (sheet(1, 2), sheet(2, 1));
+        let codes = |found: &[(String, String)]| {
+            found
+                .iter()
+                .map(|(c, m)| format!("{c}: {m}"))
+                .collect::<Vec<_>>()
+        };
+        let found = lint_text(
+            &[("feuille1.tex", &one), ("feuille2.tex", &two)],
+            "feuille1.tex",
+            LintOptions::default(),
+        );
+        assert!(
+            !found.iter().any(|(c, _)| c == "duplicate-label"),
+            "{:?}",
+            codes(&found)
+        );
+        assert!(
+            found
+                .iter()
+                .any(|(c, m)| c == "undefined-reference" && m.contains("ex:f2")),
+            "{:?}",
+            codes(&found)
+        );
+        // A chapter written beside the document before it is brought in.
+        let main =
+            "\\documentclass{article}\n\\begin{document}\nVoir \\ref{sec:chap}.\n\\end{document}\n";
+        let found = lint_text(
+            &[
+                ("main.tex", main),
+                ("chapitre.tex", "\\section{Chapitre}\\label{sec:chap}\n"),
+            ],
+            "main.tex",
+            LintOptions::default(),
+        );
+        assert!(
+            !found.iter().any(|(c, _)| c == "undefined-reference"),
+            "{:?}",
+            codes(&found)
+        );
     }
 
     /// Texts that stopped the checks (found in the files of TeX Live): a

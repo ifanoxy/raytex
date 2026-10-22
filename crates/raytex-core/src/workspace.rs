@@ -712,12 +712,25 @@ impl Workspace {
         let files = self.included_files(root);
         let mut docs: Vec<&Document> = files.iter().filter_map(|f| self.docs.get(f)).collect();
         if docs.len() <= 1 {
-            // Loose files (no includes yet): consider the whole folder.
+            // Loose files (no includes yet): the pieces of its folder are
+            // read with it (a chapter not brought in yet), not the other
+            // documents that stand alone (exercise sheets side by side:
+            // their labels are not this one's), nor the pieces of folders
+            // beside it.
             let root = normalize(root);
+            let own = self.docs.get(&root);
+            let folder = root.parent().unwrap_or(&self.root_dir);
             docs = self
                 .docs
                 .values()
-                .filter(|d| d.kind != DocKind::Bib)
+                .filter(|d| {
+                    d.kind != DocKind::Bib
+                        && if d.index.is_root_candidate() {
+                            own.is_some_and(|o| std::ptr::eq(*d, o))
+                        } else {
+                            d.path.starts_with(folder)
+                        }
+                })
                 .collect();
             docs.sort_by_key(|d| (d.path != root, d.path.clone()));
         }
