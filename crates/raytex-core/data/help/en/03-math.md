@@ -57,7 +57,7 @@ The **Symbols** view of the sidebar holds hundreds of symbols: a click inserts o
 
 ## @ shortcuts
 
-In math mode, type `@` followed by a letter: `@a` → `\alpha`, `@b` → `\beta`, `@R` → `\mathbb{R}`, `@8` → `\infty`… The full list is in *Snippets & macros › @ shortcuts*.
+In math mode, type `@` followed by a letter: `@a` → `\alpha`, `@b` → `\beta`, `@R` → `\mathbb{R}`, `@8` → `\infty`… The full list is in *@ macros & snippets › @ shortcuts*.
 
 ## Matrices and cases
 

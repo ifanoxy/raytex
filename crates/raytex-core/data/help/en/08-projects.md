@@ -105,4 +105,4 @@ When starting, RayTeX reopens the last project, its tabs and the active file (ca
 
 The **Templates** panel (left bar) shows each template by a picture of its first page, compiled once with your distribution and then cached. A click replaces the text of the main file with the template (one undo gives it back); the other files of the template (bibliography, chapters) are added without overwriting existing ones, and the engine it needs (LuaLaTeX for some templates) is recorded in `raytex.toml`.
 
-*File › Save project as template…* adds your project to the **My templates** section: perfect to reuse your course header or the layout required by your lab. Right-click one of your templates to delete it.
+*Save project as template…* (project menu, or the button of the **Templates** panel) adds your project to the **My templates** section: perfect to reuse your course header or the layout required by your lab. Right-click one of your templates to delete it.

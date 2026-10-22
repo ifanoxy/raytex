@@ -57,7 +57,7 @@ La vue **Symboles** de la barre latérale présente des centaines de symboles : 
 
 ## Raccourcis @
 
-En mode mathématique, tapez `@` suivi d'une lettre : `@a` → `\alpha`, `@b` → `\beta`, `@R` → `\mathbb{R}`, `@8` → `\infty`… La liste complète est dans *Extraits et macros › Raccourcis @*.
+En mode mathématique, tapez `@` suivi d'une lettre : `@a` → `\alpha`, `@b` → `\beta`, `@R` → `\mathbb{R}`, `@8` → `\infty`… La liste complète est dans *Macros @ et extraits › Raccourcis @*.
 
 ## Matrices et cas
 

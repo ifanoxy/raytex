@@ -4,7 +4,7 @@ TikZ dessine des schémas, graphes, figures géométriques et diagrammes directe
 
 ## Ouvrir le studio
 
-- Bouton **Schéma TikZ** de la barre d'outils, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>T</kbd>, ou *Insérer › Studio de schémas TikZ*.
+- Bouton **Schéma TikZ** de la barre d'outils, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>⌥</kbd>/<kbd>Alt</kbd> + <kbd>T</kbd>, ou *Insertion › Studio de schémas TikZ*.
 - Curseur **dans un schéma existant** : le bouton devient *Modifier le schéma* et le studio s'ouvre sur ce dessin.
 - Un fichier `.tikz` du projet : clic droit › *Modifier dans le studio TikZ*.
 

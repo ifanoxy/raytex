@@ -12,6 +12,7 @@ import { history } from "$lib/state/history.svelte";
 import { project } from "$lib/state/project.svelte";
 import { ui } from "$lib/state/ui.svelte";
 import { t } from "$lib/i18n.svelte";
+import { samePath } from "$lib/utils";
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -56,14 +57,14 @@ export async function togetherScenes(log: (msg: string) => void, dir: string): P
     await ipc.createFile(annexe, "Voir la section~\\ref{sec:a}.\n");
     await ipc.createFile(chapter, "Un chapitre.\n");
     await editor.open(main);
-    await until(() => editor.active === main && !!editor.view, 5_000, "main open");
+    await until(() => samePath(editor.active, main) && !!editor.view, 5_000, "main open");
     editor.view!.dispatch({ changes: { from: 0, to: editor.view!.state.doc.length, insert: TEXT } });
     await editor.saveAll({ silent: true });
     // The files written meanwhile known to the project as when it is opened.
     await project.close();
     await project.open(rootA);
     await editor.open(main);
-    await until(() => editor.active === main && !!editor.view, 5_000, "main open again");
+    await until(() => samePath(editor.active, main) && !!editor.view, 5_000, "main open again");
     const view = () => editor.view!;
     const text = () => view().state.doc.toString();
 
@@ -73,15 +74,15 @@ export async function togetherScenes(log: (msg: string) => void, dir: string): P
     const askedOnce = await answer("cancel");
     await opening;
     check("another project: what is not saved is asked about", askedOnce, "no question");
-    check("another project: cancelled, nothing changes", samePlace(project.info?.root, rootA) && text().includes("Travail non enregistré"), project.info?.root);
+    check("another project: cancelled, nothing changes", samePath(project.info?.root, rootA) && text().includes("Travail non enregistré"), project.info?.root);
     opening = project.open(rootB);
     await answer("save");
     await opening;
     const savedA = (await ipc.readTextFile(main)).text;
-    check("another project: saved when asked, then opened", samePlace(project.info?.root, rootB) && savedA.includes("Travail non enregistré"), { root: project.info?.root, saved: savedA.includes("Travail non enregistré") });
+    check("another project: saved when asked, then opened", samePath(project.info?.root, rootB) && savedA.includes("Travail non enregistré"), { root: project.info?.root, saved: savedA.includes("Travail non enregistré") });
     await project.open(rootA);
     await editor.open(main);
-    await until(() => editor.active === main && !!editor.view, 5_000, "back to A");
+    await until(() => samePath(editor.active, main) && !!editor.view, 5_000, "back to A");
     check("another project: the work is there when it is opened again", text().includes("Travail non enregistré"));
 
     // ------------------------------- a file changed by another program
@@ -101,25 +102,25 @@ export async function togetherScenes(log: (msg: string) => void, dir: string): P
 
     // ------------------------------- an open file renamed, then deleted
     await editor.open(chapter);
-    await until(() => editor.active === chapter, 5_000, "chapter open");
+    await until(() => samePath(editor.active, chapter), 5_000, "chapter open");
     view().dispatch({ changes: { from: 0, insert: "Ajout non enregistré. " } });
     const renamedTo = `${rootA}/chapitre-un.tex`;
     await project.move(chapter, renamedTo);
-    const tab = editor.tabs.find((x) => x.path === renamedTo);
-    check("open file renamed: its tab follows, with what was typed", !!tab && editor.active === renamedTo && !!tab.dirty && text().startsWith("Ajout non enregistré"), { tabs: editor.tabs.map((x) => x.name), active: editor.active });
+    const tab = editor.tabs.find((x) => samePath(x.path, renamedTo));
+    check("open file renamed: its tab follows, with what was typed", !!tab && samePath(editor.active, renamedTo) && !!tab.dirty && text().startsWith("Ajout non enregistré"), { tabs: editor.tabs.map((x) => x.name), active: editor.active });
     await editor.save(renamedTo);
     const underNew = (await ipc.readTextFile(renamedTo).catch(() => ({ text: "(missing)" }))).text;
     const oldThere = await ipc.pathExists(chapter);
-    check("open file renamed: saved under its new name", underNew.startsWith("Ajout non enregistré") && !oldThere, { underNew: underNew.slice(0, 60), oldThere, dirty: editor.tabs.find((x) => x.path === renamedTo)?.dirty });
+    check("open file renamed: saved under its new name", underNew.startsWith("Ajout non enregistré") && !oldThere, { underNew: underNew.slice(0, 60), oldThere, dirty: editor.tabs.find((x) => samePath(x.path, renamedTo))?.dirty });
     const removing = project.remove(renamedTo, false);
     const asked = await answer(true);
     await removing;
-    check("open file deleted: asked, then its tab closed", asked && !editor.tabs.some((x) => x.path === renamedTo) && !(await ipc.pathExists(renamedTo)), { asked, tabs: editor.tabs.map((x) => x.name) });
+    check("open file deleted: asked, then its tab closed", asked && !editor.tabs.some((x) => samePath(x.path, renamedTo)) && !(await ipc.pathExists(renamedTo)), { asked, tabs: editor.tabs.map((x) => x.name) });
 
     // ------------------------------- a label renamed, a file that uses it closed
     await editor.open(main);
-    await until(() => editor.active === main && !!editor.view, 5_000, "main for the label");
-    check("the file that uses the label is closed", !editor.tabs.some((x) => x.path === annexe));
+    await until(() => samePath(editor.active, main) && !!editor.view, 5_000, "main for the label");
+    check("the file that uses the label is closed", !editor.tabs.some((x) => samePath(x.path, annexe)));
     const at = text().indexOf("\\label{sec:a}") + 9;
     view().dispatch({ selection: { anchor: at } });
     view().focus();
@@ -143,7 +144,7 @@ export async function togetherScenes(log: (msg: string) => void, dir: string): P
     const end = code.indexOf("\\end{tikzpicture}");
     studio?.dispatch({ changes: { from: end, insert: "  % dans le studio\n" } });
     await editor.open(chapter);
-    await until(() => editor.active === chapter, 5_000, "other tab shown");
+    await until(() => samePath(editor.active, chapter), 5_000, "other tab shown");
     await pause(800);
     document.querySelector<HTMLButtonElement>(".overlay .footer .btn.primary")?.click();
     await until(() => ui.overlay === null, 20_000, "inserted").catch(() => {});
@@ -155,7 +156,7 @@ export async function togetherScenes(log: (msg: string) => void, dir: string): P
     // ------------------------------- the bibliography: not cited, to check
     await ipc.createFile(`${rootA}/refs.bib`, "@book{knuth, title={The TeXbook}, author={Knuth, Donald}, year={1984}}\n@book{lamport, title={LaTeX}, author={Lamport, Leslie}, year={1994}}\n@book{knuth2, title={The TeXbook}, author={Knuth, Donald}, year={1984}}\n");
     await editor.open(main);
-    await until(() => editor.active === main && !!editor.view, 5_000, "main for the bibliography");
+    await until(() => samePath(editor.active, main) && !!editor.view, 5_000, "main for the bibliography");
     view().dispatch({ changes: { from: text().indexOf("\\end{document}"), insert: "\\cite{knuth}\n\\bibliographystyle{plain}\n\\bibliography{refs}\n" } });
     await editor.saveAll({ silent: true });
     if (ui.sidebar === "bibliography" && ui.sidebarVisible) ui.sidebarVisible = false;
@@ -201,8 +202,4 @@ export async function togetherScenes(log: (msg: string) => void, dir: string): P
   const ok = !results.failure && Object.values(results).every((r) => !r.startsWith("FAILED"));
   log(`together scenes ${ok ? "PASSED" : "FAILED"}`);
   return ok;
-}
-
-function samePlace(a: string | null | undefined, b: string): boolean {
-  return !!a && a.replace(/[\\/]+$/, "").toLowerCase() === b.replace(/[\\/]+$/, "").toLowerCase();
 }

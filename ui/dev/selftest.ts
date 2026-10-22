@@ -2612,6 +2612,27 @@ async function editorScenes(log: (msg: string) => void, dir: string): Promise<bo
     await until(() => shown() > before, 4_000, "the whole PDF shown").catch(() => {});
     check("once written, it is shown", shown() > before && viewer.pages === pages && !failed(), { put: shown() - before, pages, now: viewer.pages, failed: failed() });
 
+    // ------------------------------------- a hint in a free argument (\item[…])
+    {
+      await getCurrentWindow().setFocus();
+      await until(() => document.hasFocus(), 5_000, "window active").catch(() => {});
+      const v = editor.view!;
+      const at = v.state.doc.toString().indexOf("Paragraphe 1,");
+      const opening = "\\begin{itemize}\n\\item[";
+      v.dispatch({ changes: { from: at, insert: opening }, selection: { anchor: at + opening.length } });
+      v.focus();
+      const hinted = await until(() => !!document.querySelector(".cm-arg-hint"), 5_000, "hint").then(
+        () => true,
+        () => false,
+      );
+      const said = document.querySelector(".cm-arg-hint")?.textContent ?? "";
+      if (document.hasFocus()) check("a free argument says what it expects", hinted && /item/.test(said), said || "no hint");
+      else results["a free argument says what it expects"] = "not judged: the window is not the active one";
+      v.dispatch({ changes: { from: at, to: at + opening.length, insert: "" } });
+      // Saved: the project that follows is opened without a question.
+      await editor.saveAll({ auto: true, silent: true });
+    }
+
     // ------------------------------------- a document made from a template: nothing to say
     // (its theorems of tcolorbox label themselves, \ref{thm:…} finds them).
     check("course notes project", await project.createEmpty(`${dir}/notes-${Date.now()}`, "Notes de cours"));
