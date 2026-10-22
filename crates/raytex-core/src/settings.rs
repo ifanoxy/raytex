@@ -5,9 +5,70 @@
 
 use std::path::{Path, PathBuf};
 
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 use crate::tex::Engine;
+
+/// Reads `text` as a `T`, keeping what can be read of it: a value written
+/// otherwise (by another release, or by hand) leaves its own field at its
+/// default, not the whole file. The second value says what was left out.
+pub fn read_leniently<T: DeserializeOwned + Default>(text: &str) -> (T, Option<String>) {
+    match toml::from_str::<T>(text) {
+        Ok(value) => (value, None),
+        Err(e) => {
+            let reads = |t: &toml::Table| T::deserialize(toml::Value::Table(t.clone())).is_ok();
+            let value = toml::from_str::<toml::Table>(text)
+                .ok()
+                .map(|t| readable(t, &reads))
+                .and_then(|t| T::deserialize(toml::Value::Table(t)).ok())
+                .unwrap_or_default();
+            (value, Some(e.to_string()))
+        }
+    }
+}
+
+/// What of `table` still reads once added to what was kept: each key, or
+/// what can be read of a section or of a list.
+fn readable(table: toml::Table, reads: &dyn Fn(&toml::Table) -> bool) -> toml::Table {
+    let mut kept = toml::Table::new();
+    for (key, value) in table {
+        let with = |kept: &toml::Table, value: toml::Value| {
+            let mut tried = kept.clone();
+            tried.insert(key.clone(), value);
+            tried
+        };
+        let tried = with(&kept, value.clone());
+        if reads(&tried) {
+            kept = tried;
+            continue;
+        }
+        let part = match value {
+            toml::Value::Table(inner) => Some(toml::Value::Table(readable(inner, &|t| {
+                reads(&with(&kept, toml::Value::Table(t.clone())))
+            }))),
+            toml::Value::Array(items) => {
+                let mut list = Vec::new();
+                for item in items {
+                    let mut longer = list.clone();
+                    longer.push(item);
+                    if reads(&with(&kept, toml::Value::Array(longer.clone()))) {
+                        list = longer;
+                    }
+                }
+                Some(toml::Value::Array(list))
+            }
+            _ => None,
+        };
+        if let Some(part) = part {
+            let tried = with(&kept, part);
+            if reads(&tried) {
+                kept = tried;
+            }
+        }
+    }
+    kept
+}
 
 /// Version of the settings format written by this release (see [`Settings::load`]).
 pub const SETTINGS_VERSION: u32 = 3;
@@ -489,11 +550,16 @@ impl Settings {
     /// Loads settings from TOML, falling back to defaults on any problem.
     /// Files of older versions are migrated.
     pub fn load(path: &Path) -> Self {
-        std::fs::read_to_string(path)
-            .ok()
-            .and_then(|s| toml::from_str::<Self>(&s).ok())
-            .map(Self::migrated)
-            .unwrap_or_default()
+        let Ok(text) = std::fs::read_to_string(path) else {
+            return Self::default();
+        };
+        let (settings, left_out) = read_leniently::<Self>(&text);
+        if left_out.is_some() {
+            // The file as it was, beside it: what could not be read is not
+            // lost when the settings are saved again.
+            let _ = std::fs::write(path.with_extension("toml.unread"), &text);
+        }
+        settings.migrated()
     }
 
     /// Brings settings written by an older release up to date.
@@ -656,11 +722,11 @@ pub struct ProjectLint {
 impl ProjectConfig {
     /// Reads `raytex.toml` in `dir` (defaults if absent). Errors are returned
     /// so the UI can point at an invalid file.
-    pub fn load(dir: &Path) -> Result<Self, String> {
+    pub fn load(dir: &Path) -> (Self, Option<String>) {
         migrate_project_file(dir);
         match std::fs::read_to_string(dir.join(PROJECT_FILE)) {
-            Ok(s) => toml::from_str(&s).map_err(|e| e.to_string()),
-            Err(_) => Ok(Self::default()),
+            Ok(s) => read_leniently(&s),
+            Err(_) => (Self::default(), None),
         }
     }
 
@@ -705,6 +771,41 @@ impl ProjectConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A settings file with values this release does not know (written by
+    /// another one, or by hand): the rest is kept, each of those left at its
+    /// default, and the file as it was is put beside it.
+    #[test]
+    fn settings_of_another_release_keep_what_reads() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
+        let text = "version = 3\n\n[general]\nlanguage = \"fr\"\ntheme = \"dark\"\n\n[editor]\nfontSize = 18\nlineHeight = \"big\"\nautoSave = false\n\n[build]\nengine = \"hypertex\"\nautoBuild = \"onSave\"\n\n[[macros]]\nname = \"ok\"\ntrigger = \"@ok\"\nbody = \"\\\\ok\"\n\n[[macros]]\nname = \"bad\"\ntrigger = 12\n";
+        std::fs::write(&path, text).unwrap();
+        let s = Settings::load(&path);
+        assert_eq!(s.general.language, "fr");
+        assert_eq!(s.general.theme, "dark");
+        assert_eq!(s.editor.line_height, Settings::default().editor.line_height);
+        assert_eq!((s.editor.font_size, s.editor.auto_save), (18, false));
+        assert_eq!(s.build.auto_build, AutoBuild::OnSave);
+        assert_eq!(s.build.engine, Settings::default().build.engine);
+        assert_eq!(
+            s.macros.iter().map(|m| m.name.as_str()).collect::<Vec<_>>(),
+            ["ok"]
+        );
+        assert_eq!(
+            std::fs::read_to_string(path.with_extension("toml.unread")).unwrap(),
+            text
+        );
+        // A project file read the same way, what is left out said.
+        std::fs::write(
+            dir.path().join(PROJECT_FILE),
+            "[project]\nname = \"Thèse\"\n\n[build]\nengine = \"hypertex\"\n",
+        )
+        .unwrap();
+        let (config, problem) = ProjectConfig::load(dir.path());
+        assert_eq!(config.project.name.as_deref(), Some("Thèse"));
+        assert!(problem.is_some());
+    }
 
     #[test]
     fn saves_of_one_file_at_the_same_time() {

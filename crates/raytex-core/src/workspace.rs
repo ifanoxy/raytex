@@ -249,10 +249,8 @@ impl Workspace {
     /// Opens a folder and indexes its LaTeX and BibTeX files.
     pub fn open(root_dir: &Path) -> Self {
         let root_dir = absolute(root_dir);
-        let (config, config_error) = match ProjectConfig::load(&root_dir) {
-            Ok(c) => (c, None),
-            Err(e) => (ProjectConfig::default(), Some(e)),
-        };
+        // What of the file can be read is kept, the rest said.
+        let (config, config_error) = ProjectConfig::load(&root_dir);
         let mut ws = Workspace {
             root_dir,
             config,
@@ -427,13 +425,7 @@ impl Workspace {
 
     /// Reloads `raytex.toml`.
     pub fn reload_config(&mut self) {
-        match ProjectConfig::load(&self.root_dir) {
-            Ok(c) => {
-                self.config = c;
-                self.config_error = None;
-            }
-            Err(e) => self.config_error = Some(e),
-        }
+        (self.config, self.config_error) = ProjectConfig::load(&self.root_dir);
     }
 
     /// Gives the workspace access to the distribution's packages.

@@ -329,7 +329,7 @@ pub fn apply(
         std::fs::write(&path, filled(&rel, bytes, values))?;
         applied.created.push(path);
     }
-    let mut config = crate::settings::ProjectConfig::load(root).unwrap_or_default();
+    let mut config = crate::settings::ProjectConfig::load(root).0;
     let engine = applied
         .engine
         .as_deref()
@@ -450,8 +450,9 @@ pub fn save_as_template(
         return Err(TemplateError::NotEmpty(target));
     }
     let out_dir = crate::settings::ProjectConfig::load(project)
-        .ok()
-        .and_then(|c| c.build.out_dir)
+        .0
+        .build
+        .out_dir
         .unwrap_or_else(|| "build".into());
     let walker = ignore::WalkBuilder::new(project).hidden(true).build();
     for entry in walker.flatten() {
@@ -755,7 +756,7 @@ mod tests {
         let root = dir.path().join("projet");
         let main = create_empty(&root, Some(" Mon projet ")).unwrap();
         assert_eq!(std::fs::read_to_string(&main).unwrap(), "");
-        let config = crate::settings::ProjectConfig::load(&root).unwrap();
+        let config = crate::settings::ProjectConfig::load(&root).0;
         assert_eq!(config.project.main.as_deref(), Some("main.tex"));
         assert_eq!(config.project.name.as_deref(), Some("Mon projet"));
         assert!(
@@ -773,7 +774,7 @@ mod tests {
         assert_eq!(applied.created, vec![root.join("references.bib")]);
         // The main file itself is left to the editor.
         assert_eq!(std::fs::read_to_string(&main).unwrap(), "");
-        let config = crate::settings::ProjectConfig::load(&root).unwrap();
+        let config = crate::settings::ProjectConfig::load(&root).0;
         assert_eq!(config.project.main.as_deref(), Some("main.tex"));
         assert_eq!(
             config.build.engine,
@@ -788,7 +789,7 @@ mod tests {
             "% mine"
         );
         assert_eq!(applied.engine, None);
-        let config = crate::settings::ProjectConfig::load(&root).unwrap();
+        let config = crate::settings::ProjectConfig::load(&root).0;
         assert_eq!(config.build.engine, None);
         // A template whose main file has another name fills the project's.
         let applied = apply("tikz-figure", &root, &values, None).unwrap();

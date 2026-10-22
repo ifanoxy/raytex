@@ -89,7 +89,7 @@ fn main_of(dir: &Path, config: &ProjectConfig) -> Option<PathBuf> {
 
 /// A project folder, or `None` when `dir` is not one.
 pub fn entry(dir: &Path) -> Option<ProjectEntry> {
-    let config = ProjectConfig::load(dir).unwrap_or_default();
+    let config = ProjectConfig::load(dir).0;
     let has_config = dir.join(PROJECT_FILE).is_file();
     let main = main_of(dir, &config);
     if main.is_none() && !has_config {

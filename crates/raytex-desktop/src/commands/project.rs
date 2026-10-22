@@ -265,7 +265,11 @@ pub async fn convert_to_project(
 pub async fn rename_project(app: AppHandle, path: String, name: String) -> CmdResult<()> {
     let dir = abs(&path);
     blocking(&app, move |_, state| {
-        let mut config = ProjectConfig::load(&dir).map_err(err)?;
+        // Not written over while a part of it cannot be read.
+        let (mut config, problem) = ProjectConfig::load(&dir);
+        if let Some(problem) = problem {
+            return Err(problem);
+        }
         config.project.name = Some(name.trim().to_owned()).filter(|n| !n.is_empty());
         state.note_own_write(&dir.join(raytex_core::settings::PROJECT_FILE));
         config.save(&dir).map_err(err)?;
@@ -532,10 +536,7 @@ pub async fn apply_template(
         state.note_own_write(&root.join(raytex_core::settings::PROJECT_FILE));
         let applied =
             templates::apply(&id, &root, &values, Some(&state.paths.templates)).map_err(err)?;
-        if let Ok(config) = ProjectConfig::load(&root) {
-            pr.ws.config = config;
-            pr.ws.config_error = None;
-        }
+        (pr.ws.config, pr.ws.config_error) = ProjectConfig::load(&root);
         Ok(applied)
     })
     .await?
