@@ -1410,11 +1410,16 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     w.dispatch({ selection: { anchor: para + 3, head: para + 13 } });
     w.focus();
     document.querySelector<HTMLButtonElement>('.format-bar [aria-label="' + (document.documentElement.lang === "en" ? "Bold" : "Gras") + '"]')!.click();
-    check("bold button", (editor.textOf(main) ?? "").includes("Ce \\textbf{paragraphe}"));
+    const near = () => {
+      const text = editor.textOf(main) ?? "";
+      const at = text.indexOf("paragraphe");
+      return `${text.slice(Math.max(0, at - 30), at + 30)} (selection ${JSON.stringify(editor.view?.state.selection.main)}, focus ${document.hasFocus()})`;
+    };
+    check("bold button", (editor.textOf(main) ?? "").includes("Ce \\textbf{paragraphe}"), near());
     document.querySelector<HTMLButtonElement>(".format-bar .select-btn.style")!.click();
     await pause(200);
     clickText(".menu .item", "Sous-section") || clickText(".menu .item", "Subsection");
-    check("heading style", (editor.textOf(main) ?? "").includes("\\subsection{Ce \\textbf{paragraphe}"));
+    check("heading style", (editor.textOf(main) ?? "").includes("\\subsection{Ce \\textbf{paragraphe}"), near());
     const tableBtn = [...document.querySelectorAll<HTMLButtonElement>(".format-bar .text-btn")].find((b) => b.querySelector("span")?.textContent?.match(/Tableau|Table/))!;
     editor.view!.dispatch({ selection: { anchor: editor.view!.state.doc.toString().lastIndexOf("\\end{document}") } });
     tableBtn.click();
@@ -2848,7 +2853,10 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
         JSON.stringify(listed).slice(0, 300),
       );
       check("fields kept as written", (editor.textOf(bibFile) ?? "").includes("title = {The {\\TeX}book},"), editor.textOf(bibFile));
-      await until(() => !!document.querySelector(".bib-list .item .main"), 5_000, "entry in the list");
+      await until(() => !!document.querySelector(".bib-list .item .main"), 5_000, "entry in the list").catch(async (e) => {
+        log(`entry not in the list: ${JSON.stringify((await entries()).map((x) => x.key))}, list «${document.querySelector(".bib-list")?.textContent?.slice(0, 200)}», sidebar ${ui.sidebar} ${ui.sidebarVisible}`);
+        throw e;
+      });
       await scene("bibliography");
       // A click on the entry opens it in the form; its year is changed.
       document.querySelector<HTMLButtonElement>(".bib-list .item .main")!.click();

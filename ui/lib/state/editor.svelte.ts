@@ -1171,6 +1171,13 @@ class EditorStore {
       if (change === "reload") {
         this.replaceText(m, file.text, file.modified);
       } else {
+        // What the disk and the editor held (development and self-test builds only).
+        if (import.meta.env.DEV || import.meta.env.MODE === "selftest") {
+          const buffer = state.doc.toString();
+          let at = 0;
+          while (at < buffer.length && buffer[at] === file.text[at]) at++;
+          void ipc.logFrontend("info", `changed on disk: ${m.path}, disk ${file.text.length} chars, buffer ${buffer.length}, saved ${m.saved.length}, written ${m.written.length}, differ at ${at}: disk «${file.text.slice(at, at + 60)}» buffer «${buffer.slice(at, at + 60)}»`).catch(() => {});
+        }
         ui.toast("warning", t("editor.changedOnDisk", { file: basename(m.path) }), {
           timeout: 0,
           action: {
