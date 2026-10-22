@@ -301,6 +301,12 @@ class BuildStore {
   async clean() {
     const target = this.target();
     if (!target) return;
+    // A build under way would write its files again, and holds them open
+    // (Windows then refuses to remove them): it is stopped first.
+    if (this.running) {
+      await this.cancel();
+      await this.idle();
+    }
     try {
       const n = await ipc.cleanBuild(target);
       ui.toast("success", t("build.cleaned", { n }));

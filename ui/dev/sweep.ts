@@ -242,9 +242,15 @@ export async function commandsScenes(log: (msg: string) => void, dir: string): P
         },
       },
       "build.clean": {
+        // Asked while a build goes on (a live one): it is stopped first,
+        // TeX letting go of its files.
+        prepare: async () => {
+          void build.run();
+          await until(() => build.running, 10_000, "build to clean during");
+        },
         expect: async () => {
-          await pause(500);
-          if (!(await ipc.pathExists(`${project.root}/build/main.aux`))) return true;
+          for (let i = 0; i < 40 && (build.running || (await ipc.pathExists(`${project.root}/build/main.aux`))); i++) await pause(250);
+          if (!build.running && !(await ipc.pathExists(`${project.root}/build/main.aux`))) return true;
           return `main.aux still there (said: ${ui.toasts.at(-1)?.message ?? "nothing"}, building: ${build.running})`;
         },
         done: async () => {
