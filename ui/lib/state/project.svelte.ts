@@ -13,6 +13,7 @@ import { editor } from "./editor.svelte";
 import { media } from "./media.svelte";
 import { ui } from "./ui.svelte";
 import { viewer } from "./viewer.svelte";
+import { tex } from "./tex.svelte";
 
 class ProjectStore {
   info = $state<ProjectInfo | null>(null);
@@ -50,6 +51,8 @@ class ProjectStore {
     });
     editor.onDidSync(() => this.structureSoon());
     editor.onDidSave(() => this.lintSoon());
+    // What the checks said before the distribution was read (at startup) is said again, knowing it.
+    tex.onIndexed(() => this.lintSoon());
   }
 
   // ------------------------------------------------------------ opening

@@ -822,8 +822,9 @@ impl Workspace {
     /// All labels of the project of `root`.
     pub fn labels(&self, root: &Path) -> Vec<LabelItem> {
         let aux = self.aux.get(&normalize(root));
+        let docs = self.project_documents(root);
         let mut out = Vec::new();
-        for doc in self.project_documents(root) {
+        for doc in &docs {
             for l in &doc.index.labels {
                 out.push(LabelItem {
                     name: l.name.clone(),
@@ -835,6 +836,32 @@ impl Workspace {
                         range: doc.range(&l.span),
                     },
                 });
+            }
+        }
+        // The theorems of tcolorbox label themselves (`prefix:marker`).
+        let tcb: HashMap<&str, &str> = docs
+            .iter()
+            .flat_map(|d| d.index.tcb_theorems.iter())
+            .map(|(env, prefix)| (env.as_str(), prefix.as_str()))
+            .collect();
+        if !tcb.is_empty() {
+            for doc in &docs {
+                for m in &doc.index.marked_environments {
+                    let Some(prefix) = tcb.get(m.name.as_str()) else {
+                        continue;
+                    };
+                    let name = format!("{prefix}:{}", m.marker);
+                    out.push(LabelItem {
+                        resolved: aux.and_then(|a| a.labels.get(&name).cloned()),
+                        name,
+                        kind: LabelKind::Theorem(m.name.clone()),
+                        context: Some(m.title.clone()),
+                        location: Location {
+                            file: doc.path.clone(),
+                            range: doc.range(&m.span),
+                        },
+                    });
+                }
             }
         }
         out

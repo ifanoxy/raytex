@@ -420,6 +420,7 @@ impl<'a> Scanner<'a> {
             | "RenewDocumentEnvironment"
             | "DeclareDocumentEnvironment" => self.document_environment(),
             "newtheorem" => self.new_theorem(),
+            "newtcbtheorem" | "renewtcbtheorem" => self.tcb_theorem(),
             "declaretheorem" => self.declare_theorem(),
             "newacronym" | "newabbreviation" => self.new_acronym(),
             "newglossaryentry" | "longnewglossaryentry" => self.new_glossary_entry(),
@@ -1098,6 +1099,30 @@ impl<'a> Scanner<'a> {
         self.pos = cur.pos;
     }
 
+    /// `\newtcbtheorem[init]{name}{Title}{options}{prefix}`: an environment
+    /// `\begin{name}[options]{title}{marker}` whose label is `prefix:marker`.
+    fn tcb_theorem(&mut self) {
+        let mut cur = self.cursor();
+        cur.optional(SHORT_ARG);
+        let (Some(name), Some(title), Some(_), Some(prefix)) = (
+            cur.group(SHORT_ARG),
+            cur.group(LONG_ARG),
+            cur.group(LONG_ARG),
+            cur.group(SHORT_ARG),
+        ) else {
+            return;
+        };
+        let span = trimmed(self.text, name);
+        let env = self.slice(&span).to_owned();
+        let prefix = self.slice(&prefix).trim().to_owned();
+        let title = to_plain(self.slice(&title));
+        self.push_environment(span, 2, Some(title), Some("[]{}{}".into()));
+        if !env.is_empty() && !prefix.is_empty() {
+            self.idx.tcb_theorems.push((env, prefix));
+        }
+        self.pos = cur.pos;
+    }
+
     fn declare_theorem(&mut self) {
         let mut cur = self.cursor();
         let options = cur.optional(SHORT_ARG);
@@ -1472,6 +1497,22 @@ impl<'a> Scanner<'a> {
         {
             let mut args = cur;
             title = args.optional(SHORT_ARG).map(|t| to_plain(self.slice(&t)));
+        }
+        // A title and a marker after it: the label of a theorem of tcolorbox.
+        if !name.ends_with('*') {
+            let mut args = cur;
+            args.optional(SHORT_ARG);
+            if let (Some(t), Some(m)) = (args.group(LONG_ARG), args.group(SHORT_ARG)) {
+                let marker = self.slice(&m).trim();
+                if !marker.is_empty() && !marker.contains(['\\', '{', '}', ' ']) {
+                    self.idx.marked_environments.push(MarkedEnvironment {
+                        name: name.to_owned(),
+                        title: to_plain(self.slice(&t)),
+                        marker: marker.to_owned(),
+                        span: trimmed(self.text, m),
+                    });
+                }
+            }
         }
         self.pos = cur.pos;
         self.envs.push(EnvFrame {

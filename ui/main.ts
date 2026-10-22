@@ -13,8 +13,13 @@ drawSplashRoute();
 // What the security policy refuses is reported like an error.
 watchPolicy((message) => void logFrontend("error", message).catch(() => {}));
 
-// Uncaught errors are reported to the terminal running the application.
-window.addEventListener("error", (e) => void logFrontend("error", `${e.message} (${e.filename}:${e.lineno})`).catch(() => {}));
+// Uncaught errors are reported to the terminal running the application
+// (not the notice of the browser that a resize waits for the next frame:
+// nothing failed).
+window.addEventListener("error", (e) => {
+  if (/^ResizeObserver loop/.test(e.message)) return;
+  void logFrontend("error", `${e.message} (${e.filename}:${e.lineno})`).catch(() => {});
+});
 window.addEventListener("unhandledrejection", (e) => {
   const reason = e.reason instanceof Error ? `${e.reason.message}\n${e.reason.stack ?? ""}` : String(e.reason);
   void logFrontend("error", `unhandled promise rejection: ${reason}`).catch(() => {});

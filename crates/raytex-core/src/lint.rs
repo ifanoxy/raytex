@@ -905,12 +905,16 @@ impl Linter<'_> {
                         .file_name()
                         .map(|n| n.to_string_lossy().into_owned())
                         .unwrap_or_default();
-                    let installed = self.opts.installed.is_some_and(|i| {
-                        i.contains(&base)
-                            || ["pdf", "png", "jpg", "jpeg", "eps"]
-                                .iter()
-                                .any(|e| i.contains(&format!("{base}.{e}")))
-                    });
+                    // Before the distribution is read (at startup), the pictures of mwe are known by their names.
+                    let mwe = !inc.path.contains(['/', '\\'])
+                        && (base.starts_with("example-image") || base.starts_with("example-grid"));
+                    let installed = mwe
+                        || self.opts.installed.is_some_and(|i| {
+                            i.contains(&base)
+                                || ["pdf", "png", "jpg", "jpeg", "eps"]
+                                    .iter()
+                                    .any(|e| i.contains(&format!("{base}.{e}")))
+                        });
                     if installed {
                         continue;
                     }
@@ -1374,6 +1378,10 @@ impl Linter<'_> {
 
     /// Commands and environments used without the package that provides them.
     fn required_packages(&mut self, class: Option<&str>, packages: &[String]) {
+        /// The classes of LaTeX itself, all of whose commands the knowledge base has.
+        const STANDARD_CLASSES: &[&str] = &[
+            "article", "report", "book", "letter", "slides", "proc", "minimal",
+        ];
         let kb = kb();
         let mut loaded = kb.loaded_closure(class, packages.iter().map(String::as_str));
         // Commands defined by the project itself.
@@ -1402,9 +1410,12 @@ impl Linter<'_> {
             }
             true
         } else {
-            // Without the distribution, only judge when every loaded package is known.
+            // Without the distribution (it is read at startup), only judge when
+            // every loaded package is known, in a standard class: the others
+            // (scrlttr2, moderncv, standalone and its options…) define more
+            // than the knowledge base says.
             packages.iter().all(|p| kb.package(p).is_some())
-                && class.is_none_or(|c| kb.class(c).is_some())
+                && class.is_none_or(|c| STANDARD_CLASSES.contains(&c))
         };
         if !accurate {
             return;
@@ -2117,6 +2128,80 @@ mod tests {
             .into_iter()
             .map(|d| (d.code.unwrap_or_default(), d.message))
             .collect()
+    }
+
+    /// A theorem of tcolorbox labels itself `prefix:marker`, from another
+    /// file of the project too; its starred form has no label.
+    #[test]
+    fn tcolorbox_theorems_label_themselves() {
+        let main = "\\documentclass{article}\n\\usepackage[most]{tcolorbox}\n\\newtcbtheorem[number within=section]{theoreme}{Théorème}%\n  {colback=red!4}{thm}\n\\begin{document}\n\\input{chapitre}\nVoir le théorème~\\ref{thm:tvi} et \\ref{thm:rien}.\n\\end{document}\n";
+        let chapter = "\\begin{theoreme}{Valeurs intermédiaires}{tvi}\nTexte.\n\\end{theoreme}\n\\begin{theoreme*}{Sans numéro}{sans}\n\\end{theoreme*}\n";
+        let found = lint_text(
+            &[("main.tex", main), ("chapitre.tex", chapter)],
+            "main.tex",
+            LintOptions::default(),
+        );
+        let undefined: Vec<&str> = found
+            .iter()
+            .filter(|(code, _)| code == "undefined-reference")
+            .map(|(_, m)| m.as_str())
+            .collect();
+        assert_eq!(undefined.len(), 1, "{undefined:?}");
+        assert!(undefined[0].contains("thm:rien"), "{undefined:?}");
+    }
+
+    /// A document just made from a template gives the live checks nothing
+    /// to say, in either language, style hints included: what they would
+    /// say there is said of a mistake that is not one.
+    #[test]
+    fn templates_give_nothing_to_say() {
+        let found = templates_say(None);
+        assert!(found.is_empty(), "{found:#?}");
+    }
+
+    /// The same with the distribution read, as in the application.
+    #[test]
+    #[ignore = "depends on the local TeX installation"]
+    fn templates_give_nothing_to_say_with_the_distribution() {
+        let dist = crate::tex::detect(&[]).into_iter().next().expect("no TeX");
+        let index = std::sync::Arc::new(TexmfIndex::build(&dist));
+        let found = templates_say(Some(index));
+        assert!(found.is_empty(), "{found:#?}");
+    }
+
+    fn templates_say(index: Option<std::sync::Arc<TexmfIndex>>) -> Vec<String> {
+        let analyzer = index
+            .clone()
+            .map(|i| std::sync::Arc::new(crate::tex::PackageAnalyzer::new(i)));
+        let mut found = Vec::new();
+        for t in crate::templates::list(None) {
+            for (lang, language) in [(Lang::Fr, "fr"), (Lang::En, "en")] {
+                let dir = tempfile::tempdir().unwrap();
+                let values = crate::templates::TemplateValues {
+                    title: "Titre".into(),
+                    author: "A. Auteur".into(),
+                    institution: String::new(),
+                    language: language.into(),
+                };
+                let root = dir.path().join("p");
+                let main = crate::templates::instantiate(&t.id, &root, &values, None).unwrap();
+                let mut ws = Workspace::open(&root);
+                ws.set_packages(analyzer.clone());
+                let opts = LintOptions {
+                    lang,
+                    style_hints: true,
+                    installed: index.as_deref(),
+                    ..Default::default()
+                };
+                for d in lint(&ws, &crate::log::normalize(&main), &opts) {
+                    found.push(format!(
+                        "{} [{language}] {:?} {:?}: {}",
+                        t.id, d.severity, d.code, d.message
+                    ));
+                }
+            }
+        }
+        found
     }
 
     /// A language of babel that the distribution does not have (MiKTeX

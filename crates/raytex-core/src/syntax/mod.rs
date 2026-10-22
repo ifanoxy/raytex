@@ -49,6 +49,13 @@ pub struct DocumentIndex {
     pub command_defs: Vec<CommandDef>,
     /// User-defined environments (`\newenvironment`, `\newtheorem`…).
     pub environment_defs: Vec<EnvironmentDef>,
+    /// Theorems of tcolorbox (`\newtcbtheorem{name}{Title}{options}{prefix}`):
+    /// the environment and the prefix of the labels it makes.
+    pub tcb_theorems: Vec<(String, String)>,
+    /// Environments opened with a title and a marker
+    /// (`\begin{name}{title}{marker}`): a theorem of tcolorbox makes the
+    /// label `prefix:marker` of the one it is (see [`Self::tcb_theorems`]).
+    pub marked_environments: Vec<MarkedEnvironment>,
     /// Every `\begin … \end` pair (or unclosed `\begin`).
     pub environments: Vec<EnvironmentSpan>,
     /// Content spans of math regions (`$…$`, `\[…\]`, `equation`…).
@@ -383,6 +390,19 @@ pub struct EnvironmentDef {
     /// definition does not tell them.
     pub signature: Option<String>,
     /// Span of the name.
+    pub span: Span,
+}
+
+/// `\begin{name}[options]{title}{marker}`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MarkedEnvironment {
+    /// The environment.
+    pub name: String,
+    /// Its title, as text.
+    pub title: String,
+    /// The marker.
+    pub marker: String,
+    /// Span of the marker.
     pub span: Span,
 }
 

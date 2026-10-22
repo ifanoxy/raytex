@@ -21,6 +21,12 @@ class TexStore {
   status = $state<TexStatus | null>(null);
   jobs = $state<Job[]>([]);
   private finishedHandlers = new Map<number, (success: boolean) => void>();
+  /** Told when the files of the distribution have been read (what the live checks need to judge). */
+  private indexedHandlers: (() => void)[] = [];
+
+  onIndexed(fn: () => void) {
+    this.indexedHandlers.push(fn);
+  }
 
   get active() {
     const s = this.status;
@@ -38,7 +44,11 @@ class TexStore {
 
   async init() {
     this.status = await ipc.texStatus();
-    await ipc.on("tex:status", (s) => (this.status = s));
+    await ipc.on("tex:status", (s) => {
+      const indexed = !!this.status?.indexing && !s.indexing;
+      this.status = s;
+      if (indexed) for (const fn of this.indexedHandlers) fn();
+    });
     await ipc.on("job:output", ({ id, lines }) => {
       const job = this.jobs.find((j) => j.id === id);
       if (job) job.lines.push(...lines);

@@ -2607,6 +2607,18 @@ async function editorScenes(log: (msg: string) => void, dir: string): Promise<bo
     await ipc.writeBinaryFile(pdf, whole);
     await until(() => shown() > before, 4_000, "the whole PDF shown").catch(() => {});
     check("once written, it is shown", shown() > before && viewer.pages === pages && !failed(), { put: shown() - before, pages, now: viewer.pages, failed: failed() });
+
+    // ------------------------------------- a document made from a template: nothing to say
+    // (its theorems of tcolorbox label themselves, \ref{thm:…} finds them).
+    check("course notes project", await project.createEmpty(`${dir}/notes-${Date.now()}`, "Notes de cours"));
+    await until(() => templates.list.length > 0, 10_000, "templates");
+    await templates.apply(templates.list.find((x) => x.id === "course-notes")!);
+    await until(() => !build.running && build.status === "success", 120_000, "course notes built");
+    await editor.flush();
+    await project.lintAll();
+    await pause(500);
+    const said = diagnostics.grouped.flatMap((g) => g.items).filter((d) => d.severity === "error" || d.severity === "warning");
+    check("a document made from a template: nothing to say", said.length === 0, said.map((d) => `${d.source}:${d.code} ${d.message}`).join(" | "));
   } catch (e) {
     results.failure = String(e);
   }
