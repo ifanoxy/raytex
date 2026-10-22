@@ -226,8 +226,12 @@
       weights[key] = null;
       const asked = item.kind === "file" && !TO_PNG.includes(item.ext) ? ipc.imageWeight(item.path!, level) : rasterBytes(item).then((bytes) => ipc.imageWeightData(bytes, level));
       void asked.then(
-        (w) => (weights[key] = w),
-        () => (weights[key] = { original: item.size ?? 0, compressed: null, ext: null }),
+        (w) => {
+          weights[key] = w;
+        },
+        () => {
+          weights[key] = { original: item.size ?? 0, compressed: null, ext: null };
+        },
       );
     }
   });
