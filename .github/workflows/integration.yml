@@ -136,7 +136,7 @@ jobs:
       - name: Linux dependencies of Tauri, a screen
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libgtk-3-dev xvfb imagemagick
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libgtk-3-dev xvfb openbox imagemagick
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
@@ -147,16 +147,18 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Scenes of the application
-        # No GPU on the runner: WebKitGTK draws without one.
+        # No GPU on the runner: WebKitGTK draws without one. A window
+        # manager places the window on the screen and gives it the focus,
+        # as on a desktop.
         env:
           WEBKIT_DISABLE_DMABUF_RENDERER: 1
-        run: xvfb-run -a -s "-screen 0 1280x900x24" node scripts/e2e.mjs workflow fixes files projects media editor commands together
+        run: xvfb-run -a -s "-screen 0 1920x1080x24" bash -c "openbox & sleep 2; node scripts/e2e.mjs workflow fixes files projects media editor commands together"
       - name: Scenes of the built application
         env:
           WEBKIT_DISABLE_DMABUF_RENDERER: 1
           E2E_BUILT: 1
           E2E_OUT: e2e-output/built
-        run: xvfb-run -a -s "-screen 0 1280x900x24" node scripts/e2e.mjs workflow
+        run: xvfb-run -a -s "-screen 0 1920x1080x24" bash -c "openbox & sleep 2; node scripts/e2e.mjs workflow"
       - name: Logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4
