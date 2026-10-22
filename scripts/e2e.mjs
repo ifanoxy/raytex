@@ -4,7 +4,7 @@
 // ui/dev/selftest.ts on a fresh copy of tests/e2e/rapport, takes a
 // screenshot at each scene and stops at the verdict.
 //
-//   node scripts/e2e.mjs                    # workflow, fixes, files, projects, media, editor, commands
+//   node scripts/e2e.mjs                    # workflow, fixes, files, projects, media, editor, commands, together
 //   node scripts/e2e.mjs fixes files        # some groups
 //   E2E_OUT=out node scripts/e2e.mjs        # where logs and screenshots go
 //   E2E_SHOTS=0 node scripts/e2e.mjs        # no screenshots (they are of the whole screen)
@@ -30,7 +30,7 @@ import { homedir, tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const groups = process.argv.slice(2).length ? process.argv.slice(2) : ["workflow", "fixes", "files", "projects", "media", "editor", "commands"];
+const groups = process.argv.slice(2).length ? process.argv.slice(2) : ["workflow", "fixes", "files", "projects", "media", "editor", "commands", "together"];
 const out = resolve(process.env.E2E_OUT ?? join(root, "e2e-output"));
 const windows = process.platform === "win32";
 // Compiling the application the first time can be long (25 min on a CI
@@ -173,6 +173,7 @@ async function run(group) {
     child = spawn(windows ? "npx.cmd" : "npx", args, { cwd: root, env, detached: !windows, shell: windows });
   }
   const seen = new Set();
+  const appended = new Set();
   let verdict = null;
   const started = Date.now();
 
@@ -192,6 +193,12 @@ async function run(group) {
     }
     // The window of the application left for another one (macOS): it comes back by itself.
     if (/away: Finder/.test(plain) && process.platform === "darwin") spawnSync("open", ["-a", "Finder"], { stdio: "ignore" });
+    // A file changed by another program (the application would know its own writes).
+    for (const m of plain.matchAll(/external-append: (.+?) \| (.*)/g)) {
+      if (appended.has(m[0])) continue;
+      appended.add(m[0]);
+      appendFileSync(m[1].trim(), `\n${m[2].trim()}\n`);
+    }
     const end = new RegExp(`${group} scenes (PASSED|FAILED)|selftest: FAILED`).exec(text);
     if (end && !verdict) verdict = end[1] ?? "FAILED";
   };

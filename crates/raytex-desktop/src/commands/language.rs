@@ -317,7 +317,7 @@ pub async fn apply_edits(app: AppHandle, edits: Vec<TextEdit>) -> CmdResult<Vec<
                 let end = lines.offset(&text, e.range.end);
                 out.replace_range(s..end, &e.new_text);
             }
-            state.note_own_write(&path);
+            state.note_own_text(&path, out.as_bytes());
             raytex_core::settings::write_atomic(&path, out.as_bytes()).map_err(err)?;
             if let Some(pr) = state.project_mut().as_mut() {
                 pr.ws.load_from_disk(&path);

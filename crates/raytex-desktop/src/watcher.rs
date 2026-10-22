@@ -38,6 +38,9 @@ pub fn watch(app: AppHandle, root: &Path, recursive: bool) -> Option<notify::Rec
     };
     watcher.watch(root, mode).ok()?;
     let root = root.to_path_buf();
+    // The system tells the real path of a folder opened through a link
+    // (`/var` is `/private/var` on macOS, a synced folder…).
+    let real = std::fs::canonicalize(&root).ok().filter(|r| *r != root);
     std::thread::spawn(move || {
         // Debounce: gather events for 150 ms after the first one.
         while let Ok(first) = rx.recv() {
@@ -45,10 +48,24 @@ pub fn watch(app: AppHandle, root: &Path, recursive: bool) -> Option<notify::Rec
             while let Ok(e) = rx.recv_timeout(Duration::from_millis(150)) {
                 events.push(e);
             }
+            for e in &mut events {
+                for p in &mut e.paths {
+                    *p = as_opened(p, &root, real.as_deref());
+                }
+            }
             handle(&app, &root, events);
         }
     });
     Some(watcher)
+}
+
+/// `path` as the project knows it: under `root` as it was opened, when the
+/// system gave it under the real path `real` of that folder.
+fn as_opened(path: &Path, root: &Path, real: Option<&Path>) -> PathBuf {
+    match real.and_then(|r| path.strip_prefix(r).ok()) {
+        Some(rel) if !path.starts_with(root) => root.join(rel),
+        _ => path.to_path_buf(),
+    }
 }
 
 fn ignored(root: &Path, path: &Path) -> bool {
@@ -69,6 +86,10 @@ fn ignored(root: &Path, path: &Path) -> bool {
 fn handle(app: &AppHandle, root: &Path, events: Vec<notify::Event>) {
     let state = app.state::<AppState>();
     let mut paths = BTreeSet::new();
+    // Written by the application: the project reads them (a file created or
+    // imported and not opened is known all the same), the interface is not
+    // told (it knows what it wrote).
+    let mut own = BTreeSet::new();
     let mut structure = false;
     for e in events {
         let is_structure = matches!(
@@ -78,14 +99,19 @@ fn handle(app: &AppHandle, root: &Path, events: Vec<notify::Event>) {
                 | EventKind::Modify(notify::event::ModifyKind::Name(_))
         );
         for p in e.paths {
-            if ignored(root, &p) || state.is_own_write(&p) {
+            if ignored(root, &p) {
+                continue;
+            }
+            if state.is_own_write(&p) {
+                own.insert(p);
                 continue;
             }
             structure |= is_structure;
             paths.insert(p);
         }
     }
-    if paths.is_empty() {
+    own.retain(|p| !paths.contains(p));
+    if paths.is_empty() && own.is_empty() {
         return;
     }
     {
@@ -97,12 +123,10 @@ fn handle(app: &AppHandle, root: &Path, events: Vec<notify::Event>) {
         // Light mode: only the files of the document matter, not its neighbours.
         if pr.light.is_some() {
             paths.retain(|p| pr.ws.document(p).is_some());
-            if paths.is_empty() {
-                return;
-            }
+            own.retain(|p| pr.ws.document(p).is_some());
             structure = false;
         }
-        for p in &paths {
+        for p in paths.iter().chain(own.iter()) {
             if pr.light.is_none()
                 && p.file_name()
                     .is_some_and(|n| n == raytex_core::settings::PROJECT_FILE)
@@ -115,6 +139,9 @@ fn handle(app: &AppHandle, root: &Path, events: Vec<notify::Event>) {
             }
         }
     }
+    if paths.is_empty() {
+        return;
+    }
     let _ = app.emit(
         "fs:changed",
         Changed {
@@ -122,4 +149,36 @@ fn handle(app: &AppHandle, root: &Path, events: Vec<notify::Event>) {
             structure,
         },
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn paths_told_under_the_real_folder_come_back_under_the_one_opened() {
+        let root = Path::new("/var/folders/x/projet");
+        let real = Some(Path::new("/private/var/folders/x/projet"));
+        assert_eq!(
+            as_opened(
+                Path::new("/private/var/folders/x/projet/main.tex"),
+                root,
+                real
+            ),
+            PathBuf::from("/var/folders/x/projet/main.tex")
+        );
+        // Already under the folder opened, or elsewhere: as they are.
+        assert_eq!(
+            as_opened(Path::new("/var/folders/x/projet/a.tex"), root, real),
+            PathBuf::from("/var/folders/x/projet/a.tex")
+        );
+        assert_eq!(
+            as_opened(Path::new("/other/a.tex"), root, real),
+            PathBuf::from("/other/a.tex")
+        );
+        assert_eq!(
+            as_opened(Path::new("/var/folders/x/projet/a.tex"), root, None),
+            PathBuf::from("/var/folders/x/projet/a.tex")
+        );
+    }
 }

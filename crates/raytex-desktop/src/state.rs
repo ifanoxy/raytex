@@ -268,8 +268,9 @@ pub struct AppState {
     pub next_job: AtomicU64,
     /// Session.
     pub session: Mutex<Session>,
-    /// Files written by the application recently (ignored by the watcher).
-    pub own_writes: Mutex<HashMap<PathBuf, Instant>>,
+    /// Files written by the application recently (ignored by the watcher):
+    /// when, and a print of what was written when it is known.
+    pub own_writes: Mutex<HashMap<PathBuf, (Instant, Option<u64>)>>,
     /// Previews run one at a time; the last result of each kind is kept.
     pub previews: Mutex<HashMap<String, (u64, raytex_core::preview::PreviewOutcome)>>,
     /// Template thumbnails compiled at the same time (a few, not all).
@@ -481,18 +482,37 @@ impl AppState {
             .or_else(|| tex.distributions.first().cloned())
     }
 
-    /// Remembers that the application itself wrote `path`.
+    /// Remembers that the application itself wrote `path` (a copy, a
+    /// move: what it holds is not known here, the moment tells).
     pub fn note_own_write(&self, path: &Path) {
-        let mut w = recover(self.own_writes.lock());
-        w.retain(|_, t| t.elapsed().as_secs() < 5);
-        w.insert(path.to_path_buf(), Instant::now());
+        self.note(path, None);
     }
 
-    /// Whether `path` was written by the application in the last moments.
+    /// Remembers that the application itself wrote `bytes` to `path`: its
+    /// report is told from a change of another program by what the file holds.
+    pub fn note_own_text(&self, path: &Path, bytes: &[u8]) {
+        self.note(path, Some(print(bytes)));
+    }
+
+    fn note(&self, path: &Path, print: Option<u64>) {
+        let mut w = recover(self.own_writes.lock());
+        w.retain(|_, (t, _)| t.elapsed().as_secs() < OWN_WRITE_KEPT_S);
+        w.insert(path.to_path_buf(), (Instant::now(), print));
+    }
+
+    /// Whether the change of `path` reported is a write of the application:
+    /// the file holds what it wrote (however late the report comes), or,
+    /// when that is not known, it wrote it a moment ago.
     pub fn is_own_write(&self, path: &Path) -> bool {
-        recover(self.own_writes.lock())
-            .get(path)
-            .is_some_and(|t| t.elapsed().as_millis() < 1500)
+        let Some((at, known)) = recover(self.own_writes.lock()).get(path).copied() else {
+            return false;
+        };
+        match known {
+            Some(print_written) => {
+                std::fs::read(path).is_ok_and(|bytes| print(&bytes) == print_written)
+            }
+            None => at.elapsed().as_millis() < 1500,
+        }
     }
 
     /// Registers a cancellable job.
@@ -581,4 +601,14 @@ impl Drop for SlotGuard<'_> {
         *used -= 1;
         self.slots.freed.notify_one();
     }
+}
+
+/// How long the writes of the application are remembered.
+const OWN_WRITE_KEPT_S: u64 = 60;
+
+fn print(bytes: &[u8]) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    bytes.hash(&mut h);
+    h.finish()
 }

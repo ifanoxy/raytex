@@ -70,7 +70,7 @@ pub async fn write_text_file(
 ) -> CmdResult<u64> {
     let p = writable_path(&state, &path)?;
     blocking(&app, move |app, state| {
-        state.note_own_write(&p);
+        state.note_own_text(&p, text.as_bytes());
         write_atomic(&p, text.as_bytes()).map_err(err)?;
         if p.file_name()
             .is_some_and(|n| n == raytex_core::settings::PROJECT_FILE)
@@ -112,7 +112,7 @@ pub async fn write_binary_file(
     };
     let bytes = bytes.clone();
     blocking(&app, move |_, state| {
-        state.note_own_write(&p);
+        state.note_own_text(&p, &bytes);
         write_atomic(&p, &bytes).map_err(err)?;
         Ok(p.to_string_lossy().into_owned())
     })
@@ -213,8 +213,9 @@ pub async fn create_file(
     if let Some(dir) = p.parent() {
         std::fs::create_dir_all(dir).map_err(err)?;
     }
-    state.note_own_write(&p);
-    std::fs::write(&p, text.unwrap_or_default()).map_err(err)?;
+    let text = text.unwrap_or_default();
+    state.note_own_text(&p, text.as_bytes());
+    std::fs::write(&p, text).map_err(err)?;
     Ok(p.to_string_lossy().into_owned())
 }
 

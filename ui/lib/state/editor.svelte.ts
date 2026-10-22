@@ -1086,10 +1086,17 @@ class EditorStore {
       const newPath = to + tab.path.slice(from.length);
       const m = this.models.get(key);
       if (m) {
+        // Told where it is shown before its path changes: the view (with what
+        // was typed in it) takes the new path, not the copy kept apart.
+        const shown = this.isShown(m);
         this.models.delete(key);
         m.path = newPath;
         this.models.set(pathKey(newPath), m);
-        this.applyTo(m, { effects: c.path.reconfigure(docPath.of(newPath)) });
+        const effects = c.path.reconfigure(docPath.of(newPath));
+        if (shown) this.view!.dispatch({ effects });
+        else m.state = m.state.update({ effects }).state;
+        // The tab shown under its new name before the engine is told (it reads the text shown).
+        if (samePath(this.active, tab.path)) this.active = newPath;
         if (m.kind === "tex" || m.kind === "bib") {
           void ipc.closeDocument(tab.path).catch(() => {});
           m.synced = -1;

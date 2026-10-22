@@ -295,7 +295,7 @@ pub async fn history_changes_pdf(
             tex: tex.clone(),
             out_dir: None,
         };
-        state.note_own_write(&tex);
+        state.note_own_text(&tex, text.as_bytes());
         std::fs::write(&tex, text).map_err(err)?;
 
         // Built in a folder of its own: nothing of the build of the project

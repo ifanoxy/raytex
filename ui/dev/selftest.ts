@@ -17,6 +17,7 @@ import { displayHtml, refreshMacros, textHtml } from "../lib/editor/math-preview
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { commandsScenes } from "./sweep";
+import { togetherScenes } from "./together";
 import { i18n, t } from "../lib/i18n.svelte";
 import { keyLang, NAMES } from "../lib/answerkey";
 import * as ipc from "../lib/ipc";
@@ -141,6 +142,7 @@ export async function runSelfTest() {
   else if (ok && which === "files" && assets) ok = await filesScenes(log, assets);
   else if (ok && which === "editor" && assets) ok = await editorScenes(log, assets);
   else if (ok && which === "commands" && assets) ok = await commandsScenes(log, assets);
+  else if (ok && which === "together" && assets) ok = await togetherScenes(log, assets);
   else {
     if (ok && which && which !== "media") await scenes(log);
     if (ok && which && (which === "media" || which === "all") && assets) ok = await mediaScenes(log, assets);
