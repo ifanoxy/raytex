@@ -43,6 +43,8 @@ jobs:
       - name: Linux dependencies of Tauri
         if: runner.os == 'Linux'
         run: |
+          # A mirror that stops answering is left after a minute, and tried again.
+          echo 'Acquire::Retries "5"; Acquire::http::Timeout "60"; Acquire::https::Timeout "60";' | sudo tee /etc/apt/apt.conf.d/80-retries
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libgtk-3-dev
       # Without the secrets, the application keeps its ad-hoc signature.
