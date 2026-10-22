@@ -714,7 +714,12 @@ mod tests {
                 continue;
             }
             let dir = tempfile::tempdir().unwrap();
-            let root_dir = crate::log::normalize(&dunce::canonicalize(dir.path()).unwrap());
+            // A folder named as people name them (spaces, accents, an apostrophe).
+            let root_dir = crate::log::normalize(
+                &dunce::canonicalize(dir.path())
+                    .unwrap()
+                    .join("Thèse d'été (v2)"),
+            );
             for (name, text) in files {
                 let path = root_dir.join(name);
                 std::fs::create_dir_all(path.parent().unwrap()).unwrap();

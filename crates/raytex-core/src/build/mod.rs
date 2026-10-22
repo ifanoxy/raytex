@@ -1063,12 +1063,19 @@ impl Runner<'_, '_> {
                             }),
                         );
                     } else {
+                        // The folder of the build named from the one of the
+                        // document: Biber decodes its arguments again, and a
+                        // whole path with accents (a folder "Thèse") came out
+                        // garbled, its .bbl never written.
+                        let out = only::relative(&plan.root_dir, &plan.out_dir)
+                            .filter(|r| r.is_ascii())
+                            .unwrap_or_else(|| plan.out_dir.display().to_string());
                         let cmd = self
                             .ctx
                             .dist
                             .cmd("biber")
                             .cwd(&plan.root_dir)
-                            .arg(format!("--output-directory={}", plan.out_dir.display()))
+                            .arg(format!("--output-directory={out}"))
                             .arg(&plan.job);
                         // One Biber at a time: two started together share
                         // the copy it unpacks in the temporary folder.
@@ -2597,6 +2604,118 @@ mod tests {
         );
         assert!(clean(&plan.out_dir, &plan.job) > 3);
         assert!(plan.pdf.exists(), "clean keeps the PDF");
+    }
+
+    /// A project in a folder whose name has spaces, accents, an apostrophe
+    /// and brackets, a chapter in a subfolder with a space: the build with
+    /// its bibliography and its picture, the precompiled preamble and SyncTeX
+    /// both ways name the files as they are (the chapter shown alone: in
+    /// `only.rs`, in such a folder too).
+    #[test]
+    #[ignore = "depends on the local TeX installation"]
+    fn a_project_in_a_folder_of_any_name_builds() {
+        let _turn = BIBER_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+        let dist = crate::tex::detect(&[]).into_iter().next().expect("no TeX");
+        let dir = tempfile::tempdir().unwrap();
+        let p = dunce::canonicalize(dir.path())
+            .unwrap()
+            .join("Mes thèses")
+            .join("L'été 2026 (copie)");
+        std::fs::create_dir_all(p.join("chapitres")).unwrap();
+        std::fs::write(p.join("références.bib"), "@book{knuth, author={Knuth, Donald}, title={The TeXbook}, year=1984, publisher={AW}}\n").unwrap();
+        let chapter = p.join("chapitres").join("Chapitre un.tex");
+        std::fs::write(
+            &chapter,
+            "\\section{Un}\\label{sec:un}\nVoir \\cite{knuth} et la section~\\ref{sec:un}.\n\n\\begin{tikzpicture}\n\\draw (0,0) -- (1,1);\n\\end{tikzpicture}\n",
+        )
+        .unwrap();
+        let root = crate::log::normalize(&p.join("main.tex"));
+        std::fs::write(
+            &root,
+            "\\documentclass{article}\n\\usepackage[T1]{fontenc}\n\\usepackage[french]{babel}\n\\usepackage{tikz}\n\\usepackage[backend=biber]{biblatex}\n\\addbibresource{références.bib}\n\\begin{document}\nPremière page.\n\n\\input{chapitres/Chapitre un}\n\\printbibliography\n\\end{document}\n",
+        )
+        .unwrap();
+        let settings = BuildSettings::default();
+        let facts = DocumentFacts {
+            packages: vec!["biblatex".into(), "tikz".into()],
+            biblatex_options: vec!["backend=biber".into()],
+            ..Default::default()
+        };
+        let whole = plan(&root, &settings, Some(&dist), &facts, Lang::Fr).unwrap();
+        let cancel = AtomicBool::new(false);
+        let source = |path: &Path| std::fs::read_to_string(path).ok();
+        let ctx = RunContext {
+            dist: &dist,
+            settings: &settings,
+            cancel: &cancel,
+            lang: Lang::Fr,
+            source: &source,
+            packages: None,
+            background: false,
+            live: false,
+        };
+        let errors = |o: &BuildOutcome| {
+            o.diagnostics
+                .iter()
+                .filter(|d| d.severity == Severity::Error || d.message.contains("undefined"))
+                .map(|d| d.message.clone())
+                .collect::<Vec<_>>()
+        };
+        let first = run(&whole, &ctx, &mut |_| {});
+        assert!(
+            first.success && errors(&first).is_empty(),
+            "{:?} {:?}",
+            errors(&first),
+            first.steps
+        );
+        // With the precompiled preamble.
+        if preamble::applies(&whole, &settings, &dist) {
+            let text = std::fs::read_to_string(&root).unwrap();
+            let pre = preamble::preamble_of(&text).unwrap();
+            let k = preamble::key(&whole, &settings, &dist, &pre);
+            assert!(
+                preamble::build_format(&whole, &dist, &whole.env(&dist), k),
+                "format"
+            );
+            let fast = run(&whole, &ctx, &mut |_| {});
+            assert!(
+                fast.success && errors(&fast).is_empty(),
+                "{:?}",
+                errors(&fast)
+            );
+            assert!(preamble::ready(&whole, k).is_some(), "format kept");
+        }
+        // SyncTeX both ways, from the chapter.
+        let sync = crate::synctex::SyncTex::load(&whole.synctex).unwrap();
+        let forward = sync.forward(&chapter, 2).expect("forward");
+        let r = &forward.rects[0];
+        let back = sync
+            .inverse(forward.page, r.x + 1.0, r.y + r.height / 2.0)
+            .expect("inverse");
+        assert_eq!(
+            crate::log::normalize(&back.file),
+            crate::log::normalize(&chapter)
+        );
+        // With latexmk (which starts Biber itself).
+        if dist.tool("latexmk").is_some() {
+            clean(&whole.out_dir, &whole.job);
+            let settings = BuildSettings {
+                tool: crate::settings::BuildTool::Latexmk,
+                ..BuildSettings::default()
+            };
+            let p = plan(&root, &settings, Some(&dist), &facts, Lang::Fr).unwrap();
+            let ctx = RunContext {
+                settings: &settings,
+                ..ctx
+            };
+            let outcome = run(&p, &ctx, &mut |_| {});
+            assert!(
+                outcome.success && errors(&outcome).is_empty(),
+                "latexmk: {:?} {:?}",
+                errors(&outcome),
+                outcome.steps
+            );
+        }
     }
 
     /// pdfLaTeX then LuaLaTeX on the same document (the article template,
