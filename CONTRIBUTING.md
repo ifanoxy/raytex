@@ -28,11 +28,14 @@ With a TeX distribution installed, also run the integration tests and the end-to
 ```bash
 cargo test -p raytex-core --release -- --ignored
 node scripts/e2e.mjs            # the scenes of the real application, with a screenshot at each step (e2e-output/)
-node scripts/e2e.mjs fixes      # one group: workflow, fixes, files, projects or media
+node scripts/e2e.mjs fixes      # one group: workflow, fixes, files, projects, media, editor, commands or together
 E2E_LANG=en node scripts/e2e.mjs  # the scenes with the interface in English
+E2E_BUILT=1 node scripts/e2e.mjs  # against the built application (its security policy, as released)
 ```
 
-`scripts/e2e.mjs` runs `npm run app:dev` on a fresh copy of `tests/e2e/rapport` with a fresh configuration, so it never touches an installed RayTeX (stop any other `npm run dev` first: the port 1420 must be free).
+`scripts/e2e.mjs` runs `npm run app:dev` on a fresh copy of `tests/e2e/rapport` with a fresh configuration, so it never touches an installed RayTeX (it takes another port when 1420 is in use). `E2E_SHOTS=0` takes no screenshot (`window`: the window of the application alone, on macOS), `E2E_OUT=<folder>` writes the logs elsewhere, `E2E_KEEP=1` keeps the folder the scenes worked in, `E2E_TIMEOUT_MS` gives a group more time. The groups: `workflow` (a project from a template, live builds, undo, the formatting bar, menus), `fixes` (a document full of mistakes fixed until it compiles), `files` (the file tree, find and replace, the bibliography, a chapter alone), `projects` (the projects folder, light mode, subject and answer key, slides), `media` (images, TikZ, plots, fonts, page layout, exports), `editor` (focus, the Problems panel, hints, nothing running at rest), `commands` (every command from its menu, palette and shortcut) and `together` (features used together: another project during a build, files changed by another program, saves at once).
+
+`RAYTEX_CORPUS=1 cargo test -p raytex-core --release --test distribution -- --ignored` reads every file of the installed distribution as the editor does (scanned, checked, completed, errors explained from a made-up log, pictures converted), and `RAYTEX_CORPUS=1 npm test` does the same for the parts of the interface that read a document: nothing may stop or take more than a moment. `RAYTEX_CORPUS=<text>` keeps the files whose path contains the text.
 
 `tests/common_mistakes.rs` compiles about 110 documents made of common commands, each with a common mistake: every one must be reported with an explanation and an automatic fix, and the document must compile without error or warning once the fix is applied. Add a case there when you add a fix. `LBT_PROBE=1` prints the diagnostics instead of checking (to write a new case), `LBT_CASE=<text>` runs only the matching cases.
 
@@ -40,7 +43,7 @@ E2E_LANG=en node scripts/e2e.mjs  # the scenes with the interface in English
 
 Optional variables of the end-to-end check (development builds only):
 
-- `RAYTEX_SELFTEST_SCENES=workflow` with `RAYTEX_SELFTEST_ASSETS=<folder>`: creates an empty project in that folder, then checks templates and their thumbnails, live compilation, undo / redo, the formatting bar, `$` typing, linked environments and the panels; `=media` (assets: test images) checks the image, TikZ and font tools; `=fixes` writes a document full of mistakes, checks the suggestions, Alt+Enter and **Fix all** until it compiles; `=1` walks through the main screens for screenshots (each logs `scene: <name>`). `=shots` puts the window at 1400 × 813 and shows the editor with its PDF, the TikZ studio and the problems panel in the light and the dark theme, in French and English; `scripts/screenshots.mjs` crops them into `docs/screenshots/`.
+- `RAYTEX_SELFTEST_SCENES=workflow` with `RAYTEX_SELFTEST_ASSETS=<folder>`: creates an empty project in that folder, then checks templates and their thumbnails, live compilation, undo / redo, the formatting bar, `$` typing, linked environments and the panels; `=media` (assets: test images) checks the image, TikZ and font tools; `=fixes` writes a document full of mistakes, checks the suggestions, Alt+Enter and **Fix all** until it compiles (each scene logs `scene: <name>`, where `scripts/e2e.mjs` takes its screenshot).
 - `RAYTEX_CONFIG_DIR=<folder>`: settings, session and cache in that folder, so the check never touches those of an installed RayTeX.
 - `RAYTEX_SELFTEST_KEEP=1`: leaves the window open at the end.
 

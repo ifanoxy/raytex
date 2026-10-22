@@ -103,7 +103,7 @@ Download the installer for your system from the [website](https://ifanoxy.github
 
 The builds are not signed yet:
 
-- **macOS**: the first time, right-click RayTeX in *Applications* and choose *Open* (or run `xattr -dr com.apple.quarantine /Applications/RayTeX.app`).
+- **macOS**: the first time, macOS may refuse to open it (it is not notarized yet): *System Settings → Privacy & Security → Open Anyway* (or run `xattr -dr com.apple.quarantine /Applications/RayTeX.app`).
 - **Windows**: if SmartScreen stops the installer, click *More info* then *Run anyway*.
 
 ## Build from source

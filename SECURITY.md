@@ -21,6 +21,12 @@ advisory is published with credit to you (unless you prefer otherwise).
   first; administrator rights are asked only when needed.
 - The interface can only write inside the open project (and the user
   templates folder); the files of the TeX distribution are opened read-only.
-- RayTeX itself uses the network only for the CTAN catalogue and package
-  pages (ctan.org); packages and distributions are downloaded by the TeX
-  distribution's own tools (tlmgr, MiKTeX), when you ask for them.
+- The only thing RayTeX asks the network by itself is whether a new version
+  is out, at start (GitHub; *Settings › About* turns it off). Everything
+  else waits for you: the CTAN catalogue and package pages (ctan.org), a
+  reference looked up by its DOI or arXiv number (doi.org, arxiv.org), the
+  dictionaries of the spell checker (downloaded once, after you agree), and
+  the installation of a distribution or a package (by the distribution's
+  own tools, tlmgr or MiKTeX, the commands shown first). Your documents are
+  never sent anywhere; *Report a problem* opens a page in your browser with
+  what you chose to say.
