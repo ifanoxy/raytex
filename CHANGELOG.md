@@ -2,6 +2,51 @@
 
 All notable changes to RayTeX are documented here. The format follows [Keep a Changelog](https://keepachangelog.com), and versions follow [Semantic Versioning](https://semver.org).
 
+## [1.0.0] — 2026-10-23
+
+Version 1: every command (106, from their real entries in the menus, the palette and the shortcuts), every feature and features used together run and checked in the real application on macOS, Windows and Linux, with TeX Live and MiKTeX, and the built application too; every file of TeX Live read, checked and explained by the tests.
+
+### Reliability
+- **No more stop of the application**: the release build ended the application at any fault (`panic = "abort"`); a fault now stops the check where it happened only. Two checks of the text cut it in the middle of a letter of several bytes (Chinese, Korean: a formula not closed) or before the brace they looked from: fixed.
+- **Saves in the order made**: two saves of a file at once (the automatic one and the one before a build) could reach the disk in the other order, the older text last while the tab said saved, and the build compiled what had been taken out. A save waits for the one under way and writes the text of its moment. The settings, the open files, the project settings, a file and the TikZ shape sets are saved one after the other as well.
+- **Settings of another release** (or written by hand) keep what can be read: one value this release does not know left every setting at its default, and the next save wrote over the file. Only that value is, and the file as it was is kept beside it (`settings.toml.unread`); `raytex.toml` is read the same way (a template applied wrote over it with the defaults), and renaming a project does not write over a file with a part that cannot be read.
+- Another project opened, or the project closed, during a build: the build stops, and its page and its problems are not shown in the project opened; a build that could not start still says why. Cleaning the build files during a build stops the build first (it wrote its files again, and on Windows held them open).
+- An open file renamed keeps what was typed in it (a save then wrote nothing); the changes of another program are seen in a folder opened through a link (`/var` on macOS, a synced folder); a change a moment after a save is no longer taken for the save; a file created or imported by the application is known to the project before it is opened (a `.bib` imported: its entries listed).
+- A studio closed before its preview was due compiles nothing for it.
+- **Linux: a file only read is not a file changed.** The watcher of the project took every opening and reading of a file for a change (Linux tells them too): TeX reading the document, the viewer reading the PDF, RayTeX reading a file said changed. Each reading was told again as a change and read again: the PDF reloaded without end, a file was said changed by another program while it was being typed in, and the project was read again from the disk (a bibliography just written not listed).
+
+### Builds
+- **The log is emptied before each pass**: an engine that stops before writing it no longer shows the errors of the pass before. MiKTeX 26.5 stops so on some precompiled preambles ("internal error"); the pass is now done again without the preamble, which is put aside, and the stop is said.
+- **Biber**: stopping without a word (macOS empties, bit by bit, the copy it unpacks in the temporary folder) is repaired by the build itself, explained otherwise; two Biber runs at once (two exports, two builds) no longer meet; in a folder whose name has accents it wrote nothing and the bibliography stayed empty (it is given the folder from the one of the document).
+- **A PDF read while the next build writes it** is not shown: the pages stay as they were and it is read again once whole (pdf.js drew part of it, and the viewer could stay without the new PDF); no thumbnail is made from half of a PDF.
+- **Windows, folders with accents** ("Thèse", "Mes documents"): the names of files TeX writes in the code page of the system are read as Windows-1252 where they are not UTF-8; from the PDF back to the text (SyncTeX), the export and an `.aux` brought in found their files again.
+- A line 0 in a log is taken for no line (it was taken for the last).
+- Tested in a folder named with spaces, accents, an apostrophe and brackets: bibliography, picture, precompiled preamble, SyncTeX both ways, latexmk, a chapter compiled alone.
+
+### Checks and errors
+- A mistake said by LaTeX and by the live checks is shown and counted once; the window of the problems of a line stays by its line when the problems are given again (it fell to the top left corner), and its text can be chosen and copied (a **Copy** button).
+- Documents side by side in a folder (exercise sheets) are checked apart: a document with no file brought in yet was read with the whole folder (a label of the same name said defined twice, a reference to another sheet not said undefined).
+- A class or a package the distribution does not have yet (MiKTeX installs it at the first build) is not judged on what it defines (the commands of a letter in `scrlttr2` said to need `letter`, `\color` in `exam` to need `xcolor`); a theorem of tcolorbox labels itself (`\newtcbtheorem`); the pictures of mwe are known before the distribution is read; the checks are said again once the distribution has been read at startup.
+- The commands of the project in the previews of formulas, tables and matrices: an optional first argument, `\DeclareMathOperator`, `\DeclarePairedDelimiter`, `\ensuremath`, `\xspace`, known in every file and after the last change, and in the labels of the TikZ whiteboard.
+
+### Speed
+- The check of the whole project (Problems panel, after each save) in near-linear time: what a file's checks read of its project is worked out once for all its files (400 files: 8.9 s → 0.04 s); the documentation of TeX Live opened as one project (6 447 documents): 366 s → 9 s.
+- The problems of a file merged in a time that grows with their number (3 000 problems: 56 ms → 1.4 ms), the list and the counts worked out once for the whole window (four times at each key before).
+- Spell checking a long file: what is code and what is in another language is read again once typing pauses (a book in one file took a tenth of a second a key).
+- Start screen: the picture of each project's PDF kept from one session to the next and drawn one after the other.
+- At rest, nothing runs: no frame, timer or animation once the work is over (checked by the scenes).
+
+### Editor and studios
+- A click in the text after it lost the focus keeps it where it was scrolled (WebKit scrolled it back to the old caret, and the click chose the text up to there).
+- Probability trees, function plots and tables of variations write their numbers the French way from the moment they open (a point came while the language of the document was being read).
+- TikZ whiteboard: a node of the circle shape is a circle around its text (it was an ellipse), and the label of a link above or below it stays off the line at every zoom.
+- The help names the menus and panels as the window names them.
+
+### Project
+- Scenes of the application in eight groups (`workflow`, `fixes`, `files`, `projects`, `media`, `editor`, `commands`, `together`), on Windows and Linux in CI, with TeX Live and MiKTeX; tests over every file of the distribution (`RAYTEX_CORPUS=1`).
+- Tools of the build of the interface at their fixed versions: `npm audit` finds nothing.
+- Screenshots of the README and the website taken again; what goes over the network said in full in the privacy page and `SECURITY.md`.
+
 ## [0.6.0] — 2026-10-17
 
 - **The slides mode is optional**: the installer of Windows (NSIS) offers it with a box on its first page (not ticked); not installed, *Slides mode* (or the **Slides** button) asks whether to install it and opens it on yes, at once and without the network. It is taken off (and back) in *Settings › General*; taken off, nothing of it is loaded. The updates keep what was chosen.
@@ -362,6 +407,8 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[1.0.0]: https://github.com/ifanoxy/raytex/releases/tag/v1.0.0
+[0.6.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.6.0
 [0.5.4]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.4
 [0.5.3]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.3
 [0.5.2]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.2

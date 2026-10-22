@@ -9,7 +9,7 @@
 import { runAction } from "$lib/actions";
 import { refused } from "$lib/policy";
 import { acceptCompletion, currentCompletions, setSelectedCompletion, startCompletion } from "@codemirror/autocomplete";
-import { undo } from "@codemirror/commands";
+import { isolateHistory, undo } from "@codemirror/commands";
 import { Transaction } from "@codemirror/state";
 import { searchPanelOpen } from "@codemirror/search";
 import { EditorView } from "@codemirror/view";
@@ -1370,7 +1370,8 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     // ------------------------------------- manual build with an error
     const toasts = mark();
     const at = editor.view!.state.doc.toString().lastIndexOf("\\end{document}");
-    editor.view!.dispatch({ changes: { from: at, insert: "Un \\textbff{mot}.\n\n" }, userEvent: "input.type" });
+    // A step of its own in the history, however soon after the live build (undone alone below).
+    editor.view!.dispatch({ changes: { from: at, insert: "Un \\textbff{mot}.\n\n" }, userEvent: "input.type", annotations: isolateHistory.of("before") });
     await build.run();
     await until(() => build.running, 10_000, "build start");
     await until(() => !build.running, 120_000, "build end");

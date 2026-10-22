@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::Duration;
 
+use notify::event::{AccessKind, AccessMode};
 use notify::{EventKind, RecursiveMode, Watcher};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
@@ -83,6 +84,17 @@ fn ignored(root: &Path, path: &Path) -> bool {
         })
 }
 
+/// Whether an event says a file changed: Linux tells every opening and
+/// every reading too (by TeX, by a viewer, by the application itself, whose
+/// reading of a file said changed was told again as a change).
+fn is_change(kind: &EventKind) -> bool {
+    match kind {
+        EventKind::Access(AccessKind::Close(AccessMode::Write)) => true,
+        EventKind::Access(_) => false,
+        _ => true,
+    }
+}
+
 fn handle(app: &AppHandle, root: &Path, events: Vec<notify::Event>) {
     let state = app.state::<AppState>();
     let mut paths = BTreeSet::new();
@@ -91,7 +103,7 @@ fn handle(app: &AppHandle, root: &Path, events: Vec<notify::Event>) {
     // told (it knows what it wrote).
     let mut own = BTreeSet::new();
     let mut structure = false;
-    for e in events {
+    for e in events.into_iter().filter(|e| is_change(&e.kind)) {
         let is_structure = matches!(
             e.kind,
             EventKind::Create(_)
@@ -154,6 +166,30 @@ fn handle(app: &AppHandle, root: &Path, events: Vec<notify::Event>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use notify::event::{CreateKind, DataChange, ModifyKind, RemoveKind};
+
+    #[test]
+    fn a_file_read_is_not_a_file_changed() {
+        for read in [
+            AccessKind::Open(AccessMode::Any),
+            AccessKind::Open(AccessMode::Read),
+            AccessKind::Close(AccessMode::Read),
+            AccessKind::Read,
+            AccessKind::Any,
+        ] {
+            assert!(!is_change(&EventKind::Access(read)), "{read:?}");
+        }
+        for changed in [
+            EventKind::Access(AccessKind::Close(AccessMode::Write)),
+            EventKind::Modify(ModifyKind::Data(DataChange::Any)),
+            EventKind::Modify(ModifyKind::Any),
+            EventKind::Create(CreateKind::File),
+            EventKind::Remove(RemoveKind::File),
+            EventKind::Any,
+        ] {
+            assert!(is_change(&changed), "{changed:?}");
+        }
+    }
 
     #[test]
     fn paths_told_under_the_real_folder_come_back_under_the_one_opened() {

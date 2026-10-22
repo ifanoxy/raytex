@@ -34,6 +34,128 @@ export interface VersionNotes {
 
 export const NOTES: VersionNotes[] = [
   {
+    version: "1.0.0",
+    date: "2026-10-23",
+    en: {
+      points: [
+        "Version 1: every command, every feature and features used together checked in the real application, on macOS, Windows and Linux, with TeX Live and MiKTeX.",
+        "No more stop of the application: a fault in a check stops that check only, and texts of any script (Chinese, Korean) are read without one.",
+        "Saves always in the order made: two saves of a file at once never leave the older text on the disk.",
+        "Large projects checked in a moment: 400 files in 0.04 s instead of 8.9 s, a folder of thousands of documents in seconds.",
+        "Folders of any name: accents, spaces, apostrophes, on Windows too.",
+        "Builds that say the truth: no errors of the pass before (MiKTeX), Biber repaired by itself, a PDF never drawn half written.",
+      ],
+      details: [
+        {
+          title: "Reliability",
+          items: [
+            "A fault in one of the checks of the text stops that check only: the application no longer closes. Two checks cut a text of Chinese or Korean in the middle of a letter; every file of TeX Live is now read as the editor reads it, in the tests.",
+            "Two saves of a file at once (the automatic one and the one before a build) go one after the other: the older text could reach the disk last while the tab said saved, and the build compiled what had been taken out. The settings, the open files, the project settings and the TikZ shape sets are saved in order too.",
+            "Settings written by another release keep what can be read: one value unknown left every setting at its default. Only that value is, and the file as it was is kept beside it (`settings.toml.unread`); the project file is read the same way.",
+            "Another project opened, or the project closed, during a build stops the build: its page and its problems no longer appear in the other project. Cleaning the build files during a build stops it first (on Windows they could not be removed).",
+            "An open file renamed keeps what was typed in it; the changes of another program are seen in a folder opened through a link (a synced folder); a studio closed before its preview compiles nothing.",
+            "Linux: a file only read (by TeX, by the viewer, by RayTeX itself) is no longer taken for a file changed. Each reading was told as a change and read again: the PDF reloaded without end, a file said changed by another program, the project read again from the disk.",
+          ],
+        },
+        {
+          title: "Builds",
+          items: [
+            "The log is emptied before each pass: an engine that stops before writing it (MiKTeX 26.5 on some precompiled preambles) no longer shows the errors of the pass before. The pass is done again without the preamble, and the stop is said.",
+            "Biber stopping without a word (macOS empties the copy it unpacks) is repaired by the build itself; two Biber runs no longer meet; a folder with accents keeps its bibliography.",
+            "A PDF read while the next build writes it is not shown: the pages stay as they were until it is whole, and no thumbnail is made from half of it.",
+            "Windows, folders with accents: the names of files TeX writes in the code page of the system are read as they are (from the PDF back to the text, the export, an `.aux` brought in).",
+          ],
+        },
+        {
+          title: "Checks and errors",
+          items: [
+            "A mistake said by LaTeX and by the live checks is shown and counted once; the window of the problems of a line stays by its line, and its text can be copied.",
+            "Documents side by side in a folder (exercise sheets) are checked apart: the labels of one no longer count in another.",
+            "A class or a package not installed yet (MiKTeX installs it at the first build) is not judged on what it defines; the theorems of tcolorbox label themselves; the pictures of mwe are known.",
+            "The commands of the project are drawn in the previews of formulas, tables and matrices (`\\DeclareMathOperator`, `\\DeclarePairedDelimiter`, an optional first argument), from every file.",
+          ],
+        },
+        {
+          title: "Speed",
+          items: [
+            "The check of the whole project, after each save, in near-linear time: 400 files in 0.04 s instead of 8.9 s; the documentation of TeX Live opened as one project (6 447 documents) in 9 s instead of 366.",
+            "The problems of a file merged in a time that grows with their number (3 000 problems: 1.4 ms instead of 56), and counted once for the whole window.",
+            "Spell checking a long file no longer slows typing; the pictures of the start screen are kept from one session to the next and drawn one after the other.",
+            "At rest, nothing runs: no frame, timer or animation once the work is over.",
+          ],
+        },
+        {
+          title: "Editor and studios",
+          items: [
+            "A click in the text after it lost the focus keeps it where it was scrolled (it jumped back to the old cursor and chose the text up to there).",
+            "Probability trees, function plots and tables of variations write their numbers the French way from the moment they open, in a French document.",
+            "The TikZ whiteboard draws as LaTeX draws: a node of the circle shape is a circle around its text, and the label of a link stays off the line at every zoom.",
+            "The help names the menus and panels as the window names them.",
+          ],
+        },
+      ],
+    },
+    fr: {
+      points: [
+        "Version 1 : chaque commande, chaque fonction et les fonctions utilisées ensemble vérifiées dans l'application réelle, sur macOS, Windows et Linux, avec TeX Live et MiKTeX.",
+        "Plus d'arrêt de l'application : une faute dans une vérification n'arrête que cette vérification, et les textes de toute écriture (chinois, coréen) sont lus sans faute.",
+        "Les enregistrements toujours dans l'ordre où ils sont faits : deux enregistrements d'un fichier à la fois ne laissent jamais l'ancien texte sur le disque.",
+        "Les grands projets vérifiés en un instant : 400 fichiers en 0,04 s au lieu de 8,9 s, un dossier de milliers de documents en quelques secondes.",
+        "Des dossiers de tout nom : accents, espaces, apostrophes, sous Windows aussi.",
+        "Des compilations qui disent vrai : plus d'erreurs de la passe précédente (MiKTeX), Biber réparé tout seul, jamais un PDF dessiné à moitié écrit.",
+      ],
+      details: [
+        {
+          title: "Fiabilité",
+          items: [
+            "Une faute dans l'une des vérifications du texte n'arrête que cette vérification : l'application ne se ferme plus. Deux vérifications coupaient un texte en chinois ou en coréen au milieu d'une lettre ; chaque fichier de TeX Live est désormais lu comme l'éditeur le lit, dans les tests.",
+            "Deux enregistrements d'un fichier à la fois (l'automatique et celui d'avant une compilation) passent l'un après l'autre : l'ancien texte pouvait atteindre le disque en dernier alors que l'onglet disait enregistré, et la compilation compilait ce qui avait été retiré. Les réglages, les fichiers ouverts, les réglages du projet et les jeux de formes TikZ sont enregistrés dans l'ordre aussi.",
+            "Des réglages écrits par une autre version gardent ce qui peut être lu : une seule valeur inconnue remettait tous les réglages par défaut. Seule cette valeur l'est, et le fichier tel qu'il était est gardé à côté (`settings.toml.unread`) ; le fichier du projet est lu de la même façon.",
+            "Un autre projet ouvert, ou le projet fermé, pendant une compilation arrête la compilation : sa page et ses problèmes n'apparaissent plus dans l'autre projet. Nettoyer les fichiers de compilation pendant une compilation l'arrête d'abord (sous Windows, ils ne pouvaient pas être supprimés).",
+            "Un fichier ouvert renommé garde ce qui y a été tapé ; les changements d'un autre programme sont vus dans un dossier ouvert par un lien (un dossier synchronisé) ; un studio fermé avant son aperçu ne compile rien.",
+            "Linux : un fichier seulement lu (par TeX, par la visionneuse, par RayTeX lui-même) n'est plus pris pour un fichier modifié. Chaque lecture était signalée comme un changement et relue : le PDF rechargé sans fin, un fichier dit modifié par un autre programme, le projet relu depuis le disque.",
+          ],
+        },
+        {
+          title: "Compilation",
+          items: [
+            "Le journal est vidé avant chaque passe : un moteur qui s'arrête avant de l'écrire (MiKTeX 26.5 sur certains préambules précompilés) ne montre plus les erreurs de la passe précédente. La passe est refaite sans le préambule, et l'arrêt est dit.",
+            "Biber qui s'arrête sans un mot (macOS vide la copie qu'il décompresse) est réparé par la compilation elle-même ; deux Biber ne se croisent plus ; un dossier avec des accents garde sa bibliographie.",
+            "Un PDF lu pendant que la compilation suivante l'écrit n'est pas montré : les pages restent telles qu'elles étaient jusqu'à ce qu'il soit entier, et aucune vignette n'est faite d'une moitié de PDF.",
+            "Windows, dossiers avec des accents : les noms de fichiers que TeX écrit dans la page de code du système sont lus tels qu'ils sont (du PDF vers le texte, l'export, un `.aux` importé).",
+          ],
+        },
+        {
+          title: "Vérifications et erreurs",
+          items: [
+            "Une faute signalée par LaTeX et par les vérifications en direct est montrée et comptée une fois ; la fenêtre des problèmes d'une ligne reste près de sa ligne, et son texte peut être copié.",
+            "Des documents côte à côte dans un dossier (feuilles d'exercices) sont vérifiés séparément : les étiquettes de l'un ne comptent plus dans l'autre.",
+            "Une classe ou un paquet pas encore installé (MiKTeX l'installe à la première compilation) n'est pas jugé sur ce qu'il définit ; les théorèmes de tcolorbox s'étiquettent eux-mêmes ; les images de mwe sont connues.",
+            "Les commandes du projet sont dessinées dans les aperçus des formules, tableaux et matrices (`\\DeclareMathOperator`, `\\DeclarePairedDelimiter`, un premier argument optionnel), depuis chaque fichier.",
+          ],
+        },
+        {
+          title: "Rapidité",
+          items: [
+            "La vérification du projet entier, après chaque enregistrement, en temps quasi linéaire : 400 fichiers en 0,04 s au lieu de 8,9 s ; la documentation de TeX Live ouverte comme un seul projet (6 447 documents) en 9 s au lieu de 366.",
+            "Les problèmes d'un fichier fusionnés en un temps qui croît avec leur nombre (3 000 problèmes : 1,4 ms au lieu de 56), et comptés une fois pour toute la fenêtre.",
+            "La correction orthographique d'un long fichier ne ralentit plus la frappe ; les images de l'écran d'accueil sont gardées d'une session à l'autre et dessinées l'une après l'autre.",
+            "Au repos, rien ne tourne : aucune image, minuterie ou animation une fois le travail fini.",
+          ],
+        },
+        {
+          title: "Éditeur et studios",
+          items: [
+            "Un clic dans le texte après qu'il a perdu le focus le garde là où il était défilé (il revenait à l'ancien curseur et sélectionnait le texte jusque-là).",
+            "Les arbres de probabilités, les courbes de fonctions et les tableaux de variations écrivent leurs nombres à la française dès leur ouverture, dans un document en français.",
+            "Le tableau blanc TikZ dessine comme LaTeX dessine : un nœud de forme cercle est un cercle autour de son texte, et l'étiquette d'un lien reste hors de la ligne à chaque zoom.",
+            "L'aide nomme les menus et les panneaux comme la fenêtre les nomme.",
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: "0.6.0",
     date: "2026-10-17",
     en: {
