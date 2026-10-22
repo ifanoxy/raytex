@@ -26,7 +26,9 @@
 
   let tree = $state<Tree>(emptyTree());
   let edit = $state<TreeEdit | null>(null);
-  let source = $state("");
+  // The main document as it is open, at once (its language sets the decimal
+  // comma), then the root of the file once it is known.
+  let source = $state(editor.textOf(project.info?.main ?? "") ?? "");
   let advanced = $state(false);
   let inFigure = $state(false);
   let caption = $state("");
@@ -41,7 +43,7 @@
       tree = request.edit.tree;
     }
     const found = path ? await editor.rootSource(path) : null;
-    source = found?.text ?? "";
+    if (found) source = found.text;
   });
 
   /** Numbers written the French way in a French document. */

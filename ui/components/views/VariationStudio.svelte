@@ -24,7 +24,9 @@
 
   let table = $state<Table>(emptyTable());
   let edit = $state<VariationEdit | null>(null);
-  let source = $state("");
+  // The main document as it is open, at once (its language sets the decimal
+  // comma), then the root of the file once it is known.
+  let source = $state(editor.textOf(project.info?.main ?? "") ?? "");
   let advanced = $state(false);
   let inFigure = $state(false);
   let caption = $state("");
@@ -44,7 +46,7 @@
       table = request.edit.table;
     }
     const found = path ? await editor.rootSource(path) : null;
-    source = found?.text ?? "";
+    if (found) source = found.text;
   });
 
   const french = $derived(writesFrench(source));

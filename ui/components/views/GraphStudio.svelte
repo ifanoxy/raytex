@@ -45,7 +45,9 @@
   /** A picture of the document being changed (its chip). */
   let edit = $state<GraphEdit | null>(null);
   /** The text of the root (its preamble: packages, language). */
-  let source = $state("");
+  // The main document as it is open, at once (its language sets the decimal
+  // comma), then the root of the file once it is known.
+  let source = $state(editor.textOf(project.info?.main ?? "") ?? "");
   /** The item whose details are open, and the one whose colours are shown. */
   let open = $state<string | null>(null);
   let palette = $state<string | null>(null);
@@ -67,7 +69,7 @@
       open = first.id;
     }
     const found = path ? await editor.rootSource(path) : null;
-    source = found?.text ?? "";
+    if (found) source = found.text;
   });
 
   const french = $derived(writesFrench(source));
