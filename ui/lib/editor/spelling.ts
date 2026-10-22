@@ -39,6 +39,12 @@ const TEXT = new Set(["heading", "comment", "strong", "emphasis"]);
 const isCode = (name: string) => name.split(/[_ ]/).some((part) => CODE.has(part));
 const isText = (name: string) => !isCode(name) && name.split(/[_ ]/).some((part) => TEXT.has(part));
 
+/** Up to this length the whole text is read again at each change (a few
+ *  milliseconds); a longer one, once typing pauses (a book in one file took
+ *  a tenth of a second a key). */
+const READ_AT_ONCE = 100_000;
+const READ_AFTER_MS = 400;
+
 const misspelled = (dictionary: string) => Decoration.mark({ class: "cm-misspelled", attributes: { "data-dictionary": dictionary } });
 
 /** A misspelled word on the screen. */
@@ -55,6 +61,7 @@ class Spelling {
   private args: Stretch[] = [];
   private passages: (Stretch & { lang: string })[] = [];
   private alive = true;
+  private reading: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private view: EditorView,
@@ -65,13 +72,35 @@ class Spelling {
   }
 
   update(update: ViewUpdate) {
-    if (update.docChanged) this.read();
+    if (update.docChanged) {
+      if (update.state.doc.length <= READ_AT_ONCE) this.read();
+      else {
+        // Moved with the change meanwhile.
+        const moved = <T extends Stretch>(list: T[]) =>
+          list.map((s) => ({ ...s, from: update.changes.mapPos(s.from, 1), to: update.changes.mapPos(s.to, -1) })).filter((s) => s.from < s.to);
+        this.regions = moved(this.regions);
+        this.args = moved(this.args);
+        this.passages = moved(this.passages);
+        this.readSoon();
+      }
+    }
     const asked = update.transactions.some((tr) => tr.effects.some((e) => e.is(recheck)));
     if (asked || update.docChanged || update.viewportChanged || syntaxTree(update.startState) !== syntaxTree(update.state)) this.decorations = this.build();
   }
 
   destroy() {
     this.alive = false;
+    if (this.reading) clearTimeout(this.reading);
+  }
+
+  private readSoon() {
+    if (this.reading) clearTimeout(this.reading);
+    this.reading = setTimeout(() => {
+      this.reading = null;
+      if (!this.alive) return;
+      this.read();
+      this.view.dispatch({ effects: recheck.of(null) });
+    }, READ_AFTER_MS);
   }
 
   /** The regions of code and the passages in another language, for the whole document. */
