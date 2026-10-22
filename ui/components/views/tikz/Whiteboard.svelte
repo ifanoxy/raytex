@@ -751,6 +751,23 @@
 
   /** The size of each text on the board, in pixels: a link stops at its border. */
   const nodeSize = $state<Record<string, { w: number; h: number }>>({});
+  /** The size of the text of each circle, which the circle goes around as TikZ draws it. */
+  const labelSize = $state<Record<string, { w: number; h: number }>>({});
+  function measuredLabel(el: HTMLElement, id: string) {
+    const read = () => {
+      const size = { w: el.offsetWidth, h: el.offsetHeight };
+      if (labelSize[id]?.w !== size.w || labelSize[id]?.h !== size.h) labelSize[id] = size;
+    };
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return { destroy: () => ro.disconnect() };
+  }
+  /** The diameter of a circle around its text and its inner space, for a text of `size` pixels. */
+  function diameter(id: string, size: number): string | undefined {
+    const l = labelSize[id];
+    return l ? `${Math.hypot(l.w + 0.5 * size, l.h + 0.25 * size)}px` : undefined;
+  }
   function measured(el: HTMLElement, id: string) {
     const read = () => {
       const size = { w: el.offsetWidth, h: el.offsetHeight };
@@ -810,10 +827,11 @@
   }
 
   /** Where the text of a link is written, from the middle of its line. */
-  function labelOffset(position: string): { dx: number; dy: number; anchor: "start" | "middle" | "end" } {
+  /** Where the label of a link goes from the middle of the link, for a text of `size` pixels (it follows the zoom). */
+  function labelOffset(position: string, size: number): { dx: number; dy: number; anchor: "start" | "middle" | "end" } {
     return {
-      dx: position.includes("left") ? -7 : position.includes("right") ? 7 : 0,
-      dy: position.includes("above") ? -9 : position.includes("below") ? 17 : 4,
+      dx: position.includes("left") ? -0.3 * size : position.includes("right") ? 0.3 * size : 0,
+      dy: position.includes("above") ? -0.35 * size : position.includes("below") ? 1.05 * size : 0.35 * size,
       anchor: position.includes("left") ? "end" : position.includes("right") ? "start" : "middle",
     };
   }
@@ -902,7 +920,7 @@
                 {/if}
               {/if}
               {#if s.label}
-                {@const place = labelOffset(s.labelPosition)}
+                {@const place = labelOffset(s.labelPosition, 0.3528 * scale)}
                 <text class="link-label" x={line.mid.x + place.dx} y={line.mid.y + place.dy} text-anchor={place.anchor} font-size={0.3528 * scale}>{s.label.replace(/[$\\{}]/g, "")}</text>
               {/if}
               <path class="hit" d={line.d} />
@@ -1006,6 +1024,7 @@
           class:linkable={tool === "link"}
           class:boxed={s.boxed}
           class:round={s.shape === "circle" || s.shape === "ellipse"}
+          class:circle={s.shape === "circle"}
           data-id={s.id}
           use:measured={s.id}
           style:left="{c.x}px"
@@ -1016,12 +1035,18 @@
           style:background={s.style.fill ? css(s.style.fill, "transparent") : "transparent"}
           style:border-color={css(s.style.stroke, "#111")}
           style:border-radius={s.style.rounded ? "0.3em" : undefined}
+          style:width={s.shape === "circle" ? diameter(s.id, size) : undefined}
+          style:height={s.shape === "circle" ? diameter(s.id, size) : undefined}
           onpointerdown={pointerDown}
           onpointermove={pointerMove}
           onpointerup={pointerUp}
           ondblclick={doubleClick}
         >
-          {@html nodeHtml[s.text] ?? escapeHtml(s.text)}
+          {#if s.shape === "circle"}
+            <span use:measuredLabel={s.id}>{@html nodeHtml[s.text] ?? escapeHtml(s.text)}</span>
+          {:else}
+            {@html nodeHtml[s.text] ?? escapeHtml(s.text)}
+          {/if}
         </div>
       {/if}
     {/each}
@@ -1215,6 +1240,14 @@
   }
   .node.round {
     border-radius: 50%;
+  }
+  /* As TikZ draws it: around its text (its size set from the text). */
+  .node.circle {
+    padding: 0;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .node.sel {
     outline: 2px solid color-mix(in srgb, var(--accent) 90%, transparent);
