@@ -2403,6 +2403,38 @@ async function fixesScenes(log: (msg: string) => void, dir: string): Promise<boo
  * keeps the text where it is; the window of the problems of a line stays by
  * its line when the problems are given again, and its text can be chosen.
  */
+/** What runs while nothing happens: animations without end (but those the
+ *  system draws by itself: the cursor, the dot of live mode), frames and
+ *  timers asked for. */
+async function atRest(): Promise<string[]> {
+  (document.activeElement as HTMLElement | null)?.blur();
+  await build.idle();
+  // Short pulses end, pending timers fire.
+  await pause(8000);
+  const drawnBySystem = /^cm-blink2?$|(^|-)pulse$/;
+  const running = document
+    .getAnimations()
+    .filter((a) => a.playState === "running")
+    .map((a) => (a as CSSAnimation).animationName ?? "animation of a script")
+    .filter((name) => !drawnBySystem.test(name));
+  const asked: string[] = [];
+  const count = (what: string) => asked.push(`${what} ${(new Error().stack ?? "").split("\n").slice(2, 4).map((l) => l.trim()).join(" < ")}`);
+  const raf = window.requestAnimationFrame;
+  const timeout = window.setTimeout;
+  const interval = window.setInterval;
+  window.requestAnimationFrame = (cb) => (count("frame"), raf(cb));
+  window.setTimeout = ((fn: TimerHandler, ms?: number, ...rest: unknown[]) => (count(`timeout ${ms ?? 0}`), timeout(fn, ms, ...rest))) as typeof setTimeout;
+  window.setInterval = ((fn: TimerHandler, ms?: number, ...rest: unknown[]) => (count(`interval ${ms ?? 0}`), interval(fn, ms, ...rest))) as typeof setInterval;
+  try {
+    await new Promise((r) => timeout(r, 3000));
+  } finally {
+    window.requestAnimationFrame = raf;
+    window.setTimeout = timeout;
+    window.setInterval = interval;
+  }
+  return [...running.map((n) => `animation ${n}`), ...asked];
+}
+
 async function editorScenes(log: (msg: string) => void, dir: string): Promise<boolean> {
   const scene = async (name: string, holdMs = 1500) => {
     await pause(500);
@@ -2660,6 +2692,10 @@ async function editorScenes(log: (msg: string) => void, dir: string): Promise<bo
     await pause(500);
     const said = diagnostics.grouped.flatMap((g) => g.items).filter((d) => d.severity === "error" || d.severity === "warning");
     check("a document made from a template: nothing to say", said.length === 0, said.map((d) => `${d.source}:${d.code} ${d.message}`).join(" | "));
+
+    // ------------------------------------- at rest, nothing runs
+    const running = await atRest();
+    check("at rest, nothing runs (no frame, timer or animation asked for)", running.length === 0, running.slice(0, 6).join(" | "));
   } catch (e) {
     results.failure = String(e);
   }
