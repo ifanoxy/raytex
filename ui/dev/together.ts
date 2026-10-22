@@ -192,6 +192,23 @@ export async function togetherScenes(log: (msg: string) => void, dir: string): P
     const addedLeft = await ipc.pathExists(`${rootA}/nouveau.tex`);
     check("history: everything put back (a file changed, one deleted; one added left)", mainBack && annexeBack && addedLeft && !failedToast, { changes, mainBack, annexeBack, addedLeft, failedToast });
     ui.closeOverlay();
+
+    // ------------------------------- two saves of a file at once
+    // (the automatic one and the one before a build): the long text of the
+    // first takes longer to reach the disk than the short one that follows.
+    const notes = `${rootA}/notes.txt`;
+    await ipc.createFile(notes, "Début.\n");
+    await editor.open(notes);
+    await until(() => samePath(editor.active, notes) && !!editor.view, 5_000, "notes open");
+    view().dispatch({ changes: { from: 0, to: text().length, insert: "Une ligne de notes assez longue.\n".repeat(150_000) } });
+    const firstSave = editor.save(notes, { silent: true });
+    view().dispatch({ changes: { from: 0, to: text().length, insert: "Court.\n" } });
+    const secondSave = editor.save(notes, { silent: true });
+    await Promise.all([firstSave, secondSave]);
+    const onDisk = (await ipc.readTextFile(notes)).text;
+    const notesTab = editor.tabs.find((x) => samePath(x.path, notes));
+    check("two saves at once: the last text on the disk, the tab saved", onDisk === "Court.\n" && !notesTab?.dirty, { disk: onDisk.length, tab: text().length, dirty: notesTab?.dirty });
+    await editor.close(notes, { force: true });
   } catch (e) {
     results.failure = String(e);
   } finally {

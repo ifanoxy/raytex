@@ -100,6 +100,8 @@ interface DocModel {
   modified: number;
   /** What RayTeX wrote to the file lately: the watcher reports those writes too. */
   written: Written[];
+  /** The save under way, the next one waits for it. */
+  saving?: Promise<void>;
   lossy: boolean;
   readOnly: boolean;
   scroll: StateEffect<unknown> | null;
@@ -925,7 +927,25 @@ class EditorStore {
   async save(path = this.active, opts: { silent?: boolean; auto?: boolean } = {}): Promise<boolean> {
     const m = this.model(path);
     if (!m || m.readOnly) return false;
-    const state = this.stateOf(m.path)!;
+    // One save of a file at a time, the next one writing the text of its
+    // moment: two at once (the automatic one, the one before a build) could
+    // reach the disk in the other order, the older text last while the tab
+    // said it was saved, and the build compiled what had been taken out.
+    const before = m.saving;
+    let done = () => {};
+    m.saving = new Promise<void>((resolve) => (done = resolve));
+    try {
+      await before;
+      return await this.write(m, opts);
+    } finally {
+      done();
+    }
+  }
+
+  private async write(m: DocModel, opts: { silent?: boolean; auto?: boolean }): Promise<boolean> {
+    // Closed while the save before it went on.
+    const state = this.stateOf(m.path);
+    if (!state) return false;
     const doc = state.doc;
     if (doc === m.saved && !this.tabs.find((t) => samePath(t.path, m.path))?.missing) {
       if (!opts.auto) this.afterSave(m.path, opts);
