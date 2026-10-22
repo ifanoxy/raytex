@@ -5,6 +5,7 @@
 //! an automatic fix. The rules aim at catching real mistakes early and at
 //! teaching good practice to beginners, without noise for experts.
 
+use std::cell::OnceCell;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -19,7 +20,7 @@ use crate::log::hints::levenshtein;
 use crate::syntax::{IncludeKind, Problem, ProblemKind, context::comment_start};
 use crate::tex::{Engine, TexmfIndex};
 use crate::text::Span;
-use crate::workspace::{DocKind, Document, Workspace};
+use crate::workspace::{CitationItem, DocKind, Document, LabelItem, Workspace};
 
 /// Options of a lint run.
 #[derive(Debug, Clone, Default)]
@@ -68,8 +69,90 @@ struct Linter<'a> {
     doc: &'a Document,
     root: PathBuf,
     opts: &'a LintOptions<'a>,
+    /// What is read of the whole project, shared by the files checked together.
+    facts: &'a ProjectFacts,
     out: Vec<Diagnostic>,
     excluded: Vec<Span>,
+}
+
+/// What the checks of a file read of its whole project (its labels, its
+/// citations, its packages, its definitions), worked out on first use and
+/// shared by all the files of a project checked together: checking every
+/// file no longer reads the whole project once per file.
+#[derive(Default)]
+struct ProjectFacts {
+    labels: OnceCell<Vec<LabelItem>>,
+    label_names: OnceCell<HashSet<String>>,
+    label_counts: OnceCell<HashMap<String, usize>>,
+    citations: OnceCell<Vec<CitationItem>>,
+    citation_keys: OnceCell<HashSet<String>>,
+    has_bibliography: OnceCell<bool>,
+    loaded: OnceCell<(Option<String>, Vec<String>)>,
+    defined: OnceCell<(HashSet<String>, HashSet<String>)>,
+}
+
+impl ProjectFacts {
+    fn labels(&self, ws: &Workspace, root: &Path) -> &[LabelItem] {
+        self.labels.get_or_init(|| ws.labels(root))
+    }
+
+    fn label_names(&self, ws: &Workspace, root: &Path) -> &HashSet<String> {
+        self.label_names.get_or_init(|| {
+            self.labels(ws, root)
+                .iter()
+                .map(|l| l.name.clone())
+                .collect()
+        })
+    }
+
+    fn label_counts(&self, ws: &Workspace, root: &Path) -> &HashMap<String, usize> {
+        self.label_counts.get_or_init(|| {
+            let mut counts = HashMap::new();
+            for l in self.labels(ws, root) {
+                *counts.entry(l.name.clone()).or_default() += 1;
+            }
+            counts
+        })
+    }
+
+    fn citations(&self, ws: &Workspace, root: &Path) -> &[CitationItem] {
+        self.citations.get_or_init(|| ws.citations(root))
+    }
+
+    fn citation_keys(&self, ws: &Workspace, root: &Path) -> &HashSet<String> {
+        self.citation_keys.get_or_init(|| {
+            self.citations(ws, root)
+                .iter()
+                .map(|c| c.summary.key.clone())
+                .collect()
+        })
+    }
+
+    fn has_bibliography(&self, ws: &Workspace, root: &Path) -> bool {
+        *self
+            .has_bibliography
+            .get_or_init(|| !self.citations(ws, root).is_empty() || !ws.bib_files(root).is_empty())
+    }
+
+    fn loaded(&self, ws: &Workspace, root: &Path) -> &(Option<String>, Vec<String>) {
+        self.loaded.get_or_init(|| ws.loaded_packages(root))
+    }
+
+    /// The commands and the environments the project defines.
+    fn defined(&self, ws: &Workspace, root: &Path) -> &(HashSet<String>, HashSet<String>) {
+        self.defined.get_or_init(|| {
+            (
+                ws.command_definitions(root)
+                    .into_iter()
+                    .map(|(d, _)| d.name.clone())
+                    .collect(),
+                ws.environment_definitions(root)
+                    .into_iter()
+                    .map(|(d, _)| d.name.clone())
+                    .collect(),
+            )
+        })
+    }
 }
 
 /// The structural problems of a text (braces, formulas, environments) as
@@ -87,6 +170,7 @@ pub(crate) fn structure(path: &Path, text: &str, lang: Lang) -> Vec<Diagnostic> 
         doc: &doc,
         root: path.to_path_buf(),
         opts: &opts,
+        facts: &ProjectFacts::default(),
         out: Vec::new(),
         excluded: Vec::new(),
     };
@@ -96,14 +180,42 @@ pub(crate) fn structure(path: &Path, text: &str, lang: Lang) -> Vec<Diagnostic> 
 
 /// Lints `file` in the context of its project.
 pub fn lint(ws: &Workspace, file: &Path, opts: &LintOptions<'_>) -> Vec<Diagnostic> {
+    lint_with(ws, file, ws.root_for(file), opts, &ProjectFacts::default())
+}
+
+/// The problems of every file in `files`, what is read of a project read
+/// once for all its files (`opts`: the options of a file and its root).
+pub fn lint_files<'o>(
+    ws: &Workspace,
+    files: &[PathBuf],
+    opts: impl Fn(&Path, &Path) -> LintOptions<'o>,
+) -> Vec<Diagnostic> {
+    let mut facts: HashMap<PathBuf, ProjectFacts> = HashMap::new();
+    let mut out = Vec::new();
+    for (f, root) in files.iter().zip(ws.roots_for(files)) {
+        let opts = opts(f, &root);
+        let shared = facts.entry(root.clone()).or_default();
+        out.extend(lint_with(ws, f, root, &opts, shared));
+    }
+    out
+}
+
+fn lint_with(
+    ws: &Workspace,
+    file: &Path,
+    root: PathBuf,
+    opts: &LintOptions<'_>,
+    facts: &ProjectFacts,
+) -> Vec<Diagnostic> {
     let Some(doc) = ws.document(file) else {
         return Vec::new();
     };
     let mut l = Linter {
         ws,
         doc,
-        root: ws.root_for(file),
+        root,
         opts,
+        facts,
         out: Vec::new(),
         excluded: Vec::new(),
     };
@@ -730,8 +842,8 @@ impl Linter<'_> {
     // --------------------------------------------------------- references
 
     fn references(&mut self) {
-        let labels = self.ws.labels(&self.root);
-        let label_names: HashSet<&str> = labels.iter().map(|l| l.name.as_str()).collect();
+        let labels = self.facts.labels(self.ws, &self.root);
+        let label_names = self.facts.label_names(self.ws, &self.root);
         let aux_labels = self.ws.aux(&self.root).map(|a| &a.labels);
         let doc = self.doc;
         for r in &doc.index.references {
@@ -745,7 +857,7 @@ impl Linter<'_> {
                 self.t("Label non défini :", "Undefined label:"),
                 r.name
             );
-            let best = closest(&r.name, label_names.iter().copied());
+            let best = closest(&r.name, label_names.iter().map(String::as_str));
             let range = doc.range(&r.span);
             let fix_title = self.t("Remplacer par", "Replace with").to_owned();
             let d = self.push(
@@ -765,10 +877,7 @@ impl Linter<'_> {
         }
 
         // Duplicate labels (reported where defined in this file).
-        let mut counts: HashMap<&str, usize> = HashMap::new();
-        for l in &labels {
-            *counts.entry(l.name.as_str()).or_default() += 1;
-        }
+        let counts = self.facts.label_counts(self.ws, &self.root);
         for l in &doc.index.labels {
             if counts.get(l.name.as_str()).copied().unwrap_or(0) > 1 {
                 let msg = format!(
@@ -813,9 +922,8 @@ impl Linter<'_> {
         }
 
         // Citations.
-        let citations = self.ws.citations(&self.root);
-        let has_bibliography = !citations.is_empty() || !self.ws.bib_files(&self.root).is_empty();
-        let keys: HashSet<&str> = citations.iter().map(|c| c.summary.key.as_str()).collect();
+        let has_bibliography = self.facts.has_bibliography(self.ws, &self.root);
+        let keys = self.facts.citation_keys(self.ws, &self.root);
         for c in &doc.index.citations {
             if keys.contains(c.name.as_str()) || c.name == "*" {
                 continue;
@@ -840,7 +948,7 @@ impl Linter<'_> {
                     )
                 )
             };
-            let best = closest(&c.name, keys.iter().copied());
+            let best = closest(&c.name, keys.iter().map(String::as_str));
             let range = doc.range(&c.span);
             let fix_title = self.t("Remplacer par", "Replace with").to_owned();
             let d = self.push(
@@ -1017,7 +1125,7 @@ impl Linter<'_> {
 
     fn packages(&mut self) {
         let doc = self.doc;
-        let (class, packages) = self.ws.loaded_packages(&self.root);
+        let (class, packages) = self.facts.loaded(self.ws, &self.root).clone();
         let installed = self.opts.installed.filter(|i| !i.is_empty());
 
         // Missing packages and classes.
@@ -1385,18 +1493,8 @@ impl Linter<'_> {
         let kb = kb();
         let mut loaded = kb.loaded_closure(class, packages.iter().map(String::as_str));
         // Commands defined by the project itself.
-        let mut defined: HashSet<String> = self
-            .ws
-            .command_definitions(&self.root)
-            .into_iter()
-            .map(|(d, _)| d.name.clone())
-            .collect();
-        let mut defined_envs: HashSet<String> = self
-            .ws
-            .environment_definitions(&self.root)
-            .into_iter()
-            .map(|(d, _)| d.name.clone())
-            .collect();
+        let (defined, defined_envs) = self.facts.defined(self.ws, &self.root);
+        let (mut defined, mut defined_envs) = (defined.clone(), defined_envs.clone());
         let analyzer = self
             .ws
             .packages()
@@ -2128,6 +2226,46 @@ mod tests {
             .into_iter()
             .map(|d| (d.code.unwrap_or_default(), d.message))
             .collect()
+    }
+
+    /// A project of `n` chapters: labels, references (some broken, some
+    /// twice), citations, packages and definitions spread over its files.
+    fn spread_project(dir: &Path, n: usize) {
+        let mut main = String::from(
+            "\\documentclass{book}\n\\usepackage{amsmath}\n\\usepackage{cleveref}\n\\newcommand{\\R}{\\mathbb{R}}\n\\begin{document}\n",
+        );
+        for i in 0..n {
+            main.push_str(&format!("\\include{{ch{i}}}\n"));
+            let chapter = format!(
+                "\\chapter{{Chapitre {i}}}\\label{{ch:{i}}}\nVoir \\ref{{ch:{}}} et \\cref{{ch:{i}x}}, \\cite{{k{i}}}.\n\\label{{dup}}\n\\begin{{equation}}\\R\\end{{equation}}\n\\mycommand{i}\n",
+                (i + 1) % n
+            );
+            std::fs::write(dir.join(format!("ch{i}.tex")), chapter).unwrap();
+        }
+        main.push_str("\\bibliography{refs}\n\\end{document}\n");
+        std::fs::write(dir.join("main.tex"), main).unwrap();
+        std::fs::write(
+            dir.join("refs.bib"),
+            "@book{k0, title={T}}\n@book{k1, title={T}}\n",
+        )
+        .unwrap();
+    }
+
+    /// Checked together, the files of a project give what each gives
+    /// checked alone.
+    #[test]
+    fn files_checked_together_give_what_each_gives_alone() {
+        let dir = tempfile::tempdir().unwrap();
+        spread_project(dir.path(), 12);
+        let ws = Workspace::open(dir.path());
+        let opts = LintOptions::default();
+        let mut files: Vec<PathBuf> = ws.documents().map(|d| d.path.clone()).collect();
+        files.sort();
+        let each: Vec<_> = files.iter().flat_map(|f| lint(&ws, f, &opts)).collect();
+        let together = lint_files(&ws, &files, |_, _| LintOptions::default());
+        let says = |v: &[Diagnostic]| v.iter().map(|d| format!("{d:?}")).collect::<Vec<_>>();
+        assert!(each.len() > 30, "{:#?}", says(&each));
+        assert_eq!(says(&each), says(&together));
     }
 
     /// A theorem of tcolorbox labels itself `prefix:marker`, from another

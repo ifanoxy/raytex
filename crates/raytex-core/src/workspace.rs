@@ -2,6 +2,7 @@
 //! kept up to date with the editor, plus project-wide queries (root file,
 //! include graph, outline, labels, bibliography, definitions, search…).
 
+use std::cell::{OnceCell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -501,6 +502,17 @@ impl Workspace {
 
     /// The root document to compile when editing `file`.
     pub fn root_for(&self, file: &Path) -> PathBuf {
+        self.root_among(file, &Roots::default())
+    }
+
+    /// The root document of each of `files` (as [`Self::root_for`]), what
+    /// each root brings in worked out once for all of them.
+    pub fn roots_for(&self, files: &[PathBuf]) -> Vec<PathBuf> {
+        let known = Roots::default();
+        files.iter().map(|f| self.root_among(f, &known)).collect()
+    }
+
+    fn root_among(&self, file: &Path, known: &Roots) -> PathBuf {
         let file = normalize(file);
         if let Some(doc) = self.docs.get(&file) {
             // 1. Magic comment.
@@ -524,9 +536,9 @@ impl Workspace {
             }
         }
         // 3. The configured main file, if it includes this file.
-        let main = self.configured_main();
+        let main = known.main.get_or_init(|| self.configured_main()).clone();
         if let Some(main) = &main
-            && (main == &file || self.included_files(main).contains(&file))
+            && (main == &file || known.brings(self, main, &file))
         {
             return main.clone();
         }
@@ -539,14 +551,14 @@ impl Workspace {
             return file;
         }
         // 5. A root that includes it.
-        for candidate in self.root_candidates() {
-            if self.included_files(&candidate).contains(&file) {
-                return candidate;
+        let candidates = known.candidates.get_or_init(|| self.root_candidates());
+        for candidate in candidates {
+            if known.brings(self, candidate, &file) {
+                return candidate.clone();
             }
         }
         // 6. Main file, else best candidate, else the file.
-        main.or_else(|| self.root_candidates().into_iter().next())
-            .unwrap_or(file)
+        main.or_else(|| candidates.first().cloned()).unwrap_or(file)
     }
 
     /// Resolves the target of an include written in `from`, relative to `root`'s folder.
@@ -1079,6 +1091,26 @@ fn number_from_toc(items: &mut [OutlineItem], toc: &[crate::auxfile::TocEntry]) 
             item.number = Some(toc[*start + pos].number.clone());
             *start += pos + 1;
         }
+    }
+}
+
+/// What [`Workspace::root_for`] reads of the whole project, kept for the
+/// files whose roots are looked for together.
+#[derive(Default)]
+struct Roots {
+    main: OnceCell<Option<PathBuf>>,
+    candidates: OnceCell<Vec<PathBuf>>,
+    included: RefCell<HashMap<PathBuf, HashSet<PathBuf>>>,
+}
+
+impl Roots {
+    /// Whether the document of `root` brings `file` in.
+    fn brings(&self, ws: &Workspace, root: &Path, file: &Path) -> bool {
+        self.included
+            .borrow_mut()
+            .entry(root.to_path_buf())
+            .or_insert_with(|| ws.included_files(root).into_iter().collect())
+            .contains(file)
     }
 }
 

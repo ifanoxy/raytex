@@ -1575,7 +1575,8 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     await pause(6000);
     const t1 = Date.now();
     check("build with the format", await buildOk(log, "with format"));
-    const usedFormat = build.output.some((l) => l.stream === "cmd" && l.text.includes("-fmt="));
+    // TeX Live is given `-fmt=`, MiKTeX `--undump=`.
+    const usedFormat = build.output.some((l) => l.stream === "cmd" && /-fmt=|--undump=/.test(l.text));
     results.formatBuildMs = `${Date.now() - t1} ms (format ${usedFormat ? "used" : "not used"})`;
     // MiKTeX uses them too, once it has made the format (its first time, in the background, can take longer).
     check("format used", usedFormat || tex.active?.kind === "miktex");

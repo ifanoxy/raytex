@@ -39,14 +39,13 @@ pub struct DocumentUpdate {
 fn lint_options<'a>(
     state: &AppState,
     ws: &Workspace,
-    file: &Path,
+    root: &Path,
     index: Option<&'a raytex_core::tex::TexmfIndex>,
 ) -> LintOptions<'a> {
     let settings = state.settings();
     let build = ws.config.effective_build(&settings.build);
-    let root = ws.root_for(file);
     let magic = ws
-        .document(&root)
+        .document(root)
         .and_then(|d| d.index.magic.program.as_deref().and_then(Engine::parse));
     let mut disabled: HashSet<String> = settings.lint.disabled_rules.iter().cloned().collect();
     disabled.extend(ws.config.lint.disabled_rules.iter().cloned());
@@ -77,7 +76,7 @@ pub async fn update_document(
         pr.ws.update(&p, text, version);
         let root = pr.ws.root_for(&p);
         let diagnostics = if enabled {
-            let opts = lint_options(state, &pr.ws, &p, index.as_deref());
+            let opts = lint_options(state, &pr.ws, &root, index.as_deref());
             lint::lint(&pr.ws, &p, &opts)
         } else {
             Vec::new()
@@ -112,14 +111,12 @@ pub async fn lint_project(app: AppHandle) -> CmdResult<Vec<Diagnostic>> {
         let Some(pr) = project.as_ref() else {
             return Vec::new();
         };
-        let mut out = Vec::new();
         let mut files: Vec<PathBuf> = pr.ws.documents().map(|d| d.path.clone()).collect();
         files.sort();
-        for f in files {
-            let opts = lint_options(state, &pr.ws, &f, index.as_deref());
-            out.extend(lint::lint(&pr.ws, &f, &opts));
-        }
-        out
+        // What is read of the whole project read once, not once per file.
+        lint::lint_files(&pr.ws, &files, |_, root| {
+            lint_options(state, &pr.ws, root, index.as_deref())
+        })
     })
     .await
 }
