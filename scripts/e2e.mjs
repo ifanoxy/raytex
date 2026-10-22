@@ -59,6 +59,9 @@ function screenshot(file) {
     spawnSync("powershell", ["-NoProfile", "-Command", ps], { stdio: "ignore" });
   } else if (process.platform === "darwin") {
     spawnSync("screencapture", ["-x", file], { stdio: "ignore" });
+  } else {
+    // Linux (under Xvfb on the CI): ImageMagick.
+    spawnSync("import", ["-window", "root", file], { stdio: "ignore" });
   }
 }
 

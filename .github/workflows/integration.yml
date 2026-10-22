@@ -119,6 +119,52 @@ jobs:
           path: e2e-output/
           retention-days: 14
 
+  # The application on Linux (WebKitGTK), in a screen of its own (Xvfb):
+  # the scenes, then the built application.
+  linux-app:
+    name: Application on Linux (end to end, TeX Live)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: TeX Live
+        uses: TeX-Live/setup-texlive-action@v4
+        with:
+          package-file: .github/texlive-packages.txt
+      - name: Fonts of LuaLaTeX
+        run: luaotfload-tool --update --force
+      - name: Linux dependencies of Tauri, a screen
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libgtk-3-dev xvfb imagemagick
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Scenes of the application
+        # No GPU on the runner: WebKitGTK draws without one.
+        env:
+          WEBKIT_DISABLE_DMABUF_RENDERER: 1
+        run: xvfb-run -a -s "-screen 0 1280x900x24" node scripts/e2e.mjs workflow fixes files projects media editor commands together
+      - name: Scenes of the built application
+        env:
+          WEBKIT_DISABLE_DMABUF_RENDERER: 1
+          E2E_BUILT: 1
+          E2E_OUT: e2e-output/built
+        run: xvfb-run -a -s "-screen 0 1280x900x24" node scripts/e2e.mjs workflow
+      - name: Logs and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-app-texlive
+          path: e2e-output/
+          retention-days: 14
+
   # Installers for Windows (MSI and NSIS), to download from the run.
   windows-installers:
     name: Windows installers
