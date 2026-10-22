@@ -789,6 +789,7 @@ impl Runner<'_, '_> {
             figures::link(self.plan);
         }
         let kept = auxiliary_files(&self.plan.out_dir);
+        self.clear_log();
         let code = self.step(name.clone(), self.engine_cmd());
         if self.cancelled() {
             for (path, data) in &kept {
@@ -821,8 +822,10 @@ impl Runner<'_, '_> {
             && !self.cancelled()
         {
             self.format = None;
+            self.clear_log();
             let code = self.step(name, self.engine_cmd());
-            let report = self.read_log();
+            let mut report = self.read_log();
+            self.explain_silent_failure(code, &mut report);
             if !report.fatal && self.plan.only.is_none() {
                 preamble::abandon(self.plan, key);
             }
@@ -940,6 +943,21 @@ impl Runner<'_, '_> {
         .with_code("biber-silent");
         d.raw = Some(self.last_output.join("\n"));
         d
+    }
+
+    /// Empties the log before a pass: an engine that stops at once (MiKTeX
+    /// that cannot load a precompiled preamble: "internal error") writes
+    /// none, and the log of the pass before, read in its place, gave its
+    /// errors for this one's (an error already corrected, and the pass not
+    /// redone without the preamble).
+    fn clear_log(&self) {
+        if let Ok(f) = std::fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(&self.plan.log)
+        {
+            drop(f);
+        }
     }
 
     fn read_log(&self) -> LogReport {
@@ -2238,6 +2256,83 @@ mod tests {
                     .contains("undefinedmacro")
             );
         }
+    }
+
+    /// A precompiled preamble the engine cannot load (MiKTeX stops on some
+    /// with "internal error", before it writes its log): the pass is done
+    /// again without it and the format is put aside; the log of the pass
+    /// before, with an error corrected since, is not taken for this one's.
+    #[test]
+    #[ignore = "depends on the local TeX installation"]
+    fn a_format_the_engine_cannot_load_is_put_aside() {
+        let Some(dist) = crate::tex::detect(&[]).into_iter().next() else {
+            println!("no TeX distribution: nothing checked");
+            return;
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let root = crate::log::normalize(&dunce::canonicalize(dir.path()).unwrap().join("doc.tex"));
+        let text = "\\documentclass{article}\n\\begin{document}\nTexte.\n\\end{document}\n";
+        std::fs::write(&root, text).unwrap();
+        let settings = BuildSettings {
+            out_dir: "build".to_owned(),
+            precompile_preamble: true,
+            ..BuildSettings::default()
+        };
+        let plan = plan(
+            &root,
+            &settings,
+            Some(&dist),
+            &DocumentFacts::default(),
+            Lang::En,
+        )
+        .unwrap();
+        // A format that is not one, and the log of a pass before.
+        let key = preamble::key(
+            &plan,
+            &settings,
+            &dist,
+            &preamble::preamble_of(text).unwrap(),
+        );
+        let format = preamble::format_base(&plan, key).with_extension("fmt");
+        std::fs::create_dir_all(format.parent().unwrap()).unwrap();
+        std::fs::write(&format, b"not a format").unwrap();
+        std::fs::write(
+            &plan.log,
+            format!(
+                "{}:3: Undefined control sequence.\nl.3 $\\alp\n                $\n",
+                root.display()
+            ),
+        )
+        .unwrap();
+        let cancel = AtomicBool::new(false);
+        let source = |p: &Path| std::fs::read_to_string(p).ok();
+        let ctx = RunContext {
+            dist: &dist,
+            settings: &settings,
+            cancel: &cancel,
+            lang: Lang::En,
+            source: &source,
+            packages: None,
+            background: false,
+            live: false,
+        };
+        assert!(preamble::ready(&plan, key).is_some());
+        let outcome = run(&plan, &ctx, &mut |_: BuildEvent| {});
+        let errors: Vec<_> = outcome
+            .diagnostics
+            .iter()
+            .filter(|d| d.severity == Severity::Error)
+            .map(|d| &d.message)
+            .collect();
+        assert!(
+            outcome.success && errors.is_empty(),
+            "{errors:?} {:?}",
+            outcome.steps
+        );
+        assert!(
+            preamble::ready(&plan, key).is_none(),
+            "the format is put aside"
+        );
     }
 
     /// A version of the root (the answer key of an exam) written in the
