@@ -501,7 +501,10 @@ fn refine(d: &mut Diagnostic, text: &str, lines: &LineIndex) {
         }
         return;
     }
-    let line = (d.line.unwrap() - 1) as usize;
+    // (A line 0, which TeX may give for what it read before the file, is none.)
+    let Some(line) = d.line.and_then(|l| l.checked_sub(1)).map(|l| l as usize) else {
+        return;
+    };
     if line >= lines.line_count() {
         return;
     }

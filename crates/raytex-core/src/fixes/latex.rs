@@ -897,7 +897,7 @@ pub(crate) fn relocate(d: &mut Diagnostic, s: &mut Sources<'_>) {
                     .as_ref()
                     .map_or(src.line_count() - 1, |e| src.line_of(e.start));
                 // With a title, the file starts with a line for it.
-                for candidate in [begin + line - 1, begin + line] {
+                for candidate in [(begin + line).saturating_sub(1), begin + line] {
                     if candidate > last {
                         continue;
                     }
@@ -5113,7 +5113,7 @@ fn bib_comma(d: &mut Diagnostic, s: &mut Sources<'_>, lang: Lang) -> Vec<Fix> {
     if !d.message.contains("expecting a `,'") && !d.message.contains("syntax error") {
         return Vec::new();
     }
-    let line = line as usize - 1;
+    let line = (line as usize).saturating_sub(1);
     for l in (0..line.min(src.line_count())).rev() {
         let (span, text) = src.line(l);
         let content = text.trim_end();

@@ -382,3 +382,160 @@ fn every_file_of_the_distribution_has_its_errors_explained() {
     assert!(found > all.len() * 10, "the logs are read");
     assert!(panics.is_empty() && faults.is_empty() && slow.is_empty());
 }
+
+/// The pictures of the distribution (and the same cut in half, as a file
+/// broken in transit) converted and made lighter, and the texts read as the
+/// files of a build, of the history and of an export are: nothing stops.
+#[test]
+#[ignore = "reads the whole distribution"]
+fn every_picture_and_text_of_the_distribution_is_handled() {
+    use raytex_core::images::{Compression, compress, svg_to_pdf};
+
+    let Some(filter) = std::env::var_os("RAYTEX_CORPUS") else {
+        println!("RAYTEX_CORPUS is not set: nothing read");
+        return;
+    };
+    let filter = filter.to_string_lossy().into_owned();
+    let Some(dist) = raytex_core::tex::detect(&[]).into_iter().next() else {
+        return;
+    };
+    let Some(root) = [
+        dist.bin_dir.join("../../texmf-dist"),
+        dist.bin_dir.join("../../../texmf-dist"),
+        dist.bin_dir.join("../../.."),
+    ]
+    .into_iter()
+    .find(|p| p.join("tex").is_dir()) else {
+        return;
+    };
+    fn all(dir: &Path, exts: &[&str], out: &mut Vec<PathBuf>) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                all(&path, exts, out);
+            } else if path
+                .extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|e| exts.contains(&e.to_ascii_lowercase().as_str()))
+            {
+                out.push(path);
+            }
+        }
+    }
+    let mut paths = Vec::new();
+    all(&root, &["svg", "png", "jpg", "jpeg", "tex"], &mut paths);
+    paths.retain(|p| filter == "1" || p.to_string_lossy().contains(&filter));
+    paths.sort();
+    if std::env::var_os("RAYTEX_CORPUS_LOUD").is_none() {
+        std::panic::set_hook(Box::new(|_| {}));
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let (mut panics, mut slow) = (Vec::new(), Vec::new());
+    let started = Instant::now();
+    for path in &paths {
+        let Ok(bytes) = std::fs::read(path) else {
+            continue;
+        };
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        for (variant, data) in [
+            ("", bytes.clone()),
+            (" (cut in half)", bytes[..bytes.len() / 2].to_vec()),
+        ] {
+            let t = Instant::now();
+            let done = catch_unwind(AssertUnwindSafe(|| match ext.as_str() {
+                "svg" => {
+                    let _ = svg_to_pdf(&data);
+                }
+                "png" | "jpg" | "jpeg" => {
+                    let _ = compress(&data, Compression::BALANCED, false);
+                    let _ = compress(&data, Compression::LIGHT, true);
+                }
+                _ => {
+                    let text = String::from_utf8_lossy(&data).into_owned();
+                    let _ = raytex_core::export::strip_comments(&text);
+                    let other = text.replace('{', "{語");
+                    let _ = raytex_core::history::diff(&text, &other);
+                    let aux = dir.path().join("main.aux");
+                    std::fs::write(&aux, &data).unwrap();
+                    let _ = raytex_core::auxfile::read(dir.path(), &aux);
+                    let _ = raytex_core::synctex::SyncTex::parse(std::io::BufReader::new(
+                        data.as_slice(),
+                    ));
+                }
+            }));
+            if let Err(e) = done {
+                let why = e
+                    .downcast_ref::<String>()
+                    .cloned()
+                    .or_else(|| e.downcast_ref::<&str>().map(|s| (*s).to_owned()))
+                    .unwrap_or_default();
+                panics.push(format!("{}{variant}: {why}", path.display()));
+            }
+            if t.elapsed() > Duration::from_secs(5) {
+                slow.push(format!("{:?} {}{variant}", t.elapsed(), path.display()));
+            }
+        }
+    }
+    let _ = std::panic::take_hook();
+    for s in slow.iter().take(20) {
+        println!("slow: {s}");
+    }
+    for p in panics.iter().take(40) {
+        println!("panic: {p}");
+    }
+    println!(
+        "{} files in {:?}: {} panics, {} slow",
+        paths.len(),
+        started.elapsed(),
+        panics.len(),
+        slow.len()
+    );
+    assert!(panics.is_empty() && slow.is_empty());
+}
+
+/// A huge folder opened by mistake as a project (the documentation of the
+/// distribution: thousands of documents): opened and checked whole in a
+/// reasonable time.
+#[test]
+#[ignore = "reads the whole distribution"]
+fn a_huge_folder_opens_as_a_project() {
+    if std::env::var_os("RAYTEX_CORPUS").is_none() {
+        println!("RAYTEX_CORPUS is not set: nothing read");
+        return;
+    }
+    let Some(dist) = raytex_core::tex::detect(&[]).into_iter().next() else {
+        return;
+    };
+    let Some(root) = [
+        dist.bin_dir.join("../../texmf-dist"),
+        dist.bin_dir.join("../../../texmf-dist"),
+    ]
+    .into_iter()
+    .find(|p| p.join("doc").is_dir()) else {
+        return;
+    };
+    let sub = std::env::var("RAYTEX_CORPUS_DIR").unwrap_or_else(|_| "doc".into());
+    let Ok(doc) = root.join(sub).canonicalize() else {
+        return;
+    };
+    let t = Instant::now();
+    let ws = Workspace::open(&doc);
+    let opened = t.elapsed();
+    let files: Vec<PathBuf> = ws.documents().map(|d| d.path.clone()).collect();
+    let t = Instant::now();
+    let found = lint::lint_files(&ws, &files, |_, _| LintOptions::default());
+    let checked = t.elapsed();
+    println!(
+        "{} documents opened in {opened:?}, checked in {checked:?} ({} problems)",
+        files.len(),
+        found.len()
+    );
+    assert!(opened < Duration::from_secs(60) && checked < Duration::from_secs(60));
+}
