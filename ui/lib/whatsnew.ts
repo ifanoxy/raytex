@@ -63,7 +63,8 @@ export const NOTES: VersionNotes[] = [
             "The log is emptied before each pass: an engine that stops before writing it (MiKTeX 26.5 on some precompiled preambles) no longer shows the errors of the pass before. The pass is done again without the preamble, and the stop is said.",
             "Biber stopping without a word (macOS empties the copy it unpacks) is repaired by the build itself; two Biber runs no longer meet; a folder with accents keeps its bibliography.",
             "A PDF read while the next build writes it is not shown: the pages stay as they were until it is whole, and no thumbnail is made from half of it.",
-            "Windows, folders with accents: the names of files TeX writes in the code page of the system are read as they are (from the PDF back to the text, the export, an `.aux` brought in).",
+            "Windows, folders with accents: the names of files TeX writes in the code page of the system are read as they are (from the PDF back to the text, the export, an `.aux` brought in, the errors of BibTeX, the files a build read).",
+            "The log as MiKTeX writes it, its lines cut at 79: put back together with XeLaTeX (it counts letters, not bytes) and LuaLaTeX too, and a letter cut in two by pdfLaTeX read whole; a file whose folder has spaces is known as the one read. In a folder with accents or spaces, a problem was said in another file, or without its line.",
           ],
         },
         {
@@ -122,7 +123,8 @@ export const NOTES: VersionNotes[] = [
             "Le journal est vidé avant chaque passe : un moteur qui s'arrête avant de l'écrire (MiKTeX 26.5 sur certains préambules précompilés) ne montre plus les erreurs de la passe précédente. La passe est refaite sans le préambule, et l'arrêt est dit.",
             "Biber qui s'arrête sans un mot (macOS vide la copie qu'il décompresse) est réparé par la compilation elle-même ; deux Biber ne se croisent plus ; un dossier avec des accents garde sa bibliographie.",
             "Un PDF lu pendant que la compilation suivante l'écrit n'est pas montré : les pages restent telles qu'elles étaient jusqu'à ce qu'il soit entier, et aucune vignette n'est faite d'une moitié de PDF.",
-            "Windows, dossiers avec des accents : les noms de fichiers que TeX écrit dans la page de code du système sont lus tels qu'ils sont (du PDF vers le texte, l'export, un `.aux` importé).",
+            "Windows, dossiers avec des accents : les noms de fichiers que TeX écrit dans la page de code du système sont lus tels qu'ils sont (du PDF vers le texte, l'export, un `.aux` importé, les erreurs de BibTeX, les fichiers lus par une compilation).",
+            "Le journal tel que MiKTeX l'écrit, ses lignes coupées à 79 : recollé avec XeLaTeX (qui compte les lettres, pas les octets) et LuaLaTeX aussi, et une lettre coupée en deux par pdfLaTeX lue entière ; un fichier dont le dossier a des espaces est reconnu comme celui qui est lu. Dans un dossier avec des accents ou des espaces, un problème était signalé dans un autre fichier, ou sans sa ligne.",
           ],
         },
         {

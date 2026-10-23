@@ -513,7 +513,7 @@ pub fn run(
     // Bibliography logs.
     let blg = plan.out_dir.join(format!("{}.blg", plan.job));
     if let Some(tool) = r.ran_bib
-        && let Ok(text) = std::fs::read_to_string(&blg)
+        && let Ok(text) = std::fs::read(&blg).map(|b| crate::text::decode_log(&b))
     {
         let mut d = match tool {
             BibTool::Biber => bibtex::parse_biber(&text, &plan.root_dir),
@@ -896,7 +896,9 @@ impl Runner<'_, '_> {
             return false;
         }
         let blg = self.plan.out_dir.join(format!("{}.blg", self.plan.job));
-        let log = std::fs::read_to_string(blg).unwrap_or_default();
+        let log = std::fs::read(blg)
+            .map(|b| crate::text::decode_log(&b))
+            .unwrap_or_default();
         !log.contains("ERROR - ") && !log.contains("FATAL")
     }
 
@@ -1106,7 +1108,9 @@ impl Runner<'_, '_> {
             Some(BibTool::Bibtex) => {
                 let aux = plan.out_dir.join(format!("{}.aux", plan.job));
                 let bbl = plan.out_dir.join(format!("{}.bbl", plan.job));
-                let text = std::fs::read_to_string(&aux).unwrap_or_default();
+                let text = std::fs::read(&aux)
+                    .map(|b| crate::text::decode_log(&b))
+                    .unwrap_or_default();
                 let relevant: String = text
                     .lines()
                     .filter(|l| {
@@ -1333,7 +1337,9 @@ impl Runner<'_, '_> {
                         || report.undefined_citations && state.bcf.is_none())
             }
             Some(BibTool::Bibtex) => {
-                let text = std::fs::read_to_string(file("aux")).unwrap_or_default();
+                let text = std::fs::read(file("aux"))
+                    .map(|b| crate::text::decode_log(&b))
+                    .unwrap_or_default();
                 let relevant: String = text
                     .lines()
                     .filter(|l| {
@@ -1521,7 +1527,10 @@ fn place_in_root(
 /// The files of the project the last pass of `plan` read, by its record
 /// (`.fls`), in the form of the root folder; not those of the output folder.
 fn project_inputs(plan: &BuildPlan) -> Option<std::collections::BTreeSet<PathBuf>> {
-    let fls = std::fs::read_to_string(plan.out_dir.join(format!("{}.fls", plan.job))).ok()?;
+    // Names in the code page of the system on Windows (a folder "Thèse"): read as TeX wrote them.
+    let fls = crate::text::decode_log(
+        &std::fs::read(plan.out_dir.join(format!("{}.fls", plan.job))).ok()?,
+    );
     let roots: Vec<PathBuf> = [
         Some(plan.root_dir.clone()),
         dunce::canonicalize(&plan.root_dir).ok(),

@@ -141,6 +141,40 @@ pub fn utf16_to_byte(s: &str, units: usize) -> usize {
     s.len()
 }
 
+/// `bytes` starting with the first bytes of a letter, the end of a line,
+/// then the rest of that letter: the letter, the end of line, and the
+/// number of bytes they took.
+fn cut_letter(bytes: &[u8]) -> Option<(char, &'static str, usize)> {
+    let need = match bytes.first()? {
+        0xC2..=0xDF => 2,
+        0xE0..=0xEF => 3,
+        0xF0..=0xF4 => 4,
+        _ => return None,
+    };
+    let is_rest = |b: &u8| (0x80..=0xBF).contains(b);
+    // The bytes of the letter before the end of the line.
+    let before = 1 + bytes[1..]
+        .iter()
+        .take(need - 1)
+        .take_while(|b| is_rest(b))
+        .count();
+    if before == need {
+        return None;
+    }
+    let newline = if bytes[before..].starts_with(b"\r\n") {
+        "\r\n"
+    } else if bytes[before..].starts_with(b"\n") {
+        "\n"
+    } else {
+        return None;
+    };
+    let after = before + newline.len();
+    let tail = bytes.get(after..after + need - before)?;
+    let joined = [&bytes[..before], tail].concat();
+    let letter = std::str::from_utf8(&joined).ok()?.chars().next()?;
+    Some((letter, newline, after + tail.len()))
+}
+
 /// A text written by TeX (its log, its record of the files, SyncTeX): UTF-8,
 /// where a byte that is not (a character of an 8-bit font, written as it is:
 /// "There is no É in font cmr10"; the name of a file on Windows, in its code
@@ -157,6 +191,15 @@ pub fn decode_log(bytes: &[u8]) -> String {
             Err(e) => {
                 let (valid, after) = rest.split_at(e.valid_up_to());
                 out.push_str(&String::from_utf8_lossy(valid));
+                // A letter of several bytes cut by the end of a line of the
+                // log (pdfTeX cuts its lines at 79 bytes): whole, at the start
+                // of the next line, where LuaTeX puts it.
+                if let Some((letter, newline, used)) = cut_letter(after) {
+                    out.push_str(newline);
+                    out.push(letter);
+                    rest = &after[used..];
+                    continue;
+                }
                 let bad = e.error_len().unwrap_or(after.len()).max(1);
                 // What is not UTF-8 is the code page of Windows (TeX there
                 // writes the names of files so: a folder "Thèse").
@@ -232,6 +275,18 @@ mod tests {
             decode_log("Mes thèses/cœur.tex".as_bytes()),
             "Mes thèses/cœur.tex"
         );
+    }
+
+    #[test]
+    fn a_letter_cut_by_the_end_of_a_line_is_read_whole() {
+        // pdfTeX cuts the lines of its log at 79 bytes, in the middle of a
+        // letter of several bytes: the letter goes whole to the next line.
+        assert_eq!(decode_log(b"Th\xc3\n\xa8se.tex"), "Th\nèse.tex");
+        assert_eq!(decode_log(b"un \xe2\x80\r\n\x94 tiret"), "un \r\n— tiret");
+        assert_eq!(decode_log(b"\xf0\x9f\n\x93\x84 doc"), "\n📄 doc");
+        // Not a letter cut: as before.
+        assert_eq!(decode_log(b"th\xe8\nse"), "thè\nse");
+        assert_eq!(decode_log(b"fin \xc3\n"), "fin Ã\n");
     }
 
     #[test]

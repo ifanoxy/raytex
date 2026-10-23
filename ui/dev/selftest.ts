@@ -36,6 +36,7 @@ import { answerKey } from "../lib/state/answerkey.svelte";
 import { bringPicture } from "../lib/state/pictures";
 import { colors } from "../lib/state/colors.svelte";
 import { fonts } from "../lib/state/fonts.svelte";
+import { fontCommand } from "../lib/fonts";
 import { history } from "../lib/state/history.svelte";
 import { searchStore } from "../lib/state/search.svelte";
 import { spelling } from "../lib/state/spelling.svelte";
@@ -1634,7 +1635,13 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     await scene("font-menu", 1500);
     document.querySelector<HTMLButtonElement>(".font-menu .add")!.click();
     await until(() => document.querySelectorAll(".list .font").length > 20, 20_000, "system fonts");
-    clickText(".list .font", "Georgia");
+    // Georgia, or a serif font the system has when it has not that one (Linux).
+    const systemFonts = [...document.querySelectorAll<HTMLElement>(".list .font")];
+    const nameOf = (b: HTMLElement) => b.querySelector(".sample")?.textContent?.trim() ?? "";
+    const picked = ["Georgia", "DejaVu Serif", "Liberation Serif", "Noto Serif"].find((n) => systemFonts.some((b) => nameOf(b) === n)) ?? nameOf(systemFonts.find((b) => !/Latin Modern/.test(nameOf(b)))!);
+    systemFonts.find((b) => nameOf(b) === picked)!.click();
+    const pickedCommand = fontCommand(picked);
+    log(`font chosen: ${picked} (\\${pickedCommand})`);
     await pause(1500);
     check("role for a passage", !!document.querySelector(".roles .role.active")?.textContent?.match(/passage/i));
     await scene("font-dialog", 1500);
@@ -1642,9 +1649,9 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     await until(() => ui.overlay === null, 20_000, "font applied");
     await pause(500);
     const withFont = editor.textOf(main) ?? "";
-    check("extra font defined and applied", withFont.includes("\\newfontfamily\\fontGeorgia") && withFont.includes(`{\\fontGeorgia ${summary}`), withFont.slice(0, 300));
+    check("extra font defined and applied", withFont.includes(`\\newfontfamily\\${pickedCommand}`) && withFont.includes(`{\\${pickedCommand} ${summary}`), withFont.slice(0, 300));
     await fonts.refresh();
-    check("extra font listed", !!fonts.current?.extra.some((e) => e.command === "fontGeorgia"));
+    check("extra font listed", !!fonts.current?.extra.some((e) => e.command === pickedCommand));
     check("font build (LuaLaTeX)", await buildOk(log, "fonts"));
 
     // ------------------------------------------------- what is new
@@ -2067,7 +2074,10 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     await until(() => deckNow().includes("\\note{Annoncer les deux parties}"), 10_000, "slide noted");
     // Up to the second place: its thumbnail dragged there.
     await dragTo(document.querySelector<HTMLElement>(`.slides-mode .thumb[data-index="${slideNames().indexOf("Plan de l'exposé")}"]`)!, () => document.querySelector<HTMLElement>('.slides-mode .thumb-slot[data-drop="slide:1"]')!);
-    await until(() => slideNames()[1] === "Plan de l'exposé", 10_000, "slide moved up");
+    await until(() => slideNames()[1] === "Plan de l'exposé", 10_000, "slide moved up").catch((e) => {
+      log(`slide not moved: ${slideNames().join(" | ")}, building ${build.running}`);
+      throw e;
+    });
     check(
       "slides mode: slides added, copied, titled, noted, moved by dragging",
       (deckNow().match(/\\begin\{frame\}/g)?.length ?? 0) === first + 2 && deckNow().indexOf("Plan de l'exposé") < deckNow().indexOf("\\begin{columns}"),
@@ -3197,12 +3207,23 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
       card.querySelector<HTMLButtonElement>("button.text.strong")!.click();
       await pause(150);
       const replaced = view.state.doc.toString();
-      searchField.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      // Where the key went (development and self-test: said when the card stays).
+      const reached: string[] = [];
+      const seen = (where: string) => (e: Event) => reached.push(`${where}${e.defaultPrevented ? " (prevented)" : ""}`);
+      const watchers: [EventTarget, string, (e: Event) => void, boolean][] = [
+        [window, "window capture", seen("window capture"), true],
+        [card, "card", seen("card"), false],
+        [card.parentElement ?? card, "panel", seen("panel"), false],
+        [window, "window", seen("window"), false],
+      ];
+      for (const [target, , fn, capture] of watchers) target.addEventListener("keydown", fn, capture);
+      const notPrevented = searchField.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      for (const [target, , fn, capture] of watchers) target.removeEventListener("keydown", fn, capture);
       // The card is taken away with the panel of the editor: it can take a moment on a busy machine.
       const closed = await until(() => !document.querySelector(".lbt-find"), 2_000, "card closed").then(() => true, () => false);
       if (!closed) {
         const active = document.activeElement;
-        log(`find card still open: ${document.querySelectorAll(".lbt-find").length} card(s), field ${searchField.isConnected ? "in the page" : "taken away"}, panel ${searchPanelOpen(view.state) ? "open" : "closed"}, focus ${active?.tagName}.${active?.className}, menu ${!!ui.menu}, overlay ${ui.overlay}, dialog ${!!ui.dialog}, top menu ${!!document.querySelector(".menubar .open, .menubar [aria-expanded=true]")}`);
+        log(`find card still open: ${document.querySelectorAll(".lbt-find").length} card(s), field ${searchField.isConnected ? "in the page" : "taken away"}, panel ${searchPanelOpen(view.state) ? "open" : "closed"}, focus ${active?.tagName}.${active?.className}, menu ${!!ui.menu}, overlay ${ui.overlay}, dialog ${!!ui.dialog}, top menu ${!!document.querySelector(".menubar .open, .menubar [aria-expanded=true]")}, key ${notPrevented ? "not taken" : "taken"}, went through ${reached.join(" > ")}`);
       }
       log(`find: «${all}» then whole word «${words}», «${replaced.trim()}», closed ${closed}`);
       check("find and replace in the file", all === "1 sur 3" || all === "1 of 3", all);

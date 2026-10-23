@@ -891,7 +891,9 @@ pub fn draw(
     let log = std::fs::read(run.join(format!("{}.log", plan.job)))
         .map(|b| crate::text::decode_log(&b))
         .unwrap_or_default();
-    let aux = std::fs::read_to_string(run.join(format!("{}.aux", plan.job))).unwrap_or_default();
+    let aux = std::fs::read(run.join(format!("{}.aux", plan.job)))
+        .map(|b| crate::text::decode_log(&b))
+        .unwrap_or_default();
     let pdf = run.join(format!("{}.pdf", plan.job));
 
     let _guard = STORE.lock().unwrap_or_else(|e| e.into_inner());

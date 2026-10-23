@@ -798,12 +798,14 @@ mod tests {
                         .collect::<Vec<_>>()
                 );
                 if format {
-                    let log = std::fs::read_to_string(&record_plan.log).unwrap_or_default();
+                    let log = crate::text::decode_log(
+                        &std::fs::read(&record_plan.log).unwrap_or_default(),
+                    );
                     assert!(
-                        log.lines()
-                            .next()
-                            .unwrap_or_default()
-                            .contains("preloaded format=main-"),
+                        // The first line, put back together when TeX cut it (MiKTeX).
+                        crate::log::unwrap_lines(&log)
+                            .first()
+                            .is_some_and(|l| l.contains("preloaded format=main-")),
                         "{}",
                         log.lines().next().unwrap_or_default()
                     );
@@ -872,13 +874,14 @@ mod tests {
                     aux.contains(&format!("\\newlabel{{{label}}}{{{number_and_page}}}")),
                     "{engine:?} {name}: {in_whole} in\n{aux}"
                 );
-                let log = std::fs::read_to_string(&only_plan.log).unwrap_or_default();
+                let log =
+                    crate::text::decode_log(&std::fs::read(&only_plan.log).unwrap_or_default());
                 if format {
                     assert!(
-                        log.lines()
-                            .next()
-                            .unwrap_or_default()
-                            .contains("preloaded format=main-"),
+                        // The first line, put back together when TeX cut it (MiKTeX).
+                        crate::log::unwrap_lines(&log)
+                            .first()
+                            .is_some_and(|l| l.contains("preloaded format=main-")),
                         "{}",
                         log.lines().next().unwrap_or_default()
                     );

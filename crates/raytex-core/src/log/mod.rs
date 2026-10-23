@@ -84,18 +84,63 @@ fn is_help_line(line: &str) -> bool {
         || line.starts_with("Enter file name")
 }
 
+/// The width at which TeX cuts the lines of its log when `max_print_line`
+/// was not raised (MiKTeX does not read it).
+const LOG_WIDTH: usize = 79;
+
+/// Whether TeX cut `line` there, the rest of it on `next`: pdfTeX and LuaTeX
+/// count bytes, XeTeX letters, and LuaTeX carries a letter of several bytes
+/// that does not fit whole to the next line (an error or its context line
+/// is never cut so).
+fn cut_by_tex(line: &str, next: Option<&str>) -> bool {
+    if line.starts_with('!') || line.starts_with("l.") || next.is_some_and(starts_message) {
+        return false;
+    }
+    line.len() == LOG_WIDTH
+        || line.chars().count() == LOG_WIDTH
+        || (line.len() < LOG_WIDTH
+            && next
+                .and_then(|n| n.chars().next())
+                .is_some_and(|c| !c.is_ascii() && line.len() + c.len_utf8() >= LOG_WIDTH))
+}
+
+/// Whether `line` starts a message of its own: TeX begins those on a new
+/// line, and a line before that has 79 bytes by chance (the end of the
+/// list of fonts of LuaLaTeX) was not cut.
+fn starts_message(line: &str) -> bool {
+    const STARTS: [&str; 13] = [
+        "! ",
+        "LaTeX Warning",
+        "LaTeX Font Warning",
+        "LaTeX Info",
+        "Package ",
+        "Class ",
+        "Output written on ",
+        "Overfull \\",
+        "Underfull \\",
+        "No file ",
+        "Here is how much",
+        "PDF statistics",
+        "Transcript written",
+    ];
+    STARTS.iter().any(|s| line.starts_with(s))
+        || FILE_LINE_ERROR
+            .captures(line)
+            .is_some_and(|m| m[1].starts_with("./"))
+}
+
 /// Joins lines that TeX wrapped at 79 characters (when `max_print_line` was not raised).
 pub fn unwrap_lines(log: &str) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     let mut pending = false;
-    for line in log.lines() {
+    let mut lines = log.lines().peekable();
+    while let Some(line) = lines.next() {
         if pending && let Some(last) = out.last_mut() {
             last.push_str(line);
         } else {
             out.push(line.to_owned());
         }
-        // A line of exactly 79 bytes was probably wrapped (unless it is an error/context line).
-        pending = line.len() == 79 && !line.starts_with('!') && !line.starts_with("l.");
+        pending = cut_by_tex(line, lines.peek().copied());
     }
     out
 }
@@ -103,7 +148,8 @@ pub fn unwrap_lines(log: &str) -> Vec<String> {
 /// Parses a TeX log. `root_dir` is the directory the engine ran in; paths in
 /// the log are resolved against it. `main_file` is used when no file is known.
 pub fn parse_log(log: &str, root_dir: &Path, main_file: &Path, lang: Lang) -> LogReport {
-    let wrapped = log.lines().any(|l| l.len() == 79);
+    let mut next = log.lines().skip(1);
+    let wrapped = log.lines().any(|l| cut_by_tex(l, next.next()));
     let lines: Vec<String> = if wrapped {
         unwrap_lines(log)
     } else {
@@ -277,7 +323,12 @@ impl Parser<'_> {
             match bytes[i] {
                 b'(' => {
                     let rest = &line[i + 1..];
-                    let (token, len) = file_token(rest);
+                    let (mut token, mut len) = file_token(rest);
+                    if !self.is_file_name(token)
+                        && let Some(spaced) = self.spaced_file(rest)
+                    {
+                        (token, len) = (spaced, spaced.len());
+                    }
                     if !token.is_empty() && self.is_file_name(token) {
                         let path = self.resolve(token);
                         self.stack.push(Frame::File(path));
@@ -293,6 +344,22 @@ impl Parser<'_> {
             }
             i += 1;
         }
+    }
+
+    /// A file whose name has spaces, which pdfTeX and XeTeX write without
+    /// quotes (`(./mes chapitres/un.tex`, `(C:/Program Files/…/article.cls`):
+    /// the longest stretch up to a space, before any parenthesis, that names
+    /// a file of the disk.
+    fn spaced_file<'l>(&self, rest: &'l str) -> Option<&'l str> {
+        let stretch = &rest[..rest.find(['(', ')']).unwrap_or(rest.len())];
+        let ends = stretch
+            .match_indices(' ')
+            .map(|(i, _)| i)
+            .chain([stretch.len()]);
+        let ends: Vec<usize> = ends.collect();
+        ends.into_iter().rev().map(|e| &stretch[..e]).find(|c| {
+            c.contains(' ') && Path::new(c).extension().is_some() && self.root_dir.join(c).is_file()
+        })
     }
 
     fn is_file_name(&self, token: &str) -> bool {
@@ -821,6 +888,93 @@ mod tests {
             errors.iter().map(|d| d.line.unwrap()).collect::<Vec<_>>(),
             [7, 9, 10, 10, 13, 15]
         );
+    }
+
+    #[test]
+    fn a_line_of_79_bytes_before_a_message_was_not_cut() {
+        // The list of fonts of LuaLaTeX ends on 79 bytes by chance.
+        let fonts = format!("<{}>", "f".repeat(77));
+        assert_eq!(fonts.len(), 79);
+        let log = format!(
+            "(./main.tex\nLaTeX Warning: Reference `x' on page 1 undefined on input line 3.\n\n)\n{fonts}\nOutput written on main.pdf (7 pages, 33528 bytes).\n"
+        );
+        let root = Path::new("/proj");
+        let r = parse_log(&log, root, &root.join("main.tex"), Lang::En);
+        assert_eq!(r.pages, Some(7));
+        let before = format!(
+            "(./main.tex\n{}\nLaTeX Warning: Reference `x' on page 1 undefined on input line 3.\n\n)\n",
+            "a".repeat(79)
+        );
+        let r = parse_log(&before, root, &root.join("main.tex"), Lang::En);
+        assert_eq!(r.diagnostics.len(), 1, "{:?}", r.diagnostics);
+    }
+
+    #[test]
+    fn lines_cut_by_each_engine_are_put_back() {
+        // A folder with accents, in a log cut at 79 (MiKTeX does not read
+        // max_print_line): pdfTeX cuts at 79 bytes (in a letter too), LuaTeX
+        // too but carries a letter that does not fit, XeTeX at 79 letters.
+        // The «é» of «période» comes where the lines are cut.
+        let file = "./chapitres/éèàùç éèàùç éèàùç éèàùç éèàùç/une sous-période au nom encore plus long/détail.tex";
+        let error = format!("{file}:1: Undefined control sequence.");
+        let cut = |text: &str, engine: &str| -> Vec<u8> {
+            let mut out = Vec::new();
+            let mut width = 0;
+            for c in text.chars() {
+                let mut buf = [0; 4];
+                let bytes = c.encode_utf8(&mut buf).as_bytes();
+                match engine {
+                    "pdftex" => {
+                        for b in bytes {
+                            if width == 79 {
+                                out.push(b'\n');
+                                width = 0;
+                            }
+                            out.push(*b);
+                            width += 1;
+                        }
+                        continue;
+                    }
+                    "luatex"
+                        if width + bytes.len() > 79
+                            || (bytes.len() > 1 && width + bytes.len() >= 79) =>
+                    {
+                        out.push(b'\n');
+                        width = 0;
+                    }
+                    "xetex" if width == 79 => {
+                        out.push(b'\n');
+                        width = 0;
+                    }
+                    _ => {}
+                }
+                out.extend_from_slice(bytes);
+                width += if engine == "xetex" { 1 } else { bytes.len() };
+            }
+            out
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let read = root.join(&file[2..]);
+        std::fs::create_dir_all(read.parent().unwrap()).unwrap();
+        std::fs::write(&read, "Texte \\undefinedcommand.\n").unwrap();
+        for engine in ["pdftex", "luatex", "xetex"] {
+            let mut log = b"This is TeX\n(./main.tex\n".to_vec();
+            log.extend(cut(&format!("({file}"), engine));
+            log.push(b'\n');
+            log.extend(cut(&error, engine));
+            log.extend_from_slice(b"\nl.1 Texte \\undefinedcommand\n                          .\nThe control sequence at the end of the top line\n\nLaTeX Warning: Reference `x' on page 1 undefined on input line 1.\n\n)\n)\nOutput written on main.pdf (7 pages, 12017 bytes).\n");
+            let text = crate::text::decode_log(&log);
+            let r = parse_log(&text, root, &root.join("main.tex"), Lang::En);
+            assert_eq!(r.pages, Some(7), "{engine}");
+            assert_eq!(r.error_count(), 1, "{engine}: {:?}", r.diagnostics);
+            // The error names its file; the warning is in the file read.
+            for d in &r.diagnostics {
+                assert_eq!(d.file, Some(root.join(&file[2..])), "{engine}: {d:?}");
+                assert_eq!(d.line, Some(1), "{engine}");
+            }
+            assert_eq!(r.diagnostics.len(), 2, "{engine}: {:?}", r.diagnostics);
+        }
     }
 
     #[test]
