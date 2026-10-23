@@ -43,6 +43,8 @@
   const matrix = $derived(g.kind !== "table");
   const cases = $derived(g.kind === "cases");
   const code = $derived(gridToLatex(trimmed(g), "", request?.unit ?? "\t"));
+  /** What is written: a brace with what comes before it on its line (`f(x) =`). */
+  const written = $derived(cases && lead.trim() ? `${lead.trim()} ${code}` : code);
 
   const DELIMITERS = [
     { env: "pmatrix", glyph: "( )" },
@@ -79,8 +81,7 @@
   $effect(() => {
     const token = ++previewToken;
     const shown = trimmed($state.snapshot(g) as Grid);
-    // A brace with what comes before it (`f(x) =`), as it will be written.
-    const source = cases && lead.trim() ? `${lead.trim()} ${code}` : code;
+    const source = written;
     const render = matrix ? displayHtml(source.replace(/\\begin\{(\w+)\*\}\[[^\]]*\]/, "\\begin{$1}").replace(/\\end\{(\w+)\*\}/, "\\end{$1}"), path) : tableHtml(shown);
     void render.then((html) => {
       if (token === previewToken) preview = html;
@@ -342,7 +343,7 @@
       <div class="preview" class:table={!matrix} class:booktabs={!matrix && g.style === "booktabs"} class:lines={!matrix && g.style === "lines"} class:head={!matrix && g.header && g.style !== "lines"} aria-label={t("grid.preview")}>
         {@html preview}
       </div>
-      <pre class="code selectable" aria-label={t("grid.code")}>{code}</pre>
+      <pre class="code selectable" aria-label={t("grid.code")}>{written}</pre>
     </div>
 
     <footer>

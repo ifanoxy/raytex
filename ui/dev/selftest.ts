@@ -1499,6 +1499,7 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
     before.value = "f(x) =";
     before.dispatchEvent(new Event("input", { bubbles: true }));
     await pause(300);
+    await scene("brace", 1200);
     [...document.querySelectorAll<HTMLButtonElement>(".grid-editor footer .btn.primary")][0].click();
     await until(() => !document.querySelector(".grid-editor"), 5_000, "brace inserted");
     await pause(600);
