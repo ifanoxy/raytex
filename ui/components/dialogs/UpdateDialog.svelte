@@ -17,8 +17,11 @@
   let expanded = $state(false);
   const megabytes = (n: number) => (n / 1_048_576).toFixed(1);
 
+  // Escape is taken only while the window is shown (not while a new look is under way).
+  const open = $derived(!!offer && updates.phase !== "idle" && updates.phase !== "checking");
+
   function key(e: KeyboardEvent) {
-    if (!offer || busy) return;
+    if (!open || busy) return;
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
@@ -29,7 +32,7 @@
 
 <svelte:window onkeydowncapture={key} />
 
-{#if offer && updates.phase !== "idle" && updates.phase !== "checking"}
+{#if open && offer}
   <div class="overlay" role="presentation">
     <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="update-title">
       <div class="head">

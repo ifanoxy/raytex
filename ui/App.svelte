@@ -90,6 +90,8 @@
     (async () => {
       try {
         await app.init();
+        // A first start opened with a file is still a first start.
+        whatsNew.noteStart();
         await Promise.all([tex.init(), build.init(), project.init()]);
         viewer.setDefaultZoom(app.settings?.viewer.defaultZoom);
         await editor.reconfigure();

@@ -9,6 +9,13 @@ class WhatsNewStore {
   /** The version whose news are shown; null when the window is closed. */
   shown = $state<VersionNotes | null>(null);
   private waiting: (() => void)[] = [];
+  /** Whether RayTeX was used here before this start, read before anything is opened. */
+  private usedBefore: boolean | null = null;
+
+  /** At start, before a file or the last project is opened (opening one makes it known). */
+  noteStart() {
+    this.usedBefore = usedHere();
+  }
 
   /** The versions before the one shown, for those who skipped some. */
   get earlier(): VersionNotes[] {
@@ -25,7 +32,7 @@ class WhatsNewStore {
     if (!current || !app.settings) return;
     const seen = app.settings.updates?.seenVersion ?? null;
     if (seen === current) return;
-    const known = !!app.session?.lastProject || (app.session?.recent.length ?? 0) > 0;
+    const known = this.usedBefore ?? usedHere();
     const tell = tellsAtStart(current, seen, known);
     await app.update((s) => {
       s.updates = { ...s.updates, checkAtStartup: s.updates?.checkAtStartup ?? true, skippedVersion: s.updates?.skippedVersion ?? null, seenVersion: current };
@@ -47,6 +54,11 @@ class WhatsNewStore {
   closed(): Promise<void> {
     return this.shown ? new Promise((done) => this.waiting.push(done)) : Promise.resolve();
   }
+}
+
+/** A project was opened here before (an installation that has seen an older version). */
+function usedHere(): boolean {
+  return !!app.session?.lastProject || (app.session?.recent.length ?? 0) > 0;
 }
 
 export const whatsNew = new WhatsNewStore();

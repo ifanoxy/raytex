@@ -44,6 +44,8 @@ import { templates } from "../lib/state/templates.svelte";
 import { ui } from "../lib/state/ui.svelte";
 import { viewer } from "../lib/state/viewer.svelte";
 import { whatsNew } from "../lib/state/whatsnew.svelte";
+import { updates } from "../lib/state/updates.svelte";
+import { bibliography } from "../lib/state/bibliography.svelte";
 import { readTitlePage } from "../lib/titlepage";
 import { basename, samePath } from "../lib/utils";
 import { mark, shown, since } from "./toasts";
@@ -3217,13 +3219,26 @@ async function filesScenes(log: (msg: string) => void, dir: string): Promise<boo
         [window, "window", seen("window"), false],
       ];
       for (const [target, , fn, capture] of watchers) target.addEventListener("keydown", fn, capture);
-      const notPrevented = searchField.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      // Who takes the key, and what was open at that moment.
+      const preventDefault = Event.prototype.preventDefault;
+      let takenBy = "";
+      Event.prototype.preventDefault = function (this: Event) {
+        if (!takenBy) takenBy = (new Error().stack ?? "").split("\n").slice(1, 4).map((l) => l.trim()).join(" < ");
+        return preventDefault.call(this);
+      };
+      const openThen = `dialog ${!!ui.dialog}, update ${updates.phase}/${!!updates.offer}, news ${!!whatsNew.shown}, entry ${!!bibliography.editing}, overlay ${ui.overlay}, menu ${!!ui.menu}`;
+      let notPrevented: boolean;
+      try {
+        notPrevented = searchField.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      } finally {
+        Event.prototype.preventDefault = preventDefault;
+      }
       for (const [target, , fn, capture] of watchers) target.removeEventListener("keydown", fn, capture);
       // The card is taken away with the panel of the editor: it can take a moment on a busy machine.
       const closed = await until(() => !document.querySelector(".lbt-find"), 2_000, "card closed").then(() => true, () => false);
       if (!closed) {
         const active = document.activeElement;
-        log(`find card still open: ${document.querySelectorAll(".lbt-find").length} card(s), field ${searchField.isConnected ? "in the page" : "taken away"}, panel ${searchPanelOpen(view.state) ? "open" : "closed"}, focus ${active?.tagName}.${active?.className}, menu ${!!ui.menu}, overlay ${ui.overlay}, dialog ${!!ui.dialog}, top menu ${!!document.querySelector(".menubar .open, .menubar [aria-expanded=true]")}, key ${notPrevented ? "not taken" : "taken"}, went through ${reached.join(" > ")}`);
+        log(`find card still open: ${document.querySelectorAll(".lbt-find").length} card(s), field ${searchField.isConnected ? "in the page" : "taken away"}, panel ${searchPanelOpen(view.state) ? "open" : "closed"}, focus ${active?.tagName}.${active?.className}, menu ${!!ui.menu}, overlay ${ui.overlay}, dialog ${!!ui.dialog}, top menu ${!!document.querySelector(".menubar .open, .menubar [aria-expanded=true]")}, key ${notPrevented ? "not taken" : "taken"}, went through ${reached.join(" > ")}, taken by ${takenBy}, open then: ${openThen}`);
       }
       log(`find: «${all}» then whole word «${words}», «${replaced.trim()}», closed ${closed}`);
       check("find and replace in the file", all === "1 sur 3" || all === "1 of 3", all);
