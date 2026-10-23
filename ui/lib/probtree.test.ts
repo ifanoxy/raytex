@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { addLevel, branchProbs, complement, contrary, emptyTree, node, parseProb, pathProduct, probLatex, readTree, rows, sameEvents, type Tree, treeCode, wrongSum } from "./probtree.ts";
+import { addLevel, branchProbs, complement, contrary, emptyTree, headerFrom, node, parseProb, pathProduct, probLatex, readTree, rows, sameEvents, type Tree, treeCode, wrongSum } from "./probtree.ts";
 
 /** P(A) = 0,3, P_A(B) = 0,4, P_Ā(B) = 0,5: the textbook tree. */
 function textbook(): Tree {
@@ -114,4 +114,20 @@ test("editing: a level more, the same events everywhere, the contrary", () => {
   assert.equal(contrary("\\overline{A}"), "A");
   // Three levels spread so that nothing overlaps.
   assert.ok(treeCode(t, true).includes("level 1/.style={sibling distance=4.8cm}, level 2/.style={sibling distance=2.4cm}, level 3/.style={sibling distance=1.2cm}"));
+});
+
+test("a tree written over takes its line above it along (it was written twice)", () => {
+  const text = "Texte.\n\t% Arbre de probabilités (RayTeX)\n\t\\begin{tikzpicture}[grow'=right]\n\t\\end{tikzpicture}\n";
+  const begin = text.indexOf("\\begin");
+  assert.equal(headerFrom(text, begin), text.indexOf("% Arbre"));
+  const english = text.replace("Arbre de probabilités", "Probability tree");
+  assert.equal(headerFrom(english, english.indexOf("\\begin")), english.indexOf("% Probability"));
+  // Without it, or with other text before the picture: where the picture starts.
+  const bare = "Texte.\n\\begin{tikzpicture}\n";
+  assert.equal(headerFrom(bare, bare.indexOf("\\begin")), bare.indexOf("\\begin"));
+  assert.equal(headerFrom("\\begin{tikzpicture}", 0), 0);
+  // The comment follows the language of the document, the numbers the way chosen.
+  const t = textbook();
+  assert.match(treeCode(t, false, true), /^% Arbre de probabilités \(RayTeX\)\n/);
+  assert.match(treeCode(t, false, true), /\$0\.3\$/);
 });

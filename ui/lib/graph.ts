@@ -7,6 +7,7 @@
 // by the studio is read back and opened again.
 
 import { derivative, evaluate, type Expr, formatNumber, isConstant, toLatex, toPgf, tryParse } from "./mathexpr.ts";
+import { conventionOf } from "./numbers.ts";
 
 export type LineStyle = "solid" | "dashed" | "dotted";
 export type Width = "thin" | "thick" | "very thick";
@@ -425,9 +426,9 @@ export function needs(g: Graph): { packages: string[]; libraries: string[] } {
   return { packages: ["pgfplots"], libraries: g.areas.some((a) => a.and) ? ["fillbetween"] : [] };
 }
 
-/** The French way: a comma in numbers. */
+/** The French way: a comma in numbers (as the document asks, else as its language goes). */
 export function writesFrench(source: string): boolean {
-  return /\\usepackage\s*\[[^\]]*\bfrench\b[^\]]*\]\s*\{babel\}|\\set(?:default|main)language\s*(?:\[[^\]]*\])?\s*\{french\}|\\usepackage\s*\{french\}/.test(source);
+  return conventionOf(source) === "french";
 }
 
 /** The pgfplots picture of the graph. */
@@ -455,7 +456,8 @@ export function graphCode(g: Graph, comma = false): string {
   const span = y1 - y0;
   options.push(`samples=200, unbounded coords=jump, restrict y to domain=${n(y0 - 5 * span)}:${n(y1 + 5 * span)}`);
   if (legend) options.push(g.axes.legend === "outer north east" ? "legend pos=outer north east" : `legend pos=${g.axes.legend}`);
-  if (comma) options.push("/pgf/number format/use comma");
+  // A thousand is 1 000 the French way (`use comma` alone puts a point there).
+  if (comma) options.push("/pgf/number format/use comma", "/pgf/number format/1000 sep={\\,}");
   options.push(...g.options);
 
   const lines: string[] = [];
@@ -881,6 +883,7 @@ function readAxis(g: Graph, options: string[]) {
       case "unbounded coords":
       case "restrict y to domain":
       case "/pgf/number format/use comma":
+      case "/pgf/number format/1000 sep":
         break;
       case "legend pos":
         g.axes.legend = (["north east", "north west", "south east", "south west", "outer north east"].includes(v) ? v : "north west") as Legend;

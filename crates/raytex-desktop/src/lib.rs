@@ -235,6 +235,7 @@ pub fn run() {
             commands::language::search,
             commands::language::word_count,
             commands::language::root_of,
+            commands::language::document_files,
             commands::build::build,
             commands::build::cancel_build,
             commands::build::build_plan,

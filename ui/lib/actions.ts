@@ -234,6 +234,7 @@ export const actions: Action[] = [
   { id: "insert.graph", title: "action.insertGraph", category: "insert", icon: "chart", when: hasTex, run: () => media.openGraph() },
   { id: "insert.variations", title: "action.insertVariations", category: "insert", icon: "variations", when: hasTex, run: () => media.openVariations() },
   { id: "insert.tree", title: "action.insertTree", category: "insert", icon: "tree", when: hasTex, run: () => media.openTree() },
+  { id: "format.numbers", title: "action.numbers", category: "edit", icon: "hash", when: hasTex, run: () => ui.openOverlay("numbers") },
   // Subject and answer key: the pieces, the switch, both PDFs.
   answerPiece("insert.exercise", "action.insertExercise", "exercise", "hash"),
   answerPiece("insert.solution", "action.insertSolution", "solution", "graduation"),

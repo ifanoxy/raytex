@@ -579,3 +579,23 @@ pub async fn root_of(app: AppHandle, path: String) -> CmdResult<Option<PathBuf>>
     })
     .await
 }
+
+/// The LaTeX files of the document `path` belongs to: its root first, then
+/// what the root brings in (`\input`, `\include`…), those on disk.
+#[tauri::command]
+pub async fn document_files(app: AppHandle, path: String) -> CmdResult<Vec<PathBuf>> {
+    let p = abs(&path);
+    blocking(&app, move |_, state| {
+        let project = state.project();
+        let Some(pr) = project.as_ref() else {
+            return vec![p];
+        };
+        let root = pr.ws.root_for(&p);
+        pr.ws
+            .included_files(&root)
+            .into_iter()
+            .filter(|f| f.extension().is_some_and(|e| e == "tex") && f.is_file())
+            .collect()
+    })
+    .await
+}

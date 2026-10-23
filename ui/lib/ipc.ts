@@ -209,6 +209,8 @@ export const search = (query: string, regex: boolean, caseSensitive: boolean, wh
   call<T.SearchMatch[]>("search", { query, regex, caseSensitive, wholeWord });
 export const wordCount = (path: string) => call<{ file: T.WordCount; project: T.WordCount } | null>("word_count", { path });
 export const rootOf = (path: string) => call<string | null>("root_of", { path });
+/** The LaTeX files of the document of `path`: its root first, then what it brings in. */
+export const documentFiles = (path: string) => call<string[]>("document_files", { path });
 
 // --------------------------------------------------------------- build
 /** Starts (or queues) a build; `manual`: asked for by the user (not live or on save). */

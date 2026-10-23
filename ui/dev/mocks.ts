@@ -969,6 +969,8 @@ export function installMocks() {
           return { file: { words: 84 }, project: { words: 1532 } };
         case "root_of":
           return p("main.tex");
+        case "document_files":
+          return [p("main.tex")];
         case "build":
           void simulateBuild(a.only ? String(a.path) : null);
           return null;

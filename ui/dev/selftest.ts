@@ -663,6 +663,45 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     ok = false;
   }
 
+  // --------------------------------------------------- number conventions
+  // The English way in a French document: the plot and the tree written
+  // again in the chapter, the choice on a line of the root; then back as
+  // the language goes (French), the line taken off.
+  try {
+    const root = project.info!.main!;
+    const opened = async () => {
+      void runAction("format.numbers");
+      await until(() => document.querySelector(".numbers")?.getAttribute("data-ready") === "yes", 10_000, "numbers window");
+    };
+    const pick = (way: string) => document.querySelector<HTMLInputElement>(`.numbers .choice[data-choice="${way}"] input`)!.click();
+    const apply = async () => {
+      document.querySelector<HTMLButtonElement>(".numbers .buttons .btn.primary")!.click();
+      await until(() => ui.overlay === null, 10_000, "numbers applied");
+    };
+    await opened();
+    pick("english");
+    await pause(150);
+    const listed = [...document.querySelectorAll(".numbers .again li")].map((l) => l.textContent?.trim() ?? "");
+    await scene("numbers");
+    await apply();
+    const english = editor.textOf(chapter)!;
+    const marked = (editor.textOf(root) ?? "").startsWith("% !RayTeX numbers = english\n");
+    const inEnglish = english.includes("P(A \\cap B) = 0.12") && english.includes("{$0.7$}") && !english.includes("use comma");
+    const built = await buildOk(log, "numbers the English way");
+    await opened();
+    pick("auto");
+    await pause(150);
+    await apply();
+    const french = editor.textOf(chapter)!;
+    const back = !(editor.textOf(root) ?? "").includes("RayTeX numbers") && french.includes("P(A \\cap B) = 0{,}12") && french.includes("use comma") && french.includes("1000 sep={\\,}");
+    log(`numbers: listed ${JSON.stringify(listed)}, the English way ${inEnglish}, line ${marked}, built ${built}, back ${back}`);
+    ok = listed.some((l) => /plot|courbe/i.test(l)) && listed.some((l) => /tree|arbre/i.test(l)) && inEnglish && marked && built && back && ok;
+  } catch (e) {
+    log(`numbers failed: ${e}`);
+    if (ui.overlay) ui.closeOverlay();
+    ok = false;
+  }
+
   // --------------------------------------------------------------- fonts
   try {
     media.openFonts();

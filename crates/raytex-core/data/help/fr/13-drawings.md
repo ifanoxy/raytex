@@ -96,7 +96,7 @@ Le bouton des courbes de la barre de mise en forme (ou le menu *Maths*, ou la pa
 - **Les droites** `x = a` (une asymptote verticale) ou `y = b`, et **les aires** sous une courbe ou entre deux courbes, d'une abscisse à une autre.
 - **Les axes** : l'intervalle de x et de y (celui de y se règle tout seul sur les courbes), des axes par l'origine (comme dans les manuels), un cadre, ou à gauche et en bas, une grille, un repère orthonormé ; dans *Avancé*, les noms des axes, les graduations et la taille.
 
-Le rendu de LaTeX s'affiche à mesure. Un document en français a ses nombres avec une virgule. Chaque ligne du dessin dit en commentaire ce qu'elle trace (`% f(x) = x^2 - 1`) : la pastille **Courbes** après `\begin{tikzpicture}` rouvre le graphique dans l'atelier, et ce qui y a été ajouté à la main est gardé.
+Le rendu de LaTeX s'affiche à mesure. Les nombres sont écrits comme le document le demande (*Maths › Conventions des nombres*), sinon avec une virgule dans un document en français. Chaque ligne du dessin dit en commentaire ce qu'elle trace (`% f(x) = x^2 - 1`) : la pastille **Courbes** après `\begin{tikzpicture}` rouvre le graphique dans l'atelier, et ce qui y a été ajouté à la main est gardé.
 
 ## Tableaux de variations et de signes
 
@@ -118,7 +118,16 @@ Le menu *Maths › Arbre de probabilités…* (ou la palette de commandes) ouvre
 - **Probabilité de chaque chemin au bout** écrit `P(A ∩ B) = 0,12` au bout de chaque chemin, calculé exactement (en fraction si une fraction s'y trouve).
 - **Un niveau de plus** ajoute un événement et son contraire au bout de chaque branche ; **Mêmes événements à chaque niveau** recopie ceux de la première branche d'un niveau.
 
-L'arbre est écrit avec TikZ, qui pousse vers la droite (`grow'=right`), les probabilités au-dessus des branches du haut et au-dessous de celles du bas, les nombres à la française dans un document en français. La puce **Arbre** le rouvre dans l'atelier.
+L'arbre est écrit avec TikZ, qui pousse vers la droite (`grow'=right`), les probabilités au-dessus des branches du haut et au-dessous de celles du bas, les nombres écrits comme le document le demande (à la française dans un document en français). La puce **Arbre** le rouvre dans l'atelier.
+
+## Conventions des nombres
+
+*Maths › Conventions des nombres…* règle la façon d'écrire les nombres du document : **à la française** (une virgule décimale, une espace fine entre les milliers : `0,5 · 1 000`), **à l'anglaise** (`0.5 · 1,000`), ou **selon la langue du document** (à la française dans un document en français).
+
+- Ce qui est déjà écrit est réécrit de cette façon, dans chaque fichier du document : le format des nombres des courbes de fonctions (pgfplots, celles écrites à la main aussi), les décimales des formules des tableaux de variations, des arbres et des autres dessins, la locale de siunitx. La fenêtre dit combien avant que rien ne soit écrit.
+- Les longueurs, les coordonnées et les expressions des courbes gardent leur point, comme TeX les lit ; une virgule seule (`f(1,2)`) est une liste, jamais une décimale.
+- *Les formules du texte aussi* réécrit les décimales des `$…$` et des équations (`3.5` ↔ `3{,}5`), pas celles du préambule ni d'un listing.
+- Le choix est gardé sur la première ligne du fichier principal (`% !RayTeX numbers = english`) : les courbes, tableaux et arbres insérés ensuite le suivent. Chaque fichier changé l'est d'un coup, annulé avec Ctrl+Z.
 
 ## Pour aller plus loin
 

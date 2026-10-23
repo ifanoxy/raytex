@@ -482,6 +482,7 @@ export async function commandsScenes(log: (msg: string) => void, dir: string): P
       "insert.graph": { expect: window_("graph") },
       "insert.variations": { expect: window_("variations") },
       "insert.tree": { expect: window_("tree") },
+      "format.numbers": { expect: window_("numbers") },
       "insert.command": { prepare: () => choose("mot"), expect: window_("commands") },
       "insert.tikz": { prepare: () => choose("\\draw", 2), expect: window_("tikz") },
       "format.fonts": { expect: window_("fonts") },

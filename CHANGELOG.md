@@ -2,6 +2,13 @@
 
 All notable changes to RayTeX are documented here. The format follows [Keep a Changelog](https://keepachangelog.com), and versions follow [Semantic Versioning](https://semver.org).
 
+## [1.0.1] — 2026-10-23
+
+- **Number conventions** (*Maths › Number conventions…*): the numbers of the document written **the French way** (a decimal comma, a thin space between thousands: `0,5 · 1 000`), **the English way** (`0.5 · 1,000`), or **as the language of the document goes**. What is already written is written again that way in every file of the document, and the window says how much before anything is: the number format of the function plots (pgfplots: `use comma` and `1000 sep={\,}`, in each axis, those written by hand too, and in `\pgfplotsset` where the preamble sets one), the decimal marks of the formulas of the tables of variations, of the probability trees and of the other drawings (`0.5` ↔ `0{,}5`), the locale of siunitx (`\sisetup{locale = FR}`, a decimal mark set by hand taken off), and, if asked, the formulas of the text (`$…$`, the equations; not the preamble nor a listing). Lengths (`0.5cm`, `0.5\textwidth`), the factor of a command (`\scalebox{0.8}`), coordinates and the expressions of the curves keep their point, as TeX reads them; a bare comma (`f(1,2)`) is a list, never a decimal mark. The choice is kept on the first line of the main file (`% !RayTeX numbers = english`), and the plots, tables and trees inserted next follow it; each file changed is one change, undone with Ctrl+Z. A help section says it all.
+- Fixed, function plots the French way wrote a thousand `1.000` (`use comma` of pgfplots sets a point between thousands): `1000 sep={\,}` is written with it, and read back.
+- Fixed, the studios did not read the language of the document the same way: the plots and the tables of variations took `[main=english,french]` or `[french,english]` for a French document, and missed `\documentclass[french]`. All of them read it as the spell checker does now.
+- Fixed, a probability tree changed in its studio got its line of comment (`% Arbre de probabilités (RayTeX)`) a second time above it; that line is in the language of the document, the numbers as the document asks.
+
 ## [1.0.0] — 2026-10-23
 
 Version 1: every command (106, from their real entries in the menus, the palette and the shortcuts), every feature and features used together run and checked in the real application on macOS, Windows and Linux, with TeX Live and MiKTeX, and the built application too; every file of TeX Live read, checked and explained by the tests.
@@ -409,6 +416,7 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[1.0.1]: https://github.com/ifanoxy/raytex/releases/tag/v1.0.1
 [1.0.0]: https://github.com/ifanoxy/raytex/releases/tag/v1.0.0
 [0.6.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.6.0
 [0.5.4]: https://github.com/ifanoxy/raytex/releases/tag/v0.5.4

@@ -96,7 +96,7 @@ The plot button of the formatting bar (or the *Maths* menu, or the command palet
 - **Lines** `x = a` (a vertical asymptote) or `y = b`, and **areas** under a curve or between two curves, from one abscissa to another.
 - **Axes**: the range of x and of y (that of y follows the curves by itself), axes through the origin (as in textbooks), a box, or left and bottom, a grid, the same unit on both axes; in *Advanced*, the names of the axes, the ticks and the size.
 
-The rendering of LaTeX follows as you type. A French document writes its numbers with a comma. Each line of the drawing says in a comment what it draws (`% f(x) = x^2 - 1`): the **Plot** chip after `\begin{tikzpicture}` opens the plot again in the studio, and what was added to it by hand is kept.
+The rendering of LaTeX follows as you type. Numbers are written as the document asks (*Maths › Number conventions*), else with a comma in a French document. Each line of the drawing says in a comment what it draws (`% f(x) = x^2 - 1`): the **Plot** chip after `\begin{tikzpicture}` opens the plot again in the studio, and what was added to it by hand is kept.
 
 ## Tables of variations and of signs
 
@@ -118,7 +118,16 @@ The **Table** chip after `\begin{tikzpicture}` opens it again.
 - **Probability of each path at its end** writes `P(A ∩ B) = 0.12` at the end of each path, worked out exactly (as a fraction when there is one in it).
 - **One level more** adds an event and its complement at the end of each branch; **Same events at each level** copies those of the first branch of a level.
 
-The tree is written with TikZ, growing right (`grow'=right`), the probabilities above the upper branches and below the lower ones, numbers written the French way in a French document. The **Tree** chip opens it again in the studio.
+The tree is written with TikZ, growing right (`grow'=right`), the probabilities above the upper branches and below the lower ones, numbers written as the document asks (the French way in a French document). The **Tree** chip opens it again in the studio.
+
+## Number conventions
+
+*Maths › Number conventions…* sets how the numbers of the document are written: **the French way** (a decimal comma, a thin space between thousands: `0,5 · 1 000`), **the English way** (`0.5 · 1,000`), or **as the language of the document goes** (the French way in a French document).
+
+- What is already written is written again that way, in every file of the document: the number format of the function plots (pgfplots, the plots written by hand too), the decimal marks of the formulas of the tables of variations, of the trees and of the other drawings, the locale of siunitx. The window says how many before anything is written.
+- Lengths, coordinates and the expressions of the curves keep their point, as TeX reads them; a bare comma (`f(1,2)`) is a list, never a decimal mark.
+- *The formulas of the text too* writes again the decimal marks of `$…$` and of the equations (`3.5` ↔ `3{,}5`), not those of the preamble nor of a listing.
+- The choice is kept on the first line of the main file (`% !RayTeX numbers = english`): the plots, tables and trees inserted next follow it. Each file changed is one change, undone with Ctrl+Z.
 
 ## Going further
 

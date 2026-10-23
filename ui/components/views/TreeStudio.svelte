@@ -6,10 +6,11 @@
   // written here is opened again from its chip.
   import { onMount } from "svelte";
   import { keyLang } from "$lib/answerkey";
+  import { conventionOf } from "$lib/numbers";
   import { t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
   import { addPackages, preambleEnd } from "$lib/preamble";
-  import { addLevel, branchProbs, contrary, emptyTree, node, rows, sameEvents, type Tree, type TreeNode, treeCode, wrongSum } from "$lib/probtree";
+  import { addLevel, branchProbs, contrary, emptyTree, headerFrom, node, rows, sameEvents, type Tree, type TreeNode, treeCode, wrongSum } from "$lib/probtree";
   import { editor } from "$lib/state/editor.svelte";
   import { media, type TreeEdit } from "$lib/state/media.svelte";
   import { project } from "$lib/state/project.svelte";
@@ -46,9 +47,10 @@
     if (found) source = found.text;
   });
 
-  /** Numbers written the French way in a French document. */
-  const comma = $derived(keyLang(source, "en") === "fr");
-  const code = $derived(treeCode(tree, comma));
+  /** Numbers written as the document asks (Maths › Number conventions), else as its language goes. */
+  const comma = $derived(conventionOf(source) === "french");
+  // The line above the picture, in the language of the document.
+  const code = $derived(treeCode(tree, comma, keyLang(source, "en") === "fr"));
   const lines = $derived(rows(tree));
 
   // ------------------------------------------------------------ the tree
@@ -117,7 +119,8 @@
       const picture = code;
       if (edit) {
         await editor.open(edit.path);
-        editor.replaceRange(edit.path, edit.from, edit.to, picture);
+        // The line written above the picture goes with it (it was written twice).
+        editor.replaceRange(edit.path, headerFrom(editor.textOf(edit.path) ?? "", edit.from), edit.to, picture);
       } else {
         const view = editor.view;
         if (!view || editor.activeTab?.kind !== "tex" || view.state.readOnly) {
@@ -177,7 +180,7 @@
               <span class="drawn" aria-hidden="true">{#if n.label.trim()}<MathGlyph latex={n.label} />{/if}</span>
               <button class="icon-btn small bar" class:on={n.label.trim().startsWith("\\overline")} title={t("tree.contrary")} aria-label={t("tree.contrary")} onclick={() => (n.label = contrary(n.label || "A"))}>Ā</button>
               <span class="faint p">p =</span>
-              <input class="input mono prob" bind:value={n.prob} placeholder={workedOut(parent, index) || "0,5"} spellcheck="false" aria-label={t("tree.prob")} data-row={i} />
+              <input class="input mono prob" bind:value={n.prob} placeholder={workedOut(parent, index) || (comma ? "0,5" : "0.5")} spellcheck="false" aria-label={t("tree.prob")} data-row={i} />
               <span class="spacer"></span>
               <button class="icon-btn small" title={t("tree.addBranch")} aria-label={t("tree.addBranch")} onclick={() => addBranch(n)}><Icon name="plus" size={13} /></button>
               <button class="icon-btn small" title={t("tree.remove")} aria-label={t("tree.remove")} onclick={() => remove(parent, n)}><Icon name="trash" size={13} /></button>

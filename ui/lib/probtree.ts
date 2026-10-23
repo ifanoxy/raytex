@@ -177,8 +177,23 @@ const round = (x: number) => Math.round(x * 100) / 100;
 /** The events of a path, joined: `A \cap \overline{B}`. */
 const intersection = (labels: string[]) => labels.join(" \\cap ");
 
-/** The TikZ picture of the tree (`comma`: numbers written the French way). */
-export function treeCode(tree: Tree, comma = false): string {
+/** The line written above the picture of a tree. */
+const HEADERS = { fr: "% Arbre de probabilités (RayTeX)", en: "% Probability tree (RayTeX)" };
+
+/**
+ * Where a tree written over starts in `text`: at its line above it (in
+ * either language) when it has one, else at `from` (its `\begin{tikzpicture}`).
+ */
+export function headerFrom(text: string, from: number): number {
+  const line = text.lastIndexOf("\n", from - 1) + 1;
+  if (text.slice(line, from).trim() || line === 0) return from;
+  const above = text.lastIndexOf("\n", line - 2) + 1;
+  const header = text.slice(above, line - 1);
+  return Object.values(HEADERS).includes(header.trim()) ? above + /^\s*/.exec(header)![0].length : from;
+}
+
+/** The TikZ picture of the tree (`comma`: numbers written the French way; `french`: the line above it in French). */
+export function treeCode(tree: Tree, comma = false, french = comma): string {
   const levels = depth(tree.root);
   // Each level spreads its nodes by the widest of them: nothing overlaps.
   const spread: number[] = [];
@@ -196,7 +211,7 @@ export function treeCode(tree: Tree, comma = false): string {
     ...tree.extra,
   ];
   const math = (label: string) => (label.trim() ? `$${label.trim()}$` : "");
-  const lines: string[] = [comma ? "% Arbre de probabilités (RayTeX)" : "% Probability tree (RayTeX)", `\\begin{tikzpicture}[${options.join(", ")}]`, `  \\node {${math(tree.root.label)}}`];
+  const lines: string[] = [french ? HEADERS.fr : HEADERS.en, `\\begin{tikzpicture}[${options.join(", ")}]`, `  \\node {${math(tree.root.label)}}`];
   const write = (n: TreeNode, indent: string, path: string[], probs: string[]) => {
     const probsOf = branchProbs(n, comma);
     n.children.forEach((c, i) => {

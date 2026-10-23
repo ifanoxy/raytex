@@ -34,6 +34,64 @@ export interface VersionNotes {
 
 export const NOTES: VersionNotes[] = [
   {
+    version: "1.0.1",
+    date: "2026-10-23",
+    en: {
+      points: [
+        "Number conventions (Maths menu): the numbers of the document written the French way (0,5 · 1 000), the English way (0.5 · 1,000), or as its language goes.",
+        "What is already written follows at once: function plots, tables of variations, probability trees, the other drawings, siunitx, and the formulas of the text if asked.",
+        "Function plots the French way write a thousand 1 000 (it was 1.000).",
+        "A probability tree changed in its studio no longer gets its line of comment twice.",
+      ],
+      details: [
+        {
+          title: "Number conventions",
+          items: [
+            "Maths › Number conventions…: the French way (a decimal comma, a thin space between thousands), the English way, or as the language of the document goes. The window says what will be written again before anything is.",
+            "Written again in every file of the document: the number format of the plots (those written by hand too), the decimal marks of the formulas of the tables of variations, of the trees and of the other drawings, the locale of siunitx; the formulas of the text too, if asked.",
+            "Lengths, coordinates and the expressions of the curves keep their point, as TeX reads them; a bare comma (`f(1,2)`) is never taken for a decimal mark.",
+            "The choice is kept on the first line of the main file: the plots, tables and trees inserted next follow it. Each file changed is one change, undone with Ctrl+Z.",
+          ],
+        },
+        {
+          title: "Fixes",
+          items: [
+            "Function plots the French way: a thousand written 1 000 (the comma of pgfplots alone wrote 1.000).",
+            "The language of the document read the same way by every studio: `[main=english,french]` is an English document (the plots took it for a French one), `\\documentclass[french]` a French one.",
+            "A probability tree changed in its studio: its line of comment is no longer written a second time, and it is in the language of the document.",
+          ],
+        },
+      ],
+    },
+    fr: {
+      points: [
+        "Conventions des nombres (menu Maths) : les nombres du document écrits à la française (0,5 · 1 000), à l'anglaise (0.5 · 1,000), ou selon sa langue.",
+        "Ce qui est déjà écrit suit aussitôt : courbes de fonctions, tableaux de variations, arbres de probabilités, autres dessins, siunitx, et les formules du texte si on le demande.",
+        "Les courbes à la française écrivent un millier 1 000 (c'était 1.000).",
+        "Un arbre de probabilités modifié dans son atelier n'a plus sa ligne de commentaire en double.",
+      ],
+      details: [
+        {
+          title: "Conventions des nombres",
+          items: [
+            "Maths › Conventions des nombres… : à la française (une virgule décimale, une espace fine entre les milliers), à l'anglaise, ou selon la langue du document. La fenêtre dit ce qui sera réécrit avant que rien ne le soit.",
+            "Réécrit dans chaque fichier du document : le format des nombres des courbes (celles écrites à la main aussi), les décimales des formules des tableaux de variations, des arbres et des autres dessins, la locale de siunitx ; les formules du texte aussi, si on le demande.",
+            "Les longueurs, les coordonnées et les expressions des courbes gardent leur point, comme TeX les lit ; une virgule seule (`f(1,2)`) n'est jamais prise pour une décimale.",
+            "Le choix est gardé sur la première ligne du fichier principal : les courbes, tableaux et arbres insérés ensuite le suivent. Chaque fichier changé l'est d'un coup, annulé avec Ctrl+Z.",
+          ],
+        },
+        {
+          title: "Corrections",
+          items: [
+            "Les courbes à la française : un millier écrit 1 000 (la virgule de pgfplots seule écrivait 1.000).",
+            "La langue du document lue de la même façon par chaque atelier : `[main=english,french]` est un document en anglais (les courbes le prenaient pour un document en français), `\\documentclass[french]` un document en français.",
+            "Un arbre de probabilités modifié dans son atelier : sa ligne de commentaire n'est plus écrite une seconde fois, et elle est dans la langue du document.",
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: "1.0.0",
     date: "2026-10-23",
     en: {
