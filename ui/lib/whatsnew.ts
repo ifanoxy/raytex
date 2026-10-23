@@ -38,12 +38,21 @@ export const NOTES: VersionNotes[] = [
     date: "2026-10-23",
     en: {
       points: [
+        "Systems and functions by cases (Maths › System or cases…): a brace and its lines, `f(x) =` before it if wanted, filled cell by cell.",
         "Number conventions (Maths menu): the numbers of the document written the French way (0,5 · 1 000), the English way (0.5 · 1,000), or as its language goes.",
         "What is already written follows at once: function plots, tables of variations, probability trees, the other drawings, siunitx, and the formulas of the text if asked.",
         "Function plots the French way write a thousand 1 000 (it was 1.000).",
         "A probability tree changed in its studio no longer gets its line of comment twice.",
       ],
       details: [
+        {
+          title: "Systems and cases",
+          items: [
+            "Maths › System or cases… opens the grid editor on a brace: one column for a system of equations, two for a function by cases (a value, then its condition).",
+            "Before the brace: what comes first on its line (`f(x) =`). The brace on the left, on the left in display style (`dcases`) or on the right (`rcases`), mathtools added when needed.",
+            "The Brace chip after `\\begin{cases}` opens it again, the lines read back cell by cell.",
+          ],
+        },
         {
           title: "Number conventions",
           items: [
@@ -65,12 +74,21 @@ export const NOTES: VersionNotes[] = [
     },
     fr: {
       points: [
+        "Systèmes et fonctions définies par cas (Maths › Système ou accolade…) : une accolade et ses lignes, `f(x) =` devant si on veut, remplies case par case.",
         "Conventions des nombres (menu Maths) : les nombres du document écrits à la française (0,5 · 1 000), à l'anglaise (0.5 · 1,000), ou selon sa langue.",
         "Ce qui est déjà écrit suit aussitôt : courbes de fonctions, tableaux de variations, arbres de probabilités, autres dessins, siunitx, et les formules du texte si on le demande.",
         "Les courbes à la française écrivent un millier 1 000 (c'était 1.000).",
         "Un arbre de probabilités modifié dans son atelier n'a plus sa ligne de commentaire en double.",
       ],
       details: [
+        {
+          title: "Systèmes et accolades",
+          items: [
+            "Maths › Système ou accolade… ouvre l'éditeur de grille sur une accolade : une colonne pour un système d'équations, deux pour une fonction définie par cas (une valeur, puis sa condition).",
+            "Avant l'accolade : ce qui vient d'abord sur sa ligne (`f(x) =`). L'accolade à gauche, à gauche en grand (`dcases`) ou à droite (`rcases`), mathtools ajouté au besoin.",
+            "La pastille Accolade après `\\begin{cases}` la rouvre, les lignes relues case par case.",
+          ],
+        },
         {
           title: "Conventions des nombres",
           items: [

@@ -968,10 +968,13 @@ mod tests {
                 .map(|d| &d.message)
                 .collect();
             // MiKTeX installs on the fly what its repository has: a font
-            // package it cannot get is reported, not a failure of RayTeX.
+            // package it cannot get, or not in time (a large one from a slow
+            // mirror), is reported, not a failure of RayTeX.
             if dist.kind == crate::tex::DistroKind::MikTex
                 && !errors.is_empty()
-                && errors.iter().all(|e| e.contains("not found"))
+                && errors
+                    .iter()
+                    .all(|e| e.contains("not found") || e.contains("MiKTeX may be installing"))
             {
                 eprintln!("{}: not available in this MiKTeX ({errors:?})", f.id);
                 continue;

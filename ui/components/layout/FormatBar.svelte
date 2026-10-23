@@ -116,7 +116,7 @@
   }
 
   /** Inside a matrix or table: edits it; otherwise asks for the size of a new one. */
-  function gridButton(e: MouseEvent, kind: GridKind) {
+  function gridButton(e: MouseEvent, kind: "table" | "matrix") {
     const view = editor.view;
     if (view && gridStore.at(view, kind) !== null) {
       pop = null;

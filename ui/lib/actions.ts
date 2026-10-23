@@ -220,6 +220,8 @@ export const actions: Action[] = [
   ),
   { id: "insert.table", title: "action.insertTable", category: "insert", editor: true, icon: "table", when: hasTex, run: withView((v) => openGrid(v, "table")) },
   { id: "insert.matrix", title: "action.insertMatrix", category: "insert", editor: true, icon: "matrix", when: hasTex, run: withView((v) => openGrid(v, "matrix")) },
+  // A system (one column) or a function by cases (a value and its condition), with a brace.
+  { id: "insert.cases", title: "action.insertCases", category: "insert", editor: true, icon: "brace", when: hasTex, run: withView((v) => openGrid(v, "cases", 2, 1)) },
   snippetAction("insert.equation", "action.insertEquation", () => `\\begin{equation}\n\t\${1:\${SELECTION}}\n\t\\label{eq:\${2:label}}\n\\end{equation}\${0}`),
   snippetAction("insert.align", "action.insertAlign", () => `\\begin{align}\n\t\${1:a} &= \${2:b} \\\\\n\t\${3:c} &= \${4:d}\n\\end{align}\${0}`),
   snippetAction("insert.itemize", "action.insertItemize", () => `\\begin{itemize}\n\t\\item \${1:\${SELECTION}}\n\\end{itemize}\${0}`),

@@ -1488,6 +1488,26 @@ async function workflowScenes(log: (msg: string) => void, dir: string): Promise<
       /\\begin\{tabular\}\{lcc\}/.test(withTable) && withTable.includes("Produit & R\\&D & Prix") && withTable.includes("{booktabs}"),
       withTable.slice(withTable.indexOf("\\begin{table}"), withTable.indexOf("\\end{table}") + 11),
     );
+    // A brace: a function by cases (a value, its condition), with what comes before it.
+    editor.view!.dispatch({ selection: { anchor: editor.view!.state.doc.toString().lastIndexOf("\\end{document}") } });
+    void runAction("insert.cases");
+    await until(() => document.querySelectorAll(".grid-editor .cm-editor").length === 2, 5_000, "brace editor");
+    document.querySelector<HTMLButtonElement>(`.grid-editor .size button[aria-label="${t("grid.addCol")}"]`)!.click();
+    await until(() => document.querySelectorAll(".grid-editor .cm-editor").length === 4, 5_000, "a column of conditions");
+    ["x^2", "\\text{si } x \\geq 0", "-x", "\\text{sinon}"].forEach((text, i) => cell(i).dispatch({ changes: { from: 0, insert: text } }));
+    const before = document.querySelector<HTMLInputElement>(".grid-editor [data-lead]")!;
+    before.value = "f(x) =";
+    before.dispatchEvent(new Event("input", { bubbles: true }));
+    await pause(300);
+    [...document.querySelectorAll<HTMLButtonElement>(".grid-editor footer .btn.primary")][0].click();
+    await until(() => !document.querySelector(".grid-editor"), 5_000, "brace inserted");
+    await pause(600);
+    const withCases = editor.textOf(main) ?? "";
+    check(
+      "a brace with what comes before it",
+      /\\\[\s*f\(x\) = \\begin\{cases\}\s*x\^2\s*& \\text\{si \} x \\geq 0 \\\\\s*-x\s*& \\text\{sinon\}\s*\\end\{cases\}\s*\\\]/.test(withCases),
+      withCases.slice(withCases.indexOf("f(x) ="), withCases.indexOf("\\end{cases}") + 12),
+    );
     press("Escape");
     // The menus of the top bar: every tool by its family, passing over a menu opens it.
     const top = (id: string) => document.querySelector<HTMLButtonElement>(`.menubar .top[data-menu="${id}"]`)!;
@@ -2294,8 +2314,12 @@ async function projectsScenes(log: (msg: string) => void, dir: string): Promise<
     await until(() => !!presenter() && presenter()!.dataset.drawn === "1", 20_000, "presentation drawn");
     await scene("slides-presenter");
     const opened = await ipc.presentShown();
-    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
-    await until(() => presenter()?.dataset.drawn === "2", 10_000, "next step drawn");
+    const moved = document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }));
+    await until(() => presenter()?.dataset.drawn === "2", 10_000, "next step drawn").catch((e) => {
+      // The presentation window draws the step and says so: whether the key was taken, what it last said.
+      log(`next step not drawn: key ${moved ? "not taken" : "taken"}, page ${presenter()?.dataset.page}, drawn ${presenter()?.dataset.drawn}, presenter ${!!presenter()}, focus ${document.hasFocus()}`);
+      throw e;
+    });
     document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     await until(() => !presenter(), 5_000, "presentation ended");
     let closed = false;

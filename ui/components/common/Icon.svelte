@@ -105,6 +105,7 @@
     "align-justify": '<path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>',
     table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16M15 4v16"/>',
     matrix: '<path d="M7 4H5v16h2M17 4h2v16h-2"/><circle cx="9.5" cy="9" r="1"/><circle cx="14.5" cy="9" r="1"/><circle cx="9.5" cy="15" r="1"/><circle cx="14.5" cy="15" r="1"/>',
+    brace: '<path d="M9 4C7 4 6.5 5 6.5 7v2c0 1.5-.8 2.5-2.5 3 1.7.5 2.5 1.5 2.5 3v2c0 2 .5 3 2.5 3"/><path d="M12 8h8M12 16h8"/>',
     template: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/>',
     at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>',
     footnote: '<path d="M4 18V8l6 10V8"/><path d="M15 6.5c.5-1.2 3-1.2 3 .4 0 1.3-3 2.1-3 3.6h3.2"/>',

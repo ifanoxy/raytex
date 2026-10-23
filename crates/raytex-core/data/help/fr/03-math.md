@@ -69,6 +69,8 @@ En mode mathématique, tapez `@` suivi d'une lettre : `@a` → `\alpha`, `@b` �
 \]
 ```
 
+*Maths › Système ou accolade…* ouvre l'éditeur de grille sur une accolade et ses lignes : une colonne pour un système (`2x + y = 3`, puis `x - y = 0` dessous), deux pour une fonction définie par cas (une valeur, puis sa condition : `\text{si } x \geq 0`). *Avant l'accolade* écrit ce qui vient d'abord sur sa ligne (`f(x) =`) ; l'accolade va à gauche (`cases`), à gauche en grand (`dcases`, fractions en taille normale) ou à droite (`rcases`), mathtools ajouté au besoin. Entrée passe à la case suivante, Tab dans la dernière ajoute une ligne ; la pastille **Accolade** après `\begin{cases}` la rouvre.
+
 ## Théorèmes
 
 ```latex

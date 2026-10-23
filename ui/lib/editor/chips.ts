@@ -9,7 +9,7 @@ import { figureGroupAt, firstPictureOf } from "../images";
 import { listingAt } from "../listing";
 import { pictureKind } from "../picturekind";
 
-export type ChipKind = "matrix" | "table" | "tikz" | "graph" | "variations" | "tree" | "image" | "code";
+export type ChipKind = "matrix" | "table" | "cases" | "tikz" | "graph" | "variations" | "tree" | "image" | "code";
 
 export interface ChipOptions {
   /** `count`: pictures the chip stands for, when they are several written together. */
@@ -22,6 +22,7 @@ export interface ChipOptions {
 const ICONS: Record<ChipKind, string> = {
   matrix: '<path d="M7 4H5v16h2M17 4h2v16h-2"/><circle cx="9.5" cy="9" r="1"/><circle cx="14.5" cy="9" r="1"/><circle cx="9.5" cy="15" r="1"/><circle cx="14.5" cy="15" r="1"/>',
   table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16M15 4v16"/>',
+  cases: '<path d="M9 4C7 4 6.5 5 6.5 7v2c0 1.5-.8 2.5-2.5 3 1.7.5 2.5 1.5 2.5 3v2c0 2 .5 3 2.5 3"/><path d="M12 8h8M12 16h8"/>',
   tikz: '<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
   image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/>',
   code: '<path d="m8 7-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/>',

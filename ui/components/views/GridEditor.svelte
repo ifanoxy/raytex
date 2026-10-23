@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Grid editor: a matrix or a table filled cell by cell. Each cell is a
+  // Grid editor: a matrix, a table or a brace (a system, a function by
+  // cases) filled cell by cell. Each cell is a
   // small LaTeX editor (colours, completion, macros, Ctrl+B / I / U…). Enter
   // goes to the next cell, Tab in the last cell adds a row, Ctrl+Enter
   // inserts; cells pasted from a spreadsheet (or LaTeX) fill the grid. An `&`
@@ -28,6 +29,8 @@
       : { kind: "matrix", env: "pmatrix", cells: [[""]], columns: ["c"], style: "plain", header: false, option: "", rawSpec: null, rawCount: 0 },
   );
   let float = $state(!editing);
+  /** A new brace: what comes before it on its line (`f(x) =`). */
+  let lead = $state("");
   let caption = $state("");
   let label = $state("");
   let preview = $state("");
@@ -36,7 +39,9 @@
 
   const rows = $derived(g.cells.length);
   const cols = $derived(g.cells[0]?.length ?? 1);
-  const matrix = $derived(g.kind === "matrix");
+  /** A formula: a matrix or a brace (not a table). */
+  const matrix = $derived(g.kind !== "table");
+  const cases = $derived(g.kind === "cases");
   const code = $derived(gridToLatex(trimmed(g), "", request?.unit ?? "\t"));
 
   const DELIMITERS = [
@@ -47,6 +52,12 @@
     { env: "Vmatrix", glyph: "‖ ‖" },
     { env: "matrix", glyph: "" },
     { env: "smallmatrix", glyph: "" },
+  ];
+  /** The brace on the left (amsmath), larger (mathtools' `dcases`: fractions in display), or on the right. */
+  const BRACES = [
+    { env: "cases", label: () => t("grid.braceLeft") },
+    { env: "dcases", label: () => t("grid.braceLarge") },
+    { env: "rcases", label: () => t("grid.braceRight") },
   ];
   const STYLES: { id: TableStyle; label: () => string }[] = [
     { id: "booktabs", label: () => t("grid.booktabs") },
@@ -68,7 +79,8 @@
   $effect(() => {
     const token = ++previewToken;
     const shown = trimmed($state.snapshot(g) as Grid);
-    const source = code;
+    // A brace with what comes before it (`f(x) =`), as it will be written.
+    const source = cases && lead.trim() ? `${lead.trim()} ${code}` : code;
     const render = matrix ? displayHtml(source.replace(/\\begin\{(\w+)\*\}\[[^\]]*\]/, "\\begin{$1}").replace(/\\end\{(\w+)\*\}/, "\\end{$1}"), path) : tableHtml(shown);
     void render.then((html) => {
       if (token === previewToken) preview = html;
@@ -189,7 +201,8 @@
       editor.replaceRange(file, from, to, gridToLatex(out, indent, request.unit));
     } else {
       let body = escapeSnippet(gridToLatex(out, "", "\t"));
-      if (out.kind === "matrix" && !request.inMath) body = `\\[\n${indented(body)}\n\\]`;
+      if (out.kind === "cases" && lead.trim()) body = `${escapeSnippet(lead.trim())} ${body}`;
+      if (out.kind !== "table" && !request.inMath) body = `\\[\n${indented(body)}\n\\]`;
       if (out.kind === "table" && float) {
         // The caption under the table.
         body = [
@@ -203,18 +216,30 @@
       }
       editor.insertSnippet(`${body}\${0}`, view ?? undefined, { block: out.kind === "table" || !request.inMath });
     }
-    if (out.kind === "matrix") await editor.addPackage("amsmath", view, true);
+    // The braces of mathtools (display style, on the right, a second column of text) need it.
+    if (out.kind === "cases" && out.env !== "cases") await editor.addPackage("mathtools", view, true);
+    else if (out.kind !== "table") await editor.addPackage("amsmath", view, true);
     else if (out.style === "booktabs") await editor.addPackage("booktabs", view, true);
     editor.focus();
   }
 
   const title = $derived(
-    matrix ? (editing ? t("grid.editMatrix") : t("grid.newMatrix")) : editing ? t("grid.editTable") : t("grid.newTable"),
+    cases
+      ? editing
+        ? t("grid.editCases")
+        : t("grid.newCases")
+      : matrix
+        ? editing
+          ? t("grid.editMatrix")
+          : t("grid.newMatrix")
+        : editing
+          ? t("grid.editTable")
+          : t("grid.newTable"),
   );
   const insertKey = prettyKey("Mod-Enter");
 </script>
 
-<Modal {title} icon={matrix ? "matrix" : "table"} width="min(1040px, 96vw)" height="min(760px, 94vh)">
+<Modal {title} icon={cases ? "brace" : matrix ? "matrix" : "table"} width="min(1040px, 96vw)" height="min(760px, 94vh)">
   <div class="grid-editor" data-own-keys>
     <div class="options">
       <div class="size">
@@ -228,7 +253,21 @@
         <button class="icon-btn small" onclick={() => setSize(rows, cols + 1)} title={t("grid.addCol")} aria-label={t("grid.addCol")}><Icon name="plus" size={13} /></button>
       </div>
 
-      {#if matrix}
+      {#if cases}
+        <div class="segmented" role="radiogroup" aria-label={t("grid.brace")}>
+          {#each BRACES as b (b.env)}
+            <button role="radio" aria-checked={g.env.replace("*", "") === b.env} class:on={g.env.replace("*", "") === b.env} onclick={() => setEnv(b.env)} title={`\\begin{${b.env}}`} data-env={b.env}>
+              {b.label()}
+            </button>
+          {/each}
+        </div>
+        {#if !editing}
+          <label class="lead">
+            <span class="faint">{t("grid.before")}</span>
+            <input class="input small mono" placeholder="f(x) =" bind:value={lead} spellcheck="false" data-lead />
+          </label>
+        {/if}
+      {:else if matrix}
         <div class="segmented" role="radiogroup" aria-label={t("grid.delimiters")}>
           {#each DELIMITERS as d (d.env)}
             <button
@@ -394,6 +433,15 @@
   }
   .check.disabled {
     opacity: 0.5;
+  }
+  .lead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .lead input {
+    width: 130px;
   }
   .spec {
     display: flex;

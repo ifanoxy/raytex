@@ -477,6 +477,7 @@ export async function commandsScenes(log: (msg: string) => void, dir: string): P
       "insert.link": snippet("\\href{"),
       "insert.table": { prepare: () => choose("Une ligne", 0), expect: window_("grid") },
       "insert.matrix": { prepare: () => choose("$x", 1), expect: window_("grid") },
+      "insert.cases": { expect: window_("grid", () => gridStore.request?.grid.kind === "cases" || `a ${gridStore.request?.grid.kind} instead of a brace`) },
       "insert.image": { expect: window_("image") },
       "insert.code": { expect: window_("code") },
       "insert.graph": { expect: window_("graph") },

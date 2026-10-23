@@ -69,6 +69,8 @@ In math mode, type `@` followed by a letter: `@a` → `\alpha`, `@b` → `\beta`
 \]
 ```
 
+*Maths › System or cases…* opens the grid editor on a brace and its lines: one column for a system (`2x + y = 3`, then `x - y = 0` under it), two for a function by cases (a value, then its condition: `\text{if } x \geq 0`). *Before the brace* writes what comes first on its line (`f(x) =`); the brace goes on the left (`cases`), on the left in display style (`dcases`, fractions in full size) or on the right (`rcases`), mathtools added when needed. Enter goes to the next cell, Tab in the last one adds a line; the **Brace** chip after `\begin{cases}` opens it again.
+
 ## Theorems
 
 ```latex

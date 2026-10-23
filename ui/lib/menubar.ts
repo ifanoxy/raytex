@@ -172,6 +172,7 @@ export function menus(ctx: MenuContext): TopMenu[] {
         snippet("format.sum", "sigma", "\\sum_{${1}}^{${2}}", true, "\\textstyle\\sum"),
         snippet("format.integral", "formula", "\\int_{${1}}^{${2}} ${3} \\,\\mathrm{d}${4}", true, "\\textstyle\\int"),
         action("insert.matrix", "matrix"),
+        action("insert.cases", "brace"),
         sep,
         action("insert.graph"),
         action("insert.variations"),

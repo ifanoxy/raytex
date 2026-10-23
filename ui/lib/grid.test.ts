@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cellLatex, cellText, envRange, gridAt, gridToLatex, newGrid, parseGrid, parseSpec, pastedCells, resize, trimmed } from "./grid.ts";
+import { cellLatex, cellText, envRange, gridAt, gridKind, gridToLatex, newGrid, parseGrid, parseSpec, pastedCells, resize, trimmed } from "./grid.ts";
 
 test("a matrix is read into cells", () => {
   const g = parseGrid("\\begin{pmatrix}\n  a & b \\\\\n  c & \\frac{1}{2}\n\\end{pmatrix}")!;
@@ -112,4 +112,26 @@ test("an & typed in a cell is the character; environments in a cell keep theirs"
     ["Prix", "50\\%"],
     ["R&D", "x\\_1"],
   ]);
+});
+
+test("a brace and its lines: a system, a function by cases", () => {
+  const piecewise = "\\begin{cases}\n\tx^2 & \\text{si } x \\geq 0 \\\\\n\t-x & \\text{sinon}\n\\end{cases}";
+  const g = parseGrid(piecewise)!;
+  assert.equal(g.kind, "cases");
+  assert.equal(g.env, "cases");
+  assert.deepEqual(g.cells, [
+    ["x^2", "\\text{si } x \\geq 0"],
+    ["-x", "\\text{sinon}"],
+  ]);
+  assert.equal(gridToLatex(g), "\\begin{cases}\n\tx^2 & \\text{si } x \\geq 0 \\\\\n\t-x  & \\text{sinon}\n\\end{cases}");
+  // A system: one column, the lines one under the other.
+  const system = newGrid("cases", 2, 1);
+  system.cells = [["2x + y = 3"], ["x - y = 0"]];
+  assert.equal(gridToLatex(system), "\\begin{cases}\n\t2x + y = 3 \\\\\n\tx - y = 0\n\\end{cases}");
+  // The braces of mathtools; a `[` after `\begin{cases*}` is a cell, not an option.
+  assert.equal(gridKind("dcases"), "cases");
+  assert.equal(gridKind("rcases"), "cases");
+  const starred = parseGrid("\\begin{cases*}\n[0, 1] & if $x$ is small\n\\end{cases*}")!;
+  assert.equal(starred.option, "");
+  assert.deepEqual(starred.cells, [["[0, 1]", "if $x$ is small"]]);
 });

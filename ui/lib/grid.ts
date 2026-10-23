@@ -1,10 +1,11 @@
-// Matrices and tables as grids of cells: read from LaTeX and written back.
+// Matrices, tables and braces (a system, a function by cases) as grids of
+// cells: read from LaTeX and written back.
 // Used by the grid editor (GridEditor.svelte) and by the chip shown after
 // `\begin{pmatrix}` or `\begin{tabular}{…}` in the editor.
 //
 // No local imports: tested directly by Node (`npm test`).
 
-export type GridKind = "matrix" | "table";
+export type GridKind = "matrix" | "table" | "cases";
 /** Rules of a table: booktabs (`\toprule`…), every line and column, or none. */
 export type TableStyle = "booktabs" | "lines" | "plain";
 
@@ -12,10 +13,16 @@ export type TableStyle = "booktabs" | "lines" | "plain";
 export const MATRIX_ENVS = ["pmatrix", "bmatrix", "Bmatrix", "vmatrix", "Vmatrix", "matrix", "smallmatrix"];
 /** Table environments (column specification in braces). */
 export const TABLE_ENVS = ["tabular", "array"];
+/**
+ * A brace and lines (a system, a function by cases): `cases` of amsmath,
+ * and those of mathtools, in display style (`dcases`) or on the right
+ * (`rcases`, `drcases`); a star (mathtools) writes the second column as text.
+ */
+export const CASES_ENVS = ["cases", "dcases", "rcases", "drcases"];
 
 export interface Grid {
   kind: GridKind;
-  /** `pmatrix`, `bmatrix`…, `tabular` or `array`. */
+  /** `pmatrix`, `bmatrix`…, `cases`…, `tabular` or `array`. */
   env: string;
   /** Rows of cells, all of the same length. */
   cells: string[][];
@@ -104,6 +111,7 @@ function stripComments(text: string): string {
 /** Kind of an environment name, or null for other environments. */
 export function gridKind(name: string): GridKind | null {
   if (MATRIX_ENVS.includes(name.replace(/\*$/, ""))) return "matrix";
+  if (CASES_ENVS.includes(name.replace(/\*$/, ""))) return "cases";
   if (TABLE_ENVS.includes(name)) return "table";
   return null;
 }
@@ -117,9 +125,9 @@ export function envHead(text: string, from: number): EnvHead | null {
   if (!kind) return null;
   let end = from + m[0].length;
   let option = "";
-  // Only tables and starred matrices take an option: `[` after `\begin{pmatrix}` is a cell.
+  // Only tables and starred matrices take an option: `[` after `\begin{pmatrix}` or `\begin{cases*}` is a cell.
   let j = skipSpaces(text, end);
-  if (text[j] === "[" && (kind === "table" || name.endsWith("*"))) {
+  if (text[j] === "[" && (kind === "table" || (kind === "matrix" && name.endsWith("*")))) {
     const e = groupEnd(text, j);
     if (e < 0) return null;
     option = text.slice(j, e);
@@ -344,7 +352,7 @@ export function parseGrid(text: string, from = 0): Grid | null {
 export function newGrid(kind: GridKind, rows: number, cols: number): Grid {
   return {
     kind,
-    env: kind === "matrix" ? "pmatrix" : "tabular",
+    env: kind === "matrix" ? "pmatrix" : kind === "cases" ? "cases" : "tabular",
     cells: Array.from({ length: Math.max(1, rows) }, () => Array.from({ length: Math.max(1, cols) }, () => "")),
     columns: Array.from({ length: Math.max(1, cols) }, (_, i) => (i === 0 ? "l" : "c")),
     style: "booktabs",
@@ -410,7 +418,7 @@ export function gridToLatex(g: Grid, indent = "", unit = "\t"): string {
       .trimEnd();
   const inner = indent + unit;
   const out = [`\\begin{${g.env}}${g.option}${g.kind === "table" ? `{${specOf(g)}}` : ""}`];
-  if (g.kind === "matrix") {
+  if (g.kind !== "table") {
     rows.forEach((row, i) => out.push(`${inner}${line(row)}${i < rows.length - 1 ? " \\\\" : ""}`));
   } else {
     const rule = (name: string) => out.push(`${inner}\\${name}`);

@@ -272,6 +272,7 @@ type Listener = (path: string) => void;
 const CHIP_TEXT: Record<ChipKind, [MessageKey, MessageKey]> = {
   matrix: ["grid.matrix", "grid.chipMatrix"],
   table: ["grid.table", "grid.chipTable"],
+  cases: ["grid.cases", "grid.chipCases"],
   tikz: ["chip.tikz", "chip.tikzHint"],
   image: ["chip.image", "chip.imageHint"],
   code: ["chip.code", "chip.codeHint"],
@@ -1385,7 +1386,7 @@ class EditorStore {
   /** The TikZ picture under the cursor (or the picture file of an `\input` line). */
   /** A chip after `\begin{…}` or `\includegraphics` was clicked: opens its editor. */
   private async openChip(view: EditorView, path: string, kind: ChipKind, from: number) {
-    if (kind === "matrix" || kind === "table") {
+    if (kind === "matrix" || kind === "table" || kind === "cases") {
       if (!gridStore.edit(view, path, from)) ui.toast("warning", t("grid.unreadable"));
     } else if (kind === "tikz" || kind === "graph" || kind === "variations" || kind === "tree") {
       const request = await this.tikzAt(from + 1);
