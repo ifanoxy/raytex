@@ -9,12 +9,21 @@ pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
 export { pdfjs };
 
+/**
+ * Letters drawn from their outlines rather than through the fonts of the
+ * system: on Windows these go through ClearType, which gives letters on a
+ * canvas coloured edges and heavy strokes at the small sizes of a preview.
+ * The outlines are those of the PDF, smoothed in grey as on the other systems.
+ */
+const outlines = typeof navigator !== "undefined" && navigator.userAgent.includes("Windows");
+
 /** Loads a PDF from bytes. The buffer is transferred to the worker. */
 export function loadPdf(data: ArrayBuffer) {
   return pdfjs.getDocument({
     data: new Uint8Array(data),
     disableAutoFetch: true,
     enableXfa: false,
+    disableFontFace: outlines,
   }).promise;
 }
 

@@ -511,7 +511,7 @@
       revision++;
       showErrors();
     } catch (e) {
-      ui.toast("error", String(e));
+      if (!ipc.isSuperseded(e)) ui.toast("error", String(e));
     } finally {
       compiling = false;
       if (pending) {

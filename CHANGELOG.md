@@ -2,6 +2,12 @@
 
 All notable changes to RayTeX are documented here. The format follows [Keep a Changelog](https://keepachangelog.com), and versions follow [Semantic Versioning](https://semver.org).
 
+## [1.0.3] — 2026-10-24
+
+- Fixed, on Windows the letters of the previews and of the PDF were drawn by ClearType, the text smoothing of the system: coloured edges and heavy strokes at small sizes (the pages of the layout, the title page, the tables of variations). pdf.js now draws them from the outlines the PDF holds (`disableFontFace` on Windows), smoothed in grey as on macOS and Linux.
+- Fixed, previews and pages of the PDF were a little blurred: their canvas was cut down to whole pixels (`Math.floor`) and stretched over a box a fraction of a pixel larger, more so on a screen at 125 % or 150 %. The page box and its canvas now fall on whole pixels of the screen (`ui/lib/pdf/pixels.ts`), one for one, in the previews, the viewer, the slides and the picture shown over an `\includegraphics`; they are drawn again when the window goes to a screen of another density.
+- Fixed, typing in a studio while TeX ran (a second or two on Windows, more with MiKTeX) asked for a preview at each pause, and all of them were compiled one after the other: the picture went through every step, several seconds late. A preview still waiting for its turn when a newer one of its kind is asked is now left aside (`superseded`), and only the last one is compiled; the font window shows the font chosen last only. The scenes check that a drawn page has one pixel of its canvas for one of the screen, and that no font of the PDF is given to the system on Windows.
+
 ## [1.0.2] — 2026-10-24
 
 - Fixed, on Windows a terminal opened over the whole screen each time a build gave way to the text typed or a preview was stopped (while typing, or after a click): the program that stops a process and its children (`taskkill`) was started with a window of its own. It is now started without one, from the folder of the system, as every other program RayTeX starts; a test makes sure no program of the application is ever started otherwise.
@@ -421,6 +427,7 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[1.0.3]: https://github.com/ifanoxy/raytex/releases/tag/v1.0.3
 [1.0.2]: https://github.com/ifanoxy/raytex/releases/tag/v1.0.2
 [1.0.1]: https://github.com/ifanoxy/raytex/releases/tag/v1.0.1
 [1.0.0]: https://github.com/ifanoxy/raytex/releases/tag/v1.0.0

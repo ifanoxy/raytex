@@ -6,6 +6,7 @@
   // white between two builds); not drawn again for a size that hardly
   // changed.
   import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
+  import { pixelSize } from "$lib/pdf/pixels";
 
   let { doc, page, width, height = 0, revision = 0 }: { doc: PDFDocumentProxy | null; page: number; width: number; height?: number; revision?: number } = $props();
 
@@ -35,21 +36,23 @@
       const p = await d.getPage(n).catch(() => null);
       if (gone || !p) return;
       const base = p.getViewport({ scale: 1 });
-      const ratio = Math.max(1, window.devicePixelRatio || 1);
       const scale = h > 0 ? Math.min(w / base.width, h / base.height) : w / base.width;
-      const viewport = p.getViewport({ scale: scale * ratio });
+      const viewport = p.getViewport({ scale });
+      // One pixel of the canvas for one of the screen (a canvas a fraction
+      // off its box is resampled, and blurred).
+      const px = pixelSize(viewport.width, viewport.height, Math.max(1, window.devicePixelRatio || 1));
       // Drawn on a canvas of its own, then copied at once on the one shown.
       const off = document.createElement("canvas");
-      off.width = Math.ceil(viewport.width);
-      off.height = Math.ceil(viewport.height);
+      off.width = px.width;
+      off.height = px.height;
       task?.cancel();
-      task = p.render({ canvas: off, viewport });
+      task = p.render({ canvas: off, viewport, transform: px.transform });
       const ok = await task.promise.then(() => true).catch(() => false);
       if (gone || !ok) return;
       c.width = off.width;
       c.height = off.height;
       c.getContext("2d")?.drawImage(off, 0, 0);
-      drawn = { width: base.width * scale, height: base.height * scale };
+      drawn = { width: px.cssWidth, height: px.cssHeight };
       shown = { doc: d, page: n, revision, width: w, height: h };
     })();
     return () => {

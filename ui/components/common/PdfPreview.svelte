@@ -7,6 +7,7 @@
   import { onDestroy, untrack } from "svelte";
   import { t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
+  import { onRatioChange, pixelSize } from "$lib/pdf/pixels";
   import Icon from "./Icon.svelte";
 
   let {
@@ -69,10 +70,15 @@
     return () => clearTimeout(timer);
   });
 
+  /** The density of the screen: drawn again when it changes (another screen). */
+  let ratio = $state(window.devicePixelRatio || 1);
+  const stopRatio = onRatioChange(() => (ratio = window.devicePixelRatio || 1));
+
   $effect(() => {
     void revision;
     void zoom;
     void width;
+    void ratio;
     if (whole) void height;
     if (pdf) void render(pdf);
     else pages = [];
@@ -80,6 +86,7 @@
 
   onDestroy(() => {
     token++;
+    stopRatio();
   });
 
   async function render(path: string) {
@@ -98,14 +105,14 @@
         const fitted = whole ? Math.min(avail / base.width, availHeight / base.height) : avail / base.width;
         const scale = Math.min(maxScale, fitted) * zoom;
         const viewport = page.getViewport({ scale });
-        const dpr = window.devicePixelRatio || 1;
+        const px = pixelSize(viewport.width, viewport.height, ratio);
         const canvas = document.createElement("canvas");
-        canvas.width = Math.floor(viewport.width * dpr);
-        canvas.height = Math.floor(viewport.height * dpr);
-        canvas.style.width = `${viewport.width}px`;
-        canvas.style.height = `${viewport.height}px`;
-        await page.render({ canvas, viewport, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined }).promise;
-        out.push({ canvas, width: viewport.width, height: viewport.height, ptWidth: base.width, ptHeight: base.height });
+        canvas.width = px.width;
+        canvas.height = px.height;
+        canvas.style.width = `${px.cssWidth}px`;
+        canvas.style.height = `${px.cssHeight}px`;
+        await page.render({ canvas, viewport, transform: px.transform }).promise;
+        out.push({ canvas, width: px.cssWidth, height: px.cssHeight, ptWidth: base.width, ptHeight: base.height });
       }
       closePdf(doc);
       if (my !== token) return;

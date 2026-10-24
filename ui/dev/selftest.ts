@@ -128,6 +128,10 @@ export async function runSelfTest() {
     await drawn(".pdf-viewer canvas.canvas", log, "PDF page drawn");
     const canvas = document.querySelector<HTMLCanvasElement>(".pdf-viewer canvas.canvas");
     report.canvas = canvas ? `${canvas.width}x${canvas.height}` : `not drawn (${document.visibilityState})`;
+    const pixels = onePerPixel(canvas);
+    report.canvasPixels = pixels?.detail ?? null;
+    report.pdfFonts = pdfFontsGiven();
+    const sharp = (pixels?.ok ?? true) && (!navigator.userAgent.includes("Windows") || report.pdfFonts === 0);
     report.textLayer = !!document.querySelector(".pdf-viewer .textLayer span");
     const fwd = await ipc.synctexForward(main, 12);
     report.synctexForward = fwd ? { page: fwd.page, rects: fwd.rects.length } : null;
@@ -139,7 +143,7 @@ export async function runSelfTest() {
     const outline = await ipc.structure(main);
     report.outline = outline?.outline.length ?? 0;
     report.labels = outline?.labels.length ?? 0;
-    ok = build.status === "success" && !!fwd;
+    ok = build.status === "success" && !!fwd && sharp;
   } catch (e) {
     ok = false;
     report.failure = String(e);
@@ -257,6 +261,28 @@ async function drawn(selector: string, log: (msg: string) => void, what: string)
   } catch {
     log(`${what}: not drawn (screen asleep or hidden?), continuing`);
   }
+}
+
+/**
+ * Whether a drawn page has one pixel of its canvas for one of the screen: a
+ * canvas a fraction of a pixel off its box is resampled, and the page
+ * blurred (a screen at 125 %, most Windows laptops). Null when not drawn.
+ */
+function onePerPixel(canvas: HTMLCanvasElement | null): { ok: boolean; detail: string } | null {
+  if (!canvas?.clientWidth) return null;
+  const box = canvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  // Within a twentieth of a pixel: the layout counts in 64ths of a CSS pixel.
+  const ok = Math.abs(canvas.width - box.width * ratio) < 0.05 && Math.abs(canvas.height - box.height * ratio) < 0.05;
+  return { ok, detail: `${canvas.width}x${canvas.height} pixels for ${box.width}x${box.height} at ${ratio}` };
+}
+
+/**
+ * The fonts of a PDF pdf.js gave to the system (named `g_d0_f1`…). None on
+ * Windows, where letters are drawn from their outlines rather than by ClearType.
+ */
+function pdfFontsGiven(): number {
+  return [...document.fonts].filter((f) => f.family.replace(/["']/g, "").startsWith("g_d")).length;
 }
 
 /**
@@ -534,6 +560,9 @@ async function mediaScenes(log: (msg: string) => void, assets: string): Promise<
     if (ui.dialog) ui.closeDialog(true);
     await drawn(".preview-pane canvas", log, "tikz preview");
     await pause(1500);
+    const pixels = onePerPixel(document.querySelector<HTMLCanvasElement>(".preview-pane canvas"));
+    log(`tikz preview: ${pixels ? `${pixels.ok ? "" : "NOT "}one pixel for one, ${pixels.detail}` : "not drawn"}`);
+    if (pixels && !pixels.ok) ok = false;
     await scene("tikz-studio");
     document.querySelector<HTMLButtonElement>(".footer .btn.primary")!.click();
     await until(() => ui.overlay === null, 20_000, "tikz insertion");

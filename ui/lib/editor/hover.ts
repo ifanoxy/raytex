@@ -4,6 +4,7 @@
 import { hoverTooltip } from "@codemirror/view";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import * as ipc from "../ipc";
+import { pixelSize } from "../pdf/pixels";
 import { docPath, hooks } from "./context";
 
 export function latexHover() {
@@ -64,12 +65,13 @@ async function renderPdfThumbnail(path: string, canvas: HTMLCanvasElement) {
     const pdf = await loadPdf(await ipc.readBinaryFile(path));
     const page = await pdf.getPage(1);
     const base = page.getViewport({ scale: 1 });
-    const scale = Math.min(320 / base.width, 240 / base.height) * (window.devicePixelRatio || 1);
-    const viewport = page.getViewport({ scale });
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    canvas.style.width = `${viewport.width / (window.devicePixelRatio || 1)}px`;
-    await page.render({ canvas, viewport }).promise;
+    const viewport = page.getViewport({ scale: Math.min(320 / base.width, 240 / base.height) });
+    const px = pixelSize(viewport.width, viewport.height, window.devicePixelRatio || 1);
+    canvas.width = px.width;
+    canvas.height = px.height;
+    canvas.style.width = `${px.cssWidth}px`;
+    canvas.style.height = `${px.cssHeight}px`;
+    await page.render({ canvas, viewport, transform: px.transform }).promise;
     closePdf(pdf);
   } catch {
     canvas.replaceWith(document.createTextNode(path));

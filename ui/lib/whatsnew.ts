@@ -34,6 +34,42 @@ export interface VersionNotes {
 
 export const NOTES: VersionNotes[] = [
   {
+    version: "1.0.3",
+    date: "2026-10-24",
+    en: {
+      points: [
+        "Windows: sharp previews, without coloured edges on the letters or blur on a screen at 125 % or 150 %.",
+        "Previews keep up with the typing when TeX is slow, as on Windows.",
+      ],
+      details: [
+        {
+          title: "Fixes",
+          items: [
+            "Windows: the letters of the previews and of the PDF were drawn by ClearType, the text smoothing of the system: coloured edges and heavy strokes at small sizes (the pages of the layout, the title page, the tables of variations). They are now drawn from the outlines the PDF holds, smoothed in grey as on macOS and Linux.",
+            "Previews and pages of the PDF were a little blurred: their picture was a fraction of a pixel smaller than its frame and stretched over it, more so on a screen at 125 % or 150 %. Each pixel of the picture is now one pixel of the screen, and the picture is drawn again when the window goes to a screen of another density.",
+            "Typing in a studio while TeX ran (a second or two on Windows, more with MiKTeX) asked for a preview at each pause, and all of them were compiled one after the other: the picture went through every step, several seconds late. A preview replaced while it waited for its turn is now left aside, and only the last one is compiled. The font window shows the font chosen last, never an earlier one arriving after it.",
+          ],
+        },
+      ],
+    },
+    fr: {
+      points: [
+        "Windows : des aperçus nets, sans franges colorées sur les lettres ni flou sur un écran à 125 % ou 150 %.",
+        "Les aperçus suivent la frappe même quand TeX est lent, comme sous Windows.",
+      ],
+      details: [
+        {
+          title: "Corrections",
+          items: [
+            "Windows : les lettres des aperçus et du PDF étaient dessinées par ClearType, le lissage du texte du système : franges colorées et traits épais aux petites tailles (les pages de la mise en page, la page de titre, les tableaux de variations). Elles sont désormais dessinées d’après les contours que contient le PDF, lissées en gris comme sous macOS et Linux.",
+            "Les aperçus et les pages du PDF étaient un peu flous : leur image était plus petite que son cadre d’une fraction de pixel, puis étirée dessus, plus encore sur un écran à 125 % ou 150 %. Chaque pixel de l’image est désormais un pixel de l’écran, et l’image est redessinée quand la fenêtre passe sur un écran d’une autre densité.",
+            "Taper dans un studio pendant que TeX tournait (une à deux secondes sous Windows, davantage avec MiKTeX) demandait un aperçu à chaque pause, et tous étaient compilés l’un après l’autre : l’image repassait par chaque étape, avec plusieurs secondes de retard. Un aperçu remplacé pendant qu’il attendait son tour est désormais laissé de côté, et seul le dernier est compilé. La fenêtre des polices montre la dernière police choisie, jamais une précédente arrivée après elle.",
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: "1.0.2",
     date: "2026-10-24",
     en: {

@@ -281,6 +281,8 @@ export const tikzLibraries = () => call<string[]>("tikz_libraries");
 export const tikzSets = () => call<ShapeSet[]>("tikz_sets");
 export const saveTikzSets = (sets: ShapeSet[]) => inOrder("tikz-sets", () => call<void>("save_tikz_sets", { sets }));
 export const previewSnippet = (request: T.SnippetRequest) => call<T.PreviewOutcome>("preview_snippet", { request });
+/** A preview left aside: a newer one of its kind was asked while it waited for its turn. */
+export const isSuperseded = (e: unknown) => String(e) === "superseded";
 /** Compiles a whole document (the pages of a layout being set) next to the project of `path`. */
 export const previewPage = (request: { path: string; job: string; source: string }) => call<PagePreview>("preview_page", { request });
 

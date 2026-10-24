@@ -425,9 +425,24 @@ fn project_commands(state: &AppState, root: &std::path::Path, all: bool) -> Stri
         .unwrap_or_default()
 }
 
+/// What a preview answers when a newer one of its kind was asked while it
+/// waited for its turn: typing while TeX runs (a second or two on Windows)
+/// asked for one at each pause, all compiled one after the other, and the
+/// picture followed the text several seconds late. Only the last is compiled.
+const SUPERSEDED: &str = "superseded";
+
+fn superseded(state: &AppState, job: &str, turn: u64) -> CmdResult<()> {
+    if state.preview_turns.is_last(job, turn) {
+        Ok(())
+    } else {
+        Err(SUPERSEDED.into())
+    }
+}
+
 /// Compiles a small standalone document next to the project.
 #[tauri::command]
 pub async fn preview_snippet(app: AppHandle, request: SnippetRequest) -> CmdResult<PreviewOutcome> {
+    let turn = app.state::<AppState>().preview_turns.ask(&request.job);
     blocking(&app, move |_, state| {
         let file = abs(&request.path);
         let dist = state.active_distribution().ok_or("no TeX distribution")?;
@@ -476,6 +491,7 @@ pub async fn preview_snippet(app: AppHandle, request: SnippetRequest) -> CmdResu
         let key = hasher.finish();
         // One preview at a time: TeX runs are short, and the files are shared.
         let mut previews = state.previews.lock().map_err(|e| e.to_string())?;
+        superseded(state, &request.job, turn)?;
         if let Some((k, outcome)) = previews.get(&request.job)
             && *k == key
             && outcome.pdf.as_ref().is_some_and(|p| p.exists())
@@ -528,6 +544,7 @@ pub struct PageRequest {
 /// project, without touching its files.
 #[tauri::command]
 pub async fn preview_page(app: AppHandle, request: PageRequest) -> CmdResult<PreviewOutcome> {
+    let turn = app.state::<AppState>().preview_turns.ask(&request.job);
     blocking(&app, move |_, state| {
         let file = abs(&request.path);
         let dist = state.active_distribution().ok_or("no TeX distribution")?;
@@ -551,6 +568,7 @@ pub async fn preview_page(app: AppHandle, request: PageRequest) -> CmdResult<Pre
         (&source, engine, &workdir).hash(&mut hasher);
         let key = hasher.finish();
         let mut previews = state.previews.lock().map_err(|e| e.to_string())?;
+        superseded(state, &request.job, turn)?;
         if let Some((k, outcome)) = previews.get(&request.job)
             && *k == key
             && outcome.pdf.as_ref().is_some_and(|p| p.exists())

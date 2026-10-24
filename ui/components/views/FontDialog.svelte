@@ -169,15 +169,20 @@
   // Closed before the preview was due: nothing is compiled for it.
   onDestroy(() => schedulePreview.cancel());
 
+  let running = 0;
   async function runPreview() {
     const s = selected;
     const path = editor.active ?? project.info?.main;
     if (!s || !path) return;
+    // Only the answer to the last font chosen is shown (an earlier one can
+    // come after it, or not at all when it was replaced while it waited).
+    const my = ++running;
     compiling = true;
     const sample = document.documentElement.lang === "fr" ? SAMPLE_FR : SAMPLE_EN;
     try {
+      let result: PreviewOutcome | undefined;
       if (s.tex) {
-        outcome = await ipc.previewSnippet({
+        result = await ipc.previewSnippet({
           path,
           job: "font",
           classOptions: "border=6pt,varwidth=11cm",
@@ -191,7 +196,7 @@
         const dir = s.fromFiles ? dirname(s.family.faces[0].path) : null;
         const code = await ipc.fontspecCode(s.family, "main", dir, "");
         const math = hasMath ? `\n\\usepackage{unicode-math}\n\\setmathfont{${s.family.name}}` : "";
-        outcome = await ipc.previewSnippet({
+        result = await ipc.previewSnippet({
           path,
           job: "font",
           classOptions: "border=6pt,varwidth=11cm",
@@ -201,12 +206,15 @@
           engine: plan?.engine === "lualatex" ? "lualatex" : "xelatex",
         });
       }
+      if (my !== running) return;
+      outcome = result ?? null;
       revision++;
     } catch (e) {
+      if (my !== running) return;
       outcome = null;
       ui.toast("error", String(e));
     } finally {
-      compiling = false;
+      if (my === running) compiling = false;
     }
   }
 

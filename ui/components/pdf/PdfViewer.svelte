@@ -8,6 +8,7 @@
   import { keyFor, runAction } from "$lib/actions";
   import { t } from "$lib/i18n.svelte";
   import * as ipc from "$lib/ipc";
+  import { onPixels, onRatioChange, pixelSize } from "$lib/pdf/pixels";
   import { wholePdf } from "$lib/pdf/written";
   import { answerKey } from "$lib/state/answerkey.svelte";
   import { app } from "$lib/state/app.svelte";
@@ -24,6 +25,7 @@
   /** A page rendered (or being rendered) at a given scale for a given document. */
   interface Rendered {
     scale: number;
+    ratio: number;
     doc: number;
     task: RenderTask | null;
     text: { cancel(): void } | null;
@@ -41,6 +43,8 @@
   let docId = 0;
   let sizes = $state<{ w: number; h: number }[]>([]);
   let scale = $state(1);
+  /** The density of the screen: pages are drawn again when it changes (another screen). */
+  let ratio = $state(window.devicePixelRatio || 1);
   let loading = $state(false);
   let error = $state<string | null>(null);
   let missing = $state(false);
@@ -55,6 +59,10 @@
   onMount(() => {
     resizeObserver = new ResizeObserver(() => updateScale());
     if (scroller) resizeObserver.observe(scroller);
+    return onRatioChange(() => {
+      ratio = window.devicePixelRatio || 1;
+      void renderVisible();
+    });
   });
 
   onDestroy(() => {
@@ -241,13 +249,13 @@
 
   async function renderPage(i: number) {
     const current = rendered.get(i);
-    if (current && current.scale === scale && current.doc === docId) return;
+    if (current && current.scale === scale && current.ratio === ratio && current.doc === docId) return;
     current?.task?.cancel();
     current?.text?.cancel();
     const d = doc;
     if (!d || !lib) return;
     // Reserved before any await: a page is never rendered twice at once.
-    const entry: Rendered = { scale, doc: docId, task: null, text: null };
+    const entry: Rendered = { scale, ratio, doc: docId, task: null, text: null };
     rendered.set(i, entry);
     const failed = (why?: unknown) => {
       if (import.meta.env.DEV && rendered.get(i) === entry) void ipc.logFrontend("info", `pdf page ${i + 1} not rendered: ${why}`).catch(() => {});
@@ -264,13 +272,15 @@
     const w = viewport.width / entry.scale;
     const h = viewport.height / entry.scale;
     if (Math.abs(sizes[i].w - w) > 0.5 || Math.abs(sizes[i].h - h) > 0.5) sizes[i] = { w, h };
-    const dpr = window.devicePixelRatio || 1;
-    const out = Math.min(dpr, Math.sqrt(MAX_PIXELS / (viewport.width * viewport.height)));
+    // The page box falls on whole pixels of the screen (see `onPixels` below),
+    // and so does the canvas that fills it: one pixel for one, nothing blurred.
+    const out = Math.min(entry.ratio, Math.sqrt(MAX_PIXELS / (viewport.width * viewport.height)));
+    const px = pixelSize(onPixels(viewport.width, entry.ratio), onPixels(viewport.height, entry.ratio), out);
     const canvas = document.createElement("canvas");
     canvas.className = "canvas";
-    canvas.width = Math.floor(viewport.width * out);
-    canvas.height = Math.floor(viewport.height * out);
-    entry.task = page.render({ canvas, viewport, transform: out !== 1 ? [out, 0, 0, out, 0, 0] : undefined });
+    canvas.width = px.width;
+    canvas.height = px.height;
+    entry.task = page.render({ canvas, viewport, transform: [px.width / viewport.width, 0, 0, px.height / viewport.height, 0, 0] });
     try {
       await entry.task.promise;
     } catch (e) {
@@ -509,8 +519,8 @@
           <div
             class="page"
             data-index={i}
-            style:width="{s.w * scale}px"
-            style:height="{s.h * scale}px"
+            style:width="{onPixels(s.w * scale, ratio)}px"
+            style:height="{onPixels(s.h * scale, ratio)}px"
             style="--scale-factor: {scale}; --total-scale-factor: {scale}; --user-unit: 1"
             ondblclick={(e) => dblclick(e, i)}
             role="presentation"

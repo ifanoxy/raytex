@@ -273,6 +273,8 @@ pub struct AppState {
     pub own_writes: Mutex<HashMap<PathBuf, (Instant, Option<u64>)>>,
     /// Previews run one at a time; the last result of each kind is kept.
     pub previews: Mutex<HashMap<String, (u64, raytex_core::preview::PreviewOutcome)>>,
+    /// The last preview asked of each kind.
+    pub preview_turns: Turns,
     /// Template thumbnails compiled at the same time (a few, not all).
     pub thumbnails: Slots,
     /// One compilation per thumbnail folder.
@@ -405,6 +407,7 @@ impl AppState {
             session: Mutex::new(session),
             own_writes: Mutex::new(HashMap::new()),
             previews: Mutex::new(HashMap::new()),
+            preview_turns: Turns::default(),
             thumbnails: Slots::new(3),
             thumbnail_dirs: Mutex::new(HashMap::new()),
             system_fonts: Mutex::new(None),
@@ -561,6 +564,28 @@ impl Default for AppState {
     }
 }
 
+/// The last request of each kind: one still waiting for its turn when a
+/// newer one of its kind comes is not worth running.
+#[derive(Debug, Default)]
+pub struct Turns {
+    last: Mutex<HashMap<String, u64>>,
+    next: AtomicU64,
+}
+
+impl Turns {
+    /// Notes a request of the kind `kind` made now: its turn.
+    pub fn ask(&self, kind: &str) -> u64 {
+        let turn = self.next.fetch_add(1, Ordering::Relaxed);
+        recover(self.last.lock()).insert(kind.to_string(), turn);
+        turn
+    }
+
+    /// Whether no request of the kind `kind` came after `turn`.
+    pub fn is_last(&self, kind: &str, turn: u64) -> bool {
+        recover(self.last.lock()).get(kind) == Some(&turn)
+    }
+}
+
 /// A counting semaphore: at most `max` holders at a time.
 #[derive(Debug)]
 pub struct Slots {
@@ -611,4 +636,21 @@ fn print(bytes: &[u8]) -> u64 {
     let mut h = std::collections::hash_map::DefaultHasher::new();
     bytes.hash(&mut h);
     h.finish()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_the_last_request_of_a_kind_is_wanted() {
+        let turns = Turns::default();
+        let first = turns.ask("tree");
+        let other = turns.ask("font");
+        assert!(turns.is_last("tree", first));
+        let second = turns.ask("tree");
+        assert!(!turns.is_last("tree", first));
+        assert!(turns.is_last("tree", second));
+        assert!(turns.is_last("font", other));
+    }
 }
