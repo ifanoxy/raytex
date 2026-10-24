@@ -285,12 +285,20 @@ fn kill_pid_tree(pid: u32) {
     signal_group(pid as i32);
     #[cfg(windows)]
     {
-        let _ = Command::new("taskkill")
-            .args(["/PID", &pid.to_string(), "/T", "/F"])
+        // The one of the system, without a window of its own: started
+        // without it, Windows opened a terminal over the screen each time
+        // a build gave way to the text typed or a preview was stopped.
+        let taskkill = std::env::var_os("SystemRoot")
+            .map(|root| PathBuf::from(root).join("System32").join("taskkill.exe"))
+            .filter(|p| p.is_file())
+            .unwrap_or_else(|| PathBuf::from("taskkill"));
+        let mut c = Command::new(taskkill);
+        c.args(["/PID", &pid.to_string(), "/T", "/F"])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
+            .stderr(Stdio::null());
+        platform_setup(&mut c);
+        let _ = c.status();
     }
     #[cfg(not(any(unix, windows)))]
     let _ = pid;
@@ -476,6 +484,63 @@ pub fn login_shell_path() -> Vec<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+
+    /// Every program RayTeX starts goes through [`super::Cmd`] (or the
+    /// taskkill of this file), which starts it without a window on Windows:
+    /// started otherwise, a terminal opens over the screen.
+    #[test]
+    fn every_program_is_started_without_a_window() {
+        fn files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+            for entry in std::fs::read_dir(dir).unwrap().flatten() {
+                let p = entry.path();
+                if p.is_dir() {
+                    files(&p, out);
+                } else if p.extension().is_some_and(|e| e == "rs") {
+                    out.push(p);
+                }
+            }
+        }
+        let crates = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let mut sources = Vec::new();
+        for krate in std::fs::read_dir(&crates).unwrap().flatten() {
+            let src = krate.path().join("src");
+            if src.is_dir() {
+                files(&src, &mut sources);
+            }
+        }
+        assert!(sources.len() > 20, "{} sources found", sources.len());
+        let mut found = Vec::new();
+        let mut bare = Vec::new();
+        for file in &sources {
+            let text = std::fs::read_to_string(file).unwrap();
+            // What the application runs: the tests may start what they like.
+            let code = text.split("#[cfg(test)]").next().unwrap_or_default();
+            let lines: Vec<&str> = code.lines().collect();
+            for (n, line) in lines.iter().enumerate() {
+                if line.contains("Command::new(") && !line.trim_start().starts_with("//") {
+                    found.push(format!("{}:{}", file.display(), n + 1));
+                    // Its window taken away before it starts.
+                    if !lines[n..lines.len().min(n + 20)]
+                        .iter()
+                        .any(|l| l.contains("platform_setup("))
+                    {
+                        bare.push(format!("{}:{}", file.display(), n + 1));
+                    }
+                }
+            }
+        }
+        assert!(
+            bare.is_empty(),
+            "started without platform_setup (a window opens on Windows): {bare:?}"
+        );
+        let here: Vec<_> = found.iter().filter(|f| f.contains("process.rs")).collect();
+        let elsewhere: Vec<_> = found.iter().filter(|f| !f.contains("process.rs")).collect();
+        assert!(
+            elsewhere.is_empty(),
+            "programs started without process::Cmd (a window opens on Windows): {elsewhere:?}"
+        );
+        assert_eq!(here.len(), 2, "{here:?}");
+    }
 
     /// A command that waits about 30 seconds.
     fn long() -> super::Cmd {

@@ -2,6 +2,10 @@
 
 All notable changes to RayTeX are documented here. The format follows [Keep a Changelog](https://keepachangelog.com), and versions follow [Semantic Versioning](https://semver.org).
 
+## [1.0.2] — 2026-10-24
+
+- Fixed, on Windows a terminal opened over the whole screen each time a build gave way to the text typed or a preview was stopped (while typing, or after a click): the program that stops a process and its children (`taskkill`) was started with a window of its own. It is now started without one, from the folder of the system, as every other program RayTeX starts; a test makes sure no program of the application is ever started otherwise.
+
 ## [1.0.1] — 2026-10-23
 
 - **Systems and functions by cases** (*Maths › System or cases…*): the grid editor on a brace and its lines, one column for a system of equations, two for a function by cases (a value, then its condition, `\text{si } x \geq 0`). *Before the brace* writes what comes first on its line (`f(x) =`); the brace goes on the left (`cases`), on the left in display style (`dcases`) or on the right (`rcases`), mathtools added when needed; outside a formula it is written in `\[…\]`. The **Brace** chip after `\begin{cases}` (and `dcases`, `rcases`, `drcases`, starred too) opens it again, cell by cell; a `[` that starts a line of a starred brace is read as a cell, not as an option.
@@ -417,6 +421,7 @@ First version.
 - Editor with context-aware completion, live math preview, hovers, snippets, macros, folding, multiple cursors, Vim mode.
 - PDF viewer with SyncTeX, problems / output / installations panels, command palette, project search, outline, packages browser, help centre, settings, setup assistant, light and dark themes, English and French interface.
 
+[1.0.2]: https://github.com/ifanoxy/raytex/releases/tag/v1.0.2
 [1.0.1]: https://github.com/ifanoxy/raytex/releases/tag/v1.0.1
 [1.0.0]: https://github.com/ifanoxy/raytex/releases/tag/v1.0.0
 [0.6.0]: https://github.com/ifanoxy/raytex/releases/tag/v0.6.0

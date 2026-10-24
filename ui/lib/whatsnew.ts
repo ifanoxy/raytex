@@ -34,6 +34,32 @@ export interface VersionNotes {
 
 export const NOTES: VersionNotes[] = [
   {
+    version: "1.0.2",
+    date: "2026-10-24",
+    en: {
+      points: ["Windows: no more terminal opening over the screen while you type or click."],
+      details: [
+        {
+          title: "Fixes",
+          items: [
+            "Windows: when a build gave way to the text typed, or a preview was stopped, the program that stops it was started with a window of its own: a terminal opened over the whole screen each time. It now runs without one, as every other program RayTeX starts, and a test makes sure none ever starts with a window again.",
+          ],
+        },
+      ],
+    },
+    fr: {
+      points: ["Windows : plus de terminal qui s’ouvre par-dessus l’écran quand on écrit ou qu’on clique."],
+      details: [
+        {
+          title: "Corrections",
+          items: [
+            "Windows : quand une compilation laissait la place au texte tapé, ou qu’un aperçu était arrêté, le programme qui l’arrête était lancé avec une fenêtre à lui : un terminal s’ouvrait par-dessus tout l’écran à chaque fois. Il est désormais lancé sans fenêtre, comme tous les autres programmes que RayTeX lance, et un test vérifie qu’aucun ne s’ouvre plus jamais dans une fenêtre.",
+          ],
+        },
+      ],
+    },
+  },
+  {
     version: "1.0.1",
     date: "2026-10-23",
     en: {
